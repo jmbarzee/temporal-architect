@@ -174,10 +174,9 @@ func parseSources(sources []source, defaultFile string) (*ast.File, []Diagnostic
 
 	resolveErrs := resolver.Resolve(merged)
 	for _, e := range resolveErrs {
-		// Prefer the reference-site file the resolver now carries (issue #136);
+		// Prefer the reference-site file the resolver carries (issue #136);
 		// fall back to the name-lookup heuristic only when it is empty (e.g. a
-		// node the merge left unstamped). The validator path below keeps using
-		// fileForDiagnostic — validator errors carry no File.
+		// node the merge left unstamped).
 		file := e.File
 		if file == "" {
 			file = fileForDiagnostic(merged, e.Name, defaultFile)
@@ -187,7 +186,13 @@ func parseSources(sources []source, defaultFile string) (*ast.File, []Diagnostic
 
 	validateErrs := validator.Validate(merged)
 	for _, e := range validateErrs {
-		diags = append(diags, FromValidateError(e, fileForDiagnostic(merged, e.Name, defaultFile)))
+		// Same shape as the resolver loop: the validator carries the
+		// reference-site file too (issue #238).
+		file := e.File
+		if file == "" {
+			file = fileForDiagnostic(merged, e.Name, defaultFile)
+		}
+		diags = append(diags, FromValidateError(e, file))
 	}
 
 	return merged, diags
@@ -205,9 +210,8 @@ func fileForDiagnostic(file *ast.File, name, defaultFile string) string {
 }
 
 // defFileFor returns the source file of the definition named `name`, or ""
-// if not found. Resolver/validator errors only carry the entity name, not
-// the file — looking it up here lets us populate the diagnostic's `file`
-// field without changing the parser error types.
+// if not found. It is the fallback for a resolver/validator error that carries
+// no File of its own.
 func defFileFor(file *ast.File, name string) string {
 	if file == nil || name == "" {
 		return ""

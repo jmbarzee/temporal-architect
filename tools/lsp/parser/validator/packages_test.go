@@ -17,20 +17,40 @@ import (
 // CLI envelope (which would be an import cycle).
 func mustMergeAndResolve(t *testing.T, sources ...string) *ast.File {
 	t.Helper()
+	named := make([]namedSource, len(sources))
+	for i, src := range sources {
+		named[i] = namedSource{src: src}
+	}
+	return mustMergeNamedAndResolve(t, named...)
+}
+
+// namedSource is one source of a merged tree and the file name its
+// definitions are stamped with.
+type namedSource struct {
+	file string
+	src  string
+}
+
+// mustMergeNamedAndResolve is mustMergeAndResolve that also stamps each
+// definition's SourceFile with its source's name, as the pipeline merge does
+// (issue #136), so the file an error is attributed to can be asserted.
+func mustMergeNamedAndResolve(t *testing.T, sources ...namedSource) *ast.File {
+	t.Helper()
 	merged := &ast.File{}
 	pkgs := map[string]bool{}
-	for _, src := range sources {
-		f, err := parser.ParseFile(src)
+	for _, s := range sources {
+		f, err := parser.ParseFile(s.src)
 		if err != nil {
 			t.Fatalf("unexpected parse error: %v", err)
 		}
 		pkgs[f.Package] = true
 		for _, imp := range f.Imports {
 			imp.Package = f.Package
+			imp.SourceFile = s.file
 			merged.Imports = append(merged.Imports, imp)
 		}
 		for _, def := range f.Definitions {
-			stampPkg(def, f.Package)
+			stamp(def, f.Package, s.file)
 			merged.Definitions = append(merged.Definitions, def)
 		}
 	}
@@ -47,18 +67,18 @@ func mustMergeAndResolve(t *testing.T, sources ...string) *ast.File {
 	return merged
 }
 
-func stampPkg(def ast.Definition, pkg string) {
+func stamp(def ast.Definition, pkg, file string) {
 	switch d := def.(type) {
 	case *ast.WorkflowDef:
-		d.Package = pkg
+		d.Package, d.SourceFile = pkg, file
 	case *ast.ActivityDef:
-		d.Package = pkg
+		d.Package, d.SourceFile = pkg, file
 	case *ast.WorkerDef:
-		d.Package = pkg
+		d.Package, d.SourceFile = pkg, file
 	case *ast.NamespaceDef:
-		d.Package = pkg
+		d.Package, d.SourceFile = pkg, file
 	case *ast.NexusServiceDef:
-		d.Package = pkg
+		d.Package, d.SourceFile = pkg, file
 	}
 }
 

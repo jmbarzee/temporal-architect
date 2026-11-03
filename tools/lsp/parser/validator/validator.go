@@ -12,7 +12,7 @@ import (
 type ErrorKind int
 
 const (
-	ErrEmptyWorkflow          ErrorKind = iota + 1
+	ErrEmptyWorkflow ErrorKind = iota + 1
 	ErrEmptyActivity
 	ErrEmptyWorker
 	ErrEmptyNamespace
@@ -40,6 +40,15 @@ type Error struct {
 	Severity string // "error" (default), "warning", or "hint"
 	Kind     ErrorKind
 	Name     string // primary entity referenced by this error
+	// File is the base name of the source file this error is attributed to
+	// (issue #238): the SourceFile of the definition enclosing the error's
+	// position — the calling definition for a call-site error, the definition
+	// itself for an error about a definition. It is the reference-site file even
+	// when Name points at a symbol defined elsewhere, so consumers must prefer it
+	// over reverse-engineering the file from Name. Empty when the merge left that
+	// definition's SourceFile unstamped (e.g. a raw single-file parse) or the
+	// error has no position (TASK_QUEUE_IDENTICAL / TASK_QUEUE_MISMATCH).
+	File string
 }
 
 func (e *Error) Error() string {
@@ -230,6 +239,7 @@ func (v *validationCtx) checkEmptyDefinitions() {
 				Severity: "warning",
 				Kind:     ErrEmptyWorkflow,
 				Name:     wf.Name,
+				File:     wf.SourceFile,
 			})
 		}
 	}
@@ -246,6 +256,7 @@ func (v *validationCtx) checkEmptyDefinitions() {
 				Severity: "warning",
 				Kind:     ErrEmptyActivity,
 				Name:     act.Name,
+				File:     act.SourceFile,
 			})
 		}
 	}
@@ -258,6 +269,7 @@ func (v *validationCtx) checkEmptyDefinitions() {
 				Severity: "warning",
 				Kind:     ErrEmptyWorker,
 				Name:     w.Name,
+				File:     w.SourceFile,
 			})
 		}
 	}
@@ -270,6 +282,7 @@ func (v *validationCtx) checkEmptyDefinitions() {
 				Severity: "warning",
 				Kind:     ErrEmptyNamespace,
 				Name:     ns.Name,
+				File:     ns.SourceFile,
 			})
 		}
 	}
@@ -286,6 +299,7 @@ func (v *validationCtx) checkTaskQueueRequirements() {
 					Column: nw.Column,
 					Kind:   ErrMissingTaskQueue,
 					Name:   nw.Worker.Name,
+					File:   ns.SourceFile,
 				})
 			}
 		}
@@ -298,6 +312,7 @@ func (v *validationCtx) checkTaskQueueRequirements() {
 					Column: ep.Column,
 					Kind:   ErrMissingEndpointTaskQueue,
 					Name:   ep.EndpointName,
+					File:   ns.SourceFile,
 				})
 			}
 		}
@@ -411,6 +426,7 @@ type placement struct {
 type caller struct {
 	kind string // "workflow" or "nexus service"
 	key  pkgKey
+	file string // SourceFile of the calling definition (#238)
 }
 
 // walkAllBodies walks all workflow and nexus service sync op bodies,
@@ -421,7 +437,7 @@ func (v *validationCtx) walkAllBodies() {
 	}
 
 	for key, wf := range v.workflows {
-		from := caller{"workflow", key}
+		from := caller{"workflow", key, wf.SourceFile}
 		v.walkStatements(wf.Body, from)
 		for _, s := range wf.Signals {
 			v.walkStatements(s.Body, from)
@@ -437,7 +453,7 @@ func (v *validationCtx) walkAllBodies() {
 	for key, svc := range v.nexusServices {
 		for _, op := range svc.Operations {
 			if op.OpType == ast.NexusOpSync {
-				v.walkStatements(op.Body, caller{"nexus service", key})
+				v.walkStatements(op.Body, caller{"nexus service", key, svc.SourceFile})
 			}
 		}
 	}
@@ -466,7 +482,7 @@ func (v *validationCtx) walkStatements(stmts []ast.Statement, from caller) {
 			// UNDEFINED_SERVICE); either way the validator must not add a
 			// linkage error on top.
 			if n.Service.Resolved != nil {
-				v.checkEndpointServiceLinkage(n.Endpoint.Name, refKey(v, n.Service), n.Line, n.Column)
+				v.checkEndpointServiceLinkage(n.Endpoint.Name, refKey(v, n.Service), n.Line, n.Column, from.file)
 			}
 		case *ast.SignalSendStmt:
 			// A signal send is a *use* of its handle promise — no routing
@@ -504,7 +520,7 @@ func (v *validationCtx) walkAsyncTarget(target ast.AsyncTarget, from caller, lin
 		// See the NexusCall case in walkStatements: skip the linkage check for
 		// an unresolved (external / already-reported) service.
 		if t.Service.Resolved != nil {
-			v.checkEndpointServiceLinkage(t.Endpoint.Name, refKey(v, t.Service), line, column)
+			v.checkEndpointServiceLinkage(t.Endpoint.Name, refKey(v, t.Service), line, column, from.file)
 		}
 	}
 }
@@ -536,6 +552,7 @@ func (v *validationCtx) checkCallRouting(kind string, target pkgKey, opts, defau
 				Column: column,
 				Kind:   ErrExplicitRoutingMismatch,
 				Name:   target.name,
+				File:   from.file,
 			})
 		}
 		return
@@ -554,6 +571,7 @@ func (v *validationCtx) checkCallRouting(kind string, target pkgKey, opts, defau
 			Column: column,
 			Kind:   ErrImplicitRoutingMismatch,
 			Name:   target.name,
+			File:   from.file,
 		})
 	}
 }
@@ -641,8 +659,8 @@ func hasRef[T interface {
 // checkEndpointServiceLinkage verifies that a worker polling the endpoint's
 // task queue in the endpoint's own namespace registers the given service
 // (identified by its resolved (package, name) key). The endpoint is looked up
-// flat-global by bare name.
-func (v *validationCtx) checkEndpointServiceLinkage(endpoint string, service pkgKey, line, column int) {
+// flat-global by bare name. file is the calling definition's SourceFile.
+func (v *validationCtx) checkEndpointServiceLinkage(endpoint string, service pkgKey, line, column int, file string) {
 	ep, ok := v.allEndpoints[endpoint]
 	if !ok {
 		return // endpoint not found — already reported by resolver
@@ -661,6 +679,7 @@ func (v *validationCtx) checkEndpointServiceLinkage(endpoint string, service pkg
 		Column: column,
 		Kind:   ErrEndpointServiceLinkage,
 		Name:   endpoint,
+		File:   file,
 	})
 }
 
@@ -693,7 +712,7 @@ func sameSet[K comparable](a, b map[K]bool) bool {
 // (package, name) key is not present in the covered set. The bare name (never
 // the package-qualified form) is used in the message and Error.Name, keeping
 // single-package diagnostics byte-identical.
-func checkUncovered[T ast.Node](defs map[pkgKey]T, covered map[pkgKey]bool, msgFmt string, kind ErrorKind, errs *[]*Error) {
+func checkUncovered[T ast.Definition](defs map[pkgKey]T, covered map[pkgKey]bool, msgFmt string, kind ErrorKind, errs *[]*Error) {
 	for key, node := range defs {
 		if !covered[key] {
 			*errs = append(*errs, &Error{
@@ -703,9 +722,27 @@ func checkUncovered[T ast.Node](defs map[pkgKey]T, covered map[pkgKey]bool, msgF
 				Severity: "warning",
 				Kind:     kind,
 				Name:     key.name,
+				File:     sourceFileOf(node),
 			})
 		}
 	}
+}
+
+// sourceFileOf returns the SourceFile stamp of a top-level definition.
+func sourceFileOf(def ast.Definition) string {
+	switch d := def.(type) {
+	case *ast.WorkflowDef:
+		return d.SourceFile
+	case *ast.ActivityDef:
+		return d.SourceFile
+	case *ast.WorkerDef:
+		return d.SourceFile
+	case *ast.NamespaceDef:
+		return d.SourceFile
+	case *ast.NexusServiceDef:
+		return d.SourceFile
+	}
+	return ""
 }
 
 // hasNonCommentStmts returns true if the statement slice has at least one

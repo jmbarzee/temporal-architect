@@ -186,6 +186,44 @@ func TestParseFilesAttributesReferenceErrorToReferencingFile(t *testing.T) {
 	}
 }
 
+// TestParseFilesAttributesValidateErrorToCallSiteFile covers issue #238: a
+// call-site validator error names its callee, but must be attributed to the
+// caller's file. The fixture is packaged_multi_file with the call's
+// task_queue option removed, so kube.ApplyManifest inherits agent's queue.
+func TestParseFilesAttributesValidateErrorToCallSiteFile(t *testing.T) {
+	_, diags, err := pipeline.ParseFiles([]string{testdata("packaged_multi_file_routing_mismatch")})
+	if err != nil {
+		t.Fatalf("ParseFiles: %v", err)
+	}
+
+	var mismatch *pipeline.Diagnostic
+	for i := range diags {
+		if diags[i].Kind == "validate" && diags[i].Code == "IMPLICIT_ROUTING_MISMATCH" {
+			mismatch = &diags[i]
+			break
+		}
+	}
+	if mismatch == nil {
+		t.Fatalf("no IMPLICIT_ROUTING_MISMATCH diagnostic; got %d diagnostics: %+v", len(diags), diags)
+	}
+	if mismatch.File != "agent.twf" {
+		t.Errorf("IMPLICIT_ROUTING_MISMATCH file = %q, want agent.twf (the calling file)", mismatch.File)
+	}
+	if mismatch.Start.Line != 10 || mismatch.Start.Column != 5 {
+		t.Errorf("IMPLICIT_ROUTING_MISMATCH at %d:%d, want 10:5 (the call site)", mismatch.Start.Line, mismatch.Start.Column)
+	}
+	if mismatch.Name != "ApplyManifest" {
+		t.Errorf("IMPLICIT_ROUTING_MISMATCH name = %q, want ApplyManifest", mismatch.Name)
+	}
+
+	// The bug pointed the call-site error at kube.twf, the callee's file.
+	for _, d := range diags {
+		if d.Kind == "validate" && d.File == "kube.twf" {
+			t.Errorf("validate diagnostic mis-attributed to the callee's file: %+v", d)
+		}
+	}
+}
+
 // TestStructuralLexErrorSurfacesAndBlocksLenient covers issue #97: a string
 // literal containing a paren must not silently truncate the file. The lexer now
 // emits a loud, positioned diagnostic that reaches the shared diagnostic path,

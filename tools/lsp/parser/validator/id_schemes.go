@@ -48,6 +48,7 @@ func (v *validationCtx) checkParentSends(defs []ast.Definition) {
 					Severity: "warning",
 					Kind:     ErrNotAParent,
 					Name:     claimed.Name,
+					File:     sender.SourceFile,
 				})
 			}
 			for _, other := range starters[sender] {
@@ -61,6 +62,7 @@ func (v *validationCtx) checkParentSends(defs []ast.Definition) {
 					Severity: "warning",
 					Kind:     ErrStarterLacksSignal,
 					Name:     other.Name,
+					File:     sender.SourceFile,
 				})
 			}
 		}, nil)
@@ -102,6 +104,7 @@ func (v *validationCtx) checkIDSchemeOverlap(defs []ast.Definition) {
 					Severity: "hint",
 					Kind:     ErrIDSchemeOverlap,
 					Name:     b.Name,
+					File:     b.SourceFile,
 				})
 			}
 		}

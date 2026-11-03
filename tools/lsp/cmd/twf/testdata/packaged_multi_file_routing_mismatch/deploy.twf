@@ -1,0 +1,25 @@
+package deploy
+
+import "github.com/example/app/agent/v1"
+import "github.com/example/library-kube/twf/kube/v1"
+
+worker agentWorker:
+    workflow agent.RunAgent
+    activity agent.Think
+    nexus service agent.AgentService
+
+worker kubeWorker:
+    workflow kube.ApplyManifest
+    activity kube.KubectlApply
+    activity kube.Think
+
+namespace agents:
+    worker agentWorker
+        options:
+            task_queue: "agent"
+    worker kubeWorker
+        options:
+            task_queue: "kube"
+    nexus endpoint AgentEndpoint
+        options:
+            task_queue: "agent"

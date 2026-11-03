@@ -1,0 +1,12 @@
+package kube
+
+workflow ApplyManifest(manifest):
+    activity KubectlApply(manifest) -> result
+    close complete(result)
+
+activity KubectlApply(manifest):
+    pass()
+
+# Same bare name as agent.Think: the two must stay apart.
+activity Think(manifest):
+    pass()
