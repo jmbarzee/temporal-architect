@@ -213,11 +213,19 @@ var optionSchemas = map[OptionsContext]map[string]*optionSchema{
 	OptionsContextWorkflowDefaults: workflowDefaultOptionSchema,
 }
 
-// workflowStartContext is the options context of a workflow start at the
-// current position: a client start inside a sync nexus operation body, a child
-// start anywhere else.
-func (p *Parser) workflowStartContext() OptionsContext {
+// workflowStartKind is the kind of a workflow start at the current position: a
+// client start inside a sync nexus operation body, a child start anywhere else.
+func (p *Parser) workflowStartKind() ast.StartKind {
 	if p.inSyncNexus {
+		return ast.StartClient
+	}
+	return ast.StartChild
+}
+
+// workflowStartContext is the options context of a workflow start at the
+// current position.
+func (p *Parser) workflowStartContext() OptionsContext {
+	if p.workflowStartKind() == ast.StartClient {
 		return OptionsContextClientStart
 	}
 	return OptionsContextChildStart

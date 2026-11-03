@@ -301,6 +301,7 @@ func parseWorkflowCallOrNexus(p *Parser) (ast.Statement, error) {
 	return &ast.WorkflowCall{
 		Pos:      pos,
 		Mode:     ast.CallDetach,
+		Start:    p.workflowStartKind(),
 		Workflow: ast.Ref[*ast.WorkflowDef]{Pos: pos, Package: pkg, Name: name},
 		Args:     args.Literal,
 		Result:   result,

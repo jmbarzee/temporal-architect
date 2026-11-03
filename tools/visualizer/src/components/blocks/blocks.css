@@ -1265,6 +1265,18 @@
   opacity: 0.6;
 }
 
+/* A workflow start that is a client start (sync nexus body), not a child */
+.block-start-badge {
+  margin-left: 8px;
+  padding: 0 5px;
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  opacity: 0.7;
+  flex-shrink: 0;
+}
+
 /* Tagged composites (await one cases) — unresolved variant */
 .tagged-composite.tagged-unresolved .tagged-content {
   border-style: dashed !important;

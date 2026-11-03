@@ -11,6 +11,7 @@ import type {
   Address,
 } from '../../types/ast'
 import { ContextualNavButtons } from './ContextualNav'
+import { ClientStartBadge } from './ClientStartBadge'
 // Return
 export function ReturnBlock({ stmt }: { stmt: ReturnStmt }) {
   return (
@@ -117,6 +118,7 @@ export function PromiseBlock({ stmt }: { stmt: PromiseStmt }) {
         <span className="block-toggle-placeholder" />
         <span className="block-keyword">promise</span>
         <span className="block-signature">{stmt.name} ← {target}</span>
+        {stmt.target.kind === 'workflow' && stmt.target.workflow!.start === 'client' && <ClientStartBadge />}
       </div>
     </div>
   )

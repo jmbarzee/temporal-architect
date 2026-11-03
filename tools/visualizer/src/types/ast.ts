@@ -36,6 +36,7 @@ export type {
   ActivityCall,
   WorkflowCall,
   WorkflowCallMode,
+  WorkflowStartKind,
   NexusCall,
   AwaitStmt,
   AwaitAllBlock,

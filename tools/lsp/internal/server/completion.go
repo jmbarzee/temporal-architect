@@ -88,7 +88,7 @@ func topLevelCompletions() []protocol.CompletionItem {
 func workflowCompletions(file *ast.File, enclosing *ast.WorkflowDef) []protocol.CompletionItem {
 	items := []protocol.CompletionItem{
 		keywordItem("activity", "Call an activity"),
-		keywordItem("workflow", "Call a child workflow"),
+		keywordItem("workflow", "Start a workflow"),
 		keywordItem("promise", "Declare a non-blocking async operation"),
 		keywordItem("set", "Set a condition to true"),
 		keywordItem("unset", "Unset a condition (set to false)"),
