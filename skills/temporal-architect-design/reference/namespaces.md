@@ -50,7 +50,7 @@ namespace innerAgent:
 
 ## Parameterized namespaces and endpoints
 
-A `{param}` hole in a namespace or endpoint name (`namespace fabric-shard-{org}:`) declares a family, one member per tenant. Holes bind by spelling, so a mistyped `{param}` silently starts a new family ([#129](https://github.com/jmbarzee/temporal-architect/issues/129)). Grammar and resolution: `twf spec workers-and-namespaces`.
+A `{param}` hole in a namespace or endpoint name (`namespace fabric-shard-{org}:`) declares a family, one member per tenant. Holes bind by spelling, so a mistyped `{param}` silently starts a new family ([#129](https://github.com/jmbarzee/temporal-architect/issues/129)). The same spelling rule matches an endpoint's `allowed_caller_namespaces` entries: `["tenant-{org}"]` admits the `tenant-{org}` family, never a static `tenant-acme`. Grammar and resolution: `twf spec workers-and-namespaces`.
 
 ```twf
 nexus service BootstrapService:

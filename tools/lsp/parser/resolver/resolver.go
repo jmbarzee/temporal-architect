@@ -91,6 +91,9 @@ const (
 	ErrWorkerUndefinedActivity
 	// ErrWorkerUndefinedNexusService: a worker registers an undefined nexus service.
 	ErrWorkerUndefinedNexusService
+	// ErrWorkerRegistersOperation: a worker `nexus service` entry names an
+	// operation (`Svc.Op`, `pkg.Svc.Op`). A worker registers whole services.
+	ErrWorkerRegistersOperation
 
 	// --- Namespace reference errors ---
 
@@ -212,6 +215,8 @@ func (k ErrorKind) String() string {
 		return "WORKER_UNDEFINED_ACTIVITY"
 	case ErrWorkerUndefinedNexusService:
 		return "WORKER_UNDEFINED_NEXUS_SERVICE"
+	case ErrWorkerRegistersOperation:
+		return "WORKER_REGISTERS_OPERATION"
 	case ErrNamespaceUndefinedWorker:
 		return "NAMESPACE_UNDEFINED_WORKER"
 	case ErrUnusedImport:
@@ -563,8 +568,10 @@ func Resolve(file *ast.File) []*ResolveError {
 		for i := range w.Activities {
 			resolvePkgRef(s, wPkg, &w.Activities[i], s.activities, "activity", ErrWorkerUndefinedActivity, w.SourceFile)
 		}
+		s.readOperationMentions(w, wPkg)
 		for i := range w.Services {
 			resolvePkgRef(s, wPkg, &w.Services[i], s.nexusServices, "nexus service", ErrWorkerUndefinedNexusService, w.SourceFile)
+			s.checkOperationMention(w, i)
 		}
 	}
 
@@ -621,6 +628,63 @@ func Resolve(file *ast.File) []*ResolveError {
 	}
 
 	return s.errs
+}
+
+// readOperationMentions reads a two-segment worker entry `nexus service Svc.Op`
+// as an operation of a same-package service rather than a package-qualified
+// service, when that is the only sensible reading: the qualifier is not the
+// worker's package or a bound import, it names a nexus service declared in the
+// worker's package, and that service has the operation. The entry is rewritten
+// to the whole service (so coverage and the graph see what the fix-it says to
+// register) and the operation is recorded for checkOperationMention. Any other
+// qualified entry is left for resolveQualifier, unchanged.
+func (s *state) readOperationMentions(w *ast.WorkerDef, wPkg string) {
+	for i := range w.Services {
+		ref := &w.Services[i]
+		if ref.Package == "" || ref.Package == wPkg || s.bindings[wPkg][ref.Package] != nil {
+			continue
+		}
+		svc, found := s.nexusServices[pkgKey{wPkg, ref.Package}]
+		if !found || !hasOperation(svc, ref.Name) {
+			continue
+		}
+		w.OperationMentions = append(w.OperationMentions, ast.OperationMention{Pos: ref.Pos, ServiceIndex: i, Op: ref.Name})
+		ref.Package, ref.Name = "", ref.Package
+	}
+}
+
+// checkOperationMention reports each operation named by worker w's entry
+// Services[i], after that entry is resolved. The operation is confirmed only
+// when the service resolved and has it.
+func (s *state) checkOperationMention(w *ast.WorkerDef, i int) {
+	for _, m := range w.OperationMentions {
+		if m.ServiceIndex != i {
+			continue
+		}
+		ref := w.Services[i]
+		svc := ref.Name
+		if ref.Package != "" {
+			svc = ref.Package + "." + ref.Name
+		}
+		written := svc + "." + m.Op // the entry as written: `Svc.Op` or `pkg.Svc.Op`
+		msg := fmt.Sprintf("a worker registers a whole nexus service; %s names %s under service %s — register `nexus service %s`", written, m.Op, svc, svc)
+		if ref.Resolved != nil && hasOperation(ref.Resolved, m.Op) {
+			msg = fmt.Sprintf("a worker registers a whole nexus service; %s names operation %s of %s — register `nexus service %s`, or move %s into a service of its own", written, m.Op, svc, svc, m.Op)
+		}
+		s.errs = append(s.errs, &ResolveError{
+			Msg:    msg,
+			Line:   m.Line,
+			Column: m.Column,
+			Kind:   ErrWorkerRegistersOperation,
+			Name:   w.Name,
+			File:   w.SourceFile,
+		})
+	}
+}
+
+// hasOperation reports whether svc declares an operation named op.
+func hasOperation(svc *ast.NexusServiceDef, op string) bool {
+	return slices.ContainsFunc(svc.Operations, func(o *ast.NexusOperation) bool { return o.Name == op })
 }
 
 // resolveQualifier maps a reference's package qualifier to the package its name

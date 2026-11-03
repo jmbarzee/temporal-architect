@@ -158,8 +158,21 @@ type WorkerDef struct {
 	Workflows  []Ref[*WorkflowDef]
 	Activities []Ref[*ActivityDef]
 	Services   []Ref[*NexusServiceDef] // nexus service references
-	SourceFile string
-	Package    string // runtime-only; see Packaged note above
+	// OperationMentions records `nexus service` entries that also named an
+	// operation (`pkg.Svc.Op`, or `Svc.Op` once the resolver reads it so). A
+	// worker registers whole services, so each one is diagnosed; the entry in
+	// Services stays the whole service. Not serialized.
+	OperationMentions []OperationMention
+	SourceFile        string
+	Package           string // runtime-only; see Packaged note above
+}
+
+// OperationMention is a worker `nexus service` entry that named an operation
+// of the service: Services[ServiceIndex] is the service, Op the operation.
+type OperationMention struct {
+	Pos
+	ServiceIndex int
+	Op           string
 }
 
 func (*WorkerDef) defNode()              {}

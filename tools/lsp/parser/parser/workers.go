@@ -63,6 +63,22 @@ func parseWorkerDef(p *Parser) (ast.Definition, error) {
 			if err != nil {
 				return nil, err
 			}
+			// A third segment (`pkg.Svc.Op`) names an operation. A worker
+			// registers whole services, so keep the service and record the
+			// operation for the resolver to diagnose; failing here would drop
+			// the whole worker.
+			if svcPkg != "" && p.current.Type == token.DOT {
+				p.advance() // consume DOT
+				op, err := p.expect(token.IDENT)
+				if err != nil {
+					return nil, err
+				}
+				worker.OperationMentions = append(worker.OperationMentions, ast.OperationMention{
+					Pos:          refPos,
+					ServiceIndex: len(worker.Services),
+					Op:           op.Literal,
+				})
+			}
 			worker.Services = append(worker.Services, ast.Ref[*ast.NexusServiceDef]{
 				Pos:     refPos,
 				Package: svcPkg,

@@ -139,6 +139,9 @@ A `list_value` (`'[' [ STRING (',' STRING)* ] ']'`, defined in [Statement Syntax
 values** — e.g. `task_queue: "fabric-shard-{org}-bootstrap"` — so a per-tenant namespace can name a
 per-tenant task queue. The hole denotes the same per-tenant dimension as an identically-named hole
 in the enclosing deployment name; see [Worker and Namespace Definitions](./03-workers-and-namespaces.md).
+Holes in the `STRING` elements of an endpoint's `allowed_caller_namespaces` list correlate with an
+identically-named hole in the endpoint's or its namespace's name, and otherwise range over the
+whole family; they need no binding.
 
 ## Comments
 

@@ -123,6 +123,7 @@ namespace payments:
     nexus endpoint PaymentsEndpoint
         options:
             task_queue: "payments"
+            allowed_caller_namespaces: ["orders"]
 
 namespace notifications:
     worker notificationWorker
@@ -131,6 +132,7 @@ namespace notifications:
     nexus endpoint NotificationsEndpoint
         options:
             task_queue: "notifications"
+            allowed_caller_namespaces: ["orders"]
 
 namespace orders:
     worker checkoutWorker

@@ -35,7 +35,7 @@ var RefundPaymentOperation = nexus.NewSyncOperation(RefundPaymentOp, func(ctx co
 })
 ```
 
-Registration on the **handler** worker (the target namespace's), not the caller:
+Registration on the **handler** worker (the target namespace's), not the caller. A `.twf` `nexus service` is one `nexus.NewService` with **every** operation it declares registered — never a subset (`twf check` rejects `nexus service Svc.Op`); operations a design deploys apart are a separate `nexus service`:
 
 ```go
 service := nexus.NewService(BillingServiceName)

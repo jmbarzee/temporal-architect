@@ -58,7 +58,7 @@ The nil `*Activities` a workflow uses ([activity-call.md](./activity-call.md)) o
 ## Coverage
 
 - An **unregistered type fails the task, not the workflow**: the task goes back to the queue for another worker, and latency and waste accumulate silently.
-- Every worker on a task queue must register the **identical** workflow and activity type set, or tasks intermittently land where they can't run. DSL `worker` blocks with different type sets therefore need different task queues.
+- Every worker on a task queue must register the **identical** workflow and activity type set, or tasks intermittently land where they can't run. The same holds for Nexus services among the workers that register any: a worker with none starts no Nexus poller, but one lacking a requested service fails the call with a non-retryable `NotFound`. DSL `worker` blocks with different type sets therefore need different task queues.
 - `twf check` previews this at design time: `UNCOVERED_WORKFLOW` / `UNCOVERED_ACTIVITY` / `UNCOVERED_SERVICE` (no worker covers a type) and `IMPLICIT_ROUTING_MISMATCH` (no worker on the caller's queue in the caller's namespace hosts the target — a `worker.New(client, queue, …)` polls `queue` only in its client's namespace). A clean check is the design-time analog of full registration. In reverse, each `worker.New`'s registered set populates a `worker` block.
 
 ## Worker options → `worker.Options`

@@ -47,7 +47,7 @@ faithfully to Temporal's registries:
 |------|-------|---------------|
 | **Endpoint** | Flat-global (cluster-global endpoint registry) | **Never qualified.** Endpoints share one global namespace; a cross-package duplicate endpoint name stays an error. |
 | **Service** | Package-scoped | **Qualified cross-package** by package leaf name (or import alias): `nexus Ep pkg.Svc.Op`. Bare within the same package. |
-| **Operation** | Member of its service | **Never independently qualified.** The operation is selected off the (possibly qualified) service by the trailing `.Op`. |
+| **Operation** | Member of its service | **Never independently qualified.** The operation is selected off the (possibly qualified) service by the trailing `.Op`. A worker registers whole services, so a trailing `.Op` in a worker `nexus service` entry is never valid (`WORKER_REGISTERS_OPERATION`). |
 
 So in `nexus OrderEndpoint orders.OrderService.PlaceOrder(order)`, `OrderEndpoint` is the
 flat-global endpoint (unqualified), `orders.OrderService` is the package-qualified service, and
@@ -69,6 +69,29 @@ of the name, matched by spelling. A reference whose full name matches no defined
 static reference to a templated endpoint, or a mismatched hole spelling) is the existing
 undefined-endpoint hard error; no new cross-file machinery is introduced, since cross-file endpoint
 resolution already spans the flat-global registry.
+
+## Endpoint exposure and access
+
+An endpoint has no service field: callers name the service on every call, and Temporal routes the
+request to the endpoint's `(namespace, task_queue)`. So an endpoint **exposes every service** that a
+worker polling its target registers. One endpoint can front several services (a router queue), and
+`nexus Ep SvcB.Op()` is valid through any endpoint whose queue hosts `SvcB`. Workers sharing that
+queue must agree on their services (see the coherence rule in
+[Workers and Namespaces — Resolution](./03-workers-and-namespaces.md#resolution)), so the set an
+endpoint exposes is well defined.
+
+Several endpoints may target one queue; Temporal allows it (a rename cutover keeps an old and a new
+name side by side). Each then exposes the same services, and since an access policy is per endpoint,
+endpoints sharing a queue **do not separate access** to its services. To give a service its own
+endpoint, or its own access boundary, put it on its own task queue.
+
+An endpoint's [`allowed_caller_namespaces`](./03-workers-and-namespaces.md#endpoint-options) lists
+the namespaces a call through it may originate in. A call's origin namespaces are those hosting the
+calling workflow, or, in a sync operation body, those hosting the enclosing service — a
+design-level origin, since a sync handler has no workflow Nexus client. Each origin the list omits
+raises `NEXUS_CALLER_NOT_ALLOWED` at the call site. The check needs only the endpoint and the
+caller: it runs whether or not the called service resolves, so a call into an external service is
+checked too.
 
 ## Resolution
 

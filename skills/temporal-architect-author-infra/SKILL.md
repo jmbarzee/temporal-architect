@@ -45,13 +45,22 @@ For existing infra, dispatch the shared [`project-discovery` subagent](../tempor
 | `nexus endpoint Name` (`worker_target` = namespace + `task_queue`) | `temporalcloud_nexus_endpoint` (`worker_target { namespace_id, task_queue }`) | `tcld` / `temporal operator nexus endpoint create --target-namespace --target-task-queue` |
 | worker `task_queue` option | informs the endpoint's `worker_target.task_queue` | same |
 | custom search attribute *(not in `.twf`)* | `temporalcloud_namespace_search_attribute` | `temporal operator search-attribute create` |
-| endpoint access policy *(not in `.twf`)* | `allowed_caller_namespaces` | `--allow-namespace` / `tcld nexus endpoint allowed-namespace` |
+| endpoint `allowed_caller_namespaces` | `allowed_caller_namespaces` (namespace **IDs**) | `--allow-namespace` / `tcld nexus endpoint allowed-namespace` |
 
 Task queues are not resources: they exist once a worker polls them, and an endpoint's `worker_target` is what makes one routable for Nexus. The endpoint **name** is what caller code invokes, and the **target task queue** is what the handler worker polls; both must match the `.twf` and `author-go`'s output, or Nexus tasks route nowhere.
 
+### Endpoint access policy
+
+An endpoint's `allowed_caller_namespaces` lists `.twf` namespace **names**; Cloud takes namespace **IDs**. Map each to `temporalcloud_namespace.<x>.id`, or `<name>.<acct>` for a namespace outside the design (it must be in the endpoint's account).
+
+- **Absent on a Cloud target:** ask the user. Terraform requires the field, and Cloud's default allows no caller — never default to allow-all.
+- **`[]`:** no caller. Confirm the target accepts an empty set before relying on it.
+- **`{param}` entries:** one that shares a hole with the endpoint's or namespace's name expands with each family member; any other means every member, so the list grows when a tenant is onboarded (`tcld nexus endpoint allowed-namespace add`, or the matching Terraform change) — it is not fixed at provisioning.
+- **Self-hosted:** no built-in allowlist. Tell the user the declared policy is enforced only by a custom Authorizer, and then only best-effort on operation starts; never drop it silently.
+
 ### Not yet modeled in `.twf`
 
-Endpoint access policy (which caller namespaces may invoke it) and custom search attributes (name + type) have no grammar yet ([#8](https://github.com/jmbarzee/temporal-architect/issues/8)). Ask the user, or read an interim annotation if the project uses one. Never default an endpoint to allow-all or guess an attribute type — both are security- and schema-relevant.
+Custom search attributes (name + type) have no grammar yet ([#8](https://github.com/jmbarzee/temporal-architect/issues/8)). Ask the user, or read an interim annotation if the project uses one. Never guess an attribute type — it is schema-relevant.
 
 ---
 
