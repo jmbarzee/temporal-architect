@@ -396,18 +396,21 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
     })
   }, [ast.definitions, switchView])
 
+  // Into the Tree, a node focuses the top-level definition that owns it, found
+  // by its copyKey: itself, or for a nexus operation / endpoint the service /
+  // namespace it is nested in (#243). The focus carries that definition's own
+  // type, so the reconcile widens the chip the Tree actually filters it by.
   const showInTree = React.useCallback((node: GraphNode) => {
-    const name = node.name
-    const defType = node.values[DEF_TYPE_DIMENSION] ?? ''
-    const def = ast.definitions.find(d => qualifiedNameOf(d) === name && d.type === defType)
+    const def = node.copyKey === undefined ? undefined : model.definitions.get(node.copyKey)
+    if (!def) return
     switchView('tree', {
       kind: 'focus',
       target: {
-        name,
-        values: { [DEF_TYPE_DIMENSION]: defType, [SOURCE_FILE_DIMENSION]: def?.sourceFile },
+        name: qualifiedNameOf(def),
+        values: { [DEF_TYPE_DIMENSION]: def.type, [SOURCE_FILE_DIMENSION]: def.sourceFile },
       },
     })
-  }, [ast.definitions, switchView])
+  }, [model.definitions, switchView])
 
   const clearPendingFocus = React.useCallback(() => setPendingFocus(null), [])
 

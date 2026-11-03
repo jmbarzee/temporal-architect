@@ -1,14 +1,15 @@
 // useGraphModel — what the host reads off its payload for the Graph view: the
-// view-side graph built from the parser's deployment graph, and the findings
-// (process-level file errors, the AST's diagnostics, and the graph-stage
-// findings lifted into the same shape). Nothing here depends on the
-// simulation or the DOM; the view takes the result as props and never sees
-// the AST or the parser graph.
+// view-side graph built from the parser's deployment graph, the join from each
+// node's copyKey to its owning AST definition, and the findings (process-level
+// file errors, the AST's diagnostics, and the graph-stage findings lifted into
+// the same shape). Nothing here depends on the simulation or the DOM; the view
+// takes the graph and findings as props and never sees the AST or the parser
+// graph.
 
 import React from 'react'
 import type { TWFFile, FileError, Diagnostic } from '../types/ast'
 import type { ParserGraph } from '../types/parser-graph'
-import { buildGraph } from './build'
+import { buildAstLookup, buildGraph, type AstLookup } from './build'
 import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION } from './dimensions'
 import type { Graph } from '@temporal-architect/graph-view'
 // graphFindingsToDiagnostics lifts graph-stage findings (parserGraph.diagnostics
@@ -63,6 +64,10 @@ function graphFindingsToDiagnostics(pg: ParserGraph): Diagnostic[] {
 
 export interface GraphModel {
   graph: Graph
+  // A node's copyKey → the top-level definition that owns it: itself, or the
+  // service / namespace an operation / endpoint is nested in. The host reads
+  // it to focus the Tree on a node.
+  definitions: AstLookup
   // Raw findings — partitioned by the file filter in the host's ErrorBars.
   errors: FileError[]
   diagnostics: Diagnostic[]
@@ -71,9 +76,10 @@ export interface GraphModel {
 export function useGraphModel(ast: TWFFile, parserGraph: ParserGraph): GraphModel {
   // Build the view-side graph from the parser's deployment graph. AST is
   // consulted for sourceFile (file-filter chips) and future hover enrichments.
+  const definitions = React.useMemo(() => buildAstLookup(ast), [ast])
   const graph = React.useMemo(
-    () => buildGraph(parserGraph, ast),
-    [parserGraph, ast],
+    () => buildGraph(parserGraph, definitions),
+    [parserGraph, definitions],
   )
   // Process-level FileErrors and structured Diagnostics. Graph-stage findings
   // (parserGraph.diagnostics + unresolved) are folded in alongside the AST
@@ -83,7 +89,7 @@ export function useGraphModel(ast: TWFFile, parserGraph: ParserGraph): GraphMode
     () => [...(ast.diagnostics || []), ...graphFindingsToDiagnostics(parserGraph)],
     [ast.diagnostics, parserGraph],
   )
-  return { graph, errors, diagnostics }
+  return { graph, definitions, errors, diagnostics }
 }
 
 /**
