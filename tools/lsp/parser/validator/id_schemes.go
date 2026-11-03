@@ -23,7 +23,7 @@ func (v *validationCtx) checkParentSends(defs []ast.Definition) {
 			if call, ok := s.(*ast.WorkflowCall); ok {
 				addStarter(call.Workflow.Resolved, wf)
 			}
-		}, func(t ast.AsyncTarget) {
+		}, func(t ast.AsyncTarget, _ ast.Statement) {
 			if wt, ok := t.(*ast.WorkflowTarget); ok {
 				addStarter(wt.Workflow.Resolved, wf)
 			}
@@ -171,8 +171,9 @@ func workflowsOf(defs []ast.Definition) []*ast.WorkflowDef {
 }
 
 // walkWorkflow visits every statement, and every async target when onTarget is
-// non-nil, in a workflow's body and its handlers.
-func walkWorkflow(wf *ast.WorkflowDef, onStmt func(ast.Statement), onTarget func(ast.AsyncTarget)) {
+// non-nil, in a workflow's body and its handlers. onTarget also receives the
+// statement holding the target, which carries the position a target lacks.
+func walkWorkflow(wf *ast.WorkflowDef, onStmt func(ast.Statement), onTarget func(ast.AsyncTarget, ast.Statement)) {
 	bodies := [][]ast.Statement{wf.Body}
 	for _, s := range wf.Signals {
 		bodies = append(bodies, s.Body)
@@ -185,8 +186,8 @@ func walkWorkflow(wf *ast.WorkflowDef, onStmt func(ast.Statement), onTarget func
 	}
 	var opts []ast.WalkOption
 	if onTarget != nil {
-		opts = append(opts, ast.WithAsyncTargets(func(t ast.AsyncTarget, _ ast.Statement) bool {
-			onTarget(t)
+		opts = append(opts, ast.WithAsyncTargets(func(t ast.AsyncTarget, parent ast.Statement) bool {
+			onTarget(t, parent)
 			return true
 		}))
 	}

@@ -30,6 +30,9 @@ const (
 	ErrNotAParent
 	ErrStarterLacksSignal
 	ErrIDSchemeOverlap
+	ErrIDPolicyIncompatible
+	ErrIDPolicyWithoutIDScheme
+	ErrChildStartConflictMismatch
 )
 
 // Error represents a validation error with position info.
@@ -90,6 +93,12 @@ func (k ErrorKind) String() string {
 		return "STARTER_LACKS_SIGNAL"
 	case ErrIDSchemeOverlap:
 		return "ID_SCHEME_OVERLAP"
+	case ErrIDPolicyIncompatible:
+		return "ID_POLICY_INCOMPATIBLE"
+	case ErrIDPolicyWithoutIDScheme:
+		return "ID_POLICY_WITHOUT_ID_SCHEME"
+	case ErrChildStartConflictMismatch:
+		return "CHILD_START_CONFLICT_MISMATCH"
 	}
 	return "UNKNOWN"
 }
@@ -213,9 +222,10 @@ func Validate(file *ast.File) []*Error {
 	// 5-6. Call routing + endpoint-service linkage (walks resolved bodies).
 	v.walkAllBodies()
 
-	// 7. id: parent claims and id_scheme overlap (definition order, for stable output).
+	// 7. id: parent claims, id_scheme overlap and ID policies (definition order, for stable output).
 	v.checkParentSends(file.Definitions)
 	v.checkIDSchemeOverlap(file.Definitions)
+	v.checkIDPolicies(file.Definitions)
 
 	return v.errs
 }

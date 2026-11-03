@@ -40,7 +40,13 @@ a list is accepted anywhere a `value` is expected; which *keys* accept a list is
 
 Activity call options: `task_queue`, `schedule_to_close_timeout`, `schedule_to_start_timeout`, `start_to_close_timeout`, `heartbeat_timeout`, `request_eager_execution`, `retry_policy`, `priority`
 
-Workflow call options: `task_queue`, `workflow_execution_timeout`, `workflow_run_timeout`, `workflow_task_timeout`, `parent_close_policy`, `workflow_id_reuse_policy`, `retry_policy`, `priority`. Recurring starts are **not** a call option — model them with Temporal Schedules, which TWF treats as platform configuration outside the language (see `skills/temporal-architect-design/topics/timers-scheduling.md`). `parent_close_policy` values: `TERMINATE` (default — child is killed when parent closes), `REQUEST_CANCEL` (child receives cancellation request), `ABANDON` (child continues independently). `workflow_id_reuse_policy` values: `ALLOW_DUPLICATE`, `ALLOW_DUPLICATE_FAILED_ONLY`, `REJECT_DUPLICATE`, `TERMINATE_IF_RUNNING`.
+Workflow call options depend on the [start kind](#workflow-call). Every start takes `task_queue`, `workflow_execution_timeout`, `workflow_run_timeout`, `workflow_task_timeout`, `workflow_id_reuse_policy`, `retry_policy`, `priority`. A **child start** also takes `parent_close_policy`; a **client start** also takes `workflow_id_conflict_policy`. Recurring starts are **not** a call option — model them with Temporal Schedules, which TWF treats as platform configuration outside the language (see `skills/temporal-architect-design/topics/timers-scheduling.md`).
+
+- `parent_close_policy` values: `TERMINATE` (default — child is killed when parent closes), `REQUEST_CANCEL` (child receives cancellation request), `ABANDON` (child continues independently).
+- `workflow_id_reuse_policy` — what a start does when its ID belongs to a **closed** execution: `ALLOW_DUPLICATE` (start a new one), `ALLOW_DUPLICATE_FAILED_ONLY` (only if that one did not complete successfully), `REJECT_DUPLICATE` (refuse). Temporal's deprecated `TERMINATE_IF_RUNNING` is not a value; write `ALLOW_DUPLICATE` with `workflow_id_conflict_policy: TERMINATE_EXISTING`.
+- `workflow_id_conflict_policy` — what a start does when its ID belongs to a **running** execution: `FAIL` (refuse), `USE_EXISTING` (join it), `TERMINATE_EXISTING` (replace it).
+
+The two ID policies act only when starts share an ID — see [Workflow Definitions — ID Scheme](./01-workflows.md#id-scheme).
 
 Retry policy keys: `initial_interval`, `backoff_coefficient`, `maximum_interval`, `maximum_attempts`, `non_retryable_error_types`. `non_retryable_error_types` takes a `list_value` of strings (error-type names that should never be retried); an empty list `[]` means "no non-retryable types". It is the only key that takes a list today.
 
@@ -93,22 +99,24 @@ Activity and workflow **definitions** may carry a `default_options:` block at th
 default_options_block ::= 'default_options' ':' NEWLINE INDENT option_entry+ DEDENT
 ```
 
-The block contents **reuse `option_entry` verbatim** — identical keys, value grammar, and nested-block shape as a call-site `options:` block. Only the leading keyword and the semantics differ. `default_options` is a soft/contextual keyword: it is special only at the head of a definition body.
+The block contents **reuse `option_entry` verbatim** — the same value grammar and nested-block shape as a call-site `options:` block; the keys follow the rules below. Only the leading keyword and the semantics differ. `default_options` is a soft/contextual keyword: it is special only at the head of a definition body.
 
 **Placement.**
 - `activity_def`: the `default_options:` block leads the body, before any statements.
 - `workflow_def`: the `default_options:` block leads the body — after only the `id_scheme:` line, if any, and before the `state:` block — a definition's defaults are its external invocation contract, which reads above its internal `state:`.
 
-**Precedence — call-site `options:` overrides definition `default_options:`, per key.** For a given call, a key present in the call site's `options:` block wins; keys the call site omits fall back to the definition's `default_options:`. Nested blocks (`retry_policy`, `priority`) are **atomic** — a call-site `retry_policy:` replaces the definition's `retry_policy:` entirely, with no field-level deep merge. This is faithful to the SDKs (a RetryPolicy is passed as one struct) and avoids surprising cross-layer field combinations. TWF does not *compute* the merged result, except that `twf check` routes a call by its effective `task_queue` ([Workers and Namespaces](./03-workers-and-namespaces.md#resolution)); the spec **states** the precedence so codegen and readers agree, and `twf check` validates each block's keys independently.
+**Precedence — call-site `options:` overrides definition `default_options:`, per key.** For a given call, a key present in the call site's `options:` block wins; keys the call site omits fall back to the definition's `default_options:`. Nested blocks (`retry_policy`, `priority`) are **atomic** — a call-site `retry_policy:` replaces the definition's `retry_policy:` entirely, with no field-level deep merge. This is faithful to the SDKs (a RetryPolicy is passed as one struct) and avoids surprising cross-layer field combinations. TWF does not *compute* the merged result, except that `twf check` routes a call by its effective `task_queue` ([Workers and Namespaces](./03-workers-and-namespaces.md#resolution)) and checks a client start's effective ID policies (`ID_POLICY_INCOMPATIBLE`); the spec **states** the precedence so codegen and readers agree, and `twf check` validates each block's keys independently.
 
 **Valid keys at definition level.** A key that describes *the operation* is defaultable; a key that describes *a particular invocation* is call-site-only.
 
 - **Activity `default_options:`** — all activity call option keys are valid: `task_queue`, `schedule_to_close_timeout`, `schedule_to_start_timeout`, `start_to_close_timeout`, `heartbeat_timeout`, `request_eager_execution`, `retry_policy`, `priority`. None is inherently per-call.
-- **Workflow `default_options:`** — all workflow call option keys **except** `parent_close_policy`, which stays call-site-only. `parent_close_policy` is **relational**: it describes one specific parent↔child bond, not the workflow type (the same workflow may be a child of many parents, or a root).
+- **Workflow `default_options:`** — all client-start option keys, including `workflow_id_conflict_policy`. `parent_close_policy` stays call-site-only: it is **relational**, describing one specific parent↔child bond, not the workflow type (the same workflow may be a child of many parents, or a root).
 
-A call-site-only key used in a definition `default_options:` block is an error (see [Resolution and Errors — call-site-only option key](./11-resolution-and-errors.md)).
+**A start uses the defaults its kind can carry.** A child start cannot carry a conflict policy, so the default `workflow_id_conflict_policy` applies to client starts only (`CHILD_START_CONFLICT_MISMATCH` notes a child start of a type that defaults to joining or replacing). The defaults are also the contract for starters outside the design — client code that starts the type.
 
-The async-nexus case needs no grammar change: a workflow started only via a Nexus run operation (`async Op workflow Name`) carries its id-reuse policy and timeouts on the backing workflow's `default_options:` block.
+A key a context cannot carry is `OPTION_MISPLACED` (see [Resolution and Errors](./11-resolution-and-errors.md#error-handling)).
+
+The async-nexus case needs no grammar change: a workflow started via a Nexus run operation (`async Op workflow Name`) is a client start that takes its timeouts and both ID policies from the backing workflow's `default_options:` block.
 
 **Example:**
 ```twf
@@ -122,9 +130,11 @@ activity ChargePayment(order: Order) -> (Payment):
     return payment
 
 workflow ProcessOrder(order: Order) -> (Result):
+    id_scheme: "order-{order.id}"
     default_options:
         workflow_execution_timeout: 1h
-        workflow_id_reuse_policy: ALLOW_DUPLICATE
+        workflow_id_reuse_policy: REJECT_DUPLICATE
+        workflow_id_conflict_policy: USE_EXISTING
     state:
         condition charged
     activity ChargePayment(order) -> payment
@@ -139,7 +149,16 @@ workflow_call ::= ['detach'] 'workflow' IDENT args ['->' result] [NEWLINE option
 ```
 
 Modifiers:
-- `detach`: Fire-and-forget child workflow (no result)
+- `detach`: Fire-and-forget start (no result)
+
+**Start kind.** A start becomes the Temporal operation its enclosing body allows:
+
+| Kind | Written in | Temporal operation | Takes | Rejects (`OPTION_MISPLACED`) |
+|---|---|---|---|---|
+| **Child start** | a workflow body, signal handler, or update handler | `StartChildWorkflowExecution` | `parent_close_policy` | `workflow_id_conflict_policy` — a child start onto a running ID fails |
+| **Client start** | a sync Nexus operation body; `async Op workflow Name` | client start | `workflow_id_conflict_policy` | `parent_close_policy` — there is no parent |
+
+Promise-bound and awaited starts take no `options:`; they use the callee's defaults.
 
 A start never writes the child's workflow ID — it derives from the callee's
 [`id_scheme:`](./01-workflows.md#id-scheme), if any. An `id:`/`run_id:` line under a start, or a

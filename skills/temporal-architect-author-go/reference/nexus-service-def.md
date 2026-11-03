@@ -22,9 +22,10 @@ var ChargePaymentOperation = temporalnexus.NewWorkflowRunOperation(
     ChargePaymentOp,
     BillingChargeWorkflow,
     func(ctx context.Context, input PaymentRequest, options nexus.StartOperationOptions) (client.StartWorkflowOptions, error) {
-        return client.StartWorkflowOptions{
-            ID: "payment-" + input.OrderID, // business-meaningful ID for deduplication
-        }, nil
+        // The backing workflow's start-options function: a deterministic ID from
+        // its ID function (Nexus retries the start) and its default_options,
+        // including both ID policies (workflow-def.md#id_scheme).
+        return BillingChargeWorkflowStartOptions(input), nil
     },
 )
 

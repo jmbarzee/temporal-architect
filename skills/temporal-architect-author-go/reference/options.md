@@ -121,6 +121,23 @@ ctxTip := workflow.WithActivityOptions(ctx, tipOpts)
 err = workflow.ExecuteActivity(ctxTip, ChargeCard, order.Card, order.Tip).Get(ctx, &tipReceipt)
 ```
 
+## Workflow ID policies
+
+```twf
+workflow Cart(customerId: string):
+    id_scheme: "cart-{customerId}"
+    default_options:
+        workflow_id_reuse_policy: ALLOW_DUPLICATE
+        workflow_id_conflict_policy: USE_EXISTING
+```
+
+`workflow_id_reuse_policy` → `WorkflowIDReusePolicy` (`enumspb.WORKFLOW_ID_REUSE_POLICY_*`); `workflow_id_conflict_policy` → `WorkflowIDConflictPolicy` (`enumspb.WORKFLOW_ID_CONFLICT_POLICY_*`). Where each lands depends on the start kind:
+
+- **Client start** (sync nexus handler, Nexus `GetOptions`, client code): both, in `client.StartWorkflowOptions`, from the type's start-options function ([workflow-def.md](./workflow-def.md#id_scheme)). A per-call override is a struct copy with the field replaced.
+- **Child start**: `ChildWorkflowOptions` has `WorkflowIDReusePolicy` only — no conflict field. A child start onto a running ID fails with `ChildWorkflowExecutionAlreadyStartedError` (match with `errors.As`).
+
+Client start forms differ: signal-with-start rejects `FAIL` (override it to `USE_EXISTING` or `TERMINATE_EXISTING`), and update-with-start requires a conflict policy (supply one when the type declares none). Set `WorkflowExecutionErrorWhenAlreadyStarted: true` in the start-options function — without it `ExecuteWorkflow` returns the existing run instead of the refusal; Nexus forces it on, with-start operations ignore it.
+
 ## Timeouts
 
 - **`StartToCloseTimeout`** — one activity attempt; resets on each retry. The primary way a worker crash is detected; Temporal recommends always setting it.

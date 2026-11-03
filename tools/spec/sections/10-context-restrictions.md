@@ -32,3 +32,9 @@ Cross-workflow signal send (`signal Head.Name(args)`) follows the same context s
 ## Address Contexts
 
 An `id:`/`run_id:` address is valid only under a signal send (`ADDRESS_MISPLACED` elsewhere; `ID_AT_START` under a start). `id: parent` is rejected in a sync nexus operation body, which has no parent workflow (`ADDRESS_MISPLACED`).
+
+## Start Contexts
+
+A `workflow` start is a **child start** in a workflow body or a signal or update handler, and a
+**client start** in a sync nexus operation body. The kind decides its options
+([Statement Syntax — Workflow Call](./06-statement-syntax.md#workflow-call)).

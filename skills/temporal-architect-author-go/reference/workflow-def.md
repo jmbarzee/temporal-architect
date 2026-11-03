@@ -26,6 +26,26 @@ func ShipItemID(orderID, itemID string) string { return fmt.Sprintf("ship-%s-%s"
 
 One ID function per scheme, beside the workflow, taking one argument per hole. Every start ([workflow-call.md](./workflow-call.md)), every constructed send ([signal-send.md](./signal-send.md#type-head-by-id)), and every client start calls it; never format the ID inline.
 
+A type that has a scheme or ID policies, or backs a Nexus run operation, also gets one start-options function holding its ID, task queue and `default_options:`; every client start and Nexus `GetOptions` calls it ([options.md](./options.md#workflow-id-policies)):
+
+```twf
+workflow OrderTracker(orderId: string):
+    id_scheme: "tracker-{orderId}"
+    default_options:
+        workflow_id_conflict_policy: USE_EXISTING
+```
+
+```go
+func OrderTrackerStartOptions(orderID string) client.StartWorkflowOptions {
+    return client.StartWorkflowOptions{
+        ID:                                       OrderTrackerID(orderID),
+        TaskQueue:                                FulfillmentTaskQueue,
+        WorkflowIDConflictPolicy:                 enumspb.WORKFLOW_ID_CONFLICT_POLICY_USE_EXISTING,
+        WorkflowExecutionErrorWhenAlreadyStarted: true,
+    }
+}
+```
+
 ## Determinism constraints
 
 Every replay must produce the same commands in the same order; a violation fails the Workflow Task with a non-deterministic error, retried indefinitely until the code is fixed.

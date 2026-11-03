@@ -1,5 +1,5 @@
 # Source: workflow-id-schemes.md
-# Patterns: id_scheme, constructed / learned / parent addressed sends, run_id
+# Patterns: id_scheme, constructed / learned / parent addressed sends, run_id, start collisions (reuse / conflict policy)
 
 # --- A schemed workflow: started as a child, signalled by senders that did not start it ---
 
@@ -38,6 +38,29 @@ workflow RedeliverTracking(orderId: string):
         id: stuck.workflowId
         run_id: stuck.runId
 
+# --- Start collisions: the scheme makes starts collide; the policies decide what that means ---
+
+# Entity: every starter joins the running one (clients signal-with-start it with each event).
+workflow OrderTracker(orderId: string):
+    id_scheme: "tracker-{orderId}"
+    default_options:
+        workflow_id_conflict_policy: USE_EXISTING
+    signal Delivered():
+        delivered = true
+
+    activity WatchOrder(orderId)
+    await signal Delivered
+    close complete()
+
+# At most once per order: a duplicate start joins a running refund, and is refused after it closes.
+workflow RefundOrder(orderId: string):
+    id_scheme: "refund-{orderId}"
+    default_options:
+        workflow_id_reuse_policy: REJECT_DUPLICATE
+        workflow_id_conflict_policy: USE_EXISTING
+    activity IssueRefund(orderId)
+    close complete()
+
 # --- Supporting activities ---
 
 activity CreateShipment(order: Order, item: Item) -> (Shipment):
@@ -46,6 +69,12 @@ activity CreateShipment(order: Order, item: Item) -> (Shipment):
 activity FindStuckShipment(orderId: string) -> (StuckShipment):
     return db.findStuck(orderId)
 
+activity WatchOrder(orderId: string):
+    carrier.watch(orderId)
+
+activity IssueRefund(orderId: string):
+    payments.refund(orderId)
+
 # --- Worker and namespace ---
 
 worker fulfillmentWorker:
@@ -53,8 +82,12 @@ worker fulfillmentWorker:
     workflow FulfillOrder
     workflow RelayCarrierEvent
     workflow RedeliverTracking
+    workflow OrderTracker
+    workflow RefundOrder
     activity CreateShipment
     activity FindStuckShipment
+    activity WatchOrder
+    activity IssueRefund
 
 namespace fulfillment:
     worker fulfillmentWorker

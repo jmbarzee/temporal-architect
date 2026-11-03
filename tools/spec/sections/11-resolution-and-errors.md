@@ -76,7 +76,7 @@ Common error types:
 - Unresolved import — imported package absent from the tree, treated as external (warning)
 - Unused import — a resolved import never referenced (warning)
 - Unknown option key in `options:` block (including handler `options:` blocks — e.g. `unfinished_policy` on a query handler, where only `description` is allowed)
-- Call-site-only option key in a definition `default_options:` block (e.g. `parent_close_policy` in a workflow `default_options:` block — it describes a particular parent↔child invocation, not the workflow type, and is valid only at a call site)
+- Misplaced option key (`OPTION_MISPLACED`): a key its context cannot carry — `parent_close_policy` in a workflow `default_options:` block (it describes one parent↔child invocation, not the workflow type) or at a client start (no parent), and `workflow_id_conflict_policy` at a child start (a child start carries no conflict policy)
 - Wrong value type for option key (e.g., number where duration expected)
 - Invalid enum value for option key (e.g., a value other than `abandon` / `warn_and_abandon` for `unfinished_policy`)
 
@@ -93,13 +93,16 @@ Diagnostics for [`id_scheme:`](./01-workflows.md#id-scheme) and [addressed signa
 | `NO_ID_SCHEME` | literal `id:` on a type with no scheme | error |
 | `TYPE_NEEDS_ID` | type head with no `id:` | error |
 | `HANDLE_TAKES_NO_ID` | address under a handle | error |
-| `ID_AT_START` | `id:`/`run_id:` under a start, or `workflow_id:` in a start's `options:` | error |
+| `ID_AT_START` | `id:`/`run_id:` under a start, or `workflow_id:` in a start's `options:` or a workflow's `default_options:` | error |
 | `ADDRESS_MISPLACED` | address under a non-send; `options:` under a send; `run_id:` without `id:` or under `id: parent`; `id: parent` in a sync nexus body; wrong order; quoted run ID | error |
 | `RESERVED_NAME` | `parent` as a param, binding, promise, or condition | error |
 | `NOT_A_PARENT` | `id: parent` type never starts the sender in the model | warning |
 | `STARTER_LACKS_SIGNAL` | another in-model starter of the sender lacks the handler sent via `id: parent` | warning |
 | `MIRROR_COPIED_FROM_SCHEME` | holes byte-equal to the scheme's and none rooted in the sender's params | hint |
 | `ID_SCHEME_OVERLAP` | two schemes in one namespace could produce the same ID | hint |
+| `ID_POLICY_INCOMPATIBLE` | a client start would send `workflow_id_conflict_policy: TERMINATE_EXISTING` with `workflow_id_reuse_policy: REJECT_DUPLICATE` (rejected by Temporal server 1.27+, default config): from a workflow's `default_options:`, or a sync-nexus start's options merged over them | error |
+| `ID_POLICY_WITHOUT_ID_SCHEME` | a reuse or conflict policy for a workflow with no `id_scheme:` | hint |
+| `CHILD_START_CONFLICT_MISMATCH` | a child start of a schemed workflow whose default conflict policy is `USE_EXISTING` or `TERMINATE_EXISTING`, which a child start cannot carry | hint |
 
 An address on the send's own line (`signal X.Y() id: w`) is also `ADDRESS_MISPLACED`. A handler
 declaration after the first body statement is a targeted syntax error.

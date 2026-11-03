@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"maps"
 	"strings"
 
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
@@ -12,7 +13,12 @@ type OptionsContext int
 
 const (
 	OptionsContextActivity OptionsContext = iota
-	OptionsContextWorkflow
+	// A workflow start's `options:` follows the Temporal operation the start
+	// becomes, which its enclosing body decides: a child start (workflow body,
+	// signal or update handler) is a StartChildWorkflowExecution command; a
+	// client start (sync nexus operation body) goes through the client start API.
+	OptionsContextChildStart
+	OptionsContextClientStart
 	OptionsContextWorker
 	OptionsContextNexusCall
 	OptionsContextEndpoint
@@ -22,7 +28,7 @@ const (
 	// Definition-level `default_options:` blocks. They reuse the call-option
 	// value grammar but partition the allowed keys by definition kind: a key
 	// describing the operation is defaultable, a key describing one particular
-	// invocation is call-site-only (see optionCallSiteOnly).
+	// invocation is call-site-only (see optionMisplaced).
 	OptionsContextActivityDefaults
 	OptionsContextWorkflowDefaults
 )
@@ -91,16 +97,26 @@ var workerOptionSchema = map[string]*optionSchema{
 	"versioning":                               {valueType: "enum", allowed: versioningStrategies},
 }
 
-var workflowOptionSchema = map[string]*optionSchema{
+// workflowStartSchema is the key set every workflow start shares. The
+// deprecated TERMINATE_IF_RUNNING reuse value is absent: its replacement is
+// ALLOW_DUPLICATE plus the TERMINATE_EXISTING conflict policy.
+var workflowStartSchema = map[string]*optionSchema{
 	"task_queue":                 {valueType: "string"},
 	"workflow_execution_timeout": {valueType: "duration"},
 	"workflow_run_timeout":       {valueType: "duration"},
 	"workflow_task_timeout":      {valueType: "duration"},
-	"parent_close_policy":        {valueType: "enum", allowed: []string{"TERMINATE", "ABANDON", "REQUEST_CANCEL"}},
-	"workflow_id_reuse_policy":   {valueType: "enum", allowed: []string{"ALLOW_DUPLICATE", "ALLOW_DUPLICATE_FAILED_ONLY", "REJECT_DUPLICATE", "TERMINATE_IF_RUNNING"}},
+	"workflow_id_reuse_policy":   {valueType: "enum", allowed: []string{"ALLOW_DUPLICATE", "ALLOW_DUPLICATE_FAILED_ONLY", "REJECT_DUPLICATE"}},
 	"retry_policy":               {valueType: "nested", nested: retryPolicySchema},
 	"priority":                   {valueType: "nested", nested: prioritySchema},
 }
+
+var parentClosePolicySchema = &optionSchema{valueType: "enum", allowed: []string{"TERMINATE", "ABANDON", "REQUEST_CANCEL"}}
+var conflictPolicySchema = &optionSchema{valueType: "enum", allowed: []string{"FAIL", "USE_EXISTING", "TERMINATE_EXISTING"}}
+
+// A child start has a parent, so it takes parent_close_policy, and carries no
+// conflict policy. A client start has no parent and carries both ID policies.
+var childStartOptionSchema = schemaWith(workflowStartSchema, "parent_close_policy", parentClosePolicySchema)
+var clientStartOptionSchema = schemaWith(workflowStartSchema, "workflow_id_conflict_policy", conflictPolicySchema)
 
 // Definition-level default-option schemas. A `default_options:` block declares
 // per-definition call-option defaults, so it reuses the call-option schemas but
@@ -108,30 +124,48 @@ var workflowOptionSchema = map[string]*optionSchema{
 // describing one particular invocation stays call-site-only.
 //
 //   - Activity: every activity call option is defaultable — no keys excluded.
-//   - Workflow: every workflow call option except `parent_close_policy`, which
+//   - Workflow: every client-start option. A start uses the defaults its kind
+//     can carry, so a child start ignores the conflict policy. `parent_close_policy`
 //     is relational (it describes one parent↔child bond, not the workflow type)
-//     and so stays call-site-only. `cron_schedule` was removed from
-//     workflowOptionSchema entirely, so it is excluded here automatically.
-var activityDefaultOptionSchema = schemaExcluding(activityOptionSchema)
-var workflowDefaultOptionSchema = schemaExcluding(workflowOptionSchema, "parent_close_policy")
+//     and so stays call-site-only.
+//
+// Schemas are never mutated after init, so contexts may share one map.
+var activityDefaultOptionSchema = activityOptionSchema
+var workflowDefaultOptionSchema = clientStartOptionSchema
 
-// optionCallSiteOnly maps a definition-defaults context to the keys that are
-// valid only at a call site. A key listed here is reported with a targeted
-// "call-site-only option key" error rather than the generic unknown-key error.
-var optionCallSiteOnly = map[OptionsContext]map[string]bool{
-	OptionsContextWorkflowDefaults: {"parent_close_policy": true},
+// CodeOptionMisplaced marks a known option key written where its context
+// cannot carry it.
+const CodeOptionMisplaced = "OPTION_MISPLACED"
+
+// misplacedOption is the targeted error for a key a context rejects, in place
+// of the generic unknown-key error.
+type misplacedOption struct {
+	code string
+	msg  string
 }
 
-// schemaExcluding returns a shallow copy of base with the given keys removed.
-// Values are shared by reference (schemas are never mutated after init).
-func schemaExcluding(base map[string]*optionSchema, exclude ...string) map[string]*optionSchema {
-	out := make(map[string]*optionSchema, len(base))
-	for k, v := range base {
-		out[k] = v
-	}
-	for _, k := range exclude {
-		delete(out, k)
-	}
+var workflowIDAtStart = misplacedOption{CodeIDAtStart, "a workflow start takes no workflow_id; the ID derives from the started type's id_scheme"}
+
+// optionMisplaced maps a context to the keys it rejects with a targeted error.
+var optionMisplaced = map[OptionsContext]map[string]misplacedOption{
+	OptionsContextChildStart: {
+		"workflow_id":                 workflowIDAtStart,
+		"workflow_id_conflict_policy": {CodeOptionMisplaced, "a child start takes no workflow_id_conflict_policy and fails on a running instance with the same ID; to reach a running instance, signal it by its scheme, or start it from a client start"},
+	},
+	OptionsContextClientStart: {
+		"workflow_id":         workflowIDAtStart,
+		"parent_close_policy": {CodeOptionMisplaced, "a start in a sync nexus operation has no parent workflow, so it takes no parent_close_policy"},
+	},
+	OptionsContextWorkflowDefaults: {
+		"workflow_id":         {CodeIDAtStart, "default_options takes no workflow_id; the ID derives from the workflow's id_scheme"},
+		"parent_close_policy": {CodeOptionMisplaced, "call-site-only option key not allowed in default_options: parent_close_policy"},
+	},
+}
+
+// schemaWith returns a shallow copy of base with key added.
+func schemaWith(base map[string]*optionSchema, key string, sch *optionSchema) map[string]*optionSchema {
+	out := maps.Clone(base)
+	out[key] = sch
 	return out
 }
 
@@ -167,7 +201,8 @@ var queryHandlerOptionSchema = map[string]*optionSchema{
 
 var optionSchemas = map[OptionsContext]map[string]*optionSchema{
 	OptionsContextActivity:         activityOptionSchema,
-	OptionsContextWorkflow:         workflowOptionSchema,
+	OptionsContextChildStart:       childStartOptionSchema,
+	OptionsContextClientStart:      clientStartOptionSchema,
 	OptionsContextWorker:           workerOptionSchema,
 	OptionsContextNexusCall:        nexusCallOptionSchema,
 	OptionsContextEndpoint:         endpointOptionSchema,
@@ -176,6 +211,16 @@ var optionSchemas = map[OptionsContext]map[string]*optionSchema{
 	OptionsContextQueryHandler:     queryHandlerOptionSchema,
 	OptionsContextActivityDefaults: activityDefaultOptionSchema,
 	OptionsContextWorkflowDefaults: workflowDefaultOptionSchema,
+}
+
+// workflowStartContext is the options context of a workflow start at the
+// current position: a client start inside a sync nexus operation body, a child
+// start anywhere else.
+func (p *Parser) workflowStartContext() OptionsContext {
+	if p.inSyncNexus {
+		return OptionsContextClientStart
+	}
+	return OptionsContextChildStart
 }
 
 func schemaForContext(ctx OptionsContext) map[string]*optionSchema {
@@ -198,7 +243,7 @@ func (p *Parser) parseOptionsBlock(ctx OptionsContext) (*ast.OptionsBlock, error
 	}
 
 	schema := schemaForContext(ctx)
-	entries, err := p.parseOptionEntries(schema, optionCallSiteOnly[ctx])
+	entries, err := p.parseOptionEntries(schema, optionMisplaced[ctx])
 	if err != nil {
 		return nil, err
 	}
@@ -214,11 +259,10 @@ func (p *Parser) parseOptionsBlock(ctx OptionsContext) (*ast.OptionsBlock, error
 }
 
 // parseOptionEntries parses key-value pairs until DEDENT is encountered.
-// callSiteOnly names keys that are valid only at a call site; it is non-nil only
-// for the top-level entries of a definition `default_options:` block and is
+// misplaced names the keys the context rejects with a targeted error; it is
 // passed as nil to nested blocks (a nested key is validated against its own
-// nested schema, never against the call-site-only partition).
-func (p *Parser) parseOptionEntries(schema map[string]*optionSchema, callSiteOnly map[string]bool) ([]*ast.OptionEntry, error) {
+// nested schema only).
+func (p *Parser) parseOptionEntries(schema map[string]*optionSchema, misplaced map[string]misplacedOption) ([]*ast.OptionEntry, error) {
 	var entries []*ast.OptionEntry
 
 	for p.current.Type != token.DEDENT && p.current.Type != token.EOF {
@@ -229,7 +273,7 @@ func (p *Parser) parseOptionEntries(schema map[string]*optionSchema, callSiteOnl
 			continue
 		}
 
-		entry, err := p.parseOptionEntry(schema, callSiteOnly)
+		entry, err := p.parseOptionEntry(schema, misplaced)
 		if err != nil {
 			return nil, err
 		}
@@ -240,7 +284,7 @@ func (p *Parser) parseOptionEntries(schema map[string]*optionSchema, callSiteOnl
 }
 
 // parseOptionEntry parses a single option entry: IDENT COLON (value | NEWLINE INDENT nested DEDENT).
-func (p *Parser) parseOptionEntry(schema map[string]*optionSchema, callSiteOnly map[string]bool) (*ast.OptionEntry, error) {
+func (p *Parser) parseOptionEntry(schema map[string]*optionSchema, misplaced map[string]misplacedOption) (*ast.OptionEntry, error) {
 	pos := ast.Pos{Line: p.current.Line, Column: p.current.Column}
 
 	var key string
@@ -261,19 +305,12 @@ func (p *Parser) parseOptionEntry(schema map[string]*optionSchema, callSiteOnly 
 		var ok bool
 		sch, ok = schema[key]
 		if !ok {
-			if _, isStart := schema["workflow_id_reuse_policy"]; isStart && key == "workflow_id" {
+			if m, ok := misplaced[key]; ok {
 				return nil, &ParseError{
-					Msg:    "a workflow start takes no workflow_id; the ID derives from the started type's id_scheme",
+					Msg:    m.msg,
 					Line:   pos.Line,
 					Column: pos.Column,
-					code:   CodeIDAtStart,
-				}
-			}
-			if callSiteOnly[key] {
-				return nil, &ParseError{
-					Msg:    "call-site-only option key not allowed in default_options: " + key,
-					Line:   pos.Line,
-					Column: pos.Column,
+					code:   m.code,
 				}
 			}
 			return nil, &ParseError{
@@ -353,6 +390,8 @@ func (p *Parser) parseOptionEntry(schema map[string]*optionSchema, callSiteOnly 
 // `value` is empty and `values` holds the element literals — the two are
 // mutually exclusive.
 func (p *Parser) parseOptionValue(sch *optionSchema) (string, []string, string, error) {
+	// Errors anchor at the value token, captured before it is consumed.
+	pos := ast.Pos{Line: p.current.Line, Column: p.current.Column}
 	switch p.current.Type {
 	case token.STRING:
 		val := p.current.Literal
@@ -360,8 +399,8 @@ func (p *Parser) parseOptionValue(sch *optionSchema) (string, []string, string, 
 		if sch != nil && sch.valueType != "string" {
 			return "", nil, "", &ParseError{
 				Msg:    "expected " + sch.valueType + ", got string",
-				Line:   p.current.Line,
-				Column: p.current.Column,
+				Line:   pos.Line,
+				Column: pos.Column,
 			}
 		}
 		return val, nil, "string", nil
@@ -372,8 +411,8 @@ func (p *Parser) parseOptionValue(sch *optionSchema) (string, []string, string, 
 		if sch != nil && sch.valueType != "duration" {
 			return "", nil, "", &ParseError{
 				Msg:    "expected " + sch.valueType + ", got duration",
-				Line:   p.current.Line,
-				Column: p.current.Column,
+				Line:   pos.Line,
+				Column: pos.Column,
 			}
 		}
 		return val, nil, "duration", nil
@@ -384,8 +423,8 @@ func (p *Parser) parseOptionValue(sch *optionSchema) (string, []string, string, 
 		if sch != nil && sch.valueType != "number" {
 			return "", nil, "", &ParseError{
 				Msg:    "expected " + sch.valueType + ", got number",
-				Line:   p.current.Line,
-				Column: p.current.Column,
+				Line:   pos.Line,
+				Column: pos.Column,
 			}
 		}
 		return val, nil, "number", nil
@@ -393,7 +432,6 @@ func (p *Parser) parseOptionValue(sch *optionSchema) (string, []string, string, 
 	case token.LBRACKET:
 		// Bracketed inline list of strings. Parsed for any key; the schema
 		// gate below decides acceptance, mirroring the scalar branches.
-		pos := ast.Pos{Line: p.current.Line, Column: p.current.Column}
 		values, err := p.parseListLiteral()
 		if err != nil {
 			return "", nil, "", err
@@ -415,8 +453,8 @@ func (p *Parser) parseOptionValue(sch *optionSchema) (string, []string, string, 
 			if sch != nil && sch.valueType != "bool" {
 				return "", nil, "", &ParseError{
 					Msg:    "expected " + sch.valueType + ", got bool",
-					Line:   p.current.Line,
-					Column: p.current.Column,
+					Line:   pos.Line,
+					Column: pos.Column,
 				}
 			}
 			return val, nil, "bool", nil
@@ -433,8 +471,8 @@ func (p *Parser) parseOptionValue(sch *optionSchema) (string, []string, string, 
 			if !valid {
 				return "", nil, "", &ParseError{
 					Msg:    "invalid value " + val + " for enum option (allowed: " + strings.Join(sch.allowed, ", ") + ")",
-					Line:   p.current.Line,
-					Column: p.current.Column,
+					Line:   pos.Line,
+					Column: pos.Column,
 				}
 			}
 			return val, nil, "enum", nil

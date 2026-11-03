@@ -54,10 +54,12 @@ A clean `twf check` requires none of these, but the design must reason about the
 | `heartbeat_timeout` | activity | Worker-death detection for long activities (pairs with `heartbeat()`) |
 | `retry_policy` | activity, workflow, nexus | `initial_interval`, `backoff_coefficient`, `maximum_interval`, `maximum_attempts`, `non_retryable_error_types` |
 | `workflow_execution_timeout` / `workflow_run_timeout` / `workflow_task_timeout` | workflow | Total / per-run / per-task bounds |
-| `parent_close_policy` | workflow | Child lifecycle when parent closes: `TERMINATE` (default), `REQUEST_CANCEL`, `ABANDON` |
-| `workflow_id_reuse_policy` | workflow | Idempotency on retry: `ALLOW_DUPLICATE`, `ALLOW_DUPLICATE_FAILED_ONLY`, `REJECT_DUPLICATE`, `TERMINATE_IF_RUNNING` |
+| `parent_close_policy` | workflow (child start) | Child lifecycle when parent closes: `TERMINATE` (default), `REQUEST_CANCEL`, `ABANDON` |
+| `workflow_id_reuse_policy` | workflow | Start onto a *closed* ID: `ALLOW_DUPLICATE`, `ALLOW_DUPLICATE_FAILED_ONLY`, `REJECT_DUPLICATE` |
+| `workflow_id_conflict_policy` | workflow (client start, defaults) | Start onto a *running* ID: `FAIL`, `USE_EXISTING`, `TERMINATE_EXISTING` ([workflow-id-schemes.md](../topics/workflow-id-schemes.md#start-collisions)) |
 | `priority` | activity, workflow, nexus | Relative dispatch priority |
 
+- **Start kind decides the workflow keys.** A child start (workflow body or handler) takes `parent_close_policy`, not `workflow_id_conflict_policy`; a client start (sync nexus body, `async` op) the reverse (`OPTION_MISPLACED`). Temporal's deprecated `TERMINATE_IF_RUNNING` is not a value: write `ALLOW_DUPLICATE` + `TERMINATE_EXISTING`.
 - `task_queue` is not a Nexus call option — Nexus routing comes from the endpoint. A workflow **ID** is never a call option: a start's ID derives from the child type's `id_scheme:`, if it has one ([child-workflows.md](../topics/child-workflows.md#workflow-id-design)).
 - There is no `cron_schedule` key (rejected as `unknown option key`); recurring starts are Temporal Schedules, platform configuration outside TWF ([timers-scheduling.md](../topics/timers-scheduling.md#schedules-cron-workflows)).
 - **Handler declarations** take their own set: signal and update admit `unfinished_policy` (`abandon` | `warn_and_abandon`, the default); all three admit `description` ([signals-queries-updates.md](../topics/signals-queries-updates.md#handler-options)).
@@ -65,4 +67,4 @@ A clean `twf check` requires none of these, but the design must reason about the
 
 ## Definition-level `default_options:`
 
-Leads an activity/workflow body (in a workflow, before `state:`) to set defaults for every call. A call site's `options:` overrides per key; nested blocks replace whole. `parent_close_policy` is call-site-only. Example: [default-options.twf](../topics/default-options.twf); rules: `twf spec statement-syntax`.
+Leads an activity/workflow body (in a workflow, before `state:`) to set defaults for every call. A call site's `options:` overrides per key; nested blocks replace whole; each start uses the defaults its kind can carry. `parent_close_policy` is call-site-only. Example: [default-options.twf](../topics/default-options.twf); rules: `twf spec statement-syntax`.
