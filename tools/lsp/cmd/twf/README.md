@@ -297,7 +297,12 @@ Per command, exactly one of `definitions` / `symbols` / `graph` is present.
 The complete list of `kind` + `code` combinations:
 
 **kind: `parse`**
-- `SYNTAX` — any parser failure (categorization is future work — [#32](https://github.com/jmbarzee/temporal-architect/issues/32))
+- `SYNTAX` — any parser failure without a more specific code (categorization is
+  future work — [#32](https://github.com/jmbarzee/temporal-architect/issues/32))
+- `LEX` — a structural lexical error (`--lenient` never demotes it)
+- `OPTION_MISPLACED`, `DUPLICATE_OPTION_KEY`
+- `ID_SCHEME_MISPLACED`, `ID_SCHEME_MALFORMED`, `ID_VALUE_MALFORMED`,
+  `ID_AT_START`, `ADDRESS_MISPLACED`
 
 **kind: `resolve`**
 - `DUPLICATE_WORKFLOW`, `DUPLICATE_ACTIVITY`, `DUPLICATE_WORKER`,
@@ -305,6 +310,9 @@ The complete list of `kind` + `code` combinations:
 - `UNDEFINED_ACTIVITY`, `UNDEFINED_WORKFLOW`, `UNDEFINED_SIGNAL`,
   `UNDEFINED_UPDATE`, `UNDEFINED_CONDITION`, `UNDEFINED_PROMISE_OR_CONDITION`
 - `CONDITION_RESULT_BINDING`
+- `SIGNAL_SEND_HANDLE_NOT_WORKFLOW`, `SIGNAL_SEND_UNDEFINED_SIGNAL`
+- `TYPE_NEEDS_ID`, `HANDLE_TAKES_NO_ID`, `NO_ID_SCHEME`, `ID_MIRROR_MISMATCH`,
+  `MIRROR_COPIED_FROM_SCHEME` (hint), `RESERVED_NAME`
 - `NEXUS_ASYNC_UNDEFINED_WORKFLOW`, `NEXUS_UNDEFINED_ENDPOINT`,
   `NEXUS_UNDEFINED_SERVICE`, `NEXUS_NO_OPERATION`
 - `WORKER_UNDEFINED_WORKFLOW`, `WORKER_UNDEFINED_ACTIVITY`,
@@ -312,6 +320,9 @@ The complete list of `kind` + `code` combinations:
 - `UNRESOLVED_IMPORT`, `UNUSED_IMPORT`, `QUALIFIED_REF_WITHOUT_IMPORT`
   (import/package resolution; `UNRESOLVED_IMPORT` and `UNUSED_IMPORT` are
   warnings)
+- `ENDPOINT_PARAM_NOT_SUPERSET` (parameterized namespace and endpoint names)
+- `QUEUE_TEMPLATE_MALFORMED`, `ENDPOINT_TASK_QUEUE_TEMPLATED` (per-instance
+  worker families)
 
 **kind: `validate`**
 - `EMPTY_WORKFLOW`, `EMPTY_ACTIVITY`, `EMPTY_WORKER`, `EMPTY_NAMESPACE`
@@ -321,6 +332,12 @@ The complete list of `kind` + `code` combinations:
 - `TASK_QUEUE_IDENTICAL`, `TASK_QUEUE_MISMATCH`,
   `EXPLICIT_ROUTING_MISMATCH`, `IMPLICIT_ROUTING_MISMATCH`,
   `ENDPOINT_SERVICE_LINKAGE`
+- `TASK_QUEUE_OVERLAP`, `INSTANCE_QUEUE_NO_START_TIMEOUT`,
+  `INSTANCE_FAMILY_HOSTS_WORKFLOW`, `INSTANCE_FAMILY_VERSIONED` (hints), and
+  `INSTANCE_FAMILY_HOSTS_NEXUS_SERVICE` (warning) — per-instance worker families
+- `NOT_A_PARENT`, `STARTER_LACKS_SIGNAL` (warnings), `ID_SCHEME_OVERLAP` (hint)
+- `ID_POLICY_INCOMPATIBLE`, `ID_POLICY_WITHOUT_ID_SCHEME`,
+  `CHILD_START_CONFLICT_MISMATCH`, `NEXUS_RUN_WITHOUT_ID_SCHEME`
 
 **kind: `graph`**
 - `DISPATCH_NO_REACHABLE_DEPLOYMENT` — call site routes to a task

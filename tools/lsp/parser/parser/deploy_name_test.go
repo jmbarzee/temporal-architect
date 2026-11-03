@@ -56,7 +56,7 @@ func TestParsePlainHyphenNamespaceName(t *testing.T) {
 	}
 }
 
-func TestParseMultipleAndRepeatedHoles(t *testing.T) {
+func TestParseMultipleAndRepeatedParams(t *testing.T) {
 	input := `namespace region-{region}-{org}-{region}:
     nexus endpoint region-{region}-{org}-{region}-Ep
 `

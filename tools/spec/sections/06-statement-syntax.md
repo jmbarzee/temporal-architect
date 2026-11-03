@@ -48,6 +48,12 @@ Workflow call options depend on the [start kind](#workflow-call). Every start ta
 
 The two ID policies act only when starts share an ID — see [Workflow Definitions — ID Scheme](./01-workflows.md#id-scheme).
 
+A call's `task_queue` may interpolate the caller's data (`"sandbox-{lease.sandboxId}"`). Its
+parameters are runtime parameters, and it routes to a worker queue of the same shape ([Queue
+matching](./03-workers-and-namespaces.md#queue-matching)). A value that is exactly one parameter
+(`"{lease.queue}"`) is a learned queue, naming a member of a per-instance family. It is quoted
+because `task_queue` is a `STRING`, unlike a bare [learned `id:`](./13-cross-workflow-signals.md#type-head).
+
 Retry policy keys: `initial_interval`, `backoff_coefficient`, `maximum_interval`, `maximum_attempts`, `non_retryable_error_types`. `non_retryable_error_types` takes a `list_value` of strings (error-type names that should never be retried); an empty list `[]` means "no non-retryable types". It is the only key that takes a list today.
 
 Priority keys: `priority_key` (number, 1–n, lower = higher priority), `fairness_key` (string, fairness balancing key), `fairness_weight` (number, weight in [0.001, 1000])
@@ -111,6 +117,8 @@ The block contents **reuse `option_entry` verbatim** — the same value grammar 
 
 - **Activity `default_options:`** — all activity call option keys are valid: `task_queue`, `schedule_to_close_timeout`, `schedule_to_start_timeout`, `start_to_close_timeout`, `heartbeat_timeout`, `request_eager_execution`, `retry_policy`, `priority`. None is inherently per-call.
 - **Workflow `default_options:`** — all client-start option keys, including `workflow_id_conflict_policy`. `parent_close_policy` stays call-site-only: it is **relational**, describing one specific parent↔child bond, not the workflow type (the same workflow may be a child of many parents, or a root).
+
+A `task_queue` parameter in `default_options:` is a runtime parameter, rooted in the definition's own params, and routes by shape like a call-site queue.
 
 **A start uses the defaults its kind can carry.** A child start cannot carry a conflict policy, so the default `workflow_id_conflict_policy` applies to client starts only (`CHILD_START_CONFLICT_MISMATCH` notes a child start of a type that defaults to joining or replacing). The defaults are also the contract for starters outside the design — client code that starts the type.
 

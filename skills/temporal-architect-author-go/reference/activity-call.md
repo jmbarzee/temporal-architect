@@ -19,3 +19,4 @@ err = workflow.ExecuteActivity(ctx, a.ValidateOrder, order).Get(ctx, &validated)
 - Pass the function or method reference, never the string name — a string loses compile-time checking and breaks test discovery.
 - No return value: `.Get(ctx, nil)`; still check `err`.
 - `ctx` must carry `ActivityOptions` ([options.md](./options.md)). An `options:` block on the call becomes a per-call `workflow.WithActivityOptions` context.
+- A `task_queue` with `{x}` parameters names one member of a worker family: build `TaskQueue` with the family's queue function, and set `ScheduleToStartTimeout` when instances are short-lived ([worker.md](./worker.md#per-instance-worker-families)).

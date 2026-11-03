@@ -50,13 +50,14 @@ namespace innerAgent:
 
 ## Parameterized namespaces and endpoints
 
-A `{param}` hole in a namespace or endpoint name (`namespace fabric-shard-{org}:`) declares a family, one member per tenant. Holes bind by spelling, so a mistyped `{param}` silently starts a new family ([#129](https://github.com/jmbarzee/temporal-architect/issues/129)). Grammar and resolution: `twf spec workers-and-namespaces`.
+A `{param}` template parameter in a namespace or endpoint name (`namespace fabric-shard-{org}:`) declares a family, one member per tenant. Parameters correlate by spelling, so a mistyped `{param}` silently starts a new family ([#129](https://github.com/jmbarzee/temporal-architect/issues/129)). They stay in names: a task queue is scoped to its namespace, so each member's static `"bootstrap"` is already its own queue. A family *inside* one namespace — a queue per sandbox, host or region — is a worker-tier [per-instance family](../topics/task-queues.md#per-instance-worker-families). Grammar and resolution: `twf spec workers-and-namespaces`.
 
 ```twf
 nexus service BootstrapService:
     async BootstrapShard workflow BootstrapShardWorkflow
 
 workflow BootstrapShardWorkflow(shardId: string):
+    id_scheme: "bootstrap/{shardId}"
     activity InitShard(shardId)
     close complete
 
@@ -78,10 +79,10 @@ worker callerWorker:
 namespace fabric-shard-{org}:
     worker bootstrapWorker
         options:
-            task_queue: "q-{org}-bootstrap"
+            task_queue: "bootstrap"
     nexus endpoint fabric-shard-{org}-BootstrapShard
         options:
-            task_queue: "q-{org}-bootstrap"
+            task_queue: "bootstrap"
 
 namespace app:
     worker callerWorker

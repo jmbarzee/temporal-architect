@@ -39,7 +39,7 @@ A quick reference; the grammar itself is `twf spec` (`twf spec --list` for secti
 | `import "full/module/path"` / `import alias "path"` | Import a package, referenced by its leaf name (trailing `/vN` stripped) or the alias |
 | `pkg.Name` | Qualified reference into an imported package — e.g. `activity billing.ChargeCard`, `nexus Ep billing.PaymentService.Charge`. Same-package refs stay bare; endpoints are never qualified |
 
-Namespace and endpoint names — including the endpoint in every Nexus call — are `deploy_name`s: hyphens and `{param}` holes allowed (`twf spec tokens-and-keywords`).
+Namespace and endpoint names — including the endpoint in every Nexus call — are `deploy_name`s: hyphens and `{param}` template parameters allowed (`twf spec tokens-and-keywords`).
 
 ## Common `options:` Keys
 

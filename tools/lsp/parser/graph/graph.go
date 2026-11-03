@@ -53,12 +53,15 @@ type Node struct {
 	// Queue is the task queue name; intrinsic to worker and nexus-tier
 	// deployments. Display metadata only — not a structural input.
 	Queue string `json:"queue,omitempty"`
-	// TemplateParams is populated on namespace and nexusEndpoint nodes whose
-	// deploy_name carries {param} template holes: the distinct params in order of
-	// first appearance (e.g. `fabric-shard-{org}` → ["org"]). Empty/omitted for a
-	// static node, so a graph with no templated families is byte-identical. A
-	// consumer reads it to collapse a parameterized family into one representative
-	// node plus a cardinality badge.
+	// TemplateParams is populated on a parameterized family's node: on a
+	// namespace or nexusEndpoint node, the {param} template parameters in its
+	// deploy_name (e.g. `fabric-shard-{org}` → ["org"]); on a worker node, the
+	// instance parameters in its task_queue (`"sandbox-{sandboxId}"` →
+	// ["sandboxId"]), unioned over its instantiations in the namespace. Distinct,
+	// in order of first appearance. Empty/omitted for a static node, so a graph
+	// with no templated families is byte-identical. A consumer reads it to
+	// collapse a parameterized family into one representative node plus a
+	// cardinality badge.
 	TemplateParams []string `json:"templateParams,omitempty"`
 	Orphan         bool     `json:"orphan,omitempty"`
 }
@@ -375,13 +378,16 @@ func (g *Graph) addNode(n Node) {
 	g.Nodes = append(g.Nodes, n)
 }
 
-func (g *Graph) hasNode(id string) bool {
+func (g *Graph) hasNode(id string) bool { return g.node(id) != nil }
+
+// node returns the node with the given ID, or nil.
+func (g *Graph) node(id string) *Node {
 	for i := range g.Nodes {
 		if g.Nodes[i].ID == id {
-			return true
+			return &g.Nodes[i]
 		}
 	}
-	return false
+	return nil
 }
 
 // addDiagnostic deduplicates by (code, from, line) — the same

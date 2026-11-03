@@ -54,17 +54,17 @@ Common error types:
 - Namespace references undefined worker
 - Worker instantiation missing `task_queue` option
 - Nexus endpoint instantiation missing `task_queue` option
-- Workers on same task queue (within a namespace) with different type sets
+- Workers on same task queue (same deploy key, within a namespace) with different type sets
 - Undefined nexus endpoint (hard error — endpoints are flat-global; a templated reference resolves by full templated name, so a mismatch or a static reference to a templated endpoint lands here)
 - Endpoint template param set not a superset of its owning namespace's (`ENDPOINT_PARAM_NOT_SUPERSET` — otherwise the endpoint's flat-global name collides across the family)
-- Unbound template param in a string option value (`UNBOUND_TEMPLATE_PARAM` — a `{param}` in a `STRING` option value must be bound by the enclosing namespace/endpoint identifier template, or its owning namespace's)
 - Undefined nexus service (hard error — resolved per package, following any qualifier + import)
 - Nexus service has no matching operation
 - Detach nexus call with result binding
 - Async nexus operation references undefined workflow
-- Nexus endpoint routes to task queue with no worker in the endpoint's namespace registering the service
-- Explicit `task_queue` routing (call site, else the target's `default_options:`): target activity/workflow not on any worker polling that queue in the caller's namespace(s)
-- Implicit task queue routing: for some (namespace, task queue) the calling workflow is hosted on, the called activity/workflow is not on any worker polling that queue in that namespace
+- Nexus endpoint routes to task queue with no worker in the endpoint's namespace registering the service (queues compared by spelling, so an endpoint never fronts a family)
+- Explicit `task_queue` routing (call site, else the target's `default_options:`): target activity/workflow not on any worker polling a queue that [matches](./03-workers-and-namespaces.md#queue-matching) it in the caller's namespace(s)
+- Implicit task queue routing: for some (namespace, task queue) the calling workflow is hosted on, the called activity/workflow is not on any worker polling a queue with that deploy key in that namespace
+- Per-instance family and templated queue errors and hazards — see [Per-instance Worker Families](#per-instance-worker-families)
 - Workflow/activity not registered on any instantiated worker (warning)
 - Nexus service not referenced by any worker (warning)
 - Worker not instantiated in any namespace (warning)
@@ -108,6 +108,20 @@ Diagnostics for [`id_scheme:`](./01-workflows.md#id-scheme) and [addressed signa
 
 An address on the send's own line (`signal X.Y() id: w`) is also `ADDRESS_MISPLACED`. A handler
 declaration after the first body statement is a targeted syntax error.
+
+### Per-instance Worker Families
+
+Diagnostics for [per-instance worker families](./03-workers-and-namespaces.md#per-instance-worker-families) and [queue matching](./03-workers-and-namespaces.md#queue-matching).
+
+| Code | Trigger | Severity |
+|---|---|---|
+| `QUEUE_TEMPLATE_MALFORMED` | a worker `task_queue` with an IDENT parameter: a brace group not a name; touching parameters; stray brace; reserved prefix; fixed text plus one byte per parameter over 1000 bytes | error |
+| `ENDPOINT_TASK_QUEUE_TEMPLATED` | an IDENT parameter in an endpoint `task_queue` | error |
+| `TASK_QUEUE_OVERLAP` | two placements in one namespace with different deploy keys, at least one a family, could name the same queue | hint |
+| `INSTANCE_QUEUE_NO_START_TIMEOUT` | an activity call that names its queue reaches a family with neither `schedule_to_start_timeout` nor `schedule_to_close_timeout` | hint |
+| `INSTANCE_FAMILY_HOSTS_WORKFLOW` | a family worker registers a workflow | hint |
+| `INSTANCE_FAMILY_VERSIONED` | a family with `versioning: build_id` or `deployment` | hint |
+| `INSTANCE_FAMILY_HOSTS_NEXUS_SERVICE` | a family worker registers a Nexus service, which no endpoint can reach | warning |
 
 ## Examples
 

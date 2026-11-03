@@ -4,8 +4,10 @@ package graph
 // nexus operation deployment and every endpoint deployment that fronts
 // it. An endpoint is a top-level routing alias forwarding to a specific
 // (namespace, queue); an operation is deployed at a specific
-// (namespace, queue). When those tuples match, the endpoint is one of
-// the routes by which a caller can reach the operation.
+// (namespace, queue). When those tuples match — the queues by spelling, as
+// an endpoint targets one static queue — the endpoint is one of the routes
+// by which a caller can reach the operation. A templated endpoint routes
+// nowhere.
 //
 // This relationship is topology (deployment placement), not an observed
 // dispatch — so the edge carries no Routing and is excluded from
@@ -28,7 +30,7 @@ func (g *Graph) emitNexusRoutes(idx *astIndex) {
 			for _, opDep := range serviceDeployments {
 				fromID := HostedID(KindNexusOperation, opName, opDep.WorkerName, opDep.NamespaceName, false)
 				for _, ep := range idx.endpointsByName {
-					if ep.Namespace != opDep.NamespaceName || ep.Queue != opDep.Queue {
+					if ep.templated || ep.Namespace != opDep.NamespaceName || ep.Queue != opDep.Queue {
 						continue
 					}
 					g.Edges = append(g.Edges, Edge{

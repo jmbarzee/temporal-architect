@@ -111,6 +111,13 @@ parsed.
   `nexusService`, and `nexusOperation` nodes. Queue has no edge equivalent and is
   intrinsic to a deployment, so it stays on the node — but purely as **display
   metadata**; nothing downstream derives structure from it.
+- `templateParams` (string[], optional) — a parameterized family's axes, distinct
+  and in order of first appearance. On a namespace or `nexusEndpoint` node, the
+  `{param}` template parameters in its name (`fabric-shard-{org}` → `["org"]`); on
+  a worker node, the instance parameters in its `task_queue`
+  (`"sandbox-{sandboxId}"` → `["sandboxId"]`), unioned when the worker is
+  instantiated twice in one namespace (the node keeps the first `queue`). Omitted
+  on a static node.
 - `orphan` (bool, optional) — `true` when the definition exists in the AST but
   has no deployment. Implies no deployment-context fields at all. Omitted when
   false.
@@ -193,20 +200,25 @@ deployment**, and emits one edge per (caller deployment, matching callee
 deployment) pair.
 
 - **`activityCall` / `workflowCall` with explicit `task_queue:`** — matching
-  callee deployments are those in the **caller's namespace** whose `queue` equals
-  the literal. `routing.explicit` carries the literal.
+  callee deployments are those in the **caller's namespace** whose `queue`
+  matches the literal (spec 03 § Queue matching): the same spelling, or the same
+  shape, so `"sandbox-{lease.sandboxId}"` reaches a `"sandbox-{sandboxId}"`
+  family. `routing.explicit` carries the literal.
 - **`activityCall` / `workflowCall` implicit** — the call inherits the caller
   deployment's own queue; matching callee deployments are those in the caller's
-  namespace on that queue. A definition hosted on two workers is walked twice, so
-  each copy resolves against its own queue.
+  namespace with that queue's deploy key (spec 03). A definition hosted on two
+  workers is walked twice, so each copy resolves against its own queue.
 - **`nexusCall`** — the endpoint's `(namespace, queue)` is the dispatch contract.
   Matching operation deployments are those whose hosting service deployment has
-  `namespace == endpoint.namespace` and `queue == endpoint.queue`.
+  `namespace == endpoint.namespace` and `queue == endpoint.queue`, by spelling: an
+  endpoint targets one static queue. An endpoint whose `task_queue` has a
+  parameter is a resolve error (`ENDPOINT_TASK_QUEUE_TEMPLATED`); a call through
+  it draws no edge and no diagnostic.
   `routing.nexusEndpoint` carries the endpoint deployment node ID. An `options:`
   block on a nexus call site does not participate — the endpoint wins, and
   `routing.explicit` is never set on a `nexusCall`.
 - **`asyncBacking`** — from the operation deployment to workflow deployments on
-  the same namespace *and* the same queue as the operation: when the operation
+  the same namespace *and* the same queue deploy key as the operation: when the operation
   runs, Temporal starts the backing workflow on that task queue.
 - **`signalSend`** — **not** queue-routed. A signal is delivered to a specific
   running child the sender already started, not dispatched by queue matching, so
@@ -216,9 +228,10 @@ deployment) pair.
 When no callee deployment matches, no edge is emitted and a
 `DISPATCH_NO_REACHABLE_DEPLOYMENT` warning is added (deduplicated by
 `(code, from, line)`, so one call site walked once per caller-deployment copy
-reports once). When the caller deployment has no queue at all, the call is
-dropped silently — the validator already reports the missing `task_queue`, and
-double-reporting helps nobody.
+reports once). When the caller deployment has no queue at all, or a malformed
+one (`QUEUE_TEMPLATE_MALFORMED`), the call it would inherit is dropped silently —
+the missing or malformed `task_queue` is already reported, and double-reporting
+helps nobody. A malformed callee queue matches nothing.
 
 A call site whose reference didn't resolve (typo'd activity, unresolved signal
 handle, …) yields an `unresolved[]` entry instead of an edge — one per caller
@@ -257,7 +270,8 @@ For each AST definition:
 
 - **Namespace** — one node per namespace.
 - **Worker** — one node per `NamespaceDef.Workers[i]` (each instantiation is one
-  deployment). Declared but never instantiated → one orphan node.
+  deployment); a worker instantiated twice in one namespace is one node.
+  Declared but never instantiated → one orphan node.
 - **Workflow / Activity / NexusService** — one node per (registration × worker
   deployment). Registered on no instantiated worker → one orphan node.
 - **NexusOperation** — one node per (operation × its parent service's
@@ -277,9 +291,11 @@ about deployment placement, and consumers should not have to re-derive it by
 matching node `(namespace, queue)` fields. So the parser emits it:
 
 **`nexusRoute`: operation deployment → every endpoint deployment whose
-`(namespace, queue)` matches the operation's.** Direction mirrors the call path's
-tail (caller → operation, operation fronted by endpoint). It is topology, not an
-observed dispatch: it carries no `routing` and is excluded from coarsening.
+`(namespace, queue)` matches the operation's, the queue by spelling (spec 03): an
+endpoint targets one static queue, and one whose `task_queue` has a parameter
+fronts nothing.** Direction mirrors the call path's tail (caller → operation,
+operation fronted by endpoint). It is topology, not an observed dispatch: it
+carries no `routing` and is excluded from coarsening.
 
 **No `endpoint → service` edge is emitted.** The relationship "endpoint X happens
 to front service Y" is an inference from queue and namespace coincidence, not a

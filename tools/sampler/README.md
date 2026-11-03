@@ -68,22 +68,24 @@ Edges are `containment` (child → parent) plus dispatch (`activityCall`,
 
 ### `templateParams` is always empty on observed nodes
 
-`graph.Node` carries a `templateParams` field for parameterized design families
-(e.g. a single `fabric-shard-{org}` node whose name has a `{param}` hole). The
-sampler **never populates it**, and this is deliberate — not an unimplemented
-feature. Observed node names come entirely from resolved runtime history
-attributes (`h.Namespace`, `attr.GetNamespace()`, task-queue and type names),
-so a sampled name is always a concrete instance (`fabric-shard-acme`) with no
-`{param}` holes. There is nothing to extract, so `templateParams` is always
+`graph.Node` carries a `templateParams` field for parameterized design families:
+a namespace `fabric-shard-{org}` or a worker on queue `sandbox-{sandboxId}` is one
+design node whose name has template parameters. The sampler **never populates
+it**, and this is deliberate — not an unimplemented feature. Observed node names
+come entirely from resolved runtime history attributes (`h.Namespace`,
+`attr.GetNamespace()`, task-queue and type names), so a sampled name is always a
+concrete instance (`fabric-shard-acme`, `sandbox-8f3a`) with no template
+parameters. There is nothing to extract, so `templateParams` is always
 absent/empty (the field is `omitempty`), keeping an observed node
 **byte-identical** to a statically extracted `twf graph` node.
 
-The consequence is a representation gap: a parameterized design family is one
-node with `templateParams`, while its observed counterpart is *one node per
-tenant instance* (`fabric-shard-acme`, `fabric-shard-globex`, …), each with no
-`templateParams`. So a design family never ID-matches an observed instance.
-Reconciling parameterized design nodes with observed instances is owned by the
-observed-vs-designed overlay work
+The consequence is a representation gap: a design family is one node with
+`templateParams`, while its observed counterpart is *one node per instance*
+(`fabric-shard-acme`, `fabric-shard-globex`, …; `sandbox-8f3a`, `sandbox-c71d`,
+…), each with no `templateParams`. So a design family never ID-matches an
+observed instance, and [the diff](#diffing-against-a-design-graph) flags every
+instance as drift. Reconciling parameterized design nodes with observed
+instances is owned by the observed-vs-designed overlay work
 ([#66](https://github.com/jmbarzee/temporal-architect/issues/66)).
 
 ### Event → graph mapping
@@ -224,8 +226,9 @@ diff /tmp/observed-nodes /tmp/design-nodes
 
 Expect the **history graph to be a subset of the design graph** — history is
 partial by construction. Investigate anything in one but not the other: nodes
-or edges only in history are real drift (undocumented queues or calls); nodes
-only in the design are unsampled or dead paths.
+or edges only in history are real drift (undocumented queues or calls), except
+concrete instances of a design family ([above](#templateparams-is-always-empty-on-observed-nodes));
+nodes only in the design are unsampled or dead paths.
 
 If the observed graph looks thin, widen `--sample-percent` / `--min-per-type`
 or drop `--status` before treating a missing node as drift.

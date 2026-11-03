@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"fmt"
 	"slices"
+	"strings"
 
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
 )
@@ -34,6 +35,11 @@ const (
 	ErrIDPolicyWithoutIDScheme
 	ErrChildStartConflictMismatch
 	ErrNexusRunWithoutIDScheme
+	ErrTaskQueueOverlap
+	ErrInstanceQueueNoStartTimeout
+	ErrInstanceFamilyHostsWorkflow
+	ErrInstanceFamilyHostsNexusService
+	ErrInstanceFamilyVersioned
 )
 
 // Error represents a validation error with position info.
@@ -110,6 +116,16 @@ func (k ErrorKind) String() string {
 		return "CHILD_START_CONFLICT_MISMATCH"
 	case ErrNexusRunWithoutIDScheme:
 		return "NEXUS_RUN_WITHOUT_ID_SCHEME"
+	case ErrTaskQueueOverlap:
+		return "TASK_QUEUE_OVERLAP"
+	case ErrInstanceQueueNoStartTimeout:
+		return "INSTANCE_QUEUE_NO_START_TIMEOUT"
+	case ErrInstanceFamilyHostsWorkflow:
+		return "INSTANCE_FAMILY_HOSTS_WORKFLOW"
+	case ErrInstanceFamilyHostsNexusService:
+		return "INSTANCE_FAMILY_HOSTS_NEXUS_SERVICE"
+	case ErrInstanceFamilyVersioned:
+		return "INSTANCE_FAMILY_VERSIONED"
 	}
 	return "UNKNOWN"
 }
@@ -147,7 +163,10 @@ type validationCtx struct {
 	namespaces    map[pkgKey]*ast.NamespaceDef
 	nexusServices map[pkgKey]*ast.NexusServiceDef
 	allEndpoints  map[string]*ast.NamespaceEndpoint
-	errs          []*Error
+	// nsDefs is every namespace in definition order, so queue checks that
+	// report per placement run in source order.
+	nsDefs []*ast.NamespaceDef
+	errs   []*Error
 }
 
 // key returns the (package, name) key for a definition given its runtime
@@ -204,6 +223,7 @@ func Validate(file *ast.File) []*Error {
 			v.workers[v.key(d.Package, d.Name)] = d
 		case *ast.NamespaceDef:
 			v.namespaces[v.key(d.Package, d.Name)] = d
+			v.nsDefs = append(v.nsDefs, d)
 		case *ast.NexusServiceDef:
 			v.nexusServices[v.key(d.Package, d.Name)] = d
 		}
@@ -227,8 +247,10 @@ func Validate(file *ast.File) []*Error {
 	// 3. Coverage warnings.
 	v.checkCoverage()
 
-	// 4. Task queue coherence.
-	v.checkTaskQueueCoherence(file.Definitions)
+	// 4. Task queue coherence, then the queue hazards coherence cannot see.
+	v.checkTaskQueueCoherence()
+	v.checkTaskQueueOverlap()
+	v.checkInstanceFamilies()
 
 	// 5-6. Call routing + endpoint-service linkage (walks resolved bodies).
 	v.walkAllBodies()
@@ -366,32 +388,31 @@ func (v *validationCtx) checkCoverage() {
 	checkUncovered(v.workers, instantiatedWorkers, "worker %s is not instantiated in any namespace", ErrUninstantiatedWorker, &v.errs)
 }
 
-// checkTaskQueueCoherence reports workers that share a (namespace, task queue)
-// pair. The namespace is keyed by deploy name, so two packages that each
-// declare the same namespace share its queues. Namespaces are walked in the
-// merged definition order — source order — so the first instantiation on a
-// queue is the reference and each later one is where a report lands (#248).
-func (v *validationCtx) checkTaskQueueCoherence(defs []ast.Definition) {
+// checkTaskQueueCoherence reports workers that share a (namespace, deploy key)
+// pair: one key is one queue or one family of queues, so its placements must
+// register the same types. The namespace is keyed by deploy name, so two
+// packages that each declare the same namespace share its queues. Namespaces
+// are walked in the merged definition order — source order — so the first
+// instantiation on a key is the reference and each later one is where a report
+// lands (#248). A malformed queue has no key and is not compared.
+func (v *validationCtx) checkTaskQueueCoherence() {
 	type queueInfo struct {
 		workerName string
+		queue      string
 		workflows  map[pkgKey]bool
 		activities map[pkgKey]bool
 		file       string // SourceFile of the namespace holding the instantiation
 		ast.Pos           // the worker instantiation inside that namespace
 	}
-	queueWorkers := make(map[placement][]queueInfo)
-	for _, def := range defs {
-		ns, ok := def.(*ast.NamespaceDef)
-		if !ok {
-			continue
-		}
+	type groupKey struct{ namespace, key string }
+	var order []groupKey
+	queueWorkers := make(map[groupKey][]queueInfo)
+	for _, ns := range v.nsDefs {
 		for _, nw := range ns.Workers {
 			tq := extractTaskQueue(nw.Options)
-			if tq == "" {
-				continue
-			}
+			key, ok := ast.ParseDeployQueue(tq).Key()
 			w := nw.Worker.Resolved
-			if w == nil {
+			if tq == "" || !ok || w == nil {
 				continue
 			}
 			wfSet := make(map[pkgKey]bool)
@@ -402,9 +423,13 @@ func (v *validationCtx) checkTaskQueueCoherence(defs []ast.Definition) {
 			for _, ref := range w.Activities {
 				actSet[refKey(v, ref)] = true
 			}
-			at := placement{ns.Name, tq}
+			at := groupKey{ns.Name, key}
+			if _, seen := queueWorkers[at]; !seen {
+				order = append(order, at)
+			}
 			queueWorkers[at] = append(queueWorkers[at], queueInfo{
 				workerName: w.Name,
+				queue:      tq,
 				workflows:  wfSet,
 				activities: actSet,
 				file:       ns.SourceFile,
@@ -412,34 +437,166 @@ func (v *validationCtx) checkTaskQueueCoherence(defs []ast.Definition) {
 			})
 		}
 	}
-	for at, infos := range queueWorkers {
-		if len(infos) < 2 {
-			continue
-		}
+	for _, at := range order {
+		infos := queueWorkers[at]
 		first := infos[0]
 		for _, other := range infos[1:] {
+			queues := fmt.Sprintf("task queue %q", first.queue)
+			if other.queue != first.queue {
+				queues = fmt.Sprintf("task queues %q and %q", first.queue, other.queue)
+			}
 			if sameSet(first.workflows, other.workflows) && sameSet(first.activities, other.activities) {
 				v.errs = append(v.errs, &Error{
-					Msg:      fmt.Sprintf("workers %s and %s on task queue %q in namespace %s have identical type sets (redundant)", first.workerName, other.workerName, at.queue, at.namespace),
+					Msg:      fmt.Sprintf("workers %s and %s on %s in namespace %s have identical type sets (redundant)", first.workerName, other.workerName, queues, at.namespace),
 					Line:     other.Line,
 					Column:   other.Column,
 					Severity: "warning",
 					Kind:     ErrTaskQueueIdentical,
-					Name:     at.queue,
+					Name:     first.queue,
 					File:     other.file,
 				})
 			} else {
 				v.errs = append(v.errs, &Error{
-					Msg:    fmt.Sprintf("workers %s and %s on task queue %q in namespace %s have different type sets", first.workerName, other.workerName, at.queue, at.namespace),
+					Msg:    fmt.Sprintf("workers %s and %s on %s in namespace %s have different type sets", first.workerName, other.workerName, queues, at.namespace),
 					Line:   other.Line,
 					Column: other.Column,
 					Kind:   ErrTaskQueueMismatch,
-					Name:   at.queue,
+					Name:   first.queue,
 					File:   other.file,
 				})
 			}
 		}
 	}
+}
+
+// checkTaskQueueOverlap hints at two placements in one namespace whose deploy
+// keys differ, at least one a family, that could still name the same queue: a
+// static "sandbox-pool" beside "sandbox-{sandboxId}" shares a queue with the
+// sandbox whose ID is "pool", and coherence cannot see it. A bare family
+// overlaps everything by construction and is exempt. Each pair reports once, at
+// the later placement's task_queue entry.
+func (v *validationCtx) checkTaskQueueOverlap() {
+	type placed struct {
+		worker string
+		queue  ast.Queue
+		entry  *ast.OptionEntry
+		file   string
+	}
+	var order []string
+	byNamespace := make(map[string][]placed)
+	for _, ns := range v.nsDefs {
+		for _, nw := range ns.Workers {
+			e := optionEntry(nw.Options, "task_queue")
+			if e == nil {
+				continue
+			}
+			if _, seen := byNamespace[ns.Name]; !seen {
+				order = append(order, ns.Name)
+			}
+			byNamespace[ns.Name] = append(byNamespace[ns.Name], placed{nw.Worker.Name, ast.ParseDeployQueue(e.Value), e, ns.SourceFile})
+		}
+	}
+	for _, name := range order {
+		all := byNamespace[name]
+		for i, a := range all {
+			for _, b := range all[i+1:] {
+				// Two opaque queues overlap only when equal, which is one key, so
+				// an overlapping pair with two keys holds a family. A malformed
+				// queue overlaps nothing.
+				if a.queue.SameKey(b.queue) || a.queue.Bare() || b.queue.Bare() || !a.queue.Overlaps(b.queue) {
+					continue
+				}
+				v.errs = append(v.errs, &Error{
+					Msg:      fmt.Sprintf("task_queue %q of worker %s and %q of worker %s could name the same queue in namespace %s", b.queue.Spelling, b.worker, a.queue.Spelling, a.worker, name),
+					Line:     b.entry.Line,
+					Column:   b.entry.Column,
+					Severity: "hint",
+					Kind:     ErrTaskQueueOverlap,
+					Name:     name,
+					File:     b.file,
+				})
+			}
+		}
+	}
+}
+
+// checkInstanceFamilies reports, per family placement in source order, the
+// hazards of hosting on per-instance queues: workflows whose executions stall
+// when their instance is gone, nexus services no static endpoint can reach,
+// and versioning whose per-queue caps a churning family exhausts. The first and
+// last are hints, since a long-lived family may do either on purpose.
+func (v *validationCtx) checkInstanceFamilies() {
+	for _, ns := range v.nsDefs {
+		for _, nw := range ns.Workers {
+			tq := extractTaskQueue(nw.Options)
+			if ast.ParseDeployQueue(tq).Form != ast.QueueParsed {
+				continue
+			}
+			if w := nw.Worker.Resolved; w != nil {
+				var workflows, services []string
+				for _, r := range w.Workflows {
+					if r.Resolved != nil {
+						workflows = append(workflows, r.Resolved.Name)
+					}
+				}
+				for _, r := range w.Services {
+					if r.Resolved != nil {
+						services = append(services, r.Resolved.Name)
+					}
+				}
+				if len(workflows) > 0 {
+					v.errs = append(v.errs, &Error{
+						Msg:      fmt.Sprintf("worker %s hosts workflow %s on the per-instance queue family %q in namespace %s: if an instance goes away for good, its executions stall until their own timeout; short-lived families should host workflows on a shared queue", nw.Worker.Name, sortedList(workflows), tq, ns.Name),
+						Line:     nw.Line,
+						Column:   nw.Column,
+						Severity: "hint",
+						Kind:     ErrInstanceFamilyHostsWorkflow,
+						Name:     ns.Name,
+						File:     ns.SourceFile,
+					})
+				}
+				if len(services) > 0 {
+					v.errs = append(v.errs, &Error{
+						Msg:      fmt.Sprintf("worker %s registers nexus service %s on the per-instance queue family %q in namespace %s, but a .twf endpoint targets one static queue, so no endpoint in this design reaches it; put the service on a static queue and route on from an async operation's workflow", nw.Worker.Name, sortedList(services), tq, ns.Name),
+						Line:     nw.Line,
+						Column:   nw.Column,
+						Severity: "warning",
+						Kind:     ErrInstanceFamilyHostsNexusService,
+						Name:     ns.Name,
+						File:     ns.SourceFile,
+					})
+				}
+			}
+			e := optionEntry(nw.Options, "versioning")
+			if e == nil {
+				continue
+			}
+			var cost string
+			switch e.Value {
+			case "deployment":
+				cost = "a deployment version accepts at most 100 distinct task queues over its life, so new instance queues are refused once that many have registered"
+			case "build_id":
+				cost = "every new instance queue needs its own versioning API call (off by default, not on Cloud)"
+			default:
+				continue
+			}
+			v.errs = append(v.errs, &Error{
+				Msg:      fmt.Sprintf("worker %s in namespace %s is a per-instance family on %q with versioning: %s; %s", nw.Worker.Name, ns.Name, tq, e.Value, cost),
+				Line:     e.Line,
+				Column:   e.Column,
+				Severity: "hint",
+				Kind:     ErrInstanceFamilyVersioned,
+				Name:     ns.Name,
+				File:     ns.SourceFile,
+			})
+		}
+	}
+}
+
+// sortedList joins names sorted and deduplicated, comma-separated.
+func sortedList(names []string) string {
+	slices.Sort(names)
+	return strings.Join(slices.Compact(names), ", ")
 }
 
 // placement is one (namespace, task queue) pair a definition is hosted on.
@@ -558,29 +715,57 @@ func (v *validationCtx) walkAsyncTarget(target ast.AsyncTarget, from caller, lin
 // namespace the caller is hosted in. A task queue is scoped to its namespace,
 // so the target must be on a worker polling the routed queue in that same
 // namespace. An explicit task_queue — on the call, else in the target's
-// default_options — names a queue in each of the caller's namespaces; an
-// implicit call inherits each (namespace, queue) placement of its calling
-// workflow. Implicit calls from a sync nexus operation are not checked (#241),
-// nor from a placement missing its task_queue, which has none to inherit. An
-// unhosted caller is not checked — it has no namespace to route from and is
-// already reported as uncovered. defaults is the target's default_options.
+// default_options — names a queue in each of the caller's namespaces and must
+// match a placement (spec 03 § Queue matching); an implicit call inherits each
+// (namespace, queue) placement of its calling workflow and needs a placement
+// with the same deploy key. Implicit calls from a sync nexus operation are not
+// checked (#241), nor from a placement missing its task_queue or whose queue is
+// malformed, which have none to inherit. An unhosted caller is not checked — it
+// has no namespace to route from and is already reported as uncovered.
+// defaults is the target's default_options.
 func (v *validationCtx) checkCallRouting(kind string, target pkgKey, opts, defaults *ast.OptionsBlock, from caller, line, column int) {
 	explicitTQ, source := extractTaskQueue(opts), ""
 	if explicitTQ == "" {
 		explicitTQ, source = extractTaskQueue(defaults), " (from its default_options)"
 	}
 	if explicitTQ != "" {
+		call := ast.ParseCallQueue(explicitTQ)
+		var family ast.Queue // the first family placement the call reaches
+		var familyNS string
 		for _, ns := range v.callerNamespaces(from) {
-			if v.hostedOn(kind, target, placement{ns, explicitTQ}) {
+			if hosts := v.hosts(kind, target, ns, call.Matches); len(hosts) > 0 {
+				if i := slices.IndexFunc(hosts, isFamily); i >= 0 && familyNS == "" {
+					family, familyNS = hosts[i], ns
+				}
 				continue
 			}
+			msg := fmt.Sprintf("%s %s has task_queue %q%s, but no worker on that queue in namespace %s registers it", kind, target.name, explicitTQ, source, ns)
+			switch {
+			case call.Bare():
+				msg = fmt.Sprintf("%s %s has a learned task_queue %q%s, but no per-instance worker family in namespace %s registers it; a .twf learned queue names a family member (model a static set as a family or as static calls)", kind, target.name, explicitTQ, source, ns)
+			case isFamily(call):
+				msg = fmt.Sprintf("%s %s has task_queue %q%s, but no worker polling a queue of that shape in namespace %s registers it", kind, target.name, explicitTQ, source, ns)
+			}
 			v.errs = append(v.errs, &Error{
-				Msg:    fmt.Sprintf("%s %s has task_queue %q%s, but no worker on that queue in namespace %s registers it", kind, target.name, explicitTQ, source, ns),
+				Msg:    msg,
 				Line:   line,
 				Column: column,
 				Kind:   ErrExplicitRoutingMismatch,
 				Name:   target.name,
 				File:   from.file,
+			})
+		}
+		// A task on a queue nobody polls waits until something bounds it, and
+		// a family's instance may be gone for good.
+		if kind == "activity" && familyNS != "" && !boundsWait(opts) && !boundsWait(defaults) {
+			v.errs = append(v.errs, &Error{
+				Msg:      fmt.Sprintf("activity %s routes to the per-instance queue family %q in namespace %s with neither schedule_to_start_timeout nor schedule_to_close_timeout: if instances are short-lived, a task for a vanished instance waits until the calling workflow's own timeout or cancellation", target.name, family.Spelling, familyNS),
+				Line:     line,
+				Column:   column,
+				Severity: "hint",
+				Kind:     ErrInstanceQueueNoStartTimeout,
+				Name:     target.name,
+				File:     from.file,
 			})
 		}
 		return
@@ -590,11 +775,16 @@ func (v *validationCtx) checkCallRouting(kind string, target pkgKey, opts, defau
 		return
 	}
 	for _, at := range v.placementsOf(from.kind, from.key) {
-		if at.queue == "" || v.hostedOn(kind, target, at) {
+		inherited := ast.ParseDeployQueue(at.queue)
+		if at.queue == "" || inherited.Form == ast.QueueMalformed || len(v.hosts(kind, target, at.namespace, inherited.SameKey)) > 0 {
 			continue
 		}
+		msg := fmt.Sprintf("%s %s is not on any worker polling task queue %q in namespace %s (inherited from workflow %s)", kind, target.name, at.queue, at.namespace, from.key.name)
+		if isFamily(inherited) {
+			msg = fmt.Sprintf("%s %s is not on any worker polling a queue of the shape of %q in namespace %s (inherited from workflow %s)", kind, target.name, at.queue, at.namespace, from.key.name)
+		}
 		v.errs = append(v.errs, &Error{
-			Msg:    fmt.Sprintf("%s %s is not on any worker polling task queue %q in namespace %s (inherited from workflow %s)", kind, target.name, at.queue, at.namespace, from.key.name),
+			Msg:    msg,
 			Line:   line,
 			Column: column,
 			Kind:   ErrImplicitRoutingMismatch,
@@ -602,6 +792,16 @@ func (v *validationCtx) checkCallRouting(kind string, target pkgKey, opts, defau
 			File:   from.file,
 		})
 	}
+}
+
+// isFamily reports whether q parses with parameters: a worker's per-instance
+// family, or a call's interpolated queue.
+func isFamily(q ast.Queue) bool { return q.Form == ast.QueueParsed }
+
+// boundsWait reports whether opts bounds how long a scheduled activity task may
+// wait for a poller.
+func boundsWait(opts *ast.OptionsBlock) bool {
+	return optionEntry(opts, "schedule_to_start_timeout") != nil || optionEntry(opts, "schedule_to_close_timeout") != nil
 }
 
 // placementsOf returns the distinct (namespace, task queue) pairs on which a
@@ -630,24 +830,29 @@ func (v *validationCtx) placementsOf(kind string, target pkgKey) []placement {
 	return placements
 }
 
-// hostedOn reports whether a workflow, activity, or nexus service (identified
-// by its (package, name) key) is registered on a worker polling at.queue in
-// namespace at.namespace.
-func (v *validationCtx) hostedOn(kind string, target pkgKey, at placement) bool {
-	for _, ns := range v.namespaces {
-		if ns.Name != at.namespace {
+// hosts returns the worker queues, in definition then entry order, of the
+// placements in namespace ns whose worker registers the workflow, activity, or
+// nexus service identified by target and whose queue polls accepts. Each check
+// passes its own comparison (spec 03 § Queue matching). A malformed placement
+// hosts nothing: Matches and SameKey reject it, and an endpoint queue spelled
+// like it has a parameter, so linkage skips that endpoint.
+func (v *validationCtx) hosts(kind string, target pkgKey, ns string, polls func(ast.Queue) bool) []ast.Queue {
+	var out []ast.Queue
+	for _, def := range v.nsDefs {
+		if def.Name != ns {
 			continue
 		}
-		for _, nw := range ns.Workers {
-			if extractTaskQueue(nw.Options) != at.queue {
+		for _, nw := range def.Workers {
+			q := ast.ParseDeployQueue(extractTaskQueue(nw.Options))
+			if !polls(q) {
 				continue
 			}
 			if w := nw.Worker.Resolved; w != nil && v.registers(w, kind, target) {
-				return true
+				out = append(out, q)
 			}
 		}
 	}
-	return false
+	return out
 }
 
 // callerNamespaces returns the distinct namespaces c is hosted in, sorted. A
@@ -686,8 +891,10 @@ func hasRef[T interface {
 
 // checkEndpointServiceLinkage verifies that a worker polling the endpoint's
 // task queue in the endpoint's own namespace registers the given service
-// (identified by its resolved (package, name) key). The endpoint is looked up
-// flat-global by bare name. file is the calling definition's SourceFile.
+// (identified by its resolved (package, name) key). The queues compare by
+// spelling: an endpoint targets one static queue, so it never fronts a family.
+// The endpoint is looked up flat-global by bare name. file is the calling
+// definition's SourceFile.
 func (v *validationCtx) checkEndpointServiceLinkage(endpoint string, service pkgKey, line, column int, file string) {
 	ep, ok := v.allEndpoints[endpoint]
 	if !ok {
@@ -697,7 +904,10 @@ func (v *validationCtx) checkEndpointServiceLinkage(endpoint string, service pkg
 	if tq == "" {
 		return // missing task_queue — already reported in checkTaskQueueRequirements
 	}
-	if v.hostedOn("nexus service", service, placement{ep.Namespace, tq}) {
+	if len(ast.ExtractTemplateParams(tq)) > 0 {
+		return // templated — already reported as ENDPOINT_TASK_QUEUE_TEMPLATED
+	}
+	if len(v.hosts("nexus service", service, ep.Namespace, func(q ast.Queue) bool { return q.Spelling == tq })) > 0 {
 		return
 	}
 
@@ -713,13 +923,8 @@ func (v *validationCtx) checkEndpointServiceLinkage(endpoint string, service pkg
 
 // extractTaskQueue walks an OptionsBlock to find the task_queue key.
 func extractTaskQueue(opts *ast.OptionsBlock) string {
-	if opts == nil {
-		return ""
-	}
-	for _, e := range opts.Entries {
-		if e.Key == "task_queue" {
-			return e.Value
-		}
+	if e := optionEntry(opts, "task_queue"); e != nil {
+		return e.Value
 	}
 	return ""
 }
