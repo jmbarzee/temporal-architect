@@ -211,6 +211,7 @@ func ParseFileAll(input string) (*ast.File, []*ParseError) {
 	file := &ast.File{}
 
 	for p.current.Type != token.EOF {
+		start := p.current
 		switch {
 		case p.current.Type == token.NEWLINE:
 			p.advance()
@@ -223,7 +224,7 @@ func ParseFileAll(input string) (*ast.File, []*ParseError) {
 				if pe, ok := err.(*ParseError); ok {
 					p.addError(pe)
 				}
-				p.recoverTopLevel()
+				p.recoverTopLevel(start)
 			}
 			continue
 		case p.current.Type == token.IMPORT:
@@ -232,7 +233,7 @@ func ParseFileAll(input string) (*ast.File, []*ParseError) {
 				if pe, ok := err.(*ParseError); ok {
 					p.addError(pe)
 				}
-				p.recoverTopLevel()
+				p.recoverTopLevel(start)
 				continue
 			}
 			file.Imports = append(file.Imports, imp)
@@ -241,7 +242,7 @@ func ParseFileAll(input string) (*ast.File, []*ParseError) {
 			parser, ok := topLevelParsers[p.current.Type]
 			if !ok {
 				p.addError(p.errorf("unexpected token %s at top level", p.current.Type).(*ParseError))
-				p.recoverTopLevel()
+				p.recoverTopLevel(start)
 				continue
 			}
 			def, err := parser(p)
@@ -249,7 +250,7 @@ func ParseFileAll(input string) (*ast.File, []*ParseError) {
 				if pe, ok := err.(*ParseError); ok {
 					p.addError(pe)
 				}
-				p.recoverTopLevel()
+				p.recoverTopLevel(start)
 				continue
 			}
 			file.Definitions = append(file.Definitions, def)

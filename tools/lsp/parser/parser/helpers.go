@@ -96,9 +96,14 @@ func (p *Parser) addError(err *ParseError) {
 	p.errors = append(p.errors, err)
 }
 
-// recoverTopLevel skips tokens until the parser reaches a WORKFLOW or ACTIVITY
-// keyword at column 1 (top-level boundary) or EOF.
-func (p *Parser) recoverTopLevel() {
+// recoverTopLevel skips tokens until the parser reaches a top-level keyword at
+// column 1 or EOF. start is where the failed construct began: if the parser is
+// still there (it failed on its first token, as a top-level `nexus` call does),
+// that token is skipped first, so recovery always makes progress (#263).
+func (p *Parser) recoverTopLevel(start token.Token) {
+	if p.current.Type != token.EOF && p.current.Line == start.Line && p.current.Column == start.Column {
+		p.advance()
+	}
 	for p.current.Type != token.EOF {
 		if (p.current.Type == token.WORKFLOW || p.current.Type == token.ACTIVITY ||
 			p.current.Type == token.WORKER || p.current.Type == token.NAMESPACE ||
