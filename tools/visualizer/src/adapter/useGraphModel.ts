@@ -67,7 +67,7 @@ export interface GraphModel {
   // A node's copyKey → the top-level definition that owns it: itself, or the
   // service / namespace an operation / endpoint is nested in. The host reads
   // it to focus the Tree on a node.
-  definitions: AstLookup
+  ownerOf: AstLookup
   // Raw findings — partitioned by the file filter in the host's ErrorBars.
   errors: FileError[]
   diagnostics: Diagnostic[]
@@ -76,10 +76,10 @@ export interface GraphModel {
 export function useGraphModel(ast: TWFFile, parserGraph: ParserGraph): GraphModel {
   // Build the view-side graph from the parser's deployment graph. AST is
   // consulted for sourceFile (file-filter chips) and future hover enrichments.
-  const definitions = React.useMemo(() => buildAstLookup(ast), [ast])
+  const ownerOf = React.useMemo(() => buildAstLookup(ast), [ast])
   const graph = React.useMemo(
-    () => buildGraph(parserGraph, definitions),
-    [parserGraph, definitions],
+    () => buildGraph(parserGraph, ownerOf),
+    [parserGraph, ownerOf],
   )
   // Process-level FileErrors and structured Diagnostics. Graph-stage findings
   // (parserGraph.diagnostics + unresolved) are folded in alongside the AST
@@ -89,7 +89,7 @@ export function useGraphModel(ast: TWFFile, parserGraph: ParserGraph): GraphMode
     () => [...(ast.diagnostics || []), ...graphFindingsToDiagnostics(parserGraph)],
     [ast.diagnostics, parserGraph],
   )
-  return { graph, definitions, errors, diagnostics }
+  return { graph, ownerOf, errors, diagnostics }
 }
 
 /**
