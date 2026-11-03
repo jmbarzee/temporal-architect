@@ -13,13 +13,14 @@ import { useToggle } from './useToggle'
 import { StatementBlock } from './StatementBlock'
 import { InlineWorkflowBlock, SyncBodyBlock } from './WorkflowContent'
 import { THEME, AWAIT_TARGET_THEME } from '../../theme/temporal-theme'
+import { ClientStartBadge } from './ClientStartBadge'
 
 // Shared await target display - both getAwaitStmtDisplay and getAwaitOneCaseDisplay delegate here
 function getAwaitTargetDisplay(
   target: AsyncTarget,
   context: { activities: Map<string, any>; workflows: Map<string, any>; nexusServices: Map<string, any> },
   handlers: { signals: Map<string, any>; updates: Map<string, any> },
-): { icon: string; keyword: string; signature: string; expandableDef?: { body?: Statement[] }; nexusAsyncWorkflow?: WorkflowDef; nexusSyncBody?: Statement[]; isUnresolved: boolean } {
+): { icon: string; keyword: string; signature: string; expandableDef?: { body?: Statement[] }; nexusAsyncWorkflow?: WorkflowDef; nexusSyncBody?: Statement[]; isUnresolved: boolean; isClientStart?: boolean } {
   switch (target.kind) {
     case 'timer':
       return { icon: AWAIT_TARGET_THEME.timer.icon, keyword: 'timer', signature: `(${target.timer!.duration || ''})`, isUnresolved: false }
@@ -46,7 +47,7 @@ function getAwaitTargetDisplay(
       const sig = `${target.workflow!.name || ''}(${target.workflow!.args || ''})`
       const result = target.workflow!.result ? ` → ${target.workflow!.result}` : ''
       const def = context.workflows.get(target.workflow!.name || '')
-      return { icon: AWAIT_TARGET_THEME.workflow.icon, keyword: `${modePrefix}workflow`, signature: `${sig}${result}`, expandableDef: def, isUnresolved: !def }
+      return { icon: AWAIT_TARGET_THEME.workflow.icon, keyword: `${modePrefix}workflow`, signature: `${sig}${result}`, expandableDef: def, isUnresolved: !def, isClientStart: target.workflow!.start === 'client' }
     }
     case 'nexus': {
       const detachPrefix = target.nexus!.detach ? 'detach ' : ''
@@ -81,7 +82,7 @@ function getAwaitStmtDisplay(
   stmt: AwaitStmt,
   context: { activities: Map<string, any>; workflows: Map<string, any>; nexusServices: Map<string, any> },
   handlers: { signals: Map<string, any>; updates: Map<string, any> },
-): { icon: string; keyword: string; signature: string; blockClass: string; expandableDef?: { body?: Statement[] }; nexusAsyncWorkflow?: WorkflowDef; nexusSyncBody?: Statement[]; isUnresolved: boolean } {
+): { icon: string; keyword: string; signature: string; blockClass: string; expandableDef?: { body?: Statement[] }; nexusAsyncWorkflow?: WorkflowDef; nexusSyncBody?: Statement[]; isUnresolved: boolean; isClientStart?: boolean } {
   const target = getAwaitTargetDisplay(stmt.target, context, handlers)
   // Detached await targets (workflow or nexus) get dashed border styling
   const isDetach = (stmt.target.kind === 'workflow' && stmt.target.workflow?.mode === 'detach')
@@ -100,7 +101,7 @@ function getAwaitOneCaseDisplay(
   c: AwaitOneCase,
   context: { activities: Map<string, any>; workflows: Map<string, any>; nexusServices: Map<string, any> },
   handlers: { signals: Map<string, any>; updates: Map<string, any> },
-): { contentClass: string; icon: string; keyword: string; signature: string; isUnresolved: boolean } {
+): { contentClass: string; icon: string; keyword: string; signature: string; isUnresolved: boolean; isClientStart?: boolean } {
   // await_all is case-only, handle separately
   if (c.awaitAll != null) {
     return { contentClass: 'tagged-await-all', icon: THEME.awaitAll.icon, keyword: 'await all', signature: `${c.awaitAll?.body?.length || 0} branch(es)`, isUnresolved: false }
@@ -111,6 +112,7 @@ function getAwaitOneCaseDisplay(
     keyword: target.keyword,
     signature: target.signature,
     isUnresolved: target.isUnresolved,
+    isClientStart: target.isClientStart,
     contentClass: `tagged-${c.target!.kind}`,
   }
 }
@@ -120,7 +122,7 @@ export function AwaitStmtBlock({ stmt }: { stmt: AwaitStmt }) {
   const context = React.useContext(DefinitionContext)
   const handlers = React.useContext(HandlerContext)
 
-  const { keyword, signature, blockClass, expandableDef, nexusAsyncWorkflow, nexusSyncBody, isUnresolved } = getAwaitStmtDisplay(stmt, context, handlers)
+  const { keyword, signature, blockClass, expandableDef, nexusAsyncWorkflow, nexusSyncBody, isUnresolved, isClientStart } = getAwaitStmtDisplay(stmt, context, handlers)
   const isExpandable = !!(expandableDef || nexusAsyncWorkflow || nexusSyncBody)
   const [expanded, toggle] = useToggle(false, isExpandable)
 
@@ -134,6 +136,7 @@ export function AwaitStmtBlock({ stmt }: { stmt: AwaitStmt }) {
         )}
         <span className="block-keyword">{keyword}</span>
         <span className="block-signature">{signature}</span>
+        {isClientStart && <ClientStartBadge />}
         {isUnresolved && <span className="block-unresolved-badge">?</span>}
       </div>
 
@@ -212,7 +215,7 @@ function AwaitOneCaseBlock({ awaitCase }: { awaitCase: AwaitOneCase }) {
   const [expanded, toggle] = useToggle(false, isExpandable)
 
   // Determine display based on case kind
-  const { contentClass, keyword, signature, isUnresolved } = getAwaitOneCaseDisplay(awaitCase, context, handlers)
+  const { contentClass, keyword, signature, isUnresolved, isClientStart } = getAwaitOneCaseDisplay(awaitCase, context, handlers)
 
   return (
     <div className={`tagged-composite ${expanded ? 'expanded' : ''} ${isUnresolved ? 'tagged-unresolved' : ''}`}>
@@ -224,6 +227,7 @@ function AwaitOneCaseBlock({ awaitCase }: { awaitCase: AwaitOneCase }) {
         {!isExpandable && <span className="block-toggle-placeholder" />}
         <span className="tagged-kind">{keyword}</span>
         <span className="tagged-name">{signature}</span>
+        {isClientStart && <ClientStartBadge />}
         {isUnresolved && <span className="block-unresolved-badge">?</span>}
       </div>
       {expanded && (

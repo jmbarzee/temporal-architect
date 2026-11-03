@@ -184,7 +184,7 @@ The leftmost segment (`workflow:<name>`, `worker:<name>`, …) is the
 |-----------------|-------------------------------------------------------------------------|
 | `containment`   | child → parent (workflow → worker, worker → namespace, etc.)             |
 | `activityCall`  | resolved activity dispatch from a caller deployment                     |
-| `workflowCall`  | resolved child / detach workflow dispatch                                |
+| `workflowCall`  | resolved workflow start (child or client, attached or detached)           |
 | `nexusCall`     | resolved nexus operation dispatch through an endpoint                    |
 | `asyncBacking`  | async nexus operation → backing workflow (one start-workflow dispatch)   |
 

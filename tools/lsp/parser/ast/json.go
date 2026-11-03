@@ -606,6 +606,7 @@ func marshalWorkflowCall(s *WorkflowCall) (json.RawMessage, error) {
 		Line:    s.Line,
 		Column:  s.Column,
 		Mode:    workflowCallModeString(s.Mode),
+		Start:   startKindString(s.Start),
 		Package: s.Workflow.Package,
 		Name:    s.Workflow.Name,
 		Args:    s.Args,
@@ -873,14 +874,17 @@ func marshalUnsetStmt(s *UnsetStmt) (json.RawMessage, error) {
 }
 
 func workflowCallModeString(mode WorkflowCallMode) string {
-	switch mode {
-	case CallChild:
-		return "child"
-	case CallDetach:
+	if mode == CallDetach {
 		return "detach"
-	default:
-		return "child"
 	}
+	return "attached"
+}
+
+func startKindString(kind StartKind) string {
+	if kind == StartClient {
+		return "client"
+	}
+	return "child"
 }
 
 func forVariantString(v ForVariant) string {
@@ -914,6 +918,7 @@ type WorkflowCallJSON struct {
 	Line     int               `json:"line"`
 	Column   int               `json:"column"`
 	Mode     string            `json:"mode"`
+	Start    string            `json:"start"`
 	Package  string            `json:"package,omitempty"`
 	Name     string            `json:"name"`
 	Args     string            `json:"args"`
@@ -974,6 +979,7 @@ type WorkflowTargetJSON struct {
 	Package  string           `json:"package,omitempty"`
 	Name     string           `json:"name"`
 	Mode     string           `json:"mode"`
+	Start    string           `json:"start"`
 	Args     string           `json:"args,omitempty"`
 	Result   string           `json:"result,omitempty"`
 	Resolved *ResolvedRefJSON `json:"resolved,omitempty"`
@@ -1014,7 +1020,7 @@ func marshalAsyncTarget(target AsyncTarget) AsyncTargetJSON {
 		}
 		at.Activity = aj
 	case *WorkflowTarget:
-		wj := &WorkflowTargetJSON{Package: t.Workflow.Package, Name: t.Workflow.Name, Mode: workflowCallModeString(t.Mode), Args: t.Args, Result: t.Result}
+		wj := &WorkflowTargetJSON{Package: t.Workflow.Package, Name: t.Workflow.Name, Mode: workflowCallModeString(t.Mode), Start: startKindString(t.Start), Args: t.Args, Result: t.Result}
 		if t.Workflow.Resolved != nil {
 			wj.Resolved = &ResolvedRefJSON{Name: t.Workflow.Resolved.Name, Line: t.Workflow.Resolved.Line, Column: t.Workflow.Resolved.Column}
 		}

@@ -125,7 +125,7 @@ edges.
 |---|---|
 | `containment` | child → parent (structural) |
 | `activityCall` | resolved activity dispatch from a caller deployment |
-| `workflowCall` | resolved child / detached workflow dispatch |
+| `workflowCall` | resolved workflow start (child or client, attached or detached) |
 | `nexusCall` | resolved nexus operation dispatch through an endpoint |
 | `asyncBacking` | async nexus operation → its backing workflow |
 | `signalSend` | cross-workflow signal delivery to an already-started child |

@@ -233,7 +233,7 @@ func TestActivityCallWithResult(t *testing.T) {
 	}
 }
 
-func TestWorkflowCallChild(t *testing.T) {
+func TestWorkflowCallAttachedChild(t *testing.T) {
 	input := `workflow Foo(x: int) -> (Result):
     workflow ShipOrder(order) -> shipResult
 `
@@ -246,8 +246,8 @@ func TestWorkflowCallChild(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected WorkflowCall, got %T", wf.Body[0])
 	}
-	if call.Mode != ast.CallChild {
-		t.Errorf("expected CallChild, got %d", call.Mode)
+	if call.Mode != ast.CallAttached || call.Start != ast.StartChild {
+		t.Errorf("expected an attached child start, got mode %d start %d", call.Mode, call.Start)
 	}
 	if call.Workflow.Name != "ShipOrder" {
 		t.Errorf("expected name 'ShipOrder', got %q", call.Workflow.Name)

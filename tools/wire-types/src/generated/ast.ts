@@ -250,6 +250,7 @@ export interface WorkflowCallJSON {
   line: number /* int */;
   column: number /* int */;
   mode: string;
+  start: string;
   package?: string;
   name: string;
   args: string;
@@ -293,6 +294,7 @@ export interface WorkflowTargetJSON {
   package?: string;
   name: string;
   mode: string;
+  start: string;
   args?: string;
   result?: string;
   resolved?: ResolvedRefJSON;

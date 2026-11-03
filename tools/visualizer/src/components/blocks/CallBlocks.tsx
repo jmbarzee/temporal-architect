@@ -6,6 +6,7 @@ import { useToggle } from './useToggle'
 import { StatementBlock } from './StatementBlock'
 import { ContextualNavButtons } from './ContextualNav'
 import { OptionsSection } from './OptionsSection'
+import { ClientStartBadge } from './ClientStartBadge'
 
 // Activity Call - expandable to show activity definition body directly
 export function ActivityCallBlock({ stmt }: { stmt: ActivityCall }) {
@@ -71,6 +72,7 @@ export function WorkflowCallBlock({ stmt }: { stmt: WorkflowCall }) {
         )}
         <span className="block-keyword">{modePrefix}workflow</span>
         <span className="block-signature" title={signature}>{signature}</span>
+        {stmt.start === 'client' && <ClientStartBadge />}
         {!isDefined && <span className="block-unresolved-badge">?</span>}
       </div>
 

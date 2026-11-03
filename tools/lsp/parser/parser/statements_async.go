@@ -143,7 +143,7 @@ func parseActivityTarget(p *Parser, allowArrows bool) (*ast.ActivityTarget, erro
 // After an optional DETACH prefix, it branches to either a nexus target
 // (detach nexus ...) or a workflow target (workflow ...).
 func parseWorkflowOrNexusTarget(p *Parser, allowArrows bool, pos ast.Pos) (ast.AsyncTarget, error) {
-	mode := ast.CallChild
+	mode := ast.CallAttached
 	if p.current.Type == token.DETACH {
 		mode = ast.CallDetach
 		p.advance()
@@ -167,6 +167,7 @@ func parseWorkflowOrNexusTarget(p *Parser, allowArrows bool, pos ast.Pos) (ast.A
 	t := &ast.WorkflowTarget{
 		Workflow: ast.Ref[*ast.WorkflowDef]{Package: pkg, Name: name},
 		Mode:     mode,
+		Start:    p.workflowStartKind(),
 		Args:     args.Literal,
 	}
 	if allowArrows && p.current.Type == token.ARROW {

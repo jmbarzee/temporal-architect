@@ -100,6 +100,7 @@
                     "line": 48,
                     "column": 13,
                     "mode": "detach",
+                    "start": "child",
                     "name": "RateLockMonitor",
                     "args": "app.applicationId, lock",
                     "resolved": {
@@ -162,7 +163,8 @@
             "type": "workflowCall",
             "line": 61,
             "column": 5,
-            "mode": "child",
+            "mode": "attached",
+            "start": "child",
             "name": "IntakeWizard",
             "args": "app",
             "result": "intakeResult",
@@ -265,7 +267,8 @@
               "kind": "workflow",
               "workflow": {
                 "name": "DocumentCollection",
-                "mode": "child",
+                "mode": "attached",
+                "start": "child",
                 "args": "app.applicationId, app.borrowerEmail",
                 "resolved": {
                   "name": "DocumentCollection",
@@ -653,7 +656,8 @@
             "type": "workflowCall",
             "line": 130,
             "column": 5,
-            "mode": "child",
+            "mode": "attached",
+            "start": "child",
             "name": "ConditionLoop",
             "args": "app.applicationId, ausFindings.conditions",
             "result": "conditionResult",

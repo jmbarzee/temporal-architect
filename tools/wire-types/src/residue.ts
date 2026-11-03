@@ -111,7 +111,9 @@ export type StatementType =
   | "unset";
 
 /** workflowCallModeString in ast/json.go. */
-export type WorkflowCallMode = "child" | "detach";
+export type WorkflowCallMode = "attached" | "detach";
+/** startKindString in ast/json.go: the Temporal operation a workflow start becomes. */
+export type WorkflowStartKind = "child" | "client";
 /** forVariantString in ast/json.go. */
 export type ForVariant = "infinite" | "conditional" | "iteration";
 /** closeReasonString in ast/json.go (carried as a plain string on the wire). */
@@ -196,7 +198,10 @@ export type TimerTarget = TimerTargetJSON;
 export type SignalTarget = SignalTargetJSON;
 export type UpdateTarget = UpdateTargetJSON;
 export type ActivityTarget = ActivityTargetJSON;
-export type WorkflowTarget = WorkflowTargetJSON;
+export type WorkflowTarget = WorkflowTargetJSON & {
+  mode: WorkflowCallMode;
+  start: WorkflowStartKind;
+};
 export type NexusTarget = NexusTargetJSON;
 export type IdentTarget = IdentTargetJSON;
 
@@ -210,6 +215,7 @@ export type ActivityCall = ActivityCallJSON & { type: "activityCall" };
 export type WorkflowCall = WorkflowCallJSON & {
   type: "workflowCall";
   mode: WorkflowCallMode;
+  start: WorkflowStartKind;
 };
 export type NexusCall = NexusCallJSON & { type: "nexusCall"; detach: boolean };
 export type AwaitStmt = Omit<AwaitStmtJSON, "type" | "target"> & {

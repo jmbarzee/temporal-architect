@@ -1,6 +1,10 @@
 package parser
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
+)
 
 // TestStartOptionsByKind pins which keys each workflow start kind accepts: a
 // child start (workflow body or handler) carries no conflict policy; a client
@@ -164,5 +168,68 @@ func TestOptionValueErrorPosition(t *testing.T) {
 				t.Errorf("error at %d:%d, want 3:%d: %v", got.Line, got.Column, tt.col, got)
 			}
 		})
+	}
+}
+
+// TestWorkflowStartKind pins the start kind the parser records: a client start
+// in a sync nexus operation body, a child start anywhere else.
+func TestWorkflowStartKind(t *testing.T) {
+	file, errs := ParseFileAll(`workflow W(a: A):
+    signal Go():
+        detach workflow T(a)
+    update Up() -> (R):
+        workflow T(a) -> r
+        return r
+    workflow T(a)
+    promise p <- workflow T(a)
+    close complete()
+
+nexus service Svc:
+    sync Op(a: A) -> (R):
+        workflow T(a) -> r
+        detach workflow T(a)
+        await workflow T(a)
+        await one:
+            workflow T(a):
+                close complete(r)
+            timer(1m):
+                close complete(r)
+        close complete(r)
+`)
+	if len(errs) > 0 {
+		t.Fatalf("parse: %v", errs)
+	}
+	var got []ast.StartKind
+	collect := func(body []ast.Statement) {
+		ast.WalkStatements(body, func(s ast.Statement) bool {
+			if call, ok := s.(*ast.WorkflowCall); ok {
+				got = append(got, call.Start)
+			}
+			return true
+		}, ast.WithAsyncTargets(func(target ast.AsyncTarget, _ ast.Statement) bool {
+			if wt, ok := target.(*ast.WorkflowTarget); ok {
+				got = append(got, wt.Start)
+			}
+			return true
+		}))
+	}
+	wf := file.Definitions[0].(*ast.WorkflowDef)
+	collect(wf.Body)
+	collect(wf.Signals[0].Body)
+	collect(wf.Updates[0].Body)
+	collect(file.Definitions[1].(*ast.NexusServiceDef).Operations[0].Body)
+	want := []ast.StartKind{
+		ast.StartChild, ast.StartChild, // workflow body: plain, promise
+		ast.StartChild,                                                     // signal handler: detach
+		ast.StartChild,                                                     // update handler: plain
+		ast.StartClient, ast.StartClient, ast.StartClient, ast.StartClient, // sync body: plain, detach, await, await-one case
+	}
+	if len(got) != len(want) {
+		t.Fatalf("got %d starts, want %d", len(got), len(want))
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("start %d kind = %d, want %d", i, got[i], want[i])
+		}
 	}
 }

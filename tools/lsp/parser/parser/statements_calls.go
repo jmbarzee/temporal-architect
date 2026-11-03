@@ -75,7 +75,8 @@ func parseWorkflowCall(p *Parser) (ast.Statement, error) {
 	}
 	return &ast.WorkflowCall{
 		Pos:      cp.pos,
-		Mode:     ast.CallChild,
+		Mode:     ast.CallAttached,
+		Start:    p.workflowStartKind(),
 		Workflow: ast.Ref[*ast.WorkflowDef]{Pos: cp.pos, Package: cp.pkg, Name: cp.name},
 		Args:     cp.args,
 		Result:   cp.result,

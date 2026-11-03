@@ -252,17 +252,27 @@ type ActivityCall struct {
 
 func (*ActivityCall) stmtNode() {}
 
-// WorkflowCallMode describes how a workflow call is executed.
+// WorkflowCallMode describes whether the caller holds the start it makes.
 type WorkflowCallMode int
 
 const (
-	CallChild  WorkflowCallMode = iota // bare workflow call (child)
-	CallDetach                         // detach workflow (fire-and-forget)
+	CallAttached WorkflowCallMode = iota // bare workflow start: the caller holds it
+	CallDetach                           // detach workflow (fire-and-forget)
+)
+
+// StartKind is the Temporal operation a workflow start becomes, decided by its
+// enclosing body.
+type StartKind int
+
+const (
+	StartChild  StartKind = iota // workflow body or handler: StartChildWorkflowExecution
+	StartClient                  // sync nexus operation body: a client start
 )
 
 type WorkflowCall struct {
 	Pos
 	Mode     WorkflowCallMode
+	Start    StartKind
 	Workflow Ref[*WorkflowDef]
 	Args     string
 	Result   string // optional
@@ -334,6 +344,7 @@ func (*ActivityTarget) asyncTarget() {}
 type WorkflowTarget struct {
 	Workflow Ref[*WorkflowDef]
 	Mode     WorkflowCallMode
+	Start    StartKind
 	Args     string
 	Result   string
 }
