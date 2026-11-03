@@ -316,12 +316,12 @@ func eventTime(e *historypb.HistoryEvent) time.Time {
 // ---------------------------------------------------------------------------
 
 func (b *builder) ensureWorkerAndNamespace(namespace, queue string) {
+	// Neither node sets TemplateParams: observed names are resolved runtime
+	// values (namespace fabric-shard-acme, queue sandbox-8f3a), never families
+	// with template parameters, so there is nothing to extract. See README.md
+	// "templateParams is always empty on observed nodes".
 	nsID := graph.NamespaceID(namespace)
 	if _, seen := b.nodesSeen[nsID]; !seen {
-		// TemplateParams is intentionally left unset: observed names are resolved
-		// runtime values (e.g. fabric-shard-acme), never templated families with
-		// {param} holes, so there is nothing to extract. See README.md
-		// "templateParams is always empty on observed nodes".
 		b.og.Nodes = append(b.og.Nodes, graph.Node{
 			ID:         nsID,
 			Definition: graph.DefKey(graph.KindNamespace, namespace),

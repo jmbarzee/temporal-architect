@@ -162,6 +162,12 @@ export interface NamespaceWorkerJSON {
   workerName: string;
   line: number /* int */;
   column: number /* int */;
+  /**
+   * TemplateParams is the distinct instance parameters in the task_queue, in
+   * order of first appearance. Omitted (omitempty) for a static queue so its
+   * output stays byte-identical.
+   */
+  templateParams?: string[];
   options?: OptionsBlockJSON;
   resolvedWorker?: ResolvedRefJSON;
 }
@@ -174,7 +180,7 @@ export interface NamespaceEndpointJSON {
   column: number /* int */;
   taskQueue?: string;
   /**
-   * TemplateParams is the distinct {param} holes in the endpoint name, in order
+   * TemplateParams is the distinct {param} parameters in the endpoint name, in order
    * of first appearance. Omitted (omitempty) for a static endpoint so its
    * output stays byte-identical.
    */
@@ -191,7 +197,7 @@ export interface NamespaceDefJSON {
   sourceFile?: string;
   name: string;
   /**
-   * TemplateParams is the distinct {param} holes in the namespace name, in
+   * TemplateParams is the distinct {param} parameters in the namespace name, in
    * order of first appearance. Omitted (omitempty) for a static namespace so
    * its output stays byte-identical.
    */

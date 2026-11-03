@@ -53,7 +53,7 @@ signal orders.ShipItem.Shipped(t)            # qualified head
 `id:` takes exactly one of three forms:
 
 - **Constructed** — a quoted literal that mirrors the target type's [`id_scheme:`](./01-workflows.md#id-scheme), with the sender's own names in the holes. Fixed text and hole count are checked against the scheme (`ID_MIRROR_MISMATCH`); a literal against a type with no scheme is `NO_ID_SCHEME`. A constant scheme is mirrored by the same constant.
-- **Learned** — one path naming a variable that holds the whole ID.
+- **Learned** — one path naming a variable that holds the whole ID. It is bare: a quoted `id: "{wid}"` is `ID_VALUE_MALFORMED`, unlike a learned [`task_queue`](./06-statement-syntax.md#options-block).
 - **`parent`** — the sender's parent execution. It claims the parent is of the head's type; the type must start the sender as a child somewhere in the model (`NOT_A_PARENT`), and every other in-model starter of the sender should declare the signal too (`STARTER_LACKS_SIGNAL`).
 
 **A bare name is the whole ID.** `id: key` under a scheme `"transfer-{req.key}"` sends to `key`, not `transfer-key`. This is not detectable.

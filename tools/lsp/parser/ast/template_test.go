@@ -13,15 +13,15 @@ func TestExtractTemplateParams(t *testing.T) {
 	}{
 		{"static", "fabric-shard", nil},
 		{"plain-ident", "orders", nil},
-		{"single-hole", "fabric-shard-{org}", []string{"org"}},
-		{"hole-then-suffix", "fabric-shard-{org}-BootstrapShard", []string{"org"}},
-		{"multiple-holes", "{region}-{org}", []string{"region", "org"}},
-		{"repeated-hole-distinct", "{org}-{org}", []string{"org"}},
-		{"three-holes-order", "{a}-{b}-{a}-{c}", []string{"a", "b", "c"}},
-		{"struct-literal-not-a-hole", "Result{ok: true}", nil},
-		{"underscore-hole", "q-{my_org}", []string{"my_org"}},
+		{"single-param", "fabric-shard-{org}", []string{"org"}},
+		{"param-then-suffix", "fabric-shard-{org}-BootstrapShard", []string{"org"}},
+		{"multiple-params", "{region}-{org}", []string{"region", "org"}},
+		{"repeated-param-distinct", "{org}-{org}", []string{"org"}},
+		{"three-params-order", "{a}-{b}-{a}-{c}", []string{"a", "b", "c"}},
+		{"struct-literal-not-a-param", "Result{ok: true}", nil},
+		{"underscore-param", "q-{my_org}", []string{"my_org"}},
 		{"empty-braces-skipped", "x-{}-y", nil},
-		{"digit-start-hole-skipped", "x-{1org}", nil},
+		{"digit-start-param-skipped", "x-{1org}", nil},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

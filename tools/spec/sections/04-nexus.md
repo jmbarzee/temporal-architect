@@ -58,15 +58,15 @@ resolve as external.
 ### Templated endpoint references
 
 The endpoint reference in a `nexus` call is a [`deploy_name`](./08-tokens-and-keywords.md), so it
-may carry hyphens and `{param}` template holes to reference a per-tenant endpoint family:
+may carry hyphens and `{param}` template parameters to reference a per-tenant endpoint family:
 `nexus fabric-shard-{org}-BootstrapShard svc.Op(args)` (see
 [Parameterized namespaces and endpoints](./03-workers-and-namespaces.md#parameterized-namespaces-and-endpoints)).
 
 The **qualification table above is unchanged**: endpoints remain flat-global and are **never
 package-qualified**, templated or not. A templated reference joins its definition by the **full
-templated name string** through the existing flat-global endpoint registry — the `{org}` hole is part
+templated name string** through the existing flat-global endpoint registry — the `{org}` parameter is part
 of the name, matched by spelling. A reference whose full name matches no defined endpoint (including a
-static reference to a templated endpoint, or a mismatched hole spelling) is the existing
+static reference to a templated endpoint, or a mismatched parameter spelling) is the existing
 undefined-endpoint hard error; no new cross-file machinery is introduced, since cross-file endpoint
 resolution already spans the flat-global registry.
 

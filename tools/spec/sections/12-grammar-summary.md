@@ -116,7 +116,7 @@ references resolve as external.
 [Tokens and Keywords](./08-tokens-and-keywords.md), used in place of `IDENT` in exactly three
 positions: the `namespace` name, the `nexus endpoint` name, and the endpoint reference in a `nexus`
 call (statement, `await` target, and `await one` case alike). It admits the char class
-`[a-zA-Z0-9_-]` (no leading hyphen, no dots) interleaved with `{param}` template holes. All other
+`[a-zA-Z0-9_-]` (no leading hyphen, no dots) interleaved with `{param}` template parameters. All other
 names remain plain `IDENT`. A static, hyphen-free `deploy_name` is a subset of `IDENT`, so static
 output is byte-identical. See [Worker and Namespace Definitions](./03-workers-and-namespaces.md) for
 the templating semantics and resolution rules.

@@ -354,7 +354,7 @@ func (l *Lexer) scanIdentifier() token.Token {
 // RescanDeployName rewinds the lexer to the byte offset of an already-scanned
 // token and re-reads the source from there as a single deploy_name, returning
 // the assembled name token (Type IDENT, Literal = the full name including any
-// {param} holes). On return the lexer is positioned immediately after the name,
+// {param} parameters). On return the lexer is positioned immediately after the name,
 // so the parser can resume normal tokenization from that point.
 //
 // This exists because the lexer is context-free: it cannot know it is standing
@@ -371,7 +371,7 @@ func (l *Lexer) scanIdentifier() token.Token {
 //
 // No leading hyphen (guaranteed by the letter/underscore start) and no dots (a
 // '.' terminates the scan, leaving it for the parser to reject in a name
-// position). A malformed or unterminated `{...}` hole is a loud error.
+// position). A malformed or unterminated `{...}` parameter is a loud error.
 func (l *Lexer) RescanDeployName(tok token.Token) (token.Token, error) {
 	l.pos = tok.Offset
 	l.line = tok.Line
@@ -400,13 +400,13 @@ func (l *Lexer) scanDeployName() (token.Token, error) {
 		case ch == '{':
 			l.advance() // consume '{'
 			if l.pos >= len(l.input) || !isIdentStart(l.input[l.pos]) {
-				return tok, fmt.Errorf("template hole must contain an identifier")
+				return tok, fmt.Errorf("template parameter must contain an identifier")
 			}
 			for l.pos < len(l.input) && isIdentContinue(l.input[l.pos]) {
 				l.advance()
 			}
 			if l.pos >= len(l.input) || l.input[l.pos] != '}' {
-				return tok, fmt.Errorf("unterminated template hole: expected '}'")
+				return tok, fmt.Errorf("unterminated template parameter: expected '}'")
 			}
 			l.advance() // consume '}'
 		default:
