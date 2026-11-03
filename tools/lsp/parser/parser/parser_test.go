@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
 )
@@ -1359,6 +1360,35 @@ workflow Bad2
 	}
 	if len(file.Definitions) != 0 {
 		t.Errorf("expected 0 definitions, got %d", len(file.Definitions))
+	}
+}
+
+// TestParseFileAllTopLevelNexusCallReturns: a top-level `nexus` call fails on
+// its first token; recovery must still move past it rather than retry it
+// forever (#263). The next definition still parses.
+func TestParseFileAllTopLevelNexusCallReturns(t *testing.T) {
+	input := `nexus BillingEndpoint BillingService.ChargePayment(payment) -> paymentResult
+
+activity Bar(x: int) -> (int):
+    return x
+`
+	done := make(chan struct{})
+	var file *ast.File
+	var errs []*ParseError
+	go func() {
+		file, errs = ParseFileAll(input)
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("ParseFileAll did not return")
+	}
+	if len(errs) != 1 || !strings.Contains(errs[0].Msg, "expected 'service' after 'nexus' at top level") {
+		t.Errorf("errors = %v, want one 'expected service' error", errs)
+	}
+	if len(file.Definitions) != 1 {
+		t.Fatalf("expected the activity to parse, got %d definitions", len(file.Definitions))
 	}
 }
 
