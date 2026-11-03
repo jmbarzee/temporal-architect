@@ -33,6 +33,7 @@ const (
 	ErrIDPolicyIncompatible
 	ErrIDPolicyWithoutIDScheme
 	ErrChildStartConflictMismatch
+	ErrNexusRunWithoutIDScheme
 )
 
 // Error represents a validation error with position info.
@@ -107,6 +108,8 @@ func (k ErrorKind) String() string {
 		return "ID_POLICY_WITHOUT_ID_SCHEME"
 	case ErrChildStartConflictMismatch:
 		return "CHILD_START_CONFLICT_MISMATCH"
+	case ErrNexusRunWithoutIDScheme:
+		return "NEXUS_RUN_WITHOUT_ID_SCHEME"
 	}
 	return "UNKNOWN"
 }

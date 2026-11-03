@@ -22,21 +22,22 @@ func (v *validationCtx) checkIDPolicies(defs []ast.Definition) {
 			v.checkDefaultIDPolicies(d)
 			walkWorkflow(d, func(s ast.Statement) {
 				if call, ok := s.(*ast.WorkflowCall); ok {
-					v.checkChildStart(call.Workflow.Resolved, call.Options, call)
+					v.checkChildStart(call.Workflow.Resolved, call.Options, call, d.SourceFile)
 				}
 			}, func(t ast.AsyncTarget, parent ast.Statement) {
 				if wt, ok := t.(*ast.WorkflowTarget); ok {
-					v.checkChildStart(wt.Workflow.Resolved, nil, parent)
+					v.checkChildStart(wt.Workflow.Resolved, nil, parent, d.SourceFile)
 				}
 			})
 		case *ast.NexusServiceDef:
 			for _, op := range d.Operations {
-				if op.OpType != ast.NexusOpSync {
+				if op.OpType == ast.NexusOpAsync {
+					v.checkNexusRunScheme(d, op)
 					continue
 				}
 				ast.WalkStatements(op.Body, func(s ast.Statement) bool {
 					if call, ok := s.(*ast.WorkflowCall); ok {
-						v.checkClientStart(call)
+						v.checkClientStart(call, d.SourceFile)
 					}
 					return true
 				})
@@ -57,19 +58,20 @@ func (v *validationCtx) checkDefaultIDPolicies(wf *ast.WorkflowDef) {
 			Column: conflict.Column,
 			Kind:   ErrIDPolicyIncompatible,
 			Name:   wf.Name,
+			File:   wf.SourceFile,
 		})
 	}
-	v.checkPoliciesNeedScheme(wf, reuse, conflict)
+	v.checkPoliciesNeedScheme(wf, wf.SourceFile, reuse, conflict)
 }
 
-// checkChildStart checks a child start of target with call-site opts, at pos.
-// A child start cannot carry a conflict policy, so a type whose starts default
-// to joining or replacing a running instance is not honoured here.
-func (v *validationCtx) checkChildStart(target *ast.WorkflowDef, opts *ast.OptionsBlock, pos ast.Node) {
+// checkChildStart checks a child start of target with call-site opts, at pos in
+// file. A child start cannot carry a conflict policy, so a type whose starts
+// default to joining or replacing a running instance is not honoured here.
+func (v *validationCtx) checkChildStart(target *ast.WorkflowDef, opts *ast.OptionsBlock, pos ast.Node, file string) {
 	if target == nil {
 		return
 	}
-	v.checkPoliciesNeedScheme(target, optionEntry(opts, reusePolicyKey))
+	v.checkPoliciesNeedScheme(target, file, optionEntry(opts, reusePolicyKey))
 	if target.IDScheme == nil {
 		return
 	}
@@ -84,20 +86,21 @@ func (v *validationCtx) checkChildStart(target *ast.WorkflowDef, opts *ast.Optio
 		Severity: "hint",
 		Kind:     ErrChildStartConflictMismatch,
 		Name:     target.Name,
+		File:     file,
 	})
 }
 
-// checkClientStart checks a start in a sync nexus operation body: its own
-// policies merged per key over the target's defaults. A pair made only of
+// checkClientStart checks a start in a sync nexus operation body in file: its
+// own policies merged per key over the target's defaults. A pair made only of
 // defaults is reported once, on the definition.
-func (v *validationCtx) checkClientStart(call *ast.WorkflowCall) {
+func (v *validationCtx) checkClientStart(call *ast.WorkflowCall, file string) {
 	target := call.Workflow.Resolved
 	if target == nil {
 		return
 	}
 	reuse := optionEntry(call.Options, reusePolicyKey)
 	conflict := optionEntry(call.Options, conflictPolicyKey)
-	v.checkPoliciesNeedScheme(target, reuse, conflict)
+	v.checkPoliciesNeedScheme(target, file, reuse, conflict)
 	if reuse == nil && conflict == nil {
 		return
 	}
@@ -131,13 +134,14 @@ func (v *validationCtx) checkClientStart(call *ast.WorkflowCall) {
 		Column: at.Column,
 		Kind:   ErrIDPolicyIncompatible,
 		Name:   target.Name,
+		File:   file,
 	})
 }
 
-// checkPoliciesNeedScheme hints at each policy declared for a workflow with no
-// id_scheme: no start in the model repeats its ID, so the policy acts only on a
-// starter outside the design that picks a repeating ID.
-func (v *validationCtx) checkPoliciesNeedScheme(wf *ast.WorkflowDef, entries ...*ast.OptionEntry) {
+// checkPoliciesNeedScheme hints at each policy, written in file, for a workflow
+// with no id_scheme: no start in the model repeats its ID, so the policy acts
+// only on a starter outside the design that picks a repeating ID.
+func (v *validationCtx) checkPoliciesNeedScheme(wf *ast.WorkflowDef, file string, entries ...*ast.OptionEntry) {
 	if wf.IDScheme != nil {
 		return
 	}
@@ -152,8 +156,28 @@ func (v *validationCtx) checkPoliciesNeedScheme(wf *ast.WorkflowDef, entries ...
 			Severity: "hint",
 			Kind:     ErrIDPolicyWithoutIDScheme,
 			Name:     wf.Name,
+			File:     file,
 		})
 	}
+}
+
+// checkNexusRunScheme warns when an async nexus operation starts a workflow with
+// no id_scheme. A nexus run operation's start may be retried, so the workflow ID must
+// derive from the operation input, which in .twf is the backing workflow's scheme.
+func (v *validationCtx) checkNexusRunScheme(svc *ast.NexusServiceDef, op *ast.NexusOperation) {
+	wf := op.Workflow.Resolved
+	if wf == nil || wf.IDScheme != nil {
+		return
+	}
+	v.errs = append(v.errs, &Error{
+		Msg:      fmt.Sprintf("async operation %s starts workflow %s, which has no id_scheme; a nexus run operation's start may be retried, so the workflow ID must derive from the input; declare %s's id_scheme", op.Name, wf.Name, wf.Name),
+		Line:     op.Line,
+		Column:   op.Column,
+		Severity: "warning",
+		Kind:     ErrNexusRunWithoutIDScheme,
+		Name:     wf.Name,
+		File:     svc.SourceFile,
+	})
 }
 
 // rejectsPair reports whether a client start sending reuse and conflict would

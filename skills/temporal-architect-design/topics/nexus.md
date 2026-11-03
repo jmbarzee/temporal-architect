@@ -21,7 +21,7 @@ Nexus adds routing and authorization overhead that only a namespace boundary jus
 | Component | TWF Construct | Notes |
 |-----------|--------------|-------|
 | **Nexus Service** | `nexus service Name:` | Top-level; holds operations |
-| **Async Operation** | `async OpName workflow WorkflowName` | One-liner; delegates to a named workflow |
+| **Async Operation** | `async OpName workflow WorkflowName` | One-liner; delegates to a named workflow, which needs an `id_scheme:` (the start may be retried) |
 | **Sync Operation** | `sync OpName(params) -> (Type):` | Inline body, workflow statement set |
 | **Service Registration** | `nexus service Name` (in `worker`) | The worker that serves it |
 | **Nexus Endpoint** | `nexus endpoint Name` (in `namespace`) | Requires `task_queue`; a worker on that queue **in the endpoint's namespace** must register the service |

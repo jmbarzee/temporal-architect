@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/parser"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/resolver"
 )
@@ -242,5 +243,106 @@ nexus service Svc:
 				t.Errorf("got %d:%d %q, want %d:%d containing %q", e.Line, e.Column, e.Msg, tt.line, tt.col, tt.msg)
 			}
 		})
+	}
+}
+
+func TestNexusRunWithoutIDScheme(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  bool
+	}{
+		{"backing workflow without a scheme", `
+workflow Q(a: A):
+    close complete()
+
+nexus service Svc:
+    async Run workflow Q
+`, true},
+		{"backing workflow with a scheme", `
+workflow Q(a: A):
+    id_scheme: "q-{a.id}"
+    close complete()
+
+nexus service Svc:
+    async Run workflow Q
+`, false},
+		{"external backing workflow", `
+import "github.com/ext/lib"
+
+nexus service Svc:
+    async Run workflow lib.Remote
+`, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			errs := Validate(mustParseAndResolve(t, tt.input))
+			if got := hasKind(errs, ErrNexusRunWithoutIDScheme, "warning"); got != tt.want {
+				t.Errorf("NEXUS_RUN_WITHOUT_ID_SCHEME present = %v, want %v: %v", got, tt.want, errs)
+			}
+		})
+	}
+}
+
+// TestIDPolicyAttribution pins that ID-policy diagnostics name the file that
+// holds the start or declaration, not the started workflow's file.
+func TestIDPolicyAttribution(t *testing.T) {
+	file := mustParseAndResolve(t, `
+workflow Q(a: A):
+    id_scheme: "q-{a.id}"
+    default_options:
+        workflow_id_conflict_policy: TERMINATE_EXISTING
+    close complete()
+
+workflow U(a: A):
+    default_options:
+        workflow_id_reuse_policy: ALLOW_DUPLICATE
+    close complete()
+
+workflow P(a: A):
+    workflow Q(a)
+    workflow U(a)
+        options:
+            workflow_id_reuse_policy: REJECT_DUPLICATE
+    close complete()
+
+nexus service Svc:
+    async Run workflow U
+    sync Op(a: A) -> (R):
+        workflow Q(a) -> r
+            options:
+                workflow_id_reuse_policy: REJECT_DUPLICATE
+        close complete(r)
+`)
+	files := map[string]string{"Q": "q.twf", "U": "u.twf", "P": "p.twf", "Svc": "svc.twf"}
+	for _, def := range file.Definitions {
+		switch d := def.(type) {
+		case *ast.WorkflowDef:
+			d.SourceFile = files[d.Name]
+		case *ast.NexusServiceDef:
+			d.SourceFile = files[d.Name]
+		}
+	}
+	type site struct {
+		kind ErrorKind
+		line int
+	}
+	want := map[site]string{
+		{ErrIDPolicyWithoutIDScheme, 10}:    "u.twf",   // U's own default
+		{ErrChildStartConflictMismatch, 14}: "p.twf",   // child start of Q in P
+		{ErrIDPolicyWithoutIDScheme, 17}:    "p.twf",   // reuse at P's start of U
+		{ErrNexusRunWithoutIDScheme, 21}:    "svc.twf", // async op backed by U
+		{ErrIDPolicyIncompatible, 25}:       "svc.twf", // sync-body start of Q
+	}
+	for _, e := range Validate(file) {
+		if f, ok := want[site{e.Kind, e.Line}]; ok {
+			if e.File != f {
+				t.Errorf("%s at line %d attributed to %q, want %q", e.Kind, e.Line, e.File, f)
+			}
+			delete(want, site{e.Kind, e.Line})
+		}
+	}
+	for s := range want {
+		t.Errorf("expected %s at line %d", s.kind, s.line)
 	}
 }

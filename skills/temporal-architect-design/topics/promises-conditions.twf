@@ -148,6 +148,7 @@ activity DoSlowWork(data: Data) -> (WorkResult):
     return slowWork(data)
 
 workflow BillingChargeWorkflow(payment: Payment) -> (PaymentResult):
+    id_scheme: "charge-{payment.id}"
     activity ChargeCard(payment) -> result
     close complete(PaymentResult{id: result.id})
 
