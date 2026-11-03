@@ -67,6 +67,7 @@ activity GetPaymentStatus(paymentId: string) -> (PaymentStatus):
     return lookup(paymentId)
 
 workflow TrackEventWorkflow(event: Event):
+    id_scheme: "event-{event.id}"
     activity RecordEvent(event)
     close complete
 

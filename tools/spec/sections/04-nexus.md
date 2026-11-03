@@ -25,6 +25,9 @@ sync_operation  ::= 'sync' IDENT params '->' return_type ':' NEWLINE
   Temporal client, so it takes `workflow_id_conflict_policy` and no `parent_close_policy` (see
   [Statement Syntax — Workflow Call](./06-statement-syntax.md#workflow-call)). Under
   `USE_EXISTING`, an async operation's caller attaches to the running workflow (server 1.27+).
+- **An async operation's backing workflow needs an `id_scheme:`.** Its start request may be
+  retried, so the workflow ID must derive from the operation's input; a backing workflow with no scheme is
+  `NEXUS_RUN_WITHOUT_ID_SCHEME` (warning).
 
 **Example:**
 ```

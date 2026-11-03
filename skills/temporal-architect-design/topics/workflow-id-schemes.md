@@ -4,7 +4,7 @@
 
 ## When a Type Needs a Scheme
 
-Give a workflow type an `id_scheme:` only when its ID must be **reconstructed later** — by a sender that did not start it, a starter that retries, or a client. Most types need none: a handle or the parent reconstructs nothing.
+Give a workflow type an `id_scheme:` only when its ID must be **reconstructed later** — by a sender that did not start it, a starter that retries, or a client. A Nexus run operation's backing workflow always needs one: its start request may be retried (`NEXUS_RUN_WITHOUT_ID_SCHEME`). Most other types need none: a handle or the parent reconstructs nothing.
 
 - Build the scheme from business keys (`"ship-{order.id}-{item.id}"`), so each start is idempotent and two entities never share an ID. A scheme with no holes is a singleton.
 - A type whose ID needs data its input lacks gets no scheme: add the key to the input.

@@ -13,6 +13,7 @@ nexus service OrderService:
     async PlaceOrder workflow ProcessOrder
 
 workflow ProcessOrder(order):
+    id_scheme: "order-{order.id}"
     activity ValidateOrder(order) -> checked
     close complete(checked)
 

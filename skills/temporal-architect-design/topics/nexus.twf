@@ -67,12 +67,14 @@ activity LookupPayment(paymentId: string) -> (PaymentStatus):
 # --- Target workflows ---
 
 workflow ProcessPaymentWorkflow(payment: Payment) -> (PaymentResult):
+    id_scheme: "payment-{payment.id}"
     activity ValidatePaymentDetails(payment)
     activity ChargePaymentMethod(payment) -> result
     activity RecordPaymentTransaction(result)
     close complete(PaymentResult{id: result.id})
 
 workflow SendConfirmationWorkflow(customer: Customer, paymentResult: PaymentResult):
+    id_scheme: "confirm-{paymentResult.id}"
     activity SendPaymentConfirmation(customer.email, paymentResult)
     close complete
 

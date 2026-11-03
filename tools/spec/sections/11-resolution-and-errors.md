@@ -103,6 +103,7 @@ Diagnostics for [`id_scheme:`](./01-workflows.md#id-scheme) and [addressed signa
 | `ID_POLICY_INCOMPATIBLE` | a client start would send `workflow_id_conflict_policy: TERMINATE_EXISTING` with `workflow_id_reuse_policy: REJECT_DUPLICATE` (rejected by Temporal server 1.27+, default config): from a workflow's `default_options:`, or a sync-nexus start's options merged over them | error |
 | `ID_POLICY_WITHOUT_ID_SCHEME` | a reuse or conflict policy for a workflow with no `id_scheme:` | hint |
 | `CHILD_START_CONFLICT_MISMATCH` | a child start of a schemed workflow whose default conflict policy is `USE_EXISTING` or `TERMINATE_EXISTING`, which a child start cannot carry | hint |
+| `NEXUS_RUN_WITHOUT_ID_SCHEME` | an `async` nexus operation's backing workflow has no `id_scheme:` | warning |
 
 An address on the send's own line (`signal X.Y() id: w`) is also `ADDRESS_MISPLACED`. A handler
 declaration after the first body statement is a targeted syntax error.
