@@ -24,6 +24,11 @@ in another package. The qualifier is bare for same-package symbols; a qualified 
 imported package that owns the symbol, and an unresolved (external) import makes qualified
 registrations resolve as external.
 
+A worker registers each type under its bare name: Temporal has no packages, and its SDKs key
+registrations by name. Two entries of one kind whose names match but whose packages differ
+(`workflow orders.Run` and `workflow billing.Run`) raise `WORKER_DUPLICATE_TYPE_NAME` at the later
+entry. Put them on workers polling different task queues.
+
 A `nexus service` entry registers the **whole** service — every operation it declares. A worker
 cannot register part of a service: Temporal workers register services, and Java and Python reject
 a service implementation missing any of its operations. An entry that names an operation
@@ -258,6 +263,8 @@ qualified registrations onto an instantiated worker count as *genuine* coverage:
 - The shared worker, being instantiated in the topology package's namespace, is not
   `UNINSTANTIATED_WORKER`.
 - A type that **nobody** registers still warns — the coverage signal is preserved, not suppressed.
+- Two domains' same-named types of one kind cannot share the worker: package qualifiers never reach
+  Temporal (`WORKER_DUPLICATE_TYPE_NAME`, see *Worker Definitions* above).
 
 Separately, coverage and call-routing diagnostics only run for an analysis that has a `namespace`
 (see [Resolution and Errors](./11-resolution-and-errors.md)): a symbols-only slice with no
@@ -343,6 +350,7 @@ The resolver validates workers, namespaces, and nexus definitions:
 - Workers on the same task queue (same deploy key, within a namespace) that both register nexus services but different ones produce errors. Only a worker registering a service polls the queue's Nexus tasks, so a worker registering none is not compared on services; a poller lacking a requested service fails the call with a non-retryable `NotFound`. Like the rest of coherence, this is a steady-state claim — it ignores worker-versioning rollouts
 - Workers on the same task queue (same deploy key, within a namespace) with identical workflow, activity, and service sets produce warnings (redundant)
 - A worker `nexus service` entry naming an operation produces an error (`WORKER_REGISTERS_OPERATION`)
+- A worker registering two workflows, two activities, or two nexus services with one name from different packages produces an error (`WORKER_DUPLICATE_TYPE_NAME`)
 - A nexus call originating in a namespace its endpoint's `allowed_caller_namespaces` omits produces an error (`NEXUS_CALLER_NOT_ALLOWED`)
 - Nexus endpoint routing to a task queue where no worker in the endpoint's namespace registers the service produces errors
 - Defined workflows/activities not on any instantiated worker produce warnings (when namespaces exist)

@@ -41,6 +41,7 @@ const (
 	ErrInstanceFamilyHostsNexusService
 	ErrInstanceFamilyVersioned
 	ErrNexusCallerNotAllowed
+	ErrWorkerDuplicateTypeName
 )
 
 // Error represents a validation error with position info.
@@ -129,6 +130,8 @@ func (k ErrorKind) String() string {
 		return "INSTANCE_FAMILY_HOSTS_NEXUS_SERVICE"
 	case ErrInstanceFamilyVersioned:
 		return "INSTANCE_FAMILY_VERSIONED"
+	case ErrWorkerDuplicateTypeName:
+		return "WORKER_DUPLICATE_TYPE_NAME"
 	}
 	return "UNKNOWN"
 }
@@ -247,8 +250,9 @@ func Validate(file *ast.File) []*Error {
 		}
 	}
 
-	// 1. Empty definition warnings.
+	// 1. Empty definition warnings, then registrations colliding by name.
 	v.checkEmptyDefinitions()
+	v.checkWorkerTypeNames(file.Definitions)
 
 	// 2. Task queue requirements.
 	v.checkTaskQueueRequirements()
@@ -329,6 +333,55 @@ func (v *validationCtx) checkEmptyDefinitions() {
 				File:     ns.SourceFile,
 			})
 		}
+	}
+}
+
+// checkWorkerTypeNames reports, per worker definition in order, two types of
+// one kind registered under one name from different packages. Temporal keys
+// registrations by name, and a package has no runtime meaning, so one worker
+// holds only one of them. Each collision reports at the later entry.
+func (v *validationCtx) checkWorkerTypeNames(defs []ast.Definition) {
+	for _, def := range defs {
+		w, ok := def.(*ast.WorkerDef)
+		if !ok {
+			continue
+		}
+		checkTypeNames(v, w, "workflow", w.Workflows)
+		checkTypeNames(v, w, "activity", w.Activities)
+		checkTypeNames(v, w, "nexus service", w.Services)
+	}
+}
+
+// checkTypeNames reports each of refs whose name an earlier ref of a
+// different type already registers on w. An unresolved ref is skipped: it is
+// external or already reported as undefined.
+func checkTypeNames[T interface {
+	comparable
+	ast.Packaged
+}](v *validationCtx, w *ast.WorkerDef, kind string, refs []ast.Ref[T]) {
+	var zero T
+	first := make(map[string]pkgKey)
+	for _, r := range refs {
+		if r.Resolved == zero {
+			continue
+		}
+		at := refKey(v, r)
+		prev, seen := first[r.Name]
+		if !seen {
+			first[r.Name] = at
+			continue
+		}
+		if prev == at {
+			continue
+		}
+		v.errs = append(v.errs, &Error{
+			Msg:    fmt.Sprintf("worker %s registers %s %s and %s %s under one name, %q; Temporal registers types by name, not package, so one worker can hold only one of them", w.Name, kind, ast.QualifiedName(prev.pkg, prev.name), kind, ast.QualifiedName(at.pkg, at.name), r.Name),
+			Line:   r.Line,
+			Column: r.Column,
+			Kind:   ErrWorkerDuplicateTypeName,
+			Name:   w.Name,
+			File:   w.SourceFile,
+		})
 	}
 }
 
