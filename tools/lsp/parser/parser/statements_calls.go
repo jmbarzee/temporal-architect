@@ -69,7 +69,7 @@ func parseActivityCall(p *Parser) (ast.Statement, error) {
 
 // parseWorkflowCall parses: WORKFLOW IDENT ARGS [ ARROW IDENT ] NEWLINE [ options_line ]
 func parseWorkflowCall(p *Parser) (ast.Statement, error) {
-	cp, err := parseCallParts(p, OptionsContextWorkflow)
+	cp, err := parseCallParts(p, p.workflowStartContext())
 	if err != nil {
 		return nil, err
 	}

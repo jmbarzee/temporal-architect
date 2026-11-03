@@ -2667,6 +2667,9 @@ func TestWorkflowDefaultOptionsRejectsParentClosePolicy(t *testing.T) {
 	if !strings.Contains(pe.Msg, "call-site-only option key") || !strings.Contains(pe.Msg, "parent_close_policy") {
 		t.Errorf("unexpected error message: %q", pe.Msg)
 	}
+	if pe.Code() != CodeOptionMisplaced {
+		t.Errorf("code = %s, want %s", pe.Code(), CodeOptionMisplaced)
+	}
 }
 
 func TestWorkflowDefaultOptionsRejectsCronSchedule(t *testing.T) {

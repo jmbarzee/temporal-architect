@@ -62,6 +62,7 @@ Load only what the current layer needs.
 |-----|----|------|
 | `workflow Name(...)` | workflow function | [workflow-def.md](./reference/workflow-def.md) |
 | `id_scheme: "..."` | ID function, called by every start and sender | [workflow-def.md](./reference/workflow-def.md#id_scheme) |
+| `workflow_id_reuse_policy` / `workflow_id_conflict_policy` | start-options function; child gets reuse only | [options.md](./reference/options.md#workflow-id-policies) |
 | `activity Name(...)` | activity function / method | [activity-def.md](./reference/activity-def.md) |
 | `worker`, namespace worker `options:` | `worker.New`, `worker.Options` | [worker.md](./reference/worker.md) |
 | `nexus service Name:` | Nexus service + handlers | [nexus-service-def.md](./reference/nexus-service-def.md) |

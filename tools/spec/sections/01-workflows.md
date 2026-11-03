@@ -22,7 +22,7 @@ type ::= IDENT | type '[' type ']' | type '{' ... '}'
 
 **Important:** The body opens in a fixed order: an optional `id_scheme:` line, an optional `default_options:` block, the state block, then signal/query/update declarations, then body statements. Each signal/query/update can only be declared once per workflow. Handler declarations end at the first body statement: a `signal`/`query`/`update` declaration after it is a targeted parse error. (A cross-workflow signal *send* may be the first body statement — see [Tokens and Keywords](./08-tokens-and-keywords.md) for how `signal` is disambiguated.)
 
-An optional `default_options:` block (see [Statement Syntax — Definition Default Options](./06-statement-syntax.md)) leads the workflow body (after any `id_scheme:` line), before the `state:` block. It supplies the call-option defaults (timeouts, id-reuse policy, retry policy, task queue, priority) for every call that starts this workflow; a call site's `options:` block overrides them per key. It appears above `state:` because a definition's defaults are its external invocation contract, which reads above its internal state.
+An optional `default_options:` block (see [Statement Syntax — Definition Default Options](./06-statement-syntax.md)) leads the workflow body (after any `id_scheme:` line), before the `state:` block. It supplies the call-option defaults (timeouts, id-reuse and id-conflict policy, retry policy, task queue, priority) for every call that starts this workflow; a call site's `options:` block overrides them per key, and each start uses the defaults its kind can carry. It appears above `state:` because a definition's defaults are its external invocation contract, which reads above its internal state.
 
 **Cross-package references.** In a workflow *call* (`workflow Name(args)`, and its `detach` /
 `promise` / `await` / `await one` variants), the callee name is a
@@ -68,6 +68,12 @@ workflow RateLimiter():
 - A type whose ID needs data its input lacks gets no scheme; the fix is adding the key to the input.
 - `close continue_as_new(...)` must pass the same values for the scheme's roots. The args are
   opaque, so this is a design rule, not a check.
+
+**Schemes and ID policies.** A scheme makes starts with the same inputs collide on one ID; the
+`workflow_id_reuse_policy` and `workflow_id_conflict_policy` options decide what a collision means
+(re-run, refuse, join, or replace — see [Statement Syntax](./06-statement-syntax.md#options-block)).
+Without a scheme no start in the design repeats an ID, so a policy there is
+`ID_POLICY_WITHOUT_ID_SCHEME`.
 
 Senders address a schemed workflow as described in
 [Cross-Workflow Signals](./13-cross-workflow-signals.md).

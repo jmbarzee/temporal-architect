@@ -293,7 +293,7 @@ func parseWorkflowCallOrNexus(p *Parser) (ast.Statement, error) {
 		p.advance()
 	}
 
-	options, err := p.parseOptionalOptionsLine(OptionsContextWorkflow)
+	options, err := p.parseOptionalOptionsLine(p.workflowStartContext())
 	if err != nil {
 		return nil, err
 	}

@@ -41,16 +41,15 @@ A child that fails (after its retries) fails the parent; shape that with the chi
 
 ## Workflow ID Design
 
-A start never writes an ID. When a child's ID must be reconstructed later, declare it on the child type's `id_scheme:` ([workflow-id-schemes.md](./workflow-id-schemes.md)); otherwise the SDK generates one. `workflow_id_reuse_policy` stays a call option:
+A start never writes an ID. When a child's ID must be reconstructed later, declare it on the child type's `id_scheme:` ([workflow-id-schemes.md](./workflow-id-schemes.md)); otherwise the SDK generates one. `workflow_id_reuse_policy` is set in the child type's `default_options:` or overridden at the start:
 
-| Policy | Behavior when the ID already exists |
-|--------|-------------------------------------|
+| Policy | Behavior when a *closed* execution has the ID |
+|--------|-----------------------------------------------|
 | `ALLOW_DUPLICATE` | Start a new execution |
-| `ALLOW_DUPLICATE_FAILED_ONLY` | Start a new execution only if the previous one failed |
+| `ALLOW_DUPLICATE_FAILED_ONLY` | Start a new execution only if the previous one did not complete successfully |
 | `REJECT_DUPLICATE` | Error |
-| `TERMINATE_IF_RUNNING` | Terminate the running one, start new |
 
-A schemed start is idempotent: starting a child whose ID is still running fails (`WorkflowExecutionAlreadyStarted`); for a closed one, the reuse policy decides.
+A schemed start is idempotent: starting a child whose ID is still running fails (`ChildWorkflowExecutionAlreadyStartedError` in Go); for a closed one, the reuse policy decides. A child start cannot join or replace a running execution: it takes no `workflow_id_conflict_policy`, and the type's default one does not apply to it (`CHILD_START_CONFLICT_MISMATCH`) — see [start collisions](./workflow-id-schemes.md#start-collisions).
 
 ## Decomposition and Testing
 

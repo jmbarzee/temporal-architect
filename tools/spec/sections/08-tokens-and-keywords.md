@@ -4,7 +4,7 @@
 
 **Async workflow operations:**
 - `promise` - Declare a non-blocking async operation (binds with `<-`)
-- `detach` - Fire-and-forget child workflow or nexus call
+- `detach` - Fire-and-forget workflow start or nexus call
 - `nexus` - Nexus service definition (top-level) or nexus call (in workflow body)
 - `await` - Wait for operations (`await timer`, `await signal`, `await all`, `await one`, `await <promise>`, `await <condition>`)
 - `all` - Wait for all operations (used with `await`)

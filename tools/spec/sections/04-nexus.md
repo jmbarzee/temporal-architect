@@ -20,6 +20,11 @@ sync_operation  ::= 'sync' IDENT params '->' return_type ':' NEWLINE
   is a [`qualified_ref`](./14-packages-and-imports.md) — it may carry an optional `pkg.` package
   qualifier when the workflow lives in another package.
 - **Sync operations** have a body using the workflow statement set (activities, queries, control flow, close)
+- **Starts from a nexus service are client starts.** An async operation starts its backing workflow
+  with that workflow's `default_options:`; a `workflow` start in a sync body goes through the
+  Temporal client, so it takes `workflow_id_conflict_policy` and no `parent_close_policy` (see
+  [Statement Syntax — Workflow Call](./06-statement-syntax.md#workflow-call)). Under
+  `USE_EXISTING`, an async operation's caller attaches to the running workflow (server 1.27+).
 
 **Example:**
 ```
