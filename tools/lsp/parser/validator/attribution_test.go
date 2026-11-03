@@ -145,11 +145,74 @@ func TestErrorFileIsReferenceSite(t *testing.T) {
 	}
 }
 
-// TestPositionlessErrorHasNoFile: a task queue coherence error has no position,
-// so no definition encloses it and File stays empty.
-func TestPositionlessErrorHasNoFile(t *testing.T) {
+// TestCallerFileFromHandlerAndSyncOp: a call in a workflow's handler body is
+// attributed to the workflow's file, and a call in a sync nexus operation body
+// to the service's file.
+func TestCallerFileFromHandlerAndSyncOp(t *testing.T) {
 	errs := Validate(mustMergeNamedAndResolve(t,
-		namedSource{"defs.twf", `workflow A(x: int) -> (int):
+		namedSource{"handlers.twf", `workflow Parent():
+    signal Kick():
+        activity Act(1)
+    close complete()
+`},
+		namedSource{"svc.twf", `nexus service Svc:
+    sync Op(x: int) -> (int):
+        activity Act(x) -> y
+            options:
+                task_queue: "act-q"
+        close complete(y)
+`},
+		namedSource{"targets.twf", `activity Act(x: int) -> (int):
+    return x
+`},
+		namedSource{"deploy.twf", `worker parentWorker:
+    workflow Parent
+
+worker svcWorker:
+    nexus service Svc
+
+worker actWorker:
+    activity Act
+
+namespace alpha:
+    worker parentWorker
+        options:
+            task_queue: "shared"
+    worker svcWorker
+        options:
+            task_queue: "svc-q"
+
+namespace beta:
+    worker actWorker
+        options:
+            task_queue: "shared"
+`},
+	))
+	for kind, file := range map[ErrorKind]string{
+		ErrImplicitRoutingMismatch: "handlers.twf",
+		ErrExplicitRoutingMismatch: "svc.twf",
+	} {
+		if countKind(errs, kind) == 0 {
+			t.Fatalf("no %s error; got %v", kind, errs)
+		}
+		for _, e := range errs {
+			if e.Kind == kind && e.File != file {
+				t.Errorf("%s %q: File = %q, want %q", kind, e.Msg, e.File, file)
+			}
+		}
+	}
+}
+
+// TestTaskQueueCoherenceAtLaterInstantiation pins issue #248: a coherence
+// error lands on the later of the two worker instantiations sharing a queue,
+// in the namespace's file — never on a definition that merely shares the
+// queue's name (workflow shared, in defs.twf).
+func TestTaskQueueCoherenceAtLaterInstantiation(t *testing.T) {
+	errs := Validate(mustMergeNamedAndResolve(t,
+		namedSource{"defs.twf", `workflow shared(x: int) -> (int):
+    return x
+
+workflow A(x: int) -> (int):
     return x
 
 workflow B(x: int) -> (int):
@@ -157,9 +220,14 @@ workflow B(x: int) -> (int):
 `},
 		namedSource{"deploy.twf", `worker first:
     workflow A
+    workflow shared
 
 worker second:
     workflow B
+
+worker third:
+    workflow A
+    workflow shared
 
 namespace ns:
     worker first
@@ -168,14 +236,29 @@ namespace ns:
     worker second
         options:
             task_queue: "shared"
+    worker third
+        options:
+            task_queue: "shared"
 `},
 	))
-	if countKind(errs, ErrTaskQueueMismatch) == 0 {
-		t.Fatalf("no TASK_QUEUE_MISMATCH error; got %v", errs)
+	tests := []struct {
+		kind ErrorKind
+		line int
+	}{
+		{ErrTaskQueueMismatch, 16},  // first vs second
+		{ErrTaskQueueIdentical, 19}, // first vs third
 	}
-	for _, e := range errs {
-		if e.Kind == ErrTaskQueueMismatch && e.File != "" {
-			t.Errorf("TASK_QUEUE_MISMATCH File = %q, want empty", e.File)
+	for _, tt := range tests {
+		if countKind(errs, tt.kind) != 1 {
+			t.Fatalf("want one %s error; got %v", tt.kind, errs)
+		}
+		for _, e := range errs {
+			if e.Kind != tt.kind {
+				continue
+			}
+			if e.File != "deploy.twf" || e.Line != tt.line || e.Column == 0 {
+				t.Errorf("%s at %s:%d:%d, want deploy.twf:%d", tt.kind, e.File, e.Line, e.Column, tt.line)
+			}
 		}
 	}
 }

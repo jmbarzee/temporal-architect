@@ -57,9 +57,9 @@ func ParseFiles(paths []string) (*ast.File, []Diagnostic, error) {
 	}
 
 	// Single-file mode: every resolve/validate diagnostic is attributable to
-	// the one input file. Multi-file mode: we can only attribute diagnostics
-	// keyed to a definition name (e.g. duplicate-X errors); the rest carry
-	// an empty file field and downstream tooling must rely on line/column.
+	// the one input file. Multi-file mode: resolve and validate errors carry
+	// their own reference-site file (#136, #238); one that does not falls back
+	// to the file of the definition its name points at, else stays empty.
 	defaultFile := ""
 	if len(files) == 1 {
 		defaultFile = filepath.Base(files[0])

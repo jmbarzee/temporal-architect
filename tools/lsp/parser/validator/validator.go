@@ -46,8 +46,7 @@ type Error struct {
 	// itself for an error about a definition. It is the reference-site file even
 	// when Name points at a symbol defined elsewhere, so consumers must prefer it
 	// over reverse-engineering the file from Name. Empty when the merge left that
-	// definition's SourceFile unstamped (e.g. a raw single-file parse) or the
-	// error has no position (TASK_QUEUE_IDENTICAL / TASK_QUEUE_MISMATCH).
+	// definition's SourceFile unstamped (e.g. a raw single-file parse).
 	File string
 }
 
@@ -356,12 +355,15 @@ func (v *validationCtx) checkCoverage() {
 
 // checkTaskQueueCoherence reports workers that share a (namespace, task queue)
 // pair. The namespace is keyed by deploy name, so two packages that each
-// declare the same namespace share its queues.
+// declare the same namespace share its queues. Each report is positioned on the
+// later of the two worker instantiations, in source order (issue #248).
 func (v *validationCtx) checkTaskQueueCoherence() {
 	type queueInfo struct {
 		workerName string
 		workflows  map[pkgKey]bool
 		activities map[pkgKey]bool
+		file       string // SourceFile of the namespace holding the instantiation
+		ast.Pos           // the worker instantiation inside that namespace
 	}
 	queueWorkers := make(map[placement][]queueInfo)
 	for _, ns := range v.namespaces {
@@ -387,6 +389,8 @@ func (v *validationCtx) checkTaskQueueCoherence() {
 				workerName: w.Name,
 				workflows:  wfSet,
 				activities: actSet,
+				file:       ns.SourceFile,
+				Pos:        nw.Pos,
 			})
 		}
 	}
@@ -394,20 +398,31 @@ func (v *validationCtx) checkTaskQueueCoherence() {
 		if len(infos) < 2 {
 			continue
 		}
+		// Namespaces come out of a map, so sort into source order: the first
+		// instantiation is the reference, each later one is where a report lands.
+		slices.SortFunc(infos, func(a, b queueInfo) int {
+			return cmp.Or(cmp.Compare(a.file, b.file), cmp.Compare(a.Line, b.Line), cmp.Compare(a.Column, b.Column))
+		})
 		first := infos[0]
 		for _, other := range infos[1:] {
 			if sameSet(first.workflows, other.workflows) && sameSet(first.activities, other.activities) {
 				v.errs = append(v.errs, &Error{
 					Msg:      fmt.Sprintf("workers %s and %s on task queue %q in namespace %s have identical type sets (redundant)", first.workerName, other.workerName, at.queue, at.namespace),
+					Line:     other.Line,
+					Column:   other.Column,
 					Severity: "warning",
 					Kind:     ErrTaskQueueIdentical,
 					Name:     at.queue,
+					File:     other.file,
 				})
 			} else {
 				v.errs = append(v.errs, &Error{
-					Msg:  fmt.Sprintf("workers %s and %s on task queue %q in namespace %s have different type sets", first.workerName, other.workerName, at.queue, at.namespace),
-					Kind: ErrTaskQueueMismatch,
-					Name: at.queue,
+					Msg:    fmt.Sprintf("workers %s and %s on task queue %q in namespace %s have different type sets", first.workerName, other.workerName, at.queue, at.namespace),
+					Line:   other.Line,
+					Column: other.Column,
+					Kind:   ErrTaskQueueMismatch,
+					Name:   at.queue,
+					File:   other.file,
 				})
 			}
 		}

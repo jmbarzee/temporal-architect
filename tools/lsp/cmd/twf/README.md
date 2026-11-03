@@ -286,7 +286,7 @@ Per command, exactly one of `definitions` / `symbols` / `graph` is present.
 | `severity` | string   | `"error"` or `"warning"`. Exit code is driven by errors only.                                    |
 | `kind`     | string   | `"parse"`, `"resolve"`, or `"validate"`. Identifies the producing pipeline stage.                 |
 | `code`     | string   | Symbolic, stable identifier within a kind. Adding new codes is non-breaking; renaming is breaking. |
-| `file`     | string   | Source-file basename. May be empty in multi-file mode when the diagnostic isn't tied to a definition. |
+| `file`     | string   | Source-file basename: the file holding the diagnostic's position. May be empty in multi-file mode when no definition encloses it. |
 | `start`    | Position | 1-based line/column. Always present.                                                              |
 | `end`      | Position | 1-based line/column. Currently `end == start` for resolve/validate diagnostics; precision will improve over time without changing the wire shape. |
 | `message`  | string   | Human-readable text. Subject to change; pin to `code` for programmatic dispatch.                  |
