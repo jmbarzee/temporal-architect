@@ -207,7 +207,9 @@ deployment is the caller). Async targets hanging off `await` / `promise` /
 `await one case` are visited through the AST walker's `WithAsyncTargets` option,
 so the resolution logic stays in one place. The walk runs **once per caller
 deployment**, and emits one edge per (caller deployment, matching callee
-deployment) pair.
+deployment) pair. A worker instantiated twice in one namespace is one node, so
+when both instantiations reach the same callee the edge is emitted once, and
+counts once toward coarsened weight.
 
 - **`activityCall` / `workflowCall` with explicit `task_queue:`** (on the call
   site, else the target's `default_options:`, spec 06) — matching
@@ -246,8 +248,8 @@ helps nobody. A malformed callee queue matches nothing.
 
 A call site whose reference didn't resolve (typo'd activity, unresolved signal
 handle, …) yields an `unresolved[]` entry instead of an edge — one per caller
-deployment, so unresolved async-backing targets fan out the same way real edges
-would.
+deployment node, so unresolved async-backing targets fan out the same way real
+edges would.
 
 ### Coarsened edges
 
