@@ -9,7 +9,7 @@ Code quality belongs in `.claude/skills/dev-cycle/references/review-quality-visu
 - `tools/visualizer/spec/TREE_VIEW.md` — Tree View spec (authoritative)
 - `tools/visualizer/spec/GRAPH_VIEW.md` — Graph View spec (authoritative)
 - `tools/visualizer/spec/` (all other files) — product patterns, view framework
-- `tools/visualizer/src/` — TypeScript implementation (target under review)
+- `tools/visualizer/src/` (the host) and `tools/graph-view/src/` (the graph engine) — TypeScript implementation (targets under review)
 - in-flight files in `internal/changes/parser/` — parser changes in flight that may affect data availability
 - All existing files in `internal/changes/visualizer/` — both `*_REVISIONS_*.md` and `CHANGES_*.md` — to avoid re-reporting known gaps or already-addressed issues
 
@@ -19,23 +19,26 @@ Code quality belongs in `.claude/skills/dev-cycle/references/review-quality-visu
 
 Briefly scan all spec files and the TypeScript source directory structure. Confirm the comparison units below still apply — add topics for new spec features, note any topics now unblocked by recent parser changes. Mark any topic that requires parser data not yet emitted as `blocked`.
 
-**Standard comparison units:**
+The engine owns GRAPH_VIEW.md § The model (its shapes), § Layout: Force-Directed Simulation, § Control Panel, § Edge Graduation and § Interaction States; the host owns § Data Flow: Two Views, Two Commands, § Graph Construction, the taxonomy in `adapter/`, and the tree view. Elsewhere the spec names each half inline.
+
+**Standard comparison units** (targets relative to `tools/visualizer/src/`; a `graph-view/` prefix means `tools/graph-view/src/`):
 
 | # | Topic | Source (spec) | Target (TypeScript) |
 |---|-------|---------------|---------------------|
-| 1 | Header & filter controls | TREE_VIEW.md §Header and filtering | `WorkflowCanvas.tsx`, `FilterBar.tsx`, `filter/` |
-| 2 | Block rendering & anatomy | TREE_VIEW.md §Block rendering | `DefinitionBlock.tsx`, `StatementBlock.tsx`, all block component files, `blocks.css` |
-| 3 | Definition types & color scheme | `PRODUCT.md` §Visual Identity; TREE_VIEW.md §Definition types | `temporal-theme.tsx`, `blocks.css` CSS variables |
-| 4 | Statement block routing & dispatch | TREE_VIEW.md §Statement types | `StatementBlock.tsx` dispatch logic + all specialized block files |
-| 5 | Call blocks with inline expansion | TREE_VIEW.md §Call blocks, §Cross-reference resolution | `CallBlocks.tsx`, `DefinitionContext` |
-| 6 | Await blocks & handler resolution | TREE_VIEW.md §Await blocks | `AwaitBlocks.tsx`, `HandlerContext` |
-| 7 | Workflow content (state, handlers, body sections) | TREE_VIEW.md §Workflow definition | `WorkflowContent.tsx` |
-| 8 | Keyboard navigation | TREE_VIEW.md §Keyboard Navigation | Event handlers in canvas + block components, focus ring styling |
-| 9 | Cross-reference reverse index & navigation | TREE_VIEW.md §Contextual navigation buttons | `ContextualNav.tsx`, `WorkflowCanvas.tsx` |
-| 10 | View framework & tab switching | `VIEW_FRAMEWORK.md` §View Model, §Shared Filter Vocabulary | `App.tsx`, `TreeView.tsx`, `GraphView.tsx`, view state management |
-| 11 | Error handling & display | TREE_VIEW.md §Errors header; `VIEW_FRAMEWORK.md` §Error Handling | `WorkflowCanvas.tsx`, `types/ast.ts` FileError |
-| 12 | Live reload & state preservation | `VIEW_FRAMEWORK.md` §Live Reload | Reload logic in `App.tsx`/`WorkflowCanvas.tsx` |
-| 13 | Graph view model, layout & interaction | `GRAPH_VIEW.md` | `GraphView.tsx`, `components/graph-view/`, `graph/` |
+| 1 | Header & filter controls | TREE_VIEW.md §Header and filtering | `components/TreeView.tsx`, `graph-view/components/FilterBar.tsx`, `graph-view/filter/` |
+| 2 | Block rendering & anatomy | TREE_VIEW.md §Block rendering | `components/blocks/`: `DefinitionBlock.tsx`, `StatementBlock.tsx`, every block file, `blocks.css` |
+| 3 | Definition types & color scheme | `PRODUCT.md` §Visual Identity; TREE_VIEW.md §Definition types | `theme/temporal-theme.tsx`, `components/blocks/blocks.css` CSS variables, `adapter/node-types.ts` |
+| 4 | Statement block routing & dispatch | TREE_VIEW.md §Statement types | `components/blocks/StatementBlock.tsx` dispatch logic + every specialized block file |
+| 5 | Call blocks with inline expansion | TREE_VIEW.md §Call blocks, §Cross-reference resolution | `components/blocks/CallBlocks.tsx`, `DefinitionContext` (`components/WorkflowCanvas.tsx`) |
+| 6 | Await blocks & handler resolution | TREE_VIEW.md §Await blocks | `components/blocks/AwaitBlocks.tsx`, `HandlerContext` (`components/WorkflowCanvas.tsx`) |
+| 7 | Workflow content (state, handlers, body sections) | TREE_VIEW.md §Workflow (`workflowDef`) | `components/blocks/WorkflowContent.tsx` |
+| 8 | Keyboard navigation | TREE_VIEW.md §Keyboard Navigation | Key handlers in `components/TreeView.tsx` + block components, focus ring styling |
+| 9 | Cross-reference reverse index & navigation | TREE_VIEW.md §Contextual navigation buttons | `components/blocks/ContextualNav.tsx`, `components/WorkflowCanvas.tsx` |
+| 10 | View framework & tab switching | `VIEW_FRAMEWORK.md` §View Model, §View Transitions, §Unified Filter Bar | `components/WorkflowCanvas.tsx`, `components/TreeView.tsx`, `graph-view/components/GraphView.tsx`, `graph-view/components/graph-view/useLinkedViews.ts`, `graph-view/filter/` |
+| 11 | Error handling & display | TREE_VIEW.md §Error and warning bars; `VIEW_FRAMEWORK.md` §Error Handling | `components/ErrorBars.tsx`, `types/ast.ts` FileError |
+| 12 | Live reload & state preservation | `VIEW_FRAMEWORK.md` §Live Reload | Reload logic in `components/VisualizerHost.tsx`/`components/WorkflowCanvas.tsx` |
+| 13 | Graph view model, layout & interaction (engine) | GRAPH_VIEW.md, the engine's sections | `graph-view/components/` (`GraphView.tsx`, `GraphCanvas.tsx`, `GraphControlPanel.tsx`, `controls/`, `graph-view/`), `graph-view/graph/`, `graph-view/filter/` |
+| 14 | Graph construction & taxonomy (host) | GRAPH_VIEW.md, the host's sections; §Decomposition Group Overlay | `adapter/`, `components/GroupsModal.tsx` |
 
 ### Phase 2: Parallel Alignment
 
