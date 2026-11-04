@@ -60,3 +60,19 @@ jobs:
           make pack-visualizer-lib
           make pack-graph-view-lib
           make pack-wire-types
+
+  corpus:
+    name: Corpus (${{ matrix.sdk }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        sdk: [go]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: tools/lsp/go.mod
+
+      - run: make corpus-${{ matrix.sdk }}
