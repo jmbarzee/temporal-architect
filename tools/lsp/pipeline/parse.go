@@ -103,6 +103,9 @@ type Result struct {
 	Diagnostics  []Diagnostic
 	ResolveErrs  []*resolver.ResolveError
 	ValidateErrs []*validator.Error
+	// Excluded holds the files the file-level exclusions dropped, spelled as
+	// their diagnostics name them.
+	Excluded map[string]bool
 }
 
 // ParseSources is the multi-source entry point behind ParseFiles and
@@ -284,8 +287,10 @@ func parseSources(sources []source, defaultFile string, x *expander) Result {
 
 	// Merge the kept files. A package's identity is its import path.
 	var kept []ast.StampInput
+	excluded := map[string]bool{}
 	for _, p := range files {
 		if p.excluded {
+			excluded[p.src.base] = true
 			continue
 		}
 		in := ast.StampInput{File: p.file, SourceFile: p.src.base, Module: p.modPath}
@@ -356,7 +361,7 @@ func parseSources(sources []source, defaultFile string, x *expander) Result {
 		diags = append(diags, FromValidateError(e, e.File))
 	}
 
-	return Result{File: merged, Diagnostics: diags, ResolveErrs: resolveErrs, ValidateErrs: validateErrs}
+	return Result{File: merged, Diagnostics: diags, ResolveErrs: resolveErrs, ValidateErrs: validateErrs, Excluded: excluded}
 }
 
 // lessDiag orders diagnostics of one phase by input position of their file,

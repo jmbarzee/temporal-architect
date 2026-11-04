@@ -127,12 +127,16 @@ func (s *sources) open(file string) source {
 	return src
 }
 
+func (s *sources) closedURI(file string) string {
+	return closedURI(s.store.Folders(), file)
+}
+
 // closedURI is the URI of a closed file, spelled through the deepest workspace
 // folder it is under as the client spells that folder, not by its canonical
 // path.
-func (s *sources) closedURI(file string) string {
+func closedURI(folders []string, file string) string {
 	uri, depth := pathToURI(file), -1
-	for _, f := range s.store.Folders() {
+	for _, f := range folders {
 		c := filepath.ToSlash(pipeline.Canonicalize(f))
 		if rest, ok := strings.CutPrefix(file, c+"/"); ok && len(c) > depth {
 			uri, depth = pathToURI(strings.TrimSuffix(filepath.ToSlash(f), "/")+"/"+rest), len(c)

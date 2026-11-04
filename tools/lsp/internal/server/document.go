@@ -31,6 +31,9 @@ type Document struct {
 	// run is the merged AST of the buffer's workspace run, nil without one.
 	// References, rename and definition use it to reach other files.
 	run *ast.File
+	// elsewhere are the run's diagnostics this buffer's analysis publishes on
+	// other files (see moduleDiagnostics).
+	elsewhere []pipeline.Diagnostic
 }
 
 // analyze parses, resolves, and validates the document content.
@@ -48,11 +51,16 @@ type Document struct {
 // filtered to the buffer's canonical identity: what `twf check <module root>
 // <folder> <dir> <file>` would report once the buffers are saved. A buffer
 // whose whole module is excluded also gets that module's error at its 1:1.
-// The merged AST never becomes doc.File; it is kept as doc.run. If
-// the inputs cannot be read, the buffer keeps its single-buffer diagnostics.
+// What the run reports on other files that explains the buffer's is kept as
+// doc.elsewhere. The merged AST never becomes doc.File; it is kept as doc.run.
+// If the inputs cannot be read, the buffer keeps its single-buffer diagnostics.
+//
+// A buffer with no file is checked alone, as an MCP inline source is: outside
+// every module, so a package clause is PACKAGE_OUTSIDE_MODULE and drops it.
 func (d *Document) analyze(folders []string, overlays map[string]string, runs map[string]analysis) {
 	d.File = nil
 	d.run = nil
+	d.elsewhere = nil
 	d.sourceFile = ""
 	d.ParseErrs = nil
 	d.ResolveErrs = nil
@@ -82,20 +90,24 @@ func (d *Document) analyze(folders []string, overlays map[string]string, runs ma
 			}
 		}
 	}
+	isolated := ast.Stamp([]ast.StampInput{in})
 	if len(f.Definitions) > 0 {
-		isolated := ast.Stamp([]ast.StampInput{in})
 		d.ResolveErrs = resolver.Resolve(isolated)
 		d.ValidateErrs = validator.Validate(isolated)
 	}
 
 	if bufPath == "" {
+		if res, err := pipeline.ParseSources(pipeline.Request{Virtual: []pipeline.Source{{Name: "input.twf", Content: d.Content}}}); err == nil {
+			d.ResolveErrs, d.ValidateErrs = res.ResolveErrs, res.ValidateErrs
+		}
 		return
 	}
 	var inputs []pipeline.Input
 	if modRoot != "" {
 		inputs = append(inputs, pipeline.Input{Path: modRoot, Kind: pipeline.Tree})
 	}
-	if home := homeFolder(folders, canon); home != "" && home != modRoot {
+	home := homeFolder(folders, canon)
+	if home != "" && home != modRoot {
 		inputs = append(inputs, pipeline.Input{Path: home, Kind: pipeline.Tree})
 	}
 	inputs = append(inputs, pipeline.Input{Path: filepath.Dir(canon), Kind: pipeline.Dir})
@@ -109,6 +121,9 @@ func (d *Document) analyze(folders []string, overlays map[string]string, runs ma
 	run, ok := runs[key]
 	if !ok {
 		run.res, run.err = pipeline.ParseSources(pipeline.Request{Inputs: inputs, Overlays: overlays, Mode: pipeline.Canonical})
+		if run.err == nil {
+			editorHints(run.res, folders)
+		}
 		runs[key] = run
 	}
 	if run.err != nil {
@@ -119,6 +134,11 @@ func (d *Document) analyze(folders []string, overlays map[string]string, runs ma
 	if modRoot != "" {
 		d.ResolveErrs = append(d.ResolveErrs, lostModuleErrs(run.res, modRoot)...)
 	}
+	pkg := "" // the default package is not listed
+	if len(isolated.Packages) == 1 {
+		pkg = isolated.Packages[0].ID
+	}
+	d.elsewhere = moduleDiagnostics(run.res, d.sourceFile, pkg, filepath.Dir(canon), modRoot, home)
 }
 
 // lostModuleErrs copies to the buffer's 1:1 the error that excluded its whole
@@ -168,6 +188,13 @@ type DocumentStore struct {
 	// edits counts edits, so the most recently edited of two buffers with one
 	// identity supplies its text. Guarded by mu.
 	edits int
+	// overlays are the open `file:` buffers' texts by canonical path, as the
+	// last analysis read them. Guarded by mu.
+	overlays map[string]string
+	// published are the URIs last published with diagnostics. Guarded by mu.
+	published map[string]bool
+	// outside is the watch on twf.mod files outside every folder. Guarded by mu.
+	outside outsideWatch
 }
 
 // SetFolders records the workspace folders' filesystem paths. Safe for
@@ -235,10 +262,19 @@ func (s *DocumentStore) reanalyze() {
 			overlays[pipeline.Canonicalize(p)] = d.Content
 		}
 	}
+	s.overlays = overlays
 	runs := map[string]analysis{}
 	for _, d := range docs {
 		d.analyze(s.folders, overlays, runs)
 	}
+}
+
+// Overlays returns the open `file:` buffers' texts by canonical path. Safe for
+// concurrent use; the map must not be modified.
+func (s *DocumentStore) Overlays() map[string]string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.overlays
 }
 
 // Folders returns the workspace folders. Safe for concurrent use.
