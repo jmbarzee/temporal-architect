@@ -18,6 +18,8 @@ worker orderWorker:
     activity payments.ChargeCard
 ```
 
+Start the module once, at the design's root: `twf mod init github.com/acme/shop` there makes `orders/` the package `github.com/acme/shop/orders` imported above. Without that `twf.mod`, every packaged file is `PACKAGE_OUTSIDE_MODULE` and ignored.
+
 A clause-less file is the implicit default package, so single-package designs need none of this. Modules, import paths, assumed names, `/vN` stripping, and aliases: [packages topic](../topics/packages.md) and `twf spec packages-and-imports`; resolution errors: [common-errors.md](./common-errors.md#packages-imports-and-external-references).
 
 ## Impl-link header
