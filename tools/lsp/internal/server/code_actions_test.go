@@ -139,7 +139,7 @@ func TestIndentUnit(t *testing.T) {
 		{"two spaces", []string{"# c", "workflow W():", "  close complete"}, "  "},
 		{"tab", []string{"workflow W():", "\tclose complete"}, "\t"},
 		{"skips indented comments and blank lines", []string{"workflow W():", "", "\t\t# c", "\tclose complete"}, "\t"},
-		{"none indented", []string{"workflow W():"}, "    "},
+		{"none indented", []string{"workflow W():"}, "\t"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

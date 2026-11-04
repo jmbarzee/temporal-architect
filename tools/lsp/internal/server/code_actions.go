@@ -79,19 +79,19 @@ func addMissingDefinitionActions(doc *Document, params *protocol.CodeActionParam
 			var def string
 			if kind == "activity" {
 				if returnType != "" {
-					def = fmt.Sprintf("\nactivity %s(%s) -> (%s):\n    # TODO: implement\n    return result\n", name, params, returnType)
+					def = fmt.Sprintf("\nactivity %s(%s) -> (%s):\n\t# TODO: implement\n\treturn result\n", name, params, returnType)
 				} else {
-					def = fmt.Sprintf("\nactivity %s(%s):\n    # TODO: implement\n", name, params)
+					def = fmt.Sprintf("\nactivity %s(%s):\n\t# TODO: implement\n", name, params)
 				}
 			} else {
 				if returnType != "" {
-					def = fmt.Sprintf("\nworkflow %s(%s) -> (%s):\n    # TODO: implement\n    close complete(result)\n", name, params, returnType)
+					def = fmt.Sprintf("\nworkflow %s(%s) -> (%s):\n\t# TODO: implement\n\tclose complete(result)\n", name, params, returnType)
 				} else {
-					def = fmt.Sprintf("\nworkflow %s(%s):\n    # TODO: implement\n    close complete\n", name, params)
+					def = fmt.Sprintf("\nworkflow %s(%s):\n\t# TODO: implement\n\tclose complete\n", name, params)
 				}
 			}
 
-			def = strings.ReplaceAll(def, "\n    ", "\n"+indentUnit(lines))
+			def = strings.ReplaceAll(def, "\n\t", "\n"+indentUnit(lines))
 
 			// Insert at end of file
 			end := position(lines, len(lines), len(lines[len(lines)-1])+1)
@@ -228,7 +228,8 @@ func findReturnStatements(stmts []ast.Statement) []*ast.ReturnStmt {
 }
 
 // indentUnit is the file's own indentation step: the leading whitespace of
-// its first indented line, or four spaces when no line is indented.
+// its first indented line, or a tab, the canonical style, when no line is
+// indented.
 func indentUnit(lines []string) string {
 	for _, l := range lines {
 		body := strings.TrimLeft(l, " \t")
@@ -237,5 +238,5 @@ func indentUnit(lines []string) string {
 		}
 		return l[:len(l)-len(body)]
 	}
-	return "    "
+	return "\t"
 }
