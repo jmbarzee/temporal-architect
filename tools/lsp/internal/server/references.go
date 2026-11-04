@@ -4,6 +4,8 @@ import (
 	"github.com/jmbarzee/glsp"
 	protocol "github.com/jmbarzee/glsp/protocol_3_16"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/lexer"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/token"
 )
 
 func referencesHandler(store *DocumentStore) protocol.TextDocumentReferencesFunc {
@@ -47,11 +49,12 @@ func occurrenceAt(store *DocumentStore, uri string, cursor protocol.Position) (f
 		return nil, nil, occurrence{}, false
 	}
 	lines := doc.lines()
+	src := newSources(store, uri)
 	for _, f := range []*ast.File{doc.run, doc.File} {
 		if f == nil {
 			continue
 		}
-		occs = occurrences(f)
+		occs = occurrences(f, src)
 		for _, o := range occs {
 			if o.file != doc.sourceFile || o.Line-1 != int(cursor.Line) {
 				continue
@@ -66,8 +69,16 @@ func occurrenceAt(store *DocumentStore, uri string, cursor protocol.Position) (f
 }
 
 // occurrences lists every declared name in file and every reference to one.
-func occurrences(file *ast.File) []occurrence {
+// src gives the text of each source file, where an endpoint's
+// allowed_caller_namespaces entries are found.
+func occurrences(file *ast.File, src *sources) []occurrence {
 	var x indexer
+	namespaces := map[string]*ast.NamespaceDef{} // by name, the first of each
+	for _, def := range file.Definitions {
+		if ns, ok := def.(*ast.NamespaceDef); ok && namespaces[ns.Name] == nil {
+			namespaces[ns.Name] = ns
+		}
+	}
 	for _, def := range file.Definitions {
 		switch d := def.(type) {
 		case *ast.WorkflowDef:
@@ -126,6 +137,7 @@ func occurrences(file *ast.File) []occurrence {
 			for i := range d.Endpoints {
 				ep := &d.Endpoints[i]
 				x.decl(ep, ep.NamePos, ep.EndpointName)
+				x.callers(ep, src.open(x.file).lines, namespaces)
 			}
 		}
 	}
@@ -146,6 +158,29 @@ func (x *indexer) add(pos ast.Pos, name string, decl ast.Node, isDecl bool) {
 
 func (x *indexer) decl(n ast.Node, pos ast.Pos, name string) {
 	x.add(pos, name, n, true)
+}
+
+// callers records each allowed_caller_namespaces entry of ep that spells a
+// namespace's name as a reference to it, at the text inside its quotes. The
+// AST keeps no entry positions, so they are found by lexing the entry's line.
+func (x *indexer) callers(ep *ast.NamespaceEndpoint, lines []string, namespaces map[string]*ast.NamespaceDef) {
+	if ep.Options == nil {
+		return
+	}
+	for _, e := range ep.Options.Entries {
+		if e.Key != "allowed_caller_namespaces" || e.Line < 1 || e.Line > len(lines) || e.Column < 1 {
+			continue
+		}
+		line := lines[e.Line-1]
+		start := min(e.Column-1, len(line))
+		for _, tok := range lexer.New(line[start:]).AllTokens() {
+			ns := namespaces[tok.Literal]
+			if tok.Type != token.STRING || ns == nil || line[start+tok.Offset+1:start+tok.End-1] != tok.Literal {
+				continue // an escape spells the name otherwise
+			}
+			x.add(ast.Pos{Line: e.Line, Column: start + tok.Offset + 2}, tok.Literal, ns, false)
+		}
+	}
 }
 
 // refOcc records a reference, keeping an unresolved one's decl a nil

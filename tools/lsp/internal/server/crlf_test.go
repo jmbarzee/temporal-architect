@@ -1,7 +1,6 @@
 package server
 
 import (
-	"regexp"
 	"strings"
 	"testing"
 
@@ -11,41 +10,56 @@ import (
 // crlf is src with every line ending `\r\n`.
 func crlf(src string) string { return strings.ReplaceAll(src, "\n", "\r\n") }
 
-// bareLF matches a `\n` with no `\r` before it.
-var bareLF = regexp.MustCompile(`(^|[^\r])\n`)
-
-// TestAddMissingDefinitionKeepsCRLF: on a CRLF buffer the stub's lines end in
-// `\r\n`, and the result parses and resolves the call.
-func TestAddMissingDefinitionKeepsCRLF(t *testing.T) {
-	src := crlf("workflow W():\n    workflow Missing(x)\n    close complete\n")
-	at := protocol.Position{Line: 1, Character: 4}
-	actions := codeActions(t, src, protocol.Range{Start: at, End: at}, "Add missing workflow 'Missing'")
-	if len(actions) != 1 {
-		t.Fatalf("want one action, got %+v", actions)
+// TestAddMissingDefinitionKeepsLineEnding: the stub's lines end the way the
+// buffer's last line does, and the result parses and resolves the call.
+func TestAddMissingDefinitionKeepsLineEnding(t *testing.T) {
+	tests := []struct{ name, src, eol string }{
+		{"CRLF", crlf("workflow W():\n    workflow Missing(x)\n    close complete\n"), "\r\n"},
+		{"LF, then CRLF last", "workflow W():\n    workflow Missing(x)\r\n    close complete\r\n", "\r\n"},
+		{"CRLF, then LF last", "workflow W():\r\n    workflow Missing(x)\r\n    close complete\n", "\n"},
 	}
-	got := applyEdits(t, src, actions[0].Edit.Changes[renameURI])
-	if bareLF.MatchString(got) {
-		t.Errorf("stub has a bare \\n:\n%q", got)
-	}
-	if doc := NewDocumentStore().Open(renameURI, got); len(doc.ParseErrs)+len(doc.ResolveErrs) > 0 {
-		t.Errorf("result is not clean: %v %v\n%q", doc.ParseErrs, doc.ResolveErrs, got)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			at := protocol.Position{Line: 1, Character: 4}
+			actions := codeActions(t, tt.src, protocol.Range{Start: at, End: at}, "Add missing workflow 'Missing'")
+			if len(actions) != 1 {
+				t.Fatalf("want one action, got %+v", actions)
+			}
+			stub := actions[0].Edit.Changes[renameURI][0].NewText
+			if lf := strings.ReplaceAll(stub, "\r\n", "\n"); strings.Contains(lf, "\r") || strings.ReplaceAll(lf, "\n", tt.eol) != stub {
+				t.Errorf("stub does not end its lines in %q: %q", tt.eol, stub)
+			}
+			got := applyEdits(t, tt.src, actions[0].Edit.Changes[renameURI])
+			if doc := NewDocumentStore().Open(renameURI, got); len(doc.ParseErrs)+len(doc.ResolveErrs) > 0 {
+				t.Errorf("result is not clean: %v %v\n%q", doc.ParseErrs, doc.ResolveErrs, got)
+			}
+		})
 	}
 }
 
 // TestConvertReturnToCloseKeepsCRLF: the rewrite on a CRLF line replaces the
-// statement and keeps its `\r\n`.
+// statement and keeps its `\r\n`, inside a value over several lines too.
 func TestConvertReturnToCloseKeepsCRLF(t *testing.T) {
-	const head = "workflow W() -> (Result):\n"
-	const tail = "\n    activity Do(x)\n\nactivity Do(x: string):\n    do(x)\n"
-	src := crlf(head + "    return x  # done" + tail)
-	at := protocol.Position{Line: 1, Character: 6}
-	actions := codeActions(t, src, protocol.Range{Start: at, End: at}, "Convert 'return' to 'close complete'")
-	if len(actions) != 1 {
-		t.Fatalf("want one action, got %+v", actions)
+	tests := []struct{ name, stmt, want string }{
+		{"one line", "    return x  # done", "    close complete(x)  # done"},
+		{"parenthesized value over two lines", "    return (a,\n        b)", "    close complete(a,\n        b)"},
+		{"call over two lines", "    return Pack(a,\n        b)  # done", "    close complete(Pack(a,\n        b))  # done"},
 	}
-	got := applyEdits(t, src, actions[0].Edit.Changes[renameURI])
-	if want := crlf(head + "    close complete(x)  # done" + tail); got != want {
-		t.Errorf("result:\n%q\nwant:\n%q", got, want)
+	const head = "workflow W() -> (Result):\n    activity Do(x)\n"
+	const tail = "\n\nactivity Do(x: string):\n    do(x)\n"
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			src := crlf(head + tt.stmt + tail)
+			at := protocol.Position{Line: 2, Character: 6}
+			actions := codeActions(t, src, protocol.Range{Start: at, End: at}, "Convert 'return' to 'close complete'")
+			if len(actions) != 1 {
+				t.Fatalf("want one action, got %+v", actions)
+			}
+			got := applyEdits(t, src, actions[0].Edit.Changes[renameURI])
+			if want := crlf(head + tt.want + tail); got != want {
+				t.Errorf("result:\n%q\nwant:\n%q", got, want)
+			}
+		})
 	}
 }
 

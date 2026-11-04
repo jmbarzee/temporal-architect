@@ -64,10 +64,10 @@ func splitLines(content string) []string {
 	return lines
 }
 
-// lineEnding is the line terminator content uses: `\r\n` if its first line
-// ends so, else `\n`.
+// lineEnding is the line terminator content uses where text is added at its
+// end: `\r\n` if its last line ending is, else `\n`.
 func lineEnding(content string) string {
-	if i := strings.IndexByte(content, '\n'); i > 0 && content[i-1] == '\r' {
+	if i := strings.LastIndexByte(content, '\n'); i > 0 && content[i-1] == '\r' {
 		return "\r\n"
 	}
 	return "\n"

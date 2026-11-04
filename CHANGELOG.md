@@ -374,8 +374,11 @@ is now checked against the target's signals.
   renamed type already registers for that kind.
 - **LSP:** rename refuses to add, drop or change a namespace's or endpoint's
   `{param}` template parameters: that changes the family, not just its name.
-- **LSP:** on a CRLF file the add-missing-definition stub ends its lines in
-  `\r\n`, and columns and ranges never count a `\r`.
+- **LSP:** renaming a namespace rewrites the `allowed_caller_namespaces`
+  entries that name it, and references list them.
+- **LSP:** quick-fix edits keep a CRLF buffer's `\r\n`: the
+  add-missing-definition stub, and a "Convert 'return'" whose value spans
+  lines. Columns and ranges never count a `\r`.
 - **MCP:** the `paths` and tool descriptions say each path may be a file or a
   directory.
 - **Visualizer:** "Show in Tree" on a nexus operation or endpoint scrolls to and
