@@ -710,9 +710,9 @@ type caller struct {
 // later ones. The empty-definition check runs on every declaration. Body-local
 // checks on a workflow, activity or nexus service body (ID policies on a
 // start) run on every body, kept or dropped, so the code the user wrote is
-// still checked. A dropped worker or namespace gets nothing more: the resolver
-// leaves its refs unresolved, so its placements and registrations are not
-// checked. Cross-definition checks, relating one definition to others
+// still checked. A dropped worker or namespace gets nothing more: its
+// registrations stay unresolved, and placement checks range only kept
+// namespaces. Cross-definition checks, relating one definition to others
 // (routing, linkage, allowlists, parent sends, coherence, overlaps), see only
 // the kept declaration: hence the filter here, keptWorkflows, and nsDefs.
 func (v *validationCtx) walkAllBodies(defs []ast.Definition) {
