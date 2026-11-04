@@ -64,8 +64,8 @@ Validate files; exit non-zero on error severity (text only)
 
 Validate TWF files; a directory expands to the .twf files beneath it. Prints
 diagnostics to stderr as human-readable text and exits non-zero if any
-diagnostic has severity "error". Text only — for
-structured diagnostics, use `twf parse`.
+diagnostic has severity "error". Text only — for structured diagnostics, use
+`twf parse`.
 
 ```
 twf check [flags] <file|dir...>
@@ -245,9 +245,9 @@ Emit the canonical JSON envelope (AST + diagnostics + summary)
 
 ### Synopsis
 
-Emit the canonical JSON envelope for one or more TWF files or directories. Always JSON;
-diagnostics ride inside the envelope alongside the AST. Exits 0 even on a
-partial parse; hard I/O errors exit non-zero.
+Emit the canonical JSON envelope for one or more TWF files or directories.
+Always JSON; diagnostics ride inside the envelope alongside the AST. Exits 0
+even on a partial parse; hard I/O errors exit non-zero.
 
 ```
 twf parse <file|dir...> [flags]

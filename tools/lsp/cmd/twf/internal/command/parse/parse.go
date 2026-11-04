@@ -18,9 +18,9 @@ func New() *cobra.Command {
 	return cmdutil.Silence(&cobra.Command{
 		Use:   "parse <file|dir...>",
 		Short: "Emit the canonical JSON envelope (AST + diagnostics + summary)",
-		Long: `Emit the canonical JSON envelope for one or more TWF files or directories. Always JSON;
-diagnostics ride inside the envelope alongside the AST. Exits 0 even on a
-partial parse; hard I/O errors exit non-zero.`,
+		Long: `Emit the canonical JSON envelope for one or more TWF files or directories.
+Always JSON; diagnostics ride inside the envelope alongside the AST. Exits 0
+even on a partial parse; hard I/O errors exit non-zero.`,
 		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmdutil.CodeToErr(run(args))

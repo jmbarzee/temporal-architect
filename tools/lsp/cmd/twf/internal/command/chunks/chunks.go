@@ -60,7 +60,7 @@ func run(paths []string, jsonOutput bool, ceiling, floor, maxDepth int, by strin
 	}
 
 	if len(paths) == 0 {
-		fmt.Fprintln(os.Stderr, "usage: twf graph chunks [--json] [--ceiling N] [--floor M] [--by tree,nexus,worker,namespace,service,subtree] <file...>")
+		fmt.Fprintln(os.Stderr, "usage: twf graph chunks [--json] [--ceiling N] [--floor M] [--by tree,nexus,worker,namespace,service,subtree] <file|dir...>")
 		return 1
 	}
 

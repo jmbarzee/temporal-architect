@@ -43,7 +43,7 @@ executions, use the sampler (which writes an observed-graph JSON directly).`,
 // under --json.
 func run(paths []string, jsonOutput bool) int {
 	if len(paths) == 0 {
-		fmt.Fprintln(os.Stderr, "usage: twf graph [--json] <file...>")
+		fmt.Fprintln(os.Stderr, "usage: twf graph [--json] <file|dir...>")
 		return 1
 	}
 

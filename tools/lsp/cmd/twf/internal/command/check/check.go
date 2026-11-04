@@ -20,8 +20,8 @@ func New() *cobra.Command {
 		Short: "Validate files; exit non-zero on error severity (text only)",
 		Long: `Validate TWF files; a directory expands to the .twf files beneath it. Prints
 diagnostics to stderr as human-readable text and exits non-zero if any
-diagnostic has severity "error". Text only — for
-structured diagnostics, use ` + "`twf parse`" + `.`,
+diagnostic has severity "error". Text only — for structured diagnostics, use
+` + "`twf parse`" + `.`,
 		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmdutil.CodeToErr(run(args, lenient))
