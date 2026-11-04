@@ -7,64 +7,28 @@ import (
 
 func renameHandler(store *DocumentStore) protocol.TextDocumentRenameFunc {
 	return func(context *glsp.Context, params *protocol.RenameParams) (*protocol.WorkspaceEdit, error) {
-		doc, ok := store.Get(params.TextDocument.URI)
-		if !ok || doc.File == nil {
+		occs, at, ok := occurrenceAt(store, params.TextDocument.URI, params.Position)
+		if !ok {
 			return nil, nil
 		}
-
-		line := int(params.Position.Line) + 1
-
-		node := findNodeAtLine(doc.File, line)
-		if node == nil {
-			return nil, nil
+		src := newSources(store, params.TextDocument.URI)
+		changes := map[string][]protocol.TextEdit{}
+		for _, o := range occs {
+			if o.decl == at.decl {
+				loc := src.location(o)
+				changes[loc.URI] = append(changes[loc.URI], protocol.TextEdit{Range: loc.Range, NewText: params.NewName})
+			}
 		}
-
-		name, kind := nameOfNode(node)
-		if name == "" {
-			return nil, nil
-		}
-
-		refs := collectReferences(doc.File, name, kind, true)
-		if len(refs) == 0 {
-			return nil, nil
-		}
-
-		var edits []protocol.TextEdit
-		for _, ref := range refs {
-			edits = append(edits, protocol.TextEdit{
-				Range:   nameRange(doc.Content, ref, name),
-				NewText: params.NewName,
-			})
-		}
-
-		return &protocol.WorkspaceEdit{
-			Changes: map[string][]protocol.TextEdit{
-				params.TextDocument.URI: edits,
-			},
-		}, nil
+		return &protocol.WorkspaceEdit{Changes: changes}, nil
 	}
 }
 
 func prepareRenameHandler(store *DocumentStore) protocol.TextDocumentPrepareRenameFunc {
 	return func(context *glsp.Context, params *protocol.PrepareRenameParams) (any, error) {
-		doc, ok := store.Get(params.TextDocument.URI)
-		if !ok || doc.File == nil {
+		_, at, ok := occurrenceAt(store, params.TextDocument.URI, params.Position)
+		if !ok {
 			return nil, nil
 		}
-
-		line := int(params.Position.Line) + 1
-
-		node := findNodeAtLine(doc.File, line)
-		if node == nil {
-			return nil, nil
-		}
-
-		name, kind := nameOfNode(node)
-		if name == "" || kind == "" {
-			return nil, nil
-		}
-
-		return nameRange(doc.Content, node, name), nil
+		return newSources(store, params.TextDocument.URI).location(at).Range, nil
 	}
 }
-

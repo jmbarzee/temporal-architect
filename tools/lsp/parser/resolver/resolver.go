@@ -904,7 +904,8 @@ func (s *state) readOperationMentions(w *ast.WorkerDef, wPkg string) {
 			continue
 		}
 		w.OperationMentions = append(w.OperationMentions, ast.OperationMention{Pos: ref.Pos, ServiceIndex: i, Op: ref.Name})
-		ref.Package, ref.Name = "", ref.Package
+		ref.Pos, ref.Name = ref.PackagePos, ref.Package
+		ref.Package, ref.PackagePos = "", ast.Pos{}
 	}
 }
 
@@ -1427,7 +1428,7 @@ func collectInto[T any](m map[pkgKey]T, key pkgKey, def T, kind string, errKind 
 // resolveQualifier; a same/imported-package name that is genuinely absent is an
 // undefined-reference error.
 func resolvePkgRef[T any](s *state, ownPkg string, ref *ast.Ref[T], defs map[pkgKey]T, kind string, errKind ErrorKind, file string) {
-	targetPkg, external, ok := s.resolveQualifier(ownPkg, ref.Package, ref.Line, ref.Column, file)
+	targetPkg, external, ok := s.resolveQualifier(ownPkg, ref.Package, ref.PackagePos.Line, ref.PackagePos.Column, file)
 	if !ok {
 		return
 	}

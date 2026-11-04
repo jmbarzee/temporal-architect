@@ -23,6 +23,7 @@ func parseNamespaceDef(p *Parser) (ast.Definition, error) {
 	ns := &ast.NamespaceDef{
 		Pos:            pos,
 		Name:           name.Literal,
+		NamePos:        posOf(name),
 		TemplateParams: nameParams,
 	}
 
@@ -54,7 +55,7 @@ func parseNamespaceDef(p *Parser) (ast.Definition, error) {
 			}
 			ns.Workers = append(ns.Workers, ast.NamespaceWorker{
 				Pos:     workerPos,
-				Worker:  ast.Ref[*ast.WorkerDef]{Pos: workerPos, Name: workerName.Literal},
+				Worker:  nameRef[*ast.WorkerDef](workerName),
 				Options: opts,
 			})
 
@@ -80,6 +81,7 @@ func parseNamespaceDef(p *Parser) (ast.Definition, error) {
 			ns.Endpoints = append(ns.Endpoints, ast.NamespaceEndpoint{
 				Pos:            epPos,
 				EndpointName:   epName.Literal,
+				NamePos:        posOf(epName),
 				TemplateParams: epParams,
 				Options:        opts,
 			})

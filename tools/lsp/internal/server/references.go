@@ -1,320 +1,219 @@
 package server
 
 import (
-	"strings"
-
-	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
 	"github.com/jmbarzee/glsp"
 	protocol "github.com/jmbarzee/glsp/protocol_3_16"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
 )
 
 func referencesHandler(store *DocumentStore) protocol.TextDocumentReferencesFunc {
 	return func(context *glsp.Context, params *protocol.ReferenceParams) ([]protocol.Location, error) {
-		doc, ok := store.Get(params.TextDocument.URI)
-		if !ok || doc.File == nil {
+		occs, at, ok := occurrenceAt(store, params.TextDocument.URI, params.Position)
+		if !ok {
 			return nil, nil
 		}
-
-		line := int(params.Position.Line) + 1
-
-		node := findNodeAtLine(doc.File, line)
-		if node == nil {
-			return nil, nil
-		}
-
-		name, kind := nameOfNode(node)
-		if name == "" {
-			return nil, nil
-		}
-
-		refs := collectReferences(doc.File, name, kind, params.Context.IncludeDeclaration)
-		if len(refs) == 0 {
-			return nil, nil
-		}
-
+		src := newSources(store, params.TextDocument.URI)
 		var locs []protocol.Location
-		for _, ref := range refs {
-			locs = append(locs, protocol.Location{
-				URI:   params.TextDocument.URI,
-				Range: nameRange(doc.Content, ref, name),
-			})
+		for _, o := range occs {
+			if o.decl == at.decl && (params.Context.IncludeDeclaration || !o.isDecl) {
+				locs = append(locs, src.location(o))
+			}
 		}
 		return locs, nil
 	}
 }
 
-// nameOfNode returns the name and kind ("workflow", "activity", "signal",
-// "query", "update", "nexus_service", "nexus_endpoint", "worker") for an AST node.
-// For references it follows the Resolved pointer to normalize to the definition identity.
-func nameOfNode(node ast.Node) (name, kind string) {
-	switch n := node.(type) {
-	case *ast.WorkflowDef:
-		return n.Name, "workflow"
-	case *ast.ActivityDef:
-		return n.Name, "activity"
-	case *ast.SignalDecl:
-		return n.Name, "signal"
-	case *ast.QueryDecl:
-		return n.Name, "query"
-	case *ast.UpdateDecl:
-		return n.Name, "update"
-	case *ast.NexusServiceDef:
-		return n.Name, "nexus_service"
-	case *ast.NamespaceEndpoint:
-		return n.EndpointName, "nexus_endpoint"
-	case *ast.WorkerDef:
-		return n.Name, "worker"
-	case *ast.Ref[*ast.WorkflowDef]:
-		return n.Name, "workflow"
-	case *ast.Ref[*ast.ActivityDef]:
-		return n.Name, "activity"
-	case *ast.Ref[*ast.NexusServiceDef]:
-		return n.Name, "nexus_service"
-	case *ast.NamespaceWorker:
-		return n.Worker.Name, "worker"
-	case *ast.NamespaceDef:
-		return n.Name, "namespace"
-	case *ast.ActivityCall:
-		if n.Activity.Resolved != nil {
-			return n.Activity.Resolved.Name, "activity"
-		}
-		return n.Activity.Name, "activity"
-	case *ast.WorkflowCall:
-		if n.Workflow.Resolved != nil {
-			return n.Workflow.Resolved.Name, "workflow"
-		}
-		return n.Workflow.Name, "workflow"
-	case *ast.SignalSendStmt:
-		if n.Head.Kind == ast.SendHeadType {
-			return n.Head.Type.Name, "workflow"
-		}
-	case *ast.NexusCall:
-		if n.Service.Resolved != nil {
-			return n.Service.Resolved.Name, "nexus_service"
-		}
-		return n.Service.Name, "nexus_service"
-	case *ast.AwaitStmt:
-		if n.Target != nil {
-			return nameOfAsyncTarget(n.Target)
-		}
-	case *ast.AwaitOneCase:
-		if n.Target != nil {
-			return nameOfAsyncTarget(n.Target)
-		}
-	}
-	return "", ""
+// occurrence is one spelling of a declared name: the declaration's own name
+// token, or a reference's.
+type occurrence struct {
+	file string // the source file, as its definition's SourceFile spells it
+	ast.Pos
+	name   string
+	decl   ast.Node // the declaration; nil for an unresolved reference
+	isDecl bool
 }
 
-// collectReferences walks the file and returns every node whose name and kind
-// match the target. When includeDecl is true the definition node is included.
-func collectReferences(file *ast.File, name, kind string, includeDecl bool) []ast.Node {
-	var refs []ast.Node
+// occurrenceAt finds the name under the cursor of the buffer at uri and
+// returns it with every occurrence in the AST that holds it: the buffer's
+// workspace run, so references reach other files and packages, else the
+// buffer's own AST. ok is false off a name or on an unresolved one.
+func occurrenceAt(store *DocumentStore, uri string, cursor protocol.Position) (occs []occurrence, at occurrence, ok bool) {
+	doc, found := store.Get(uri)
+	if !found {
+		return nil, occurrence{}, false
+	}
+	for _, f := range []*ast.File{doc.run, doc.File} {
+		if f == nil {
+			continue
+		}
+		occs = occurrences(f)
+		for _, o := range occs {
+			if o.file != doc.sourceFile || o.Line-1 != int(cursor.Line) {
+				continue
+			}
+			r := nameRange(doc.Content, o)
+			if r.Start.Character <= cursor.Character && cursor.Character <= r.End.Character {
+				return occs, o, o.decl != nil
+			}
+		}
+	}
+	return nil, occurrence{}, false
+}
 
+// occurrences lists every declared name in file and every reference to one.
+func occurrences(file *ast.File) []occurrence {
+	var x indexer
 	for _, def := range file.Definitions {
 		switch d := def.(type) {
 		case *ast.WorkflowDef:
-			if includeDecl && kind == "workflow" && d.Name == name {
-				refs = append(refs, d)
-			}
-			// Check embedded declarations.
-			if includeDecl {
-				for _, s := range d.Signals {
-					if kind == "signal" && s.Name == name {
-						refs = append(refs, s)
-					}
-				}
-				for _, q := range d.Queries {
-					if kind == "query" && q.Name == name {
-						refs = append(refs, q)
-					}
-				}
-				for _, u := range d.Updates {
-					if kind == "update" && u.Name == name {
-						refs = append(refs, u)
-					}
+			x.file = d.SourceFile
+			x.decl(d, d.NamePos, d.Name)
+			if d.State != nil {
+				for _, c := range d.State.Conditions {
+					x.decl(c, c.NamePos, c.Name)
 				}
 			}
-			// Walk handler bodies.
 			for _, s := range d.Signals {
-				refs = collectRefsInStmts(s.Body, name, kind, refs)
+				x.decl(s, s.NamePos, s.Name)
+				x.stmts(s.Body)
 			}
 			for _, q := range d.Queries {
-				refs = collectRefsInStmts(q.Body, name, kind, refs)
+				x.decl(q, q.NamePos, q.Name)
+				x.stmts(q.Body)
 			}
 			for _, u := range d.Updates {
-				refs = collectRefsInStmts(u.Body, name, kind, refs)
+				x.decl(u, u.NamePos, u.Name)
+				x.stmts(u.Body)
 			}
-			refs = collectRefsInStmts(d.Body, name, kind, refs)
-
+			x.stmts(d.Body)
 		case *ast.ActivityDef:
-			if includeDecl && kind == "activity" && d.Name == name {
-				refs = append(refs, d)
-			}
-			refs = collectRefsInStmts(d.Body, name, kind, refs)
-
+			x.file = d.SourceFile
+			x.decl(d, d.NamePos, d.Name)
+			x.stmts(d.Body)
 		case *ast.NexusServiceDef:
-			if includeDecl && kind == "nexus_service" && d.Name == name {
-				refs = append(refs, d)
-			}
-			// Walk sync operation bodies for nested references.
+			x.file = d.SourceFile
+			x.decl(d, d.NamePos, d.Name)
 			for _, op := range d.Operations {
-				if op.OpType == ast.NexusOpSync {
-					refs = collectRefsInStmts(op.Body, name, kind, refs)
+				x.decl(op, op.NamePos, op.Name)
+				if op.OpType == ast.NexusOpAsync {
+					refOcc(&x, op.Workflow)
 				}
+				x.stmts(op.Body)
 			}
-
 		case *ast.WorkerDef:
-			if includeDecl && kind == "worker" && d.Name == name {
-				refs = append(refs, d)
+			x.file = d.SourceFile
+			x.decl(d, d.NamePos, d.Name)
+			for _, r := range d.Workflows {
+				refOcc(&x, r)
 			}
-			// Worker refs reference workflows, activities, and nexus services.
-			for i := range d.Workflows {
-				ref := &d.Workflows[i]
-				if kind == "workflow" && ref.Name == name {
-					refs = append(refs, ref)
-				}
+			for _, r := range d.Activities {
+				refOcc(&x, r)
 			}
-			for i := range d.Activities {
-				ref := &d.Activities[i]
-				if kind == "activity" && ref.Name == name {
-					refs = append(refs, ref)
-				}
+			for _, r := range d.Services {
+				refOcc(&x, r)
 			}
-			for i := range d.Services {
-				ref := &d.Services[i]
-				if kind == "nexus_service" && ref.Name == name {
-					refs = append(refs, ref)
-				}
-			}
-
 		case *ast.NamespaceDef:
-			if includeDecl && kind == "namespace" && d.Name == name {
-				refs = append(refs, d)
+			x.file = d.SourceFile
+			x.decl(d, d.NamePos, d.Name)
+			for _, w := range d.Workers {
+				refOcc(&x, w.Worker)
 			}
-			// Check worker references.
-			if kind == "worker" {
-				for i := range d.Workers {
-					if d.Workers[i].Worker.Name == name {
-						refs = append(refs, &d.Workers[i])
-					}
-				}
-			}
-			// Check endpoint references.
-			if kind == "nexus_endpoint" {
-				for i := range d.Endpoints {
-					if d.Endpoints[i].EndpointName == name {
-						refs = append(refs, &d.Endpoints[i])
-					}
-				}
+			for i := range d.Endpoints {
+				ep := &d.Endpoints[i]
+				x.decl(ep, ep.NamePos, ep.EndpointName)
 			}
 		}
 	}
-	return refs
+	return x.out
 }
 
-func collectRefsInStmts(stmts []ast.Statement, name, kind string, refs []ast.Node) []ast.Node {
+type indexer struct {
+	file string
+	out  []occurrence
+}
+
+func (x *indexer) add(pos ast.Pos, name string, decl ast.Node, isDecl bool) {
+	if pos.Line > 0 {
+		x.out = append(x.out, occurrence{file: x.file, Pos: pos, name: name, decl: decl, isDecl: isDecl})
+	}
+}
+
+func (x *indexer) decl(n ast.Node, pos ast.Pos, name string) {
+	x.add(pos, name, n, true)
+}
+
+// refOcc records a reference, keeping an unresolved one's decl a nil
+// interface rather than a nil pointer.
+func refOcc[T interface {
+	comparable
+	ast.Node
+}](x *indexer, r ast.Ref[T]) {
+	var decl ast.Node
+	var zero T
+	if r.Resolved != zero {
+		decl = r.Resolved
+	}
+	x.add(r.Pos, r.Name, decl, false)
+}
+
+func (x *indexer) stmts(stmts []ast.Statement) {
 	ast.WalkStatements(stmts, func(s ast.Statement) bool {
 		switch n := s.(type) {
 		case *ast.ActivityCall:
-			if kind == "activity" && n.Activity.Name == name {
-				refs = append(refs, n)
-			}
+			refOcc(x, n.Activity)
 		case *ast.WorkflowCall:
-			if kind == "workflow" && n.Workflow.Name == name {
-				refs = append(refs, n)
-			}
+			refOcc(x, n.Workflow)
 		case *ast.SignalSendStmt:
-			if kind == "workflow" && n.Head.Kind == ast.SendHeadType && n.Head.Type.Name == name {
-				refs = append(refs, n)
+			if n.Head.Kind == ast.SendHeadType {
+				refOcc(x, n.Head.Type)
+			} else {
+				refOcc(x, n.Head.Handle)
 			}
+			var decl ast.Node
+			if wf := n.Target(); wf != nil {
+				for _, sig := range wf.Signals {
+					if sig.Name == n.Signal {
+						decl = sig
+					}
+				}
+			}
+			x.add(n.SignalPos, n.Signal, decl, false)
 		case *ast.NexusCall:
-			if kind == "nexus_service" && n.Service.Name == name {
-				refs = append(refs, n)
-			}
-			if kind == "nexus_endpoint" && n.Endpoint.Name == name {
-				refs = append(refs, n)
-			}
+			refOcc(x, n.Endpoint)
+			refOcc(x, n.Service)
+			refOcc(x, n.Operation)
+		case *ast.SetStmt:
+			refOcc(x, n.Condition)
+		case *ast.UnsetStmt:
+			refOcc(x, n.Condition)
+		case *ast.PromiseStmt:
+			x.decl(n, n.NamePos, n.Name)
 		}
 		return true
-	}, ast.WithAsyncTargets(func(target ast.AsyncTarget, parent ast.Statement) bool {
-		if matchesAsyncTarget(target, name, kind) {
-			refs = append(refs, parent)
+	}, ast.WithAsyncTargets(func(target ast.AsyncTarget, _ ast.Statement) bool {
+		switch t := target.(type) {
+		case *ast.SignalTarget:
+			refOcc(x, t.Signal)
+		case *ast.UpdateTarget:
+			refOcc(x, t.Update)
+		case *ast.ActivityTarget:
+			refOcc(x, t.Activity)
+		case *ast.WorkflowTarget:
+			refOcc(x, t.Workflow)
+		case *ast.NexusTarget:
+			refOcc(x, t.Endpoint)
+			refOcc(x, t.Service)
+			refOcc(x, t.Operation)
+		case *ast.IdentTarget:
+			var decl ast.Node
+			switch {
+			case t.Resolved.Promise != nil:
+				decl = t.Resolved.Promise
+			case t.Resolved.Condition != nil:
+				decl = t.Resolved.Condition
+			}
+			x.add(t.Pos, t.Name, decl, false)
 		}
 		return true
 	}))
-	return refs
-}
-
-// nameOfAsyncTarget returns the name and kind for an async target node.
-func nameOfAsyncTarget(target ast.AsyncTarget) (name, kind string) {
-	switch t := target.(type) {
-	case *ast.SignalTarget:
-		return t.Signal.Name, "signal"
-	case *ast.UpdateTarget:
-		return t.Update.Name, "update"
-	case *ast.ActivityTarget:
-		return t.Activity.Name, "activity"
-	case *ast.WorkflowTarget:
-		return t.Workflow.Name, "workflow"
-	case *ast.NexusTarget:
-		return t.Service.Name, "nexus_service"
-	}
-	return "", ""
-}
-
-// matchesAsyncTarget reports whether an async target matches the given name and kind.
-func matchesAsyncTarget(target ast.AsyncTarget, name, kind string) bool {
-	switch t := target.(type) {
-	case *ast.SignalTarget:
-		return kind == "signal" && t.Signal.Name == name
-	case *ast.UpdateTarget:
-		return kind == "update" && t.Update.Name == name
-	case *ast.ActivityTarget:
-		return kind == "activity" && t.Activity.Name == name
-	case *ast.WorkflowTarget:
-		return kind == "workflow" && t.Workflow.Name == name
-	case *ast.NexusTarget:
-		return (kind == "nexus_service" && t.Service.Name == name) ||
-			(kind == "nexus_endpoint" && t.Endpoint.Name == name)
-	}
-	return false
-}
-
-// nameRange returns an LSP range covering name's token on node's line. Most
-// nodes record only their keyword's column, so the name is found in content as
-// the first whole identifier spelled name at or after that column.
-func nameRange(content string, node ast.Node, name string) protocol.Range {
-	line := max(node.NodeLine()-1, 0)
-	col := max(node.NodeColumn()-1, 0)
-	if lines := strings.Split(content, "\n"); line < len(lines) {
-		if i := identIndex(lines[line], name, col); i >= 0 {
-			col = i
-		}
-	}
-	return protocol.Range{
-		Start: protocol.Position{Line: uint32(line), Character: uint32(col)},
-		End:   protocol.Position{Line: uint32(line), Character: uint32(col + len(name))},
-	}
-}
-
-// identIndex returns the byte index of the first whole identifier name in text
-// at or after from, or -1.
-func identIndex(text, name string, from int) int {
-	for name != "" && from <= len(text) {
-		i := strings.Index(text[from:], name)
-		if i < 0 {
-			return -1
-		}
-		i += from
-		end := i + len(name)
-		if (i == 0 || !isIdentByte(text[i-1])) && (end == len(text) || !isIdentByte(text[end])) {
-			return i
-		}
-		from = i + 1
-	}
-	return -1
-}
-
-func isIdentByte(b byte) bool {
-	return b == '_' || '0' <= b && b <= '9' || 'a' <= b && b <= 'z' || 'A' <= b && b <= 'Z'
 }
