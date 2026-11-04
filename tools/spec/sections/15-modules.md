@@ -103,4 +103,6 @@ looks on disk:
   package's path differs from the import's only in case, `did you mean "<that path>"?`. A path under
   no known module is `UNRESOLVED_IMPORT`.
 
-A package with no path (a virtual source's) is reached by its declared name.
+No import ever binds by a package's declared name. A package with no path — an inline source (MCP
+`source`, an unsaved editor buffer with no file), or a file outside every module — is reached by no
+import, and its own imports bind only a kept package with exactly their path; any other is external.

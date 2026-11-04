@@ -7,7 +7,7 @@ import (
 
 // dupNamesPkg declares workflow Run, activity Do, and nexus service Svc in pkg.
 func dupNamesPkg(pkg string) namedSource {
-	return namedSource{pkg + ".twf", "package " + pkg + `
+	return namedSource{pkg + ".twf", "# path: x/" + pkg + "\npackage " + pkg + `
 
 workflow Run(id):
     close complete(id)

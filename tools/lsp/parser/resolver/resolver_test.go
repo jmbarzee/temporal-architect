@@ -1166,3 +1166,70 @@ func TestDiagnosticOrder(t *testing.T) {
 		}
 	}
 }
+
+// TestDuplicateEndpointDefinitionOrder: namespaces are walked in definition
+// order — files in input order, then position — so the first declaration of an
+// endpoint name keeps it: a nexus call resolves to it, and a DUPLICATE_ENDPOINT
+// lands on each later one, naming the first's namespace, in the same file a
+// DUPLICATE_WORKFLOW does. Repeated so map order cannot pass by luck.
+func TestDuplicateEndpointDefinitionOrder(t *testing.T) {
+	b := `namespace nc:
+    nexus endpoint e
+        options:
+            task_queue: "q"
+
+namespace na:
+    nexus endpoint e
+        options:
+            task_queue: "q"
+
+workflow Dup():
+    close complete()
+`
+	a := `nexus service S:
+    sync Op() -> ():
+        close complete()
+
+workflow W():
+    nexus e S.Op()
+    close complete()
+
+namespace nd:
+    nexus endpoint e
+        options:
+            task_queue: "q"
+
+namespace nb:
+    nexus endpoint e
+        options:
+            task_queue: "q"
+
+workflow Dup():
+    close complete()
+`
+	want := []string{
+		`a.twf:10:5 duplicate nexus endpoint name "e": defined in namespace nc and namespace nd`,
+		`a.twf:15:5 duplicate nexus endpoint name "e": defined in namespace nc and namespace nb`,
+		`a.twf:19:1 duplicate workflow definition: Dup`,
+		`b.twf:7:5 duplicate nexus endpoint name "e": defined in namespace nc and namespace na`,
+	}
+	for range 50 {
+		file := ast.Stamp([]ast.StampInput{
+			{File: mustParse(t, b), SourceFile: "b.twf"},
+			{File: mustParse(t, a), SourceFile: "a.twf"},
+		})
+		var got []string
+		for _, e := range Resolve(file) {
+			if e.Kind == ErrDuplicateEndpoint || e.Kind == ErrDuplicateWorkflow {
+				got = append(got, fmt.Sprintf("%s:%d:%d %s", e.File, e.Line, e.Column, e.Msg))
+			}
+		}
+		if !slices.Equal(got, want) {
+			t.Fatalf("duplicates:\n got  %s\n want %s", strings.Join(got, "\n      "), strings.Join(want, "\n      "))
+		}
+		call := file.Definitions[4].(*ast.WorkflowDef).Body[0].(*ast.NexusCall)
+		if ep := call.Endpoint.Resolved; ep == nil || ep.Namespace != "nc" {
+			t.Fatalf("nexus e resolved to %+v, want the endpoint in namespace nc", ep)
+		}
+	}
+}

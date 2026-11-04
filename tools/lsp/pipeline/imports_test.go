@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/pipeline"
 )
 
@@ -162,4 +163,70 @@ func TestImportNotFoundAtEveryLine(t *testing.T) {
 	if got := strings.Join(codesOf(diags), ","); got != "IMPORT_NOT_FOUND,IMPORT_NOT_FOUND" {
 		t.Errorf("diagnostics = %q, want IMPORT_NOT_FOUND on both lines", diags)
 	}
+}
+
+// sameLeaf is #232's confusion in one source: package fabric imports a
+// different fabric by path and calls into it. By name the import would bind
+// this package itself, and cf.Setup would resolve to its own Setup.
+const sameLeaf = `package fabric
+
+import cf "example.com/demo/cluster/fabric"
+
+workflow Setup():
+    workflow cf.Setup()
+    close complete("ok")
+`
+
+func TestVirtualSourcesNeverBindByName(t *testing.T) {
+	// One path-less source: the import is external, never this package.
+	res, err := pipeline.ParseSources(pipeline.Request{Virtual: []pipeline.Source{{Name: "input.twf", Content: sameLeaf}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.Join(diagCodes(res), ","); got != "UNRESOLVED_IMPORT" {
+		t.Errorf("diagnostics = %v, want only UNRESOLVED_IMPORT", res.Diagnostics)
+	}
+	if calledSetup(res) != nil {
+		t.Error("cf.Setup resolved by name, to the source's own package")
+	}
+
+	// Two path-less sources, one named like the import's leaf: still external.
+	other := "package fabric\n\nworkflow Setup():\n    close complete(\"ok\")\n"
+	top := "package top\n\nimport \"example.com/demo/fabric\"\n\nworkflow Main():\n    workflow fabric.Setup()\n    close complete(\"ok\")\n"
+	res, err = pipeline.ParseSources(pipeline.Request{Virtual: []pipeline.Source{{Name: "f.twf", Content: other}, {Name: "t.twf", Content: top}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.Join(diagCodes(res), ","); !strings.Contains(got, "UNRESOLVED_IMPORT") {
+		t.Errorf("a path-less package was imported by name: %v", res.Diagnostics)
+	}
+
+	// The module seam gives in-memory sources paths, and then they import by path.
+	res, err = pipeline.ParseSources(pipeline.Request{Virtual: []pipeline.Source{
+		{Name: "f.twf", Content: other, Module: "example.com/demo", Dir: "fabric"},
+		{Name: "t.twf", Content: top, Module: "example.com/demo", Dir: "top"},
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res.Diagnostics) != 0 {
+		t.Errorf("with paths, the import binds: %v", res.Diagnostics)
+	}
+	if _, err := pipeline.ParseSources(pipeline.Request{Virtual: []pipeline.Source{{Content: other, Module: "m"}, {Content: top}}}); err == nil {
+		t.Error("sources in a module and in none must not share a run")
+	}
+}
+
+func diagCodes(res pipeline.Result) []string {
+	var out []string
+	for _, d := range res.Diagnostics {
+		out = append(out, d.Code)
+	}
+	return out
+}
+
+// calledSetup is what the first workflow's `workflow cf.Setup()` resolved to.
+func calledSetup(res pipeline.Result) *ast.WorkflowDef {
+	wf := res.File.Definitions[0].(*ast.WorkflowDef)
+	return wf.Body[0].(*ast.WorkflowCall).Workflow.Resolved
 }

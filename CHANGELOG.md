@@ -49,7 +49,9 @@ paths are two packages; alias one to import both. New errors:
 `DUPLICATE_IMPORT_NAME`, and `IMPORT_NOT_FOUND` for a typo under your own
 module (it used to be a silent external). `IMPORT_NOT_LOADED` warns when a
 package is on disk but not among the inputs. A path under no module in the run
-is still `UNRESOLVED_IMPORT`, treated as external.
+is still `UNRESOLVED_IMPORT`, treated as external. No import binds by package
+name anywhere: an MCP inline `source` or an editor buffer with no file has no
+import path, so its imports are external, matching `twf check`.
 
 ### ⚠️ Breaking: wire output
 
@@ -277,7 +279,15 @@ is now checked against the target's signals.
   that queue. This removes a spurious `DISPATCH_NO_REACHABLE_DEPLOYMENT` and
   draws the missing dispatch edge (#245).
 - A worker instantiated twice in one namespace emits each of its containment
-  edges once (#264).
+  edges once (#264), and each of its dispatch, `nexusRoute` and `unresolved`
+  entries once, so coarsened edge weights are no longer doubled (#289).
+- An endpoint name declared in several namespaces belongs to its first
+  declaration, in definition order (input files in order, then position):
+  `DUPLICATE_ENDPOINT` lands on each later one and names the first's namespace,
+  and calls, routing checks and the graph all use the first, on every run
+  (#290).
+- A `DISPATCH_NO_REACHABLE_DEPLOYMENT` names an operation by its own service
+  when another service's name prefixes it.
 - **LSP:** rename, references and go-to-definition ranges cover the name, not
   the statement keyword, so a rename no longer overwrites `workflow` or
   `signal`, and renaming a Nexus endpoint edits the endpoint on a `nexus` call.

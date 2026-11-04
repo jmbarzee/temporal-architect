@@ -198,6 +198,16 @@ type Graph struct {
 	// walkFile is the source file of the body emitDispatchEdges is walking,
 	// which addDiagnostic stamps on a diagnostic with none.
 	walkFile string
+	// addedEdges and addedUnres are what addEdge and addUnresolved have added.
+	addedEdges map[edgeKey]bool
+	addedUnres map[Unresolved]bool
+}
+
+// edgeKey is an Edge by value, its Routing dereferenced.
+type edgeKey struct {
+	From, To, Kind string
+	Line           int
+	Routing        Routing
 }
 
 // ---------------------------------------------------------------------------
@@ -338,6 +348,8 @@ func newGraph() *Graph {
 		CoarsenedEdges: []CoarsenedEdge{},
 		Unresolved:     []Unresolved{},
 		Diagnostics:    []Diagnostic{},
+		addedEdges:     map[edgeKey]bool{},
+		addedUnres:     map[Unresolved]bool{},
 	}
 }
 
@@ -425,6 +437,30 @@ func (g *Graph) node(id string) *Node {
 	return nil
 }
 
+// addEdge adds a dispatch or nexusRoute edge once. Those walks run once per
+// worker deployment, and a worker instantiated twice in one namespace is one
+// node, so both instantiations reaching one callee by one call is one edge.
+func (g *Graph) addEdge(e Edge) {
+	k := edgeKey{From: e.From, To: e.To, Kind: e.Kind, Line: e.Line}
+	if e.Routing != nil {
+		k.Routing = *e.Routing
+	}
+	if g.addedEdges[k] {
+		return
+	}
+	g.addedEdges[k] = true
+	g.Edges = append(g.Edges, e)
+}
+
+// addUnresolved adds an unresolved entry once, as addEdge adds an edge.
+func (g *Graph) addUnresolved(u Unresolved) {
+	if g.addedUnres[u] {
+		return
+	}
+	g.addedUnres[u] = true
+	g.Unresolved = append(g.Unresolved, u)
+}
+
 // addDiagnostic deduplicates by (code, from, line) — the same
 // implicit-routing problem at one call site walked twice (once per
 // caller-deployment copy) shouldn't surface twice.
@@ -453,10 +489,17 @@ func (g *Graph) calleeLabel(idx *astIndex, kind, qname string) string {
 			return ast.Label(g.Packages, ast.PackageIDOf(d, idx.file), d.Name)
 		}
 	case KindNexusOperation:
-		for svcQName, svc := range idx.nexusServices {
-			if op, ok := strings.CutPrefix(qname, svcQName+"."); ok {
-				return ast.Label(g.Packages, ast.PackageIDOf(svc, idx.file), nexusOpQualifiedName(svc.Name, op))
+		// The operation's service is the longest qualified name qname extends at
+		// a separator: `p.S.Op` belongs to `p.S`, not to a service `p`.
+		var svc *ast.NexusServiceDef
+		var op string
+		for svcQName, s := range idx.nexusServices {
+			if rest, ok := strings.CutPrefix(qname, svcQName+"."); ok && (svc == nil || len(rest) < len(op)) {
+				svc, op = s, rest
 			}
+		}
+		if svc != nil {
+			return ast.Label(g.Packages, ast.PackageIDOf(svc, idx.file), nexusOpQualifiedName(svc.Name, op))
 		}
 	}
 	return qname

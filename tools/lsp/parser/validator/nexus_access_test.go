@@ -175,10 +175,7 @@ func TestNexusCallerNotAllowed(t *testing.T) {
 // TestNexusCallerNotAllowedAttribution: the error lands on the call site and is
 // attributed to the calling definition.
 func TestNexusCallerNotAllowedAttribution(t *testing.T) {
-	file := mustParseAndResolve(t, accessFile(`allowed_caller_namespaces: ["orders"]`, "shop"))
-	for _, def := range file.Definitions {
-		stamp(def, "", "a.twf")
-	}
+	file := mustMergeNamedAndResolve(t, namedSource{file: "a.twf", src: accessFile(`allowed_caller_namespaces: ["orders"]`, "shop")})
 	for _, e := range Validate(file) {
 		if e.Kind != ErrNexusCallerNotAllowed {
 			continue
@@ -469,5 +466,26 @@ func TestNexusCallerCheckedOnTemplatedEndpointQueue(t *testing.T) {
 	errs := Validate(file)
 	if len(callerErrs(errs)) != 1 || hasKind(errs, ErrEndpointServiceLinkage, "") {
 		t.Errorf("want one NEXUS_CALLER_NOT_ALLOWED and no linkage error, got %v", errs)
+	}
+}
+
+// TestDuplicateEndpointChecksResolvedDeclaration: a call through a duplicated
+// endpoint name (DUPLICATE_ENDPOINT) is checked against the declaration it
+// resolved to, the first, not a later one with its own queue and allowlist.
+func TestDuplicateEndpointChecksResolvedDeclaration(t *testing.T) {
+	file, err := parser.ParseFile(accessFile(`allowed_caller_namespaces: ["shop"]`, "shop") + `
+namespace later:
+    nexus endpoint PayEndpoint
+        options:
+            task_queue: "elsewhere"
+            allowed_caller_namespaces: []
+`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resolver.Resolve(file)
+	errs := Validate(file)
+	if len(callerErrs(errs)) != 0 || hasKind(errs, ErrEndpointServiceLinkage, "") {
+		t.Errorf("checked the later PayEndpoint: %v", errs)
 	}
 }
