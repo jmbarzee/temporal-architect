@@ -104,8 +104,9 @@ func TestAddMissingDefinitionParses(t *testing.T) {
 				t.Fatalf("want one action, got %+v", actions)
 			}
 			got := applyEdits(t, src, actions[0].Edit.Changes[renameURI])
-			if doc := NewDocumentStore().Open(renameURI, got); len(doc.ParseErrs) > 0 {
-				t.Errorf("result does not parse: %v\n%s", doc.ParseErrs, got)
+			doc := NewDocumentStore().Open(renameURI, got)
+			if len(doc.ParseErrs)+len(doc.ResolveErrs)+len(doc.ValidateErrs) > 0 {
+				t.Errorf("result is not clean: parse=%v resolve=%v validate=%v\n%s", doc.ParseErrs, doc.ResolveErrs, doc.ValidateErrs, got)
 			}
 		})
 	}
@@ -139,7 +140,9 @@ func TestIndentUnit(t *testing.T) {
 		{"two spaces", []string{"# c", "workflow W():", "  close complete"}, "  "},
 		{"tab", []string{"workflow W():", "\tclose complete"}, "\t"},
 		{"skips indented comments and blank lines", []string{"workflow W():", "", "\t\t# c", "\tclose complete"}, "\t"},
-		{"none indented", []string{"workflow W():"}, "    "},
+		{"none indented", []string{"workflow W():"}, "\t"},
+		{"skips a header's continuation", []string{"workflow W(a: int,", "           b: int):", "\tclose complete"}, "\t"},
+		{"skips a continuation in a spaces file", []string{"workflow W(a: int,", "\t\tb: int):", "    close complete"}, "    "},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
