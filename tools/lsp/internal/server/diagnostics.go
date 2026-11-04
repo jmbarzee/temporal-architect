@@ -94,17 +94,21 @@ func (s *DocumentStore) publications() []protocol.PublishDiagnosticsParams {
 		}
 	}
 	// The text each elsewhere diagnostic's position counts in: what the run
-	// read, an open buffer's (overlaid) text or the file on disk.
+	// read, an open buffer's (overlaid) text or the file on disk, split into
+	// lines without their `\r`.
 	texts := map[string][]string{}
 	linesOf := func(file string) []string {
 		if lines, ok := texts[file]; ok {
 			return lines
 		}
-		var lines []string
-		if text, ok := s.overlays[filepath.FromSlash(file)]; ok {
-			lines = strings.Split(text, "\n")
-		} else if b, err := os.ReadFile(filepath.FromSlash(file)); err == nil {
-			lines = strings.Split(string(b), "\n")
+		text, ok := s.overlays[filepath.FromSlash(file)]
+		if !ok {
+			b, _ := os.ReadFile(filepath.FromSlash(file))
+			text = string(b)
+		}
+		lines := strings.Split(text, "\n")
+		for i, l := range lines {
+			lines[i] = strings.TrimSuffix(l, "\r")
 		}
 		texts[file] = lines
 		return lines
