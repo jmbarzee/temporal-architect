@@ -107,7 +107,7 @@ signal_decl ::= 'signal' IDENT params ':' NEWLINE
                 DEDENT
 ```
 
-Signal handler bodies execute when the signal arrives. Handlers have access to the full workflow statement set (activities, child workflows, timers, etc.).
+Signal handler bodies execute on every arrival of the signal. Handlers have access to the full workflow statement set (activities, child workflows, timers, etc.).
 
 An optional `options:` block (see [Statement Syntax — Options Block](./06-statement-syntax.md)) may lead the handler body, before any statements — the same placement as a `state:` block at the top of a workflow. Signal handler options: `unfinished_policy`, `description`.
 
@@ -145,6 +145,6 @@ update_decl ::= 'update' IDENT params '->' return_type ':' NEWLINE
 
 **Return type is required for updates** (always parenthesized, e.g., `-> (Result)`).
 
-Update handler bodies execute when the update is received. Handlers have access to the full workflow statement set and can return values to the caller.
+Update handler bodies execute on every arrival of the update. Handlers have access to the full workflow statement set and can return values to the caller.
 
 An optional `options:` block may lead the handler body. Update handler options: `unfinished_policy`, `description`.

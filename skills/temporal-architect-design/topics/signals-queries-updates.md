@@ -20,14 +20,14 @@ How code outside a running workflow reads it, writes to it, or does both.
 
 ## Signals
 
-A signal handler body may use the full workflow statement set, but should only update state. When a signal is awaited (`await signal X` or an `await one` / `await all` case), execution is two-phase: the **handler body runs first**, then the **case body** runs and sees the updated state. In `ApprovalWorkflow`, the `Approved` handler sets `approver_name`; the case body reads it.
+A signal handler body may use the full workflow statement set, but should only update state. The **handler runs on every arrival**, whether or not the workflow is awaiting that signal — between any two deterministic steps — and leaves the arrival **pending**. A waiter (`await signal X`, an `await one` / `await all` case, `promise p <- signal X`) takes the oldest pending arrival, or the next if none is pending, and binds its parameters with `->`; the **case body runs once it takes one**, and sees the updated state. In `ApprovalWorkflow`, the `Approved` handler sets `approver_name`; the case body reads it. Exact rules: `twf spec statement-syntax`, "Signal and update arrival".
 
-The handler also runs on every arrival whether or not the workflow is awaiting that signal — between any two deterministic steps. So activities, child workflows, and other side effects belong in the case body or main body after the await, never in the handler.
+So activities, child workflows, and other side effects belong in the case body or main body after the await, never in the handler. State read after the await may already reflect later arrivals; per-arrival data comes from `->`.
 
 | Consideration | Guidance |
 |---------------|----------|
 | **Ordering** | Processed in the order received; arrival order isn't guaranteed |
-| **Buffering** | Signals queue while the workflow is busy and wait until handled by `await signal` or an `await one` / `await all` case; coalesce high-volume signals |
+| **Buffering** | Arrivals stay pending until a waiter takes them, each by one waiter, oldest first; coalesce high-volume signals |
 | **Idempotency** | The same signal twice should give the same result |
 | **Validation** | Validate the payload; an invalid signal can corrupt workflow state |
 
@@ -71,7 +71,7 @@ An update handler may use the full workflow statement set (activities, child wor
 
 Handlers run as coroutines alongside the main body under cooperative scheduling: one piece of workflow code runs at a time. On wake-up the workflow processes pending signals and updates in order, then advances the main body. While a handler blocks, the main body can progress; all of them read and write the same workflow state.
 
-Updates can be awaited like signals — `await update ChangeAddress`, or as an `await one` case racing a timer (`ShippingWorkflow`). When the update wins, its handler runs and returns to the caller, then the case body runs.
+Updates can be awaited like signals — `await update ChangeAddress`, or as an `await one` case racing a timer (`ShippingWorkflow`). The caller gets its result when the handler returns, not when a waiter takes the arrival.
 
 An update handler can **wait on a condition** the main body sets: the caller blocks, the handler yields on `await jobReady`, the main body runs `set jobReady`, and the handler resumes and returns (`JobCoordinator`; see [promises-conditions.md](./promises-conditions.md) for conditions and the `state:` block).
 
@@ -81,7 +81,7 @@ An update handler can **wait on a condition** the main body sets: the caller blo
 | **Validation** | Validate before mutating; return errors, don't throw |
 | **Idempotency** | Consider idempotency keys for critical updates |
 | **Timeouts** | The caller sets a timeout fit for a handler that may block on activities or state |
-| **Ambient arrival** | Like signals: arrive between any two deterministic steps; buffered until handled by `await update` or an `await one` / `await all` case |
+| **Ambient arrival** | Like signals: arrive between any two deterministic steps; stay pending until a waiter takes them |
 
 ## Handler Options
 
