@@ -38,6 +38,12 @@ export function zoomAt(vp: Viewport, sx: number, sy: number, factor: number): Vi
   }
 }
 
+// Keep the world point under the pane's centre fixed across a resize: the
+// centre moves by half the size change, so the translation follows it.
+export function followResize(vp: Viewport, dw: number, dh: number): Viewport {
+  return { ...vp, x: vp.x + dw / 2, y: vp.y + dh / 2 }
+}
+
 // Compute viewport that frames all given nodes with padding
 export function fitToView(
   nodes: SimNode[],
