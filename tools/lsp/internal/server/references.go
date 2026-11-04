@@ -1,8 +1,6 @@
 package server
 
 import (
-	"strings"
-
 	"github.com/jmbarzee/glsp"
 	protocol "github.com/jmbarzee/glsp/protocol_3_16"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
@@ -10,7 +8,7 @@ import (
 
 func referencesHandler(store *DocumentStore) protocol.TextDocumentReferencesFunc {
 	return func(context *glsp.Context, params *protocol.ReferenceParams) ([]protocol.Location, error) {
-		occs, at, ok := occurrenceAt(store, params.TextDocument.URI, params.Position)
+		_, occs, at, ok := occurrenceAt(store, params.TextDocument.URI, params.Position)
 		if !ok {
 			return nil, nil
 		}
@@ -33,20 +31,22 @@ type occurrence struct {
 	file string // the source file, as its definition's SourceFile spells it
 	ast.Pos
 	name   string
-	decl   ast.Node // the declaration; nil for an unresolved reference
+	decl   ast.Node       // the declaration; nil for an unresolved reference
+	owner  ast.Definition // the top-level definition the spelling is in
 	isDecl bool
 }
 
 // occurrenceAt finds the name under the cursor of the buffer at uri and
 // returns it with every occurrence in the AST that holds it: the buffer's
 // workspace run, so references reach other files and packages, else the
-// buffer's own AST. ok is false off a name or on an unresolved one.
-func occurrenceAt(store *DocumentStore, uri string, cursor protocol.Position) (occs []occurrence, at occurrence, ok bool) {
+// buffer's own AST. file is the AST that holds them. ok is false off a name or
+// on an unresolved one.
+func occurrenceAt(store *DocumentStore, uri string, cursor protocol.Position) (file *ast.File, occs []occurrence, at occurrence, ok bool) {
 	doc, found := store.Get(uri)
 	if !found {
-		return nil, occurrence{}, false
+		return nil, nil, occurrence{}, false
 	}
-	lines := strings.Split(doc.Content, "\n")
+	lines := doc.lines()
 	for _, f := range []*ast.File{doc.run, doc.File} {
 		if f == nil {
 			continue
@@ -56,13 +56,13 @@ func occurrenceAt(store *DocumentStore, uri string, cursor protocol.Position) (o
 			if o.file != doc.sourceFile || o.Line-1 != int(cursor.Line) {
 				continue
 			}
-			r := nameRange(lines, o)
+			r := nameRange(lines, o.Pos, o.name)
 			if r.Start.Character <= cursor.Character && cursor.Character <= r.End.Character {
-				return occs, o, o.decl != nil
+				return f, occs, o, o.decl != nil
 			}
 		}
 	}
-	return nil, occurrence{}, false
+	return nil, nil, occurrence{}, false
 }
 
 // occurrences lists every declared name in file and every reference to one.
@@ -71,7 +71,7 @@ func occurrences(file *ast.File) []occurrence {
 	for _, def := range file.Definitions {
 		switch d := def.(type) {
 		case *ast.WorkflowDef:
-			x.file = d.SourceFile
+			x.file, x.owner = d.SourceFile, d
 			x.decl(d, d.NamePos, d.Name)
 			if d.State != nil {
 				for _, c := range d.State.Conditions {
@@ -92,11 +92,11 @@ func occurrences(file *ast.File) []occurrence {
 			}
 			x.stmts(d.Body)
 		case *ast.ActivityDef:
-			x.file = d.SourceFile
+			x.file, x.owner = d.SourceFile, d
 			x.decl(d, d.NamePos, d.Name)
 			x.stmts(d.Body)
 		case *ast.NexusServiceDef:
-			x.file = d.SourceFile
+			x.file, x.owner = d.SourceFile, d
 			x.decl(d, d.NamePos, d.Name)
 			for _, op := range d.Operations {
 				x.decl(op, op.NamePos, op.Name)
@@ -106,7 +106,7 @@ func occurrences(file *ast.File) []occurrence {
 				x.stmts(op.Body)
 			}
 		case *ast.WorkerDef:
-			x.file = d.SourceFile
+			x.file, x.owner = d.SourceFile, d
 			x.decl(d, d.NamePos, d.Name)
 			for _, r := range d.Workflows {
 				refOcc(&x, r)
@@ -118,7 +118,7 @@ func occurrences(file *ast.File) []occurrence {
 				refOcc(&x, r)
 			}
 		case *ast.NamespaceDef:
-			x.file = d.SourceFile
+			x.file, x.owner = d.SourceFile, d
 			x.decl(d, d.NamePos, d.Name)
 			for _, w := range d.Workers {
 				refOcc(&x, w.Worker)
@@ -133,13 +133,14 @@ func occurrences(file *ast.File) []occurrence {
 }
 
 type indexer struct {
-	file string
-	out  []occurrence
+	file  string
+	owner ast.Definition
+	out   []occurrence
 }
 
 func (x *indexer) add(pos ast.Pos, name string, decl ast.Node, isDecl bool) {
 	if pos.Line > 0 {
-		x.out = append(x.out, occurrence{file: x.file, Pos: pos, name: name, decl: decl, isDecl: isDecl})
+		x.out = append(x.out, occurrence{file: x.file, Pos: pos, name: name, decl: decl, owner: x.owner, isDecl: isDecl})
 	}
 }
 

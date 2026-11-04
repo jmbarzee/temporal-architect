@@ -475,7 +475,8 @@ Example client config:
 
 **Tools** are thin wrappers over the same parser pipeline as the CLI, so their
 JSON output is identical to the corresponding subcommand. Each file tool takes
-`paths` (resolved on the filesystem where the server runs) **or** inline
+`paths` — files or directories, resolved on the filesystem where the server
+runs; a directory expands to the `.twf` files beneath it — **or** inline
 `source`, checked as a file outside every module (a `package` clause is
 `PACKAGE_OUTSIDE_MODULE`):
 

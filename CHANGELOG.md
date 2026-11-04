@@ -335,6 +335,23 @@ is now checked against the target's signals.
   sends, nexus operations, conditions and promises, and count columns in UTF-16.
   The server watches `.twf` files, and a rename that would edit a closed file
   changed on disk since it was read fails instead (#288, #300).
+- **LSP:** diagnostics, document symbols, code actions and semantic tokens
+  count columns in UTF-16, so a diagnostic after non-ASCII text such as `"é"`
+  lands on its token. A diagnostic runs to the end of its line, a symbol
+  selects its name, and an argument list over several lines is one semantic
+  token per line.
+- **LSP:** "Convert 'return' to 'close complete'" writes `close
+  complete(<value>)`, or `close complete` for a bare `return`, in place of the
+  statement alone, keeping the line's indentation and trailing comment. The
+  missing-workflow stub ends in `close complete`, not a bare `close`.
+- **LSP:** rename refuses a keyword, a string that is not a name (`a b`, `1x`,
+  an empty name, a malformed deployment name), `parent` for a condition or
+  promise, a name another declaration of the same kind holds in the same
+  package, workflow or service (a workflow's conditions and promises count as
+  one kind), any other endpoint's name, and a name a worker registering the
+  renamed type already registers for that kind.
+- **MCP:** the `paths` and tool descriptions say each path may be a file or a
+  directory.
 - **Visualizer:** "Show in Tree" on a nexus operation or endpoint scrolls to and
   flashes that row, not just the service or namespace that owns it (#249).
 - **Visualizer:** a row the Tree scrolls to ("Show in Tree", in-tree navigation,

@@ -101,6 +101,45 @@ func TestListTools(t *testing.T) {
 	}
 }
 
+// TestPathsTakeDirectories: a directory in paths expands to the .twf files
+// beneath it, and every tool's paths description says so.
+func TestPathsTakeDirectories(t *testing.T) {
+	cs := connect(t)
+	res, err := cs.ListTools(context.Background(), nil)
+	if err != nil {
+		t.Fatalf("list tools: %v", err)
+	}
+	for _, tool := range res.Tools {
+		raw, err := json.Marshal(tool.InputSchema)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var schema struct {
+			Properties map[string]struct{ Description string } `json:"properties"`
+		}
+		if err := json.Unmarshal(raw, &schema); err != nil {
+			t.Fatal(err)
+		}
+		if p, ok := schema.Properties["paths"]; ok && !strings.Contains(p.Description, "directories") {
+			t.Errorf("%s: paths description %q does not mention directories", tool.Name, p.Description)
+		}
+	}
+
+	dir := t.TempDir()
+	src, err := os.ReadFile(cleanTWF)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "clean.twf"), src, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	fromDir := toolText(t, callTool(t, cs, "twf_check", map[string]any{"paths": []string{dir}}))
+	fromFile := toolText(t, callTool(t, cs, "twf_check", map[string]any{"paths": []string{filepath.Join(dir, "clean.twf")}}))
+	if fromDir != fromFile {
+		t.Errorf("twf_check of the directory = %s, want what checking its file gives: %s", fromDir, fromFile)
+	}
+}
+
 func TestCheckTool(t *testing.T) {
 	cs := connect(t)
 
