@@ -60,7 +60,7 @@ A skill is a context budget. Every word is an expenditure. These lenses evaluate
 
 ### 8. Scope & Handoff
 - Are scope boundaries explicit? What does this skill explicitly not do?
-- Is the handoff to adjacent skills (e.g., design → author-go) clearly documented?
+- Is the handoff to adjacent skills (e.g., design → an author) clearly documented?
 - Does the skill declare what it produces and what it expects to consume?
 
 ## Workflow
@@ -95,7 +95,7 @@ Group by theme. Order by:
 
 All skills share the single `skills` component directory, so the REVISIONS filename is source-encoded by skill. Derive `{skill}` from the skill path:
 - `skills/temporal-architect-design` → `quality-design`
-- `skills/temporal-architect-author-go` → `quality-author-go`
+- `skills/temporal-architect-author-{lang}` → `quality-author-{lang}`
 - `skills/temporal-architect-author-infra` → `quality-author-infra`
 - `skills/temporal-architect` → `quality-architect`
 

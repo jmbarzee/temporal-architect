@@ -41,7 +41,7 @@ instances* of a shape the parser *defines*, so a change to that shape originates
 must reach **both** consumers: the visualizer, which projects it, and the sampler, which emits it.
 That second edge is the one this component exists to make visible.
 
-The skill set — design, the two authors, and the `temporal-architect` harness front-door — is **one
+The skill set — design, the authors, `author-infra`, and the `temporal-architect` harness front-door — is **one
 component**. Its members have dependencies flowing in many internal directions (design ↔ authors ↔
 harness), so those edges are **intra-component**, not modeled in the DAG. The skills are downstream; the
 only inbound edge is from `parser`.
@@ -49,10 +49,20 @@ only inbound edge is from `parser`.
 All skill reviews share the single `internal/changes/skills/` directory, so the `{type}` token in the
 `{type}_REVISIONS_{NNN}.md` naming convention is **source-encoded** to keep concurrent reviews from
 colliding: quality reviews write `quality-{skill}_REVISIONS_{NNN}.md` (`quality-design`,
-`quality-author-go`, `quality-author-infra`, `quality-architect`); alignment reviews write
-`alignment-design_REVISIONS_{NNN}.md` and `alignment-author_REVISIONS_{NNN}.md`. `address-review` still
+`quality-author-{lang}`, `quality-author-infra`, `quality-architect`); alignment reviews write
+`alignment-design_REVISIONS_{NNN}.md` and `alignment-author-{lang}_REVISIONS_{NNN}.md`. `address-review` still
 merges every `internal/changes/skills/*_REVISIONS_*.md` into one sequence and writes a single
 `skills/CHANGES_{NNN}.md`.
+
+### Authors
+
+One author skill per SDK language `{lang}`: `skills/temporal-architect-author-{lang}`, reviewed by
+`review-quality-skill` and by `review-alignment-author-skills` with `{lang}`, and validated by the
+command in its `SKILL.md` `## Verify` section. Adding an SDK is one row.
+
+| `{lang}` | SDK |
+|---|---|
+| `go` | Temporal Go SDK |
 
 `internal/changes/orchestrator/` is **not** a cycle component — it is coordination scratch for the
 orchestrator's own design and is excluded.
@@ -96,7 +106,7 @@ changes never propagate.
 
 **This table is a floor, not the whole map.** It encodes the edges that are always true, so an
 author who forgets a consumer is still caught. It cannot know a specific obligation — *"the
-author-go skill needs a reference file for this construct"* — because that depends on the change,
+Go author skill needs a reference file for this construct"* — because that depends on the change,
 not on the graph. So a CHANGES record's `## Downstream propagation` section is **authoritative
 beyond this table**: a component named there gets a review even with no edge here, and its review
 prompt comes from the Components table above. Both directions of mismatch are reported by
@@ -113,7 +123,7 @@ prompt comes from the Components table above. Both directions of mismatch are re
 | `graph-view` | API | `visualizer` → `review-quality-visualizer` (the host consumes the library's entry) |
 
 Design → author propagation is now **intra-component** (within `skills`) and no longer a DAG edge: a
-design change still triggers `review-alignment-author-skills`, but as part of the `skills` component's
+design change still triggers `review-alignment-author-skills` for every author, but as part of the `skills` component's
 own review sweep rather than cross-component propagation. Leaves (`visualizer`, `skills`) terminate
 propagation.
 

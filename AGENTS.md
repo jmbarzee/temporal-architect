@@ -118,7 +118,7 @@ The dev-cycle harness is a **skill** at `.claude/skills/dev-cycle/` (read by bot
 | `review-alignment-parser-visualizer` | Align visualizer to parser JSON contract |
 | `review-alignment-visualizer` | Align visualizer implementation to visualizer spec |
 | `review-alignment-design-skill` | Align design skill to parser (constructs, errors, AST) |
-| `review-alignment-author-skills` | Align author-go / author-infra skills to design skill and Temporal SDK |
+| `review-alignment-author-skills` | Align one author skill, by `{lang}`, to design skill and Temporal SDK |
 | **Execution & Propagation** | |
 | `address-review` | Execute an approved review group (inner loop) |
 | `propagate-changes` | Fan out downstream reviews from a completed CHANGES file |

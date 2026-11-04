@@ -170,7 +170,7 @@ paper over failures.
 | Layer (components) | Validation |
 |---|---|
 | Go — `parser` (`tools/lsp/`) | `GOMODCACHE=$HOME/go/pkg/mod go build ./... && go test ./...` from `tools/lsp/` |
-| Skills / spec — `dsl`, `skills` | `twf check` against affected `.twf` files (e.g. under `examples/`) |
+| Skills / spec — `dsl`, `skills` | `twf check` against affected `.twf` files (e.g. under `examples/`); for each author skill touched, the command in its `SKILL.md` `## Verify` section |
 | Visualizer — `visualizer`, `visualizer-spec` | `npm run build` from `tools/visualizer/` |
 | Go — `sampler` (`tools/sampler/`) | `GOMODCACHE=$HOME/go/pkg/mod go build ./... && go test ./...` from `tools/sampler/` (its own module) |
 
@@ -226,12 +226,12 @@ Dispatch the matching prompt on demand; do not read them all up front.
 | `review-quality-visualizer.md` | Visualizer TypeScript quality + contract consumption |
 | `review-quality-sampler.md` | Sampler Go quality + observed-graph contract population |
 | `review-quality-visualizer-spec.md` | Visualizer product/UX against its spec |
-| `review-quality-skill.md` | Single skill craft/focus/density (design, author-go, author-infra) |
+| `review-quality-skill.md` | Single skill craft/focus/density (design, an author, author-infra) |
 | `review-alignment-parser.md` | Parser implementation vs `tools/spec/sections/` |
 | `review-alignment-parser-visualizer.md` | Parser JSON contract vs visualizer TS types |
 | `review-alignment-visualizer.md` | Visualizer implementation vs its spec |
 | `review-alignment-design-skill.md` | Design skill vs parser (constructs, errors, AST) |
-| `review-alignment-author-skills.md` | Author-go / author-infra skills vs design skill + Temporal SDK |
+| `review-alignment-author-skills.md` | One author skill, by `{lang}`, vs design skill + Temporal SDK |
 | `address-review.md` | Execute a component's REVISIONS groups; write CHANGES |
 | `propagate-changes.md` | Fan out downstream REVISIONS from a CHANGES file |
 | `summarize-changes.md` | Consolidate the cycle into a report |
