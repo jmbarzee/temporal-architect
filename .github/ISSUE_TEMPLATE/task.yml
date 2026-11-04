@@ -1,0 +1,38 @@
+name: Task
+title: "Task: "
+description: One change, finishable in a single pass — minutes to days. Jira's Story. This is what agents pick up.
+labels: ["needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Conventions: [the `issues` skill](https://github.com/metacensus/skills/blob/main/skills/issues/SKILL.md).
+
+        If this wants children, file an Epic instead. Attach this to its parent after filing (`gh issue edit THIS --parent EPIC`). A blocker is a dependency (`gh issue edit THIS --add-blocked-by N`), not prose.
+
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: One sentence — what done looks like.
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Observable and binary.
+      placeholder: |
+        - [ ] …
+    validations:
+      required: true
+
+  - type: textarea
+    id: verification
+    attributes:
+      label: Verification
+      description: One command whose exit code settles the criteria; the repository's gate at minimum. Name the repository if it is not this one.
+      render: shell
+    validations:
+      required: true

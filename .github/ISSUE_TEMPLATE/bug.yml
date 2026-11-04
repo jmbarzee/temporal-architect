@@ -1,0 +1,35 @@
+name: Bug
+title: "Bug: "
+description: The system disagrees with what it should do. Task-sized.
+labels: ["needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Conventions: [the `issues` skill](https://github.com/metacensus/skills/blob/main/skills/issues/SKILL.md).
+
+  - type: textarea
+    id: observed
+    attributes:
+      label: What happened
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+
+  - type: textarea
+    id: verification
+    attributes:
+      label: Verification
+      description: The command that fails now and passes once this is fixed.
+      render: shell
