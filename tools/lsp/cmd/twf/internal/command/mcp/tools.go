@@ -323,7 +323,8 @@ func buildFmt(in fmtInput) ([]byte, error) {
 	for _, path := range paths {
 		src, err := os.ReadFile(path)
 		if err != nil {
-			return nil, err
+			res.Files = append(res.Files, fmtFile{Path: path, Error: err.Error()})
+			continue
 		}
 		out, err := format.Indent(string(src))
 		if err != nil {

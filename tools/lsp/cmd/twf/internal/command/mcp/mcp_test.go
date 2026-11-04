@@ -343,8 +343,9 @@ func TestFmtPaths(t *testing.T) {
 	}
 }
 
-// TestFmtUnclear: a file whose levels are unclear comes back as an error entry
-// naming the line, as `twf fmt` reports it; inline source is a tool error.
+// TestFmtUnclear: a file whose levels are unclear, or that cannot be read,
+// comes back as an error entry, as `twf fmt` reports it; inline source is a
+// tool error.
 func TestFmtUnclear(t *testing.T) {
 	const unclear = "workflow W(x):\n    if (x):\n        activity A(x)\n      close complete(x)\n"
 	path := filepath.Join(t.TempDir(), "unclear.twf")
@@ -362,6 +363,15 @@ func TestFmtUnclear(t *testing.T) {
 	}
 	if len(got.Files) != 1 || got.Files[0].Path != path || got.Files[0].Content != "" || !strings.HasPrefix(got.Files[0].Error, "line 4: ") {
 		t.Errorf("files = %+v, want one error entry for line 4", got.Files)
+	}
+	if err := os.Chmod(path, 0); err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal([]byte(toolText(t, callTool(t, cs, "twf_fmt", map[string]any{"paths": []string{path}}))), &got); err != nil {
+		t.Fatalf("decode fmt result: %v", err)
+	}
+	if os.Getuid() != 0 && (len(got.Files) != 1 || got.Files[0].Error == "" || strings.HasPrefix(got.Files[0].Error, "line ")) {
+		t.Errorf("unreadable file: files = %+v, want one read-error entry", got.Files)
 	}
 	res, err := cs.CallTool(context.Background(), &sdk.CallToolParams{Name: "twf_fmt", Arguments: map[string]any{"source": unclear}})
 	if err != nil || !res.IsError {

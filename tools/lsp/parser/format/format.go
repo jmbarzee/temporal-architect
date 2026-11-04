@@ -10,14 +10,19 @@ import (
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/token"
 )
 
-// tabStop is the column width of a tab when indentation mixes tabs and spaces.
+// tabStop is the column width of a tab in a tab-indented file whose
+// indentation also holds spaces.
 const tabStop = 4
 
 // Indent returns src with each line's indentation rewritten to one tab per
-// level. Levels are read as a reader sees them: by column, a tab every four,
-// each deeper statement line opening a level and a shallower one closing back
-// to the level at its column. A comment line takes the level at its column
-// without opening one. A space-indented file's lines inside a multi-line
+// level. Levels are read as a reader sees them: by column, each deeper
+// statement line opening a level and a shallower one closing back to the level
+// at its column. A tab is as wide as a space-indented file's unit (the width
+// of its first indented statement line), so a tab level stays a level, and
+// four columns in a tab-indented file. A comment line takes the level at its
+// column, one deeper when it sits under a statement or above a block, without
+// opening one itself; at the top level it stays there. A
+// space-indented file's lines inside a multi-line
 // argument list keep their offset, converted at the file's space unit; a
 // whitespace-only line becomes empty. Nothing but leading whitespace changes,
 // and Indent of its own output is that output.
@@ -27,6 +32,20 @@ const tabStop = 4
 func Indent(src string) (string, error) {
 	lines := strings.Split(src, "\n")
 	starts := lineStarts(src)
+	unit := spaceUnit(lines, starts)
+	stop := unit
+	if stop == 0 {
+		stop = tabStop
+	}
+	// next[i] is the column of the first statement line after line i, or -1.
+	next := make([]int, len(lines))
+	following := -1
+	for i := len(lines) - 1; i >= 0; i-- {
+		next[i] = following
+		if comment, ok := starts[i+1]; ok && !comment {
+			following = width(leading(lines[i]), stop)
+		}
+	}
 	levels := map[int]int{}
 	stack := []int{0}
 	for i, line := range lines {
@@ -34,10 +53,10 @@ func Indent(src string) (string, error) {
 		if !ok {
 			continue
 		}
-		col := column(line)
+		col := width(leading(line), stop)
 		top := stack[len(stack)-1]
 		switch {
-		case comment && col > top:
+		case comment && col > top && (len(stack) > 1 || next[i] > top):
 			levels[i] = len(stack)
 		case comment:
 			levels[i] = deepest(stack, col)
@@ -54,7 +73,6 @@ func Indent(src string) (string, error) {
 			levels[i] = len(stack) - 1
 		}
 	}
-	unit := spaceUnit(lines, starts)
 	for i, line := range lines {
 		body := strings.TrimLeft(line, " \t")
 		if strings.TrimSuffix(body, "\r") == "" {
@@ -96,9 +114,9 @@ func lineStarts(src string) map[int]bool {
 	return starts
 }
 
-// column is the display column of line's first character, a tab every four.
-func column(line string) int {
-	return width(line[:len(line)-len(strings.TrimLeft(line, " \t"))], tabStop)
+// leading is line's indentation run.
+func leading(line string) string {
+	return line[:len(line)-len(strings.TrimLeft(line, " \t"))]
 }
 
 // width is the display width of an indentation run, a tab every stop columns.

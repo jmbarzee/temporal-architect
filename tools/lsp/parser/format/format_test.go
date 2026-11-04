@@ -92,6 +92,16 @@ func TestIndent(t *testing.T) {
 			want: "workflow W(x):\n\t# note\n\tactivity A(x,\n\t\ty) -> r\n\t\t# deep\n\tclose complete(r)\n",
 		},
 		{
+			name: "a tab in a space-indented file is one of its levels",
+			src:  "workflow W(x):\n  if (x):\n    activity A(x)\n\tclose complete(x)\n\nactivity A(x):\n  return x\n",
+			want: "workflow W(x):\n\tif (x):\n\t\tactivity A(x)\n\tclose complete(x)\n\nactivity A(x):\n\treturn x\n",
+		},
+		{
+			name: "an indented top-level comment stays at the top level",
+			src:  " # note\nworkflow W(x):\n\tclose complete(x)\n",
+			want: "# note\nworkflow W(x):\n\tclose complete(x)\n",
+		},
+		{
 			name: "a two-level jump is one level",
 			src:  "workflow W(x):\n\tif (x):\n\t\t\tactivity A(x)\n\tclose complete(x)\n",
 			want: "workflow W(x):\n\tif (x):\n\t\tactivity A(x)\n\tclose complete(x)\n",
