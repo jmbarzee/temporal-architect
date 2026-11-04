@@ -56,7 +56,7 @@ A `.twf` name is the registered name, byte for byte; never rename the `.twf` to 
 | Construct | Go default | Set the `.twf` name by |
 |---|---|---|
 | workflow | function name | naming the func as the `.twf` does; else `RegisterWorkflowWithOptions` `Name` |
-| activity | method or function name | naming the method as the `.twf` does, registered without a `RegisterActivityWithOptions` `Name` prefix |
+| activity | method or function name | naming the method or function as the `.twf` does; `RegisterActivityWithOptions` `Name` prefixes a struct's methods (leave it unset) and replaces a function's name |
 | signal / query / update | none: an explicit string | a constant equal to the `.twf` name |
 | Nexus service / operation | none: an explicit string | a constant equal to the `.twf` name ([nexus-service-def.md](./reference/nexus-service-def.md)) |
 | proto-driven workflow / activity | the annotation's `name:` | `name:` equal to the `.twf` name, with no package prefix ([proto-driven.md](./reference/proto-driven.md)) |

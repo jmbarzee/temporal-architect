@@ -22,7 +22,7 @@ A `.twf` name is the registered name, byte for byte (`twf spec workflows`, `acti
 
 ## Delegation
 
-SDK idioms delegated to `temporal-developer`. Filled by #375.
+SDK idioms delegated to `temporal-developer`.
 
 ## Process
 
@@ -30,7 +30,7 @@ The layers, root-down, each with its check.
 
 ## Verify
 
-The command that checks the generated code. Filled by #375.
+The command that checks the generated code.
 
 ## Output conventions
 
