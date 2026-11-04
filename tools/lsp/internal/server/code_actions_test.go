@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -150,5 +151,88 @@ func TestIndentUnit(t *testing.T) {
 				t.Errorf("indentUnit = %q, want %q", got, tt.want)
 			}
 		})
+	}
+}
+
+// TestAddMissingDefinitionSignature: the stub takes the arguments and result
+// of the call the diagnostic is on, whatever shape the call has and wherever
+// it stands, in the file's own indentation; a reference that is no call gets
+// an empty signature. The result resolves.
+func TestAddMissingDefinitionSignature(t *testing.T) {
+	tests := []struct {
+		name, body, title, header string
+	}{
+		{"activity", "activity Missing(a, b) -> r", "Add missing activity 'Missing'", "activity Missing(a, b) -> (Result):"},
+		{"activity without a result", "activity Missing(a)", "Add missing activity 'Missing'", "activity Missing(a):"},
+		{"workflow", "workflow Missing(x) -> r", "Add missing workflow 'Missing'", "workflow Missing(x) -> (Result):"},
+		{"workflow without a result", "workflow Missing(x, y)", "Add missing workflow 'Missing'", "workflow Missing(x, y):"},
+		{"promised workflow", "promise p <- workflow Missing(x)", "Add missing workflow 'Missing'", "workflow Missing(x):"},
+		{"promised activity", "promise p <- activity Missing(a, b)", "Add missing activity 'Missing'", "activity Missing(a, b):"},
+		{"in a switch", "switch (k):\n|case a:\n||activity Missing(a) -> r", "Add missing activity 'Missing'", "activity Missing(a) -> (Result):"},
+		{"in await all", "await all:\n|workflow Missing(x) -> r\n|activity Do(x)", "Add missing workflow 'Missing'", "workflow Missing(x) -> (Result):"},
+	}
+	for _, unit := range []string{"\t", "    "} {
+		for _, tt := range tests {
+			t.Run(fmt.Sprintf("%q/%s", unit, tt.name), func(t *testing.T) {
+				body := "|" + strings.ReplaceAll(tt.body, "\n", "\n|")
+				src := "workflow W(a, b, x, y, k):\n" + body + "\n|close complete\n\nactivity Do(x):\n|return x\n"
+				src = strings.ReplaceAll(src, "|", unit)
+				line := uint32(strings.Count(src[:strings.Index(src, "Missing")], "\n"))
+				at := protocol.Position{Line: line, Character: 0}
+				actions := codeActions(t, src, protocol.Range{Start: at, End: protocol.Position{Line: line, Character: 200}}, tt.title)
+				if len(actions) != 1 {
+					t.Fatalf("want one action, got %+v", actions)
+				}
+				got := applyEdits(t, src, actions[0].Edit.Changes[renameURI])
+				if want := "\n" + tt.header + "\n" + unit + "# TODO: implement\n"; !strings.Contains(got, want) {
+					t.Errorf("stub does not hold %q:\n%s", want, got)
+				}
+				doc := NewDocumentStore().Open(renameURI, got)
+				if len(doc.ParseErrs)+len(doc.ResolveErrs) > 0 {
+					t.Errorf("result does not resolve: parse=%v resolve=%v\n%s", doc.ParseErrs, doc.ResolveErrs, got)
+				}
+			})
+		}
+	}
+}
+
+// TestAddMissingDefinitionSignatureFromItsOwnCall: of two calls to one missing
+// workflow, each diagnostic's stub takes its own call's signature, in a
+// handler body as in the main body.
+func TestAddMissingDefinitionSignatureFromItsOwnCall(t *testing.T) {
+	src := "workflow W(a, x):\n" +
+		"\tsignal Go(a):\n" +
+		"\t\tworkflow Missing(a) -> r\n" +
+		"\tworkflow Missing(x)\n" +
+		"\tclose complete\n"
+	for _, tc := range []struct {
+		line   uint32
+		header string
+	}{
+		{2, "workflow Missing(a) -> (Result):"},
+		{3, "workflow Missing(x):"},
+	} {
+		r := protocol.Range{Start: protocol.Position{Line: tc.line}, End: protocol.Position{Line: tc.line, Character: 200}}
+		actions := codeActions(t, src, r, "Add missing workflow 'Missing'")
+		if len(actions) != 1 {
+			t.Fatalf("line %d: want one action, got %+v", tc.line, actions)
+		}
+		if got := actions[0].Edit.Changes[renameURI][0].NewText; !strings.Contains(got, "\n"+tc.header+"\n") {
+			t.Errorf("line %d: stub %q, want header %q", tc.line, got, tc.header)
+		}
+	}
+}
+
+// TestAddMissingDefinitionSignatureInNexusOperation: an activity called from a
+// sync nexus operation's body gets that call's signature.
+func TestAddMissingDefinitionSignatureInNexusOperation(t *testing.T) {
+	src := "nexus service S:\n\tsync Op(x: string) -> (R):\n\t\tactivity Missing(x) -> r\n\t\treturn r\n"
+	r := protocol.Range{Start: protocol.Position{Line: 2}, End: protocol.Position{Line: 2, Character: 200}}
+	actions := codeActions(t, src, r, "Add missing activity 'Missing'")
+	if len(actions) != 1 {
+		t.Fatalf("want one action, got %+v", actions)
+	}
+	if got := actions[0].Edit.Changes[renameURI][0].NewText; !strings.Contains(got, "\nactivity Missing(x) -> (Result):\n\t# TODO: implement\n") {
+		t.Errorf("stub %q", got)
 	}
 }

@@ -64,15 +64,10 @@ func addMissingDefinitionActions(doc *Document, params *protocol.CodeActionParam
 		}
 
 		if name != "" && kind != "" {
-			// Find the call to extract parameters
-			call := findCallByName(doc.File, name)
-			params := ""
+			params, result := callSignature(doc.File, err.Line, err.Column)
 			returnType := ""
-			if call != nil {
-				params = call.Args
-				if call.Result != "" {
-					returnType = "Result"
-				}
+			if result != "" {
+				returnType = "Result"
 			}
 
 			// Generate the definition
@@ -194,27 +189,71 @@ func rangesOverlap(a, b protocol.Range) bool {
 	return !(a.End.Line < b.Start.Line || b.End.Line < a.Start.Line)
 }
 
-func findCallByName(file *ast.File, name string) *ast.ActivityCall {
-	for _, def := range file.Definitions {
-		if wf, ok := def.(*ast.WorkflowDef); ok {
-			if call := findCallInStatements(wf.Body, name); call != nil {
-				return call
-			}
+// callSignature returns the arguments and result binding of the call whose
+// target reference stands at line:column, in any body of file: a direct
+// activity or workflow call, or the target of a promise or await. A reference
+// that is no call, such as a worker registration or a nexus operation's
+// backing workflow, has neither.
+func callSignature(file *ast.File, line, column int) (args, result string) {
+	found := false
+	match := func(ref ast.Pos, a, r string) bool {
+		if ref.Line == line && ref.Column == column {
+			args, result, found = a, r, true
 		}
+		return !found
 	}
-	return nil
-}
-
-func findCallInStatements(stmts []ast.Statement, name string) *ast.ActivityCall {
-	var found *ast.ActivityCall
-	ast.WalkStatements(stmts, func(s ast.Statement) bool {
-		if call, ok := s.(*ast.ActivityCall); ok && call.Activity.Name == name {
-			found = call
-			return false
+	visit := func(s ast.Statement) bool {
+		switch s := s.(type) {
+		case *ast.ActivityCall:
+			return match(s.Activity.Pos, s.Args, s.Result)
+		case *ast.WorkflowCall:
+			return match(s.Workflow.Pos, s.Args, s.Result)
+		}
+		return true
+	}
+	target := ast.WithAsyncTargets(func(t ast.AsyncTarget, _ ast.Statement) bool {
+		switch t := t.(type) {
+		case *ast.ActivityTarget:
+			return match(t.Activity.Pos, t.Args, t.Result)
+		case *ast.WorkflowTarget:
+			return match(t.Workflow.Pos, t.Args, t.Result)
 		}
 		return true
 	})
-	return found
+	for _, body := range bodies(file) {
+		if !ast.WalkStatements(body, visit, target) {
+			break
+		}
+	}
+	return args, result
+}
+
+// bodies returns every statement block of file's definitions: workflow
+// bodies and their handlers', activity bodies, and sync nexus operations'.
+func bodies(file *ast.File) [][]ast.Statement {
+	var out [][]ast.Statement
+	for _, def := range file.Definitions {
+		switch d := def.(type) {
+		case *ast.WorkflowDef:
+			out = append(out, d.Body)
+			for _, s := range d.Signals {
+				out = append(out, s.Body)
+			}
+			for _, q := range d.Queries {
+				out = append(out, q.Body)
+			}
+			for _, u := range d.Updates {
+				out = append(out, u.Body)
+			}
+		case *ast.ActivityDef:
+			out = append(out, d.Body)
+		case *ast.NexusServiceDef:
+			for _, op := range d.Operations {
+				out = append(out, op.Body)
+			}
+		}
+	}
+	return out
 }
 
 func findReturnStatements(stmts []ast.Statement) []*ast.ReturnStmt {

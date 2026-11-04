@@ -107,47 +107,6 @@ func TestFindNodeInStmtsNotFound(t *testing.T) {
 	}
 }
 
-func TestFindCallInStatements(t *testing.T) {
-	body := mustParseWorkflowBody(t,
-		"    if (cond):\n"+
-			"        activity Foo(x)\n"+
-			"    activity Bar(y)\n")
-
-	// Should find Foo nested in if body.
-	call := findCallInStatements(body, "Foo")
-	if call == nil {
-		t.Fatal("expected to find activity call 'Foo'")
-	}
-	if call.Activity.Name != "Foo" {
-		t.Errorf("expected 'Foo', got %q", call.Activity.Name)
-	}
-
-	// Should find Bar at top level.
-	call = findCallInStatements(body, "Bar")
-	if call == nil {
-		t.Fatal("expected to find activity call 'Bar'")
-	}
-
-	// Should return nil for non-existent call.
-	call = findCallInStatements(body, "Baz")
-	if call != nil {
-		t.Errorf("expected nil for non-existent call, got %v", call)
-	}
-}
-
-func TestFindCallInStatementsSwitch(t *testing.T) {
-	// Verify the bug fix: findCallInStatements now searches SwitchBlock.
-	body := mustParseWorkflowBody(t,
-		"    switch (x):\n"+
-			"        case a:\n"+
-			"            activity Foo()\n")
-
-	call := findCallInStatements(body, "Foo")
-	if call == nil {
-		t.Fatal("expected to find activity call 'Foo' inside switch block")
-	}
-}
-
 func TestFindReturnStatements(t *testing.T) {
 	body := mustParseWorkflowBody(t,
 		"    if (cond):\n"+
