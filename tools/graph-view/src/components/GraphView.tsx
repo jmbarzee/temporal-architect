@@ -376,7 +376,7 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
 
   // --- Core state ---
   // Camera (viewport transform, container ref, fit/center coordination).
-  const { viewport, setViewport, containerRef, initialFitDone, pendingCenterRef, fit } = useViewport()
+  const { viewport, setViewport, containerRef, initialFitDone, pendingCenterRef, measure, fit } = useViewport()
   // The simulation instance + its handlers are owned by useSimulation, and the
   // RAF loop + fps by useSimulationLoop, both called below once `graph` and the
   // visible subgraph are available.
@@ -672,7 +672,7 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
     visibleIds, visibleNodes, downstreamScores,
     filter, axes: filterAxes,
     hoveredNodeId, selectedNodeId,
-    containerRef, initialFitDone, pendingCenterRef, setViewport, setSelectedNodeId: requestSelect, taxonomy,
+    measure, initialFitDone, pendingCenterRef, setViewport, setSelectedNodeId: requestSelect, taxonomy,
   })
 
   // What the host hears: the hover, a double-click, the resolved theme and
@@ -758,11 +758,10 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
     requestSelect(nodeId)
     // Center viewport on the node
     const sim = simRef.current
-    const container = containerRef.current
-    if (!sim || !container) return
-    const node = sim.getNode(nodeId)
-    if (!node) return
-    const { width, height } = container.getBoundingClientRect()
+    const node = sim?.getNode(nodeId)
+    const size = node && measure()
+    if (!node || !size) return
+    const { width, height } = size
     setViewport({
       scale: viewport.scale,
       x: width / 2 - node.x * viewport.scale,
@@ -997,6 +996,7 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
             onNodeDragMove={handleNodeDragMove}
             onNodeDragEnd={handleNodeDragEnd}
             onDoubleClickNode={handleDoubleClickNode}
+            onFitView={handleFitToView}
             onHoverNode={handleHoverNode}
             onSelectNode={requestSelect}
             highlightedNodes={highlightedNodes}
