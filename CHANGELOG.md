@@ -264,6 +264,9 @@ is now checked against the target's signals.
 
 ### Fixes
 
+- With three or more copies of one module, each ignored copy's
+  `DUPLICATE_MODULE` names every other copy, so its message no longer depends
+  on input order (#303).
 - `twf check` no longer hangs on a top-level `nexus` call; it reports one
   `parse/SYNTAX` error (#263).
 - The help for `twf check`, `parse`, `graph`, `graph chunks` and `symbols`
