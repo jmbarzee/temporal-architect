@@ -12,6 +12,11 @@
  */
 export interface SubSymbol {
   name: string;
+  /**
+   * PackageID is a worker registration's target package identity, when it
+   * resolved to a packaged definition.
+   */
+  packageId?: string;
   params?: string;
   returnType?: string;
 }
@@ -23,6 +28,15 @@ export interface SubSymbol {
 export interface SymbolJSON {
   kind: string;
   name: string;
+  /**
+   * PackageID is the symbol's package identity, a key into the envelope's
+   * packages table; absent for the default package.
+   */
+  packageId?: string;
+  /**
+   * SourceFile is the file declaring the symbol, spelled as its input named it.
+   */
+  sourceFile?: string;
   params?: string;
   returnType?: string;
   signals?: SubSymbol[];

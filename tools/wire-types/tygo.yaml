@@ -18,9 +18,12 @@ packages:
     # node-kind / edge-kind constants; sibling files are internal builders.
     include_files:
       - "graph.go"
+    type_mappings:
+      ast.PackageRef: "PackageRef"
     frontmatter: |
       // Source of truth: the Go DTO structs in tools/lsp. Regenerate: `make gen-types`.
       // String-literal enums and discriminated unions live in ../residue.ts.
+      import type { PackageRef } from "./ast";
 
   - path: "github.com/jmbarzee/temporal-architect/tools/lsp/parser/observe"
     output_path: "tools/wire-types/src/generated/observe.ts"
@@ -50,9 +53,12 @@ packages:
     # input Options (not part of any JSON payload) and is excluded.
     include_files:
       - "result.go"
+    type_mappings:
+      ast.PackageRef: "PackageRef"
     frontmatter: |
       // Source of truth: the Go DTO structs in tools/lsp. Regenerate: `make gen-types`.
       // String-literal enums and discriminated unions live in ../residue.ts.
+      import type { PackageRef } from "./ast";
 
   - path: "github.com/jmbarzee/temporal-architect/tools/lsp/pipeline"
     output_path: "tools/wire-types/src/generated/envelope.ts"
@@ -63,10 +69,11 @@ packages:
     # point it at the generated FileSummary in the sibling ast file.
     type_mappings:
       ast.FileSummary: "FileSummary"
+      ast.PackageRef: "PackageRef"
     frontmatter: |
       // Source of truth: the Go DTO structs in tools/lsp. Regenerate: `make gen-types`.
       // String-literal enums and discriminated unions live in ../residue.ts.
-      import type { FileSummary } from "./ast";
+      import type { FileSummary, PackageRef } from "./ast";
 
   - path: "github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf/internal/command/symbols"
     output_path: "tools/wire-types/src/generated/symbols.ts"

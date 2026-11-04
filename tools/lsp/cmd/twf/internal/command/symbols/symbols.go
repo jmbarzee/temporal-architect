@@ -17,7 +17,10 @@ import (
 // member registered on a worker/namespace/nexus service). It is part of the
 // `twf symbols --json` wire contract — see tools/wire-types.
 type SubSymbol struct {
-	Name       string `json:"name"`
+	Name string `json:"name"`
+	// PackageID is a worker registration's target package identity, when it
+	// resolved to a packaged definition.
+	PackageID  string `json:"packageId,omitempty"`
 	Params     string `json:"params,omitempty"`
 	ReturnType string `json:"returnType,omitempty"`
 }
@@ -26,8 +29,13 @@ type SubSymbol struct {
 // (a workflow, activity, worker, namespace, or nexus service). It is part of
 // the wire contract — see tools/wire-types.
 type SymbolJSON struct {
-	Kind       string      `json:"kind"`
-	Name       string      `json:"name"`
+	Kind string `json:"kind"`
+	Name string `json:"name"`
+	// PackageID is the symbol's package identity, a key into the envelope's
+	// packages table; absent for the default package.
+	PackageID string `json:"packageId,omitempty"`
+	// SourceFile is the file declaring the symbol, spelled as its input named it.
+	SourceFile string      `json:"sourceFile,omitempty"`
 	Params     string      `json:"params,omitempty"`
 	ReturnType string      `json:"returnType,omitempty"`
 	Signals    []SubSymbol `json:"signals,omitempty"`
@@ -94,6 +102,8 @@ func Extract(file *ast.File) []SymbolJSON {
 			sym := SymbolJSON{
 				Kind:       "workflow",
 				Name:       d.Name,
+				PackageID:  ast.PackageIDOf(d, file),
+				SourceFile: d.SourceFile,
 				Params:     d.Params,
 				ReturnType: d.ReturnType,
 			}
@@ -122,28 +132,34 @@ func Extract(file *ast.File) []SymbolJSON {
 			symbols = append(symbols, SymbolJSON{
 				Kind:       "activity",
 				Name:       d.Name,
+				PackageID:  ast.PackageIDOf(d, file),
+				SourceFile: d.SourceFile,
 				Params:     d.Params,
 				ReturnType: d.ReturnType,
 			})
 		case *ast.WorkerDef:
 			sym := SymbolJSON{
-				Kind: "worker",
-				Name: d.Name,
+				Kind:       "worker",
+				Name:       d.Name,
+				PackageID:  ast.PackageIDOf(d, file),
+				SourceFile: d.SourceFile,
 			}
 			for _, w := range d.Workflows {
-				sym.Workflows = append(sym.Workflows, SubSymbol{Name: w.Name})
+				sym.Workflows = append(sym.Workflows, SubSymbol{Name: w.Name, PackageID: registeredPkg(w, file)})
 			}
 			for _, a := range d.Activities {
-				sym.Activities = append(sym.Activities, SubSymbol{Name: a.Name})
+				sym.Activities = append(sym.Activities, SubSymbol{Name: a.Name, PackageID: registeredPkg(a, file)})
 			}
 			for _, s := range d.Services {
-				sym.Services = append(sym.Services, SubSymbol{Name: s.Name})
+				sym.Services = append(sym.Services, SubSymbol{Name: s.Name, PackageID: registeredPkg(s, file)})
 			}
 			symbols = append(symbols, sym)
 		case *ast.NamespaceDef:
 			sym := SymbolJSON{
-				Kind: "namespace",
-				Name: d.Name,
+				Kind:       "namespace",
+				Name:       d.Name,
+				PackageID:  ast.PackageIDOf(d, file),
+				SourceFile: d.SourceFile,
 			}
 			for _, w := range d.Workers {
 				sym.Workers = append(sym.Workers, SubSymbol{Name: w.Worker.Name})
@@ -154,8 +170,10 @@ func Extract(file *ast.File) []SymbolJSON {
 			symbols = append(symbols, sym)
 		case *ast.NexusServiceDef:
 			sym := SymbolJSON{
-				Kind: "nexusService",
-				Name: d.Name,
+				Kind:       "nexusService",
+				Name:       d.Name,
+				PackageID:  ast.PackageIDOf(d, file),
+				SourceFile: d.SourceFile,
 			}
 			for _, op := range d.Operations {
 				opKind := "sync"
@@ -235,6 +253,7 @@ func printJSON(file *ast.File, diags []pipeline.Diagnostic) int {
 	env := pipeline.Envelope{
 		Summary:     pipeline.Summarize(file, diags),
 		Diagnostics: pipeline.EnsureSlice(diags),
+		Packages:    ast.PackageRefs(file),
 		Symbols:     symbols,
 	}
 	data, err := json.MarshalIndent(env, "", "  ")
@@ -244,4 +263,17 @@ func printJSON(file *ast.File, diags []pipeline.Diagnostic) int {
 	}
 	fmt.Println(string(data))
 	return 0
+}
+
+// registeredPkg is the package identity a worker registration resolved to, or
+// "" when it did not resolve or names a default-package definition.
+func registeredPkg[T interface {
+	comparable
+	ast.Packaged
+}](r ast.Ref[T], file *ast.File) string {
+	var zero T
+	if r.Resolved == zero {
+		return ""
+	}
+	return ast.PackageIDOf(r.Resolved, file)
 }

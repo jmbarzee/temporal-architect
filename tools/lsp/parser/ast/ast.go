@@ -63,6 +63,9 @@ type File struct {
 	// or that has a `package` line other than its first clause: it takes no
 	// part in packages or resolution and reports only its parse errors.
 	ClauseExcluded bool
+	// Packages lists a merged run's kept packages, ordered by identity; the
+	// default package is not listed. Runtime-only.
+	Packages []PackageInfo
 }
 
 // ImportDecl is a single `import [alias] "path"` declaration at file scope.
@@ -85,6 +88,7 @@ type ImportDecl struct {
 	Path       string
 	Alias      string
 	Package    string
+	PkgID      string // runtime-only: the owning package's identity (Packaged)
 	SourceFile string
 }
 
@@ -107,8 +111,48 @@ type ImportDecl struct {
 //
 // Packaged exposes that runtime package stamp so generic helpers can read it
 // off a Ref's resolved target without a per-type switch.
+//
+// PkgID is the package's identity — what keys, ids and qualifiedName use. It
+// is the declared name today and becomes the package's import path.
 type Packaged interface {
 	PackageName() string
+	PackageID() string
+}
+
+// PackageIDOf returns a definition's package identity: its PkgID stamp, else
+// its declared-name stamp, else the file's sole package — for an AST the merge
+// did not stamp (the LSP's single-buffer parse, raw test parses). "" is the
+// default package.
+func PackageIDOf(p Packaged, file *File) string {
+	if id := p.PackageID(); id != "" {
+		return id
+	}
+	if name := p.PackageName(); name != "" {
+		return name
+	}
+	if file != nil {
+		return file.Package
+	}
+	return ""
+}
+
+// ImportPackageIDOf is PackageIDOf for the package an import line belongs to.
+func ImportPackageIDOf(imp *ImportDecl, file *File) string {
+	switch {
+	case imp.PkgID != "":
+		return imp.PkgID
+	case imp.Package != "":
+		return imp.Package
+	case file != nil:
+		return file.Package
+	}
+	return ""
+}
+
+// PackageInfo is one kept package of a merged run: its identity, its declared
+// name, and its import path ("" for a virtual source's package).
+type PackageInfo struct {
+	ID, Name, Path string
 }
 
 // SourceFileOf returns the SourceFile stamp of a top-level definition, or ""
@@ -163,10 +207,12 @@ type WorkflowDef struct {
 	Body           []Statement
 	SourceFile     string
 	Package        string // runtime-only; see Packaged note above
+	PkgID          string // runtime-only; see Packaged note above
 }
 
 func (*WorkflowDef) defNode()              {}
 func (d *WorkflowDef) PackageName() string { return d.Package }
+func (d *WorkflowDef) PackageID() string   { return d.PkgID }
 
 type ActivityDef struct {
 	Pos
@@ -177,10 +223,12 @@ type ActivityDef struct {
 	Body           []Statement
 	SourceFile     string
 	Package        string // runtime-only; see Packaged note above
+	PkgID          string // runtime-only; see Packaged note above
 }
 
 func (*ActivityDef) defNode()              {}
 func (d *ActivityDef) PackageName() string { return d.Package }
+func (d *ActivityDef) PackageID() string   { return d.PkgID }
 
 type WorkerDef struct {
 	Pos
@@ -195,6 +243,7 @@ type WorkerDef struct {
 	OperationMentions []OperationMention
 	SourceFile        string
 	Package           string // runtime-only; see Packaged note above
+	PkgID             string // runtime-only; see Packaged note above
 }
 
 // OperationMention is a worker `nexus service` entry that named an operation
@@ -207,6 +256,7 @@ type OperationMention struct {
 
 func (*WorkerDef) defNode()              {}
 func (d *WorkerDef) PackageName() string { return d.Package }
+func (d *WorkerDef) PackageID() string   { return d.PkgID }
 
 // NamespaceWorker is a worker instantiation inside a namespace block.
 type NamespaceWorker struct {
@@ -244,10 +294,12 @@ type NamespaceDef struct {
 	Endpoints      []NamespaceEndpoint
 	SourceFile     string
 	Package        string // runtime-only; see Packaged note above
+	PkgID          string // runtime-only; see Packaged note above
 }
 
 func (*NamespaceDef) defNode()              {}
 func (d *NamespaceDef) PackageName() string { return d.Package }
+func (d *NamespaceDef) PackageID() string   { return d.PkgID }
 
 // ---------------------------------------------------------------------------
 // Workflow-level declarations (embedded in WorkflowDef)
@@ -727,10 +779,12 @@ type NexusServiceDef struct {
 	Operations []*NexusOperation
 	SourceFile string
 	Package    string // runtime-only; see Packaged note above
+	PkgID      string // runtime-only; see Packaged note above
 }
 
 func (*NexusServiceDef) defNode()              {}
 func (d *NexusServiceDef) PackageName() string { return d.Package }
+func (d *NexusServiceDef) PackageID() string   { return d.PkgID }
 
 // NexusCall is a nexus service operation call inside a workflow body.
 type NexusCall struct {

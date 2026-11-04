@@ -45,6 +45,13 @@ type Summary struct {
 type Node struct {
 	ID         string `json:"id"`
 	Definition string `json:"definition"`
+	// Name is the definition's bare name: "Setup"; "PaymentService.Charge" for
+	// an operation; a worker's, namespace's or endpoint's own name.
+	Name string `json:"name"`
+	// PackageID is the definition's package identity, a key into the graph's
+	// packages table. Absent for the default package and for worker, namespace
+	// and endpoint nodes.
+	PackageID string `json:"packageId,omitempty"`
 	// Worker is populated on nexusService / nexusOperation nodes;
 	// Namespace only on nexusService. Both empty elsewhere — read the
 	// containment edges for membership.
@@ -181,6 +188,9 @@ type Graph struct {
 	CoarsenedEdges []CoarsenedEdge `json:"coarsenedEdges"`
 	Unresolved     []Unresolved    `json:"unresolved"`
 	Diagnostics    []Diagnostic    `json:"diagnostics"`
+	// Packages maps each kept package's identity to its declared name; absent
+	// for an unpackaged design.
+	Packages map[string]ast.PackageRef `json:"packages,omitempty"`
 
 	// walkFile is the source file of the body emitDispatchEdges is walking,
 	// which addDiagnostic stamps on a diagnostic with none.
@@ -221,19 +231,6 @@ const orphanSuffix = "/orphan"
 // e.g. DefKey("workflow", "OrderWorkflow") → "workflow:OrderWorkflow".
 func DefKey(kind, name string) string {
 	return kind + ":" + name
-}
-
-// pkgOf returns a definition's effective package: its runtime package stamp
-// (set by the envelope merge) when present, otherwise the file's own package.
-// Mirrors resolver.effPkg so the graph keys by the same (package, name) the
-// resolver used — the lockstep that keeps same-named cross-package defs distinct
-// (issue #109). For an unpackaged tree both are empty, so ast.QualifiedName
-// elides the package and every ID stays byte-identical.
-func pkgOf(defPkg, filePkg string) string {
-	if defPkg != "" {
-		return defPkg
-	}
-	return filePkg
 }
 
 // NamespaceID returns the canonical node ID for a namespace deployment.
@@ -289,6 +286,7 @@ func Extract(file *ast.File) *Graph {
 	}
 
 	idx := indexAST(file)
+	g.Packages = ast.PackageRefs(file)
 
 	// Order matters: nodes must exist before edges can reference them by
 	// ID, and containment edges depend on the node set.

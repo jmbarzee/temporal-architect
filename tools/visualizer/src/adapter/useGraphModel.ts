@@ -9,7 +9,7 @@
 import React from 'react'
 import type { TWFFile, FileError, Diagnostic } from '../types/ast'
 import type { ParserGraph } from '../types/parser-graph'
-import { buildAstLookup, buildGraph, type AstLookup } from './build'
+import { buildAstLookup, buildGraph, nodeLabel, type AstLookup } from './build'
 import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION } from './dimensions'
 import type { Graph } from '@temporal-architect/graph-view'
 // graphFindingsToDiagnostics lifts graph-stage findings (parserGraph.diagnostics
@@ -30,7 +30,7 @@ function graphFindingsToDiagnostics(pg: ParserGraph): Diagnostic[] {
       code: d.code,
       message: d.message,
       file: d.file,
-      name: d.from,
+      name: d.from === undefined ? undefined : nodeLabel(pg, d.from),
       start: { line: d.line, column: 0 },
       end: { line: d.line, column: 0 },
     })
@@ -44,7 +44,7 @@ function graphFindingsToDiagnostics(pg: ParserGraph): Diagnostic[] {
         kind: 'graph',
         code: 'EXTERNAL_REFERENCE',
         message: `${u.kind} target ${JSON.stringify(u.name)} is in a package outside this tree (unchecked)`,
-        name: u.from,
+        name: nodeLabel(pg, u.from),
         start: { line: u.line, column: 0 },
         end: { line: u.line, column: 0 },
       })
@@ -56,7 +56,7 @@ function graphFindingsToDiagnostics(pg: ParserGraph): Diagnostic[] {
       kind: 'graph',
       code,
       message: `unresolved ${u.kind} target ${JSON.stringify(u.name)} (not present in the sampled input)`,
-      name: u.from,
+      name: nodeLabel(pg, u.from),
       start: { line: u.line, column: 0 },
       end: { line: u.line, column: 0 },
     })

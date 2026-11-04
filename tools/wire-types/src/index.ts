@@ -21,14 +21,41 @@ export type * from "./generated/symbols";
 // `Decomposition` is the top-level Result; the rest are its nested shapes.
 // Listed explicitly (not star-exported) so the public surface stays grep-able
 // and the generic generated names (`Result`, `Node`) don't leak.
-export type {
-  Result as Decomposition,
-  Chunk,
-  Division,
-  Section,
-  SectionEdge,
-  Advisory,
+export type { SectionEdge, Advisory } from "./generated/decompose";
+
+import type {
+  Result as DecompositionJSON,
+  Chunk as ChunkJSON,
+  Division as DivisionJSON,
+  Section as SectionJSON,
+  Node as DecompositionNodeJSON,
 } from "./generated/decompose";
+import type { LabelKind } from "./residue";
+
+// The display fields arrived with package identity; a saved decomposition, or
+// one from an older twf, lacks them, so they are optional here.
+
+/** One proposed sub-unit of a divided chunk. */
+export type Section = Omit<SectionJSON, "labelKind" | "label" | "divisions"> & {
+  labelKind?: LabelKind;
+  label?: string;
+  divisions?: Division[];
+};
+/** One ranked way to divide an over-ceiling chunk. */
+export type Division = Omit<DivisionJSON, "sections"> & { sections: Section[] };
+/** One chunk of the hard partition. */
+export type Chunk = Omit<ChunkJSON, "baseKey" | "label" | "divisions"> & {
+  baseKey?: string;
+  label?: string;
+  divisions?: Division[];
+};
+/** One authorable definition of a decomposition. */
+export type DecompositionNode = Omit<DecompositionNodeJSON, "label"> & { label?: string };
+/** The `chunks` payload of `twf graph chunks --json`. */
+export type Decomposition = Omit<DecompositionJSON, "nodes" | "chunks"> & {
+  nodes: DecompositionNode[];
+  chunks: Chunk[];
+};
 
 import type {
   Graph as GraphJSON,
@@ -90,7 +117,8 @@ export type ParserGraphDiagnosticCode =
   | "DISPATCH_NO_REACHABLE_DEPLOYMENT"
   | "SIGNAL_TARGET_NOT_SAMPLED";
 
-export type ParserNode = GraphNodeJSON;
+/** A graph node; `name` is optional because saved graphs from an older twf lack it. */
+export type ParserNode = Omit<GraphNodeJSON, "name"> & { name?: string };
 export type ParserRouting = GraphRoutingJSON;
 export type ParserGraphSummary = GraphSummaryJSON;
 
@@ -112,8 +140,9 @@ export type ParserGraphDiagnostic = Omit<
 /** The full payload emitted by `twf graph --json` (the envelope's `graph`). */
 export type ParserGraph = Omit<
   GraphJSON,
-  "edges" | "coarsenedEdges" | "unresolved" | "diagnostics"
+  "nodes" | "edges" | "coarsenedEdges" | "unresolved" | "diagnostics"
 > & {
+  nodes: ParserNode[];
   edges: ParserEdge[];
   coarsenedEdges: CoarsenedEdge[];
   unresolved: ParserUnresolved[];
@@ -142,8 +171,9 @@ export type ObservedEdge = ParserEdge & { buckets: number[] };
 /** The full payload emitted by the sampler (the envelope's `observedGraph`). */
 export type ObservedGraph = Omit<
   ObservedGraphJSON,
-  "edges" | "coarsenedEdges" | "unresolved" | "diagnostics"
+  "nodes" | "edges" | "coarsenedEdges" | "unresolved" | "diagnostics"
 > & {
+  nodes: ParserNode[];
   edges: ObservedEdge[];
   coarsenedEdges: CoarsenedEdge[];
   unresolved: ParserUnresolved[];

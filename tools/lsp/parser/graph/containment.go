@@ -53,7 +53,7 @@ func (g *Graph) emitContainment(idx *astIndex) {
 	}
 
 	for _, svc := range idx.nexusServices {
-		svcQName := idx.defQName(svc.Package, svc.Name)
+		svcQName := idx.defQName(svc, svc.Name)
 		for _, wd := range idx.deploymentsHosting(KindNexusService, svcQName) {
 			for _, op := range svc.Operations {
 				opName := nexusOpQualifiedName(svcQName, op.Name)
@@ -84,7 +84,9 @@ func refNamesAndLines[T interface {
 }](refs []ast.Ref[T], idx *astIndex) []refLine {
 	out := make([]refLine, 0, len(refs))
 	for _, r := range refs {
-		out = append(out, refLine{Name: hostedRefQName(r, idx), Line: r.Line})
+		if name, ok := hostedRefQName(r, idx); ok {
+			out = append(out, refLine{Name: name, Line: r.Line})
+		}
 	}
 	return out
 }

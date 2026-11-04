@@ -102,6 +102,15 @@ parsed.
 - `id` (string, required) — composite stable key per the table above.
 - `definition` (string, required) — AST anchor; same form as the leftmost segment
   of `id`.
+- `name` (string, required) — the definition's bare name (`Setup`; `Svc.Op` for
+  an operation; a worker's, namespace's or endpoint's own name).
+- `packageId` (string, optional) — the package identity of a workflow, activity,
+  nexus service or operation, a key into the graph's `packages` table (identity
+  → declared `name`). Absent for the default package and for worker, namespace
+  and endpoint nodes. `definition == kind + ":" + QualifiedName(packageId, name)`
+  for every hosted node except an operation, whose `definition` ends in
+  `Svc.Op` too. Treat ids and definition keys as opaque beyond the kind (the
+  text before the first `:`); read these fields instead.
 - `worker` (string, optional) — definition key of the hosting worker. Present on
   `nexusService` and `nexusOperation` nodes only.
 - `namespace` (string, optional) — definition key of the deployment namespace.

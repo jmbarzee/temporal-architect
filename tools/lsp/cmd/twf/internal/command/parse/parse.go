@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf/internal/cmdutil"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/pipeline"
 	"github.com/spf13/cobra"
 )
@@ -45,6 +46,7 @@ func run(args []string) int {
 	env := pipeline.Envelope{
 		Summary:     pipeline.Summarize(file, diags),
 		Diagnostics: pipeline.EnsureSlice(diags),
+		Packages:    ast.PackageRefs(file),
 	}
 
 	// Marshal the AST through its own MarshalJSON so we get the existing

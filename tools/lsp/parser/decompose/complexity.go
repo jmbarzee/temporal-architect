@@ -52,16 +52,6 @@ func (m bodyMetrics) score() int {
 		weightChildWf*m.childWorkflows
 }
 
-// pkgOf returns a definition's effective package (runtime stamp, else the
-// file's package) so complexity node-key lookups match the package-aware graph
-// node Definition keys (issue #109). Mirrors graph.pkgOf / resolver.effPkg.
-func pkgOf(defPkg, filePkg string) string {
-	if defPkg != "" {
-		return defPkg
-	}
-	return filePkg
-}
-
 // computeComplexity sets the deterministic per-definition complexity scalar on
 // every working node, derived from AST body counts. Workflow handler bodies are
 // folded into the owning workflow's score. With a nil AST the nodes keep their
@@ -73,7 +63,7 @@ func (wg *workGraph) computeComplexity(file *ast.File) {
 	for _, def := range file.Definitions {
 		switch d := def.(type) {
 		case *ast.WorkflowDef:
-			wn := wg.nodes[graph.DefKey(graph.KindWorkflow, ast.QualifiedName(pkgOf(d.Package, file.Package), d.Name))]
+			wn := wg.nodes[graph.DefKey(graph.KindWorkflow, ast.QualifiedName(ast.PackageIDOf(d, file), d.Name))]
 			if wn == nil {
 				continue
 			}
@@ -91,12 +81,12 @@ func (wg *workGraph) computeComplexity(file *ast.File) {
 			wn.complexity = m.score()
 
 		case *ast.ActivityDef:
-			if wn := wg.nodes[graph.DefKey(graph.KindActivity, ast.QualifiedName(pkgOf(d.Package, file.Package), d.Name))]; wn != nil {
+			if wn := wg.nodes[graph.DefKey(graph.KindActivity, ast.QualifiedName(ast.PackageIDOf(d, file), d.Name))]; wn != nil {
 				wn.complexity = measureBody(d.Body).score()
 			}
 
 		case *ast.NexusServiceDef:
-			svcQName := ast.QualifiedName(pkgOf(d.Package, file.Package), d.Name)
+			svcQName := ast.QualifiedName(ast.PackageIDOf(d, file), d.Name)
 			for _, op := range d.Operations {
 				// Sync ops carry a body; async ones don't (base score).
 				if wn := wg.nodes[graph.DefKey(graph.KindNexusOperation, svcQName+"."+op.Name)]; wn != nil {
@@ -105,6 +95,21 @@ func (wg *workGraph) computeComplexity(file *ast.File) {
 			}
 		}
 	}
+}
+
+// calleeKey identifies a call's target for the distinct-callee count: the
+// resolved definition's package and name, so `fabric.Setup` and `cf.Setup`
+// are two callees; a target that did not resolve keys by its written qualifier
+// under a prefix no package has, so it never merges with a resolved one.
+func calleeKey[T interface {
+	comparable
+	ast.Packaged
+}](kind string, r ast.Ref[T]) string {
+	var zero T
+	if r.Resolved != zero {
+		return kind + ":" + ast.QualifiedName(ast.PackageIDOf(r.Resolved, nil), r.Name)
+	}
+	return kind + ":\x00" + r.Package + "." + r.Name
 }
 
 // measureBody walks a statement body and tallies its bodyMetrics. Depth is 0 for
@@ -116,12 +121,12 @@ func measureBody(stmts []ast.Statement) bodyMetrics {
 	addTarget := func(t ast.AsyncTarget) {
 		switch tt := t.(type) {
 		case *ast.ActivityTarget:
-			callees["activity:"+tt.Activity.Name] = true
+			callees[calleeKey("activity", tt.Activity)] = true
 		case *ast.WorkflowTarget:
-			callees["workflow:"+tt.Workflow.Name] = true
+			callees[calleeKey("workflow", tt.Workflow)] = true
 			m.childWorkflows++
 		case *ast.NexusTarget:
-			callees["nexus:"+tt.Service.Name+"."+tt.Operation.Name] = true
+			callees[calleeKey("nexus", tt.Service)+"."+tt.Operation.Name] = true
 		}
 	}
 
@@ -134,12 +139,12 @@ func measureBody(stmts []ast.Statement) bodyMetrics {
 			m.statements++
 			switch n := s.(type) {
 			case *ast.ActivityCall:
-				callees["activity:"+n.Activity.Name] = true
+				callees[calleeKey("activity", n.Activity)] = true
 			case *ast.WorkflowCall:
-				callees["workflow:"+n.Workflow.Name] = true
+				callees[calleeKey("workflow", n.Workflow)] = true
 				m.childWorkflows++
 			case *ast.NexusCall:
-				callees["nexus:"+n.Service.Name+"."+n.Operation.Name] = true
+				callees[calleeKey("nexus", n.Service)+"."+n.Operation.Name] = true
 			case *ast.AwaitStmt:
 				addTarget(n.Target)
 			case *ast.PromiseStmt:

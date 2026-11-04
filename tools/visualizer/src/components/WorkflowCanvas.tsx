@@ -358,9 +358,10 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
     // and centres on the node. A target with no node in the graph is a manual
     // switch.
     if (target === 'graph' && transition.kind === 'focus') {
+      // By definition key — the node's copyKey — not by its display name.
       const { name, values } = transition.target
-      const node = model.graph.nodes.find(n =>
-        n.name === name && n.values[DEF_TYPE_DIMENSION] === values[DEF_TYPE_DIMENSION])
+      const key = `${values[DEF_TYPE_DIMENSION]}:${name}`
+      const node = model.graph.nodes.find(n => n.copyKey === key)
       if (node) focus('graph', node)
       else switchTo('graph')
       setGraphEverShown(true)

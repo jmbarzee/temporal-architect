@@ -4,6 +4,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/graph"
 )
 
@@ -18,6 +19,7 @@ type workNode struct {
 	key        string
 	kind       string
 	name       string
+	packageID  string
 	workers    map[string]bool
 	namespaces map[string]bool
 	langs      map[string]bool
@@ -29,6 +31,8 @@ type workNode struct {
 // (scc / sccOf) is populated by condense().
 type workGraph struct {
 	nodes map[string]*workNode
+	// packages is the graph's packages table, for labels.
+	packages map[string]ast.PackageRef
 
 	binding  edgeSet // call structure: activityCall, workflowCall, asyncBacking
 	childWf  edgeSet // workflow→workflow call structure only (a subset of binding)
@@ -69,6 +73,7 @@ func (e edgeSet) add(from, to string) {
 func buildWorkGraph(g *graph.Graph) *workGraph {
 	wg := &workGraph{
 		nodes:       map[string]*workNode{},
+		packages:    g.Packages,
 		binding:     edgeSet{},
 		childWf:     edgeSet{},
 		soft:        edgeSet{},
@@ -80,30 +85,48 @@ func buildWorkGraph(g *graph.Graph) *workGraph {
 	// activity, and nexus operation definitions carry call structure. Workers,
 	// namespaces, nexus services, and endpoints are deployment context, not
 	// decomposition nodes. Deployment attributes (hosting worker / namespace)
-	// are read off each instance's composite ID and retained for the deferred
+	// are read off each instance's containment ancestors and retained for the deferred
 	// language-boundary split (issue 23) and grouping lens (issue 39).
-	for _, n := range g.Nodes {
+	byID := make(map[string]*graph.Node, len(g.Nodes))
+	workerOf, namespaceOf := g.Ancestors()
+	for i := range g.Nodes {
+		n := &g.Nodes[i]
+		byID[n.ID] = n
 		kind := kindOf(n.Definition)
 		if !isAuthorableKind(kind) {
 			continue
 		}
-		wg.ensureNode(n.Definition, kind, defNameOf(n.Definition))
+		wg.ensureNode(n.Definition, kind, n.Name)
 		wn := wg.nodes[n.Definition]
-		worker, namespace := deploymentOf(n.ID)
-		if worker != "" {
-			wn.workers[worker] = true
+		wn.packageID = n.PackageID
+		if w, ok := workerOf[n.ID]; ok {
+			wn.workers[w] = true
 		}
-		if namespace != "" {
-			wn.namespaces[namespace] = true
+		if ns, ok := namespaceOf[n.ID]; ok {
+			wn.namespaces[ns] = true
 		}
+	}
+	// A worker ancestor is a worker node id; decompose emits worker definition
+	// keys. A namespace node's id is its definition key.
+	for _, wn := range wg.nodes {
+		keys := map[string]bool{}
+		for id := range wn.workers {
+			if n := byID[id]; n != nil {
+				keys[n.Definition] = true
+			}
+		}
+		wn.workers = keys
 	}
 
 	// Edges: collapse each graph edge's endpoints to their definition key and
 	// classify by kind. Endpoints whose definitions are not decomposition
 	// nodes (e.g. containment into a worker) are skipped.
 	for _, e := range g.Edges {
-		from := defKeyOf(e.From)
-		to := defKeyOf(e.To)
+		fromNode, toNode := byID[e.From], byID[e.To]
+		if fromNode == nil || toNode == nil {
+			continue
+		}
+		from, to := fromNode.Definition, toNode.Definition
 		if wg.nodes[from] == nil || wg.nodes[to] == nil {
 			continue
 		}
@@ -157,6 +180,8 @@ func (wg *workGraph) exportNodes() []Node {
 			Key:        wn.key,
 			Kind:       wn.kind,
 			Name:       wn.name,
+			PackageID:  wn.packageID,
+			Label:      wg.label(key),
 			Workers:    sortedSet(wn.workers),
 			Namespaces: sortedSet(wn.namespaces),
 			Langs:      sortedSet(wn.langs),
@@ -164,6 +189,16 @@ func (wg *workGraph) exportNodes() []Node {
 		})
 	}
 	return out
+}
+
+// label is a node's display label (ast.Label); a node with no name, from a
+// graph built by hand, shows its key.
+func (wg *workGraph) label(key string) string {
+	wn := wg.nodes[key]
+	if wn == nil || wn.name == "" {
+		return key
+	}
+	return ast.Label(wg.packages, wn.packageID, wn.name)
 }
 
 // sortedKeys returns all node keys in stable sorted order.
@@ -214,40 +249,6 @@ func kindOf(definition string) string {
 		return definition[:i]
 	}
 	return definition
-}
-
-// defNameOf returns the name portion of a definition key
-// ("workflow:Foo" → "Foo", "nexusOperation:Svc.Op" → "Svc.Op").
-func defNameOf(definition string) string {
-	if i := strings.IndexByte(definition, ':'); i >= 0 {
-		return definition[i+1:]
-	}
-	return definition
-}
-
-// defKeyOf returns the definition key of a graph node ID — the leftmost
-// kind:Name segment, before the first "/". This mirrors graph.Node.Definition.
-func defKeyOf(nodeID string) string {
-	if i := strings.IndexByte(nodeID, '/'); i >= 0 {
-		return nodeID[:i]
-	}
-	return nodeID
-}
-
-// deploymentOf extracts the hosting worker definition key and namespace node ID
-// from a composite graph node ID, e.g.
-// "workflow:Order/worker:orders/namespace:ecommerce" → ("worker:orders",
-// "namespace:ecommerce"). Orphan and bare IDs yield empty strings.
-func deploymentOf(nodeID string) (worker, namespace string) {
-	for _, seg := range strings.Split(nodeID, "/")[1:] {
-		switch {
-		case strings.HasPrefix(seg, graph.KindWorker+":"):
-			worker = seg
-		case strings.HasPrefix(seg, graph.KindNamespace+":"):
-			namespace = seg
-		}
-	}
-	return worker, namespace
 }
 
 // ---------------------------------------------------------------------------

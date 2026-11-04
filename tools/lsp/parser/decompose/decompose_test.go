@@ -112,10 +112,18 @@ func TestDefinitionCollapse(t *testing.T) {
 			{ID: graph.HostedID(graph.KindWorkflow, "W", "w2", "ns", false), Definition: wf},
 			{ID: graph.HostedID(graph.KindActivity, "A", "w1", "ns", false), Definition: act},
 			{ID: graph.HostedID(graph.KindActivity, "A", "w2", "ns", false), Definition: act},
+			{ID: graph.WorkerID("w1", "ns"), Definition: graph.DefKey(graph.KindWorker, "w1")},
+			{ID: graph.WorkerID("w2", "ns"), Definition: graph.DefKey(graph.KindWorker, "w2")},
+			{ID: graph.NamespaceID("ns"), Definition: graph.NamespaceID("ns")},
 		},
 		Edges: []graph.Edge{
 			gedge(graph.HostedID(graph.KindWorkflow, "W", "w1", "ns", false), graph.HostedID(graph.KindActivity, "A", "w1", "ns", false), graph.EdgeActivityCall),
 			gedge(graph.HostedID(graph.KindWorkflow, "W", "w2", "ns", false), graph.HostedID(graph.KindActivity, "A", "w2", "ns", false), graph.EdgeActivityCall),
+			// Deployment membership is read from containment, not parsed from ids.
+			gedge(graph.HostedID(graph.KindWorkflow, "W", "w1", "ns", false), graph.WorkerID("w1", "ns"), graph.EdgeContainment),
+			gedge(graph.HostedID(graph.KindWorkflow, "W", "w2", "ns", false), graph.WorkerID("w2", "ns"), graph.EdgeContainment),
+			gedge(graph.WorkerID("w1", "ns"), graph.NamespaceID("ns"), graph.EdgeContainment),
+			gedge(graph.WorkerID("w2", "ns"), graph.NamespaceID("ns"), graph.EdgeContainment),
 		},
 	}
 
@@ -332,7 +340,7 @@ func TestFloorMergeIntoDispatchingChunk(t *testing.T) {
 	// {Caller} chunk (1) both fall below the floor.
 	res := Decompose(nil, g, Options{Floor: 3})
 
-	callerChunk := chunkID(nil, []string{caller}) // {Caller}
+	callerChunk := "chunk:" + chunkBase(nil, []string{caller}) // {Caller}
 	nexusChunk := "chunk:" + op                   // {S.Op, BW} — smallest root is the op
 	cc := chunkByID(t, res, callerChunk)
 	nc := chunkByID(t, res, nexusChunk)

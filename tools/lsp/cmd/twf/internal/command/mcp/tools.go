@@ -168,6 +168,7 @@ func buildParse(in filesInput) ([]byte, error) {
 	env := pipeline.Envelope{
 		Summary:     pipeline.Summarize(file, diags),
 		Diagnostics: pipeline.EnsureSlice(diags),
+		Packages:    ast.PackageRefs(file),
 	}
 
 	// Marshal the AST through its own MarshalJSON to get the `definitions`
@@ -204,6 +205,7 @@ func buildSymbols(in filesInput) ([]byte, error) {
 	env := pipeline.Envelope{
 		Summary:     pipeline.Summarize(file, diags),
 		Diagnostics: pipeline.EnsureSlice(diags),
+		Packages:    ast.PackageRefs(file),
 		Symbols:     syms,
 	}
 	return json.MarshalIndent(env, "", "  ")

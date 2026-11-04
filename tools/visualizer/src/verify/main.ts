@@ -4,7 +4,9 @@
 
 import { report } from './check'
 import { filesChecks } from './files'
+import { labelChecks } from './labels'
 
 filesChecks()
+labelChecks()
 
 console.log(JSON.stringify(report()))

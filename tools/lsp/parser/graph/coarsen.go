@@ -67,6 +67,14 @@ type parentIndex struct {
 	namespace map[string]string
 }
 
+// Ancestors maps each deployed node's id to the ids of its worker and
+// namespace ancestors, read from containment edges, so a consumer finds a
+// node's deployment without parsing its id.
+func (g *Graph) Ancestors() (worker, namespace map[string]string) {
+	pi := g.buildParentIndex()
+	return pi.worker, pi.namespace
+}
+
 func (g *Graph) buildParentIndex() parentIndex {
 	// child → parent from containment edges, and node-id → kind so we can
 	// walk the chain looking for the enclosing worker / namespace.

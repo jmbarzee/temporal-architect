@@ -121,6 +121,7 @@ func Decompose(file *ast.File, g *graph.Graph, opts Options) *Result {
 	wg.condense() // Tarjan SCC over the binding subgraph (roots read it)
 	roots := wg.heuristicRoots(file)
 
+	res.Packages = g.Packages
 	res.Nodes = wg.exportNodes()
 	res.Roots = exportRoots(roots)
 	res.Chunks, res.ChunkEdges = wg.partition(roots)

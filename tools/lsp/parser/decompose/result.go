@@ -1,17 +1,22 @@
 package decompose
 
+import "github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
+
 // This file defines the public output model — the wire contract emitted by
 // Decompose and serialized by `twf graph chunks --json`. The internal working
 // graph these are derived from lives in workgraph.go.
 
 // Result is the full decomposition output.
 type Result struct {
-	Nodes      []Node      `json:"nodes"`
-	Roots      []Root      `json:"roots"`
-	Chunks     []Chunk     `json:"chunks"`
-	ChunkEdges []ChunkEdge `json:"chunkEdges"`
-	Floor      int         `json:"floor"`
-	Ceiling    int         `json:"ceiling"`
+	// Packages maps each kept package's identity to its declared name; absent
+	// for an unpackaged design or a sampled graph.
+	Packages   map[string]ast.PackageRef `json:"packages,omitempty"`
+	Nodes      []Node                    `json:"nodes"`
+	Roots      []Root                    `json:"roots"`
+	Chunks     []Chunk                   `json:"chunks"`
+	ChunkEdges []ChunkEdge               `json:"chunkEdges"`
+	Floor      int                       `json:"floor"`
+	Ceiling    int                       `json:"ceiling"`
 	// MaxDepth and Strategies echo the resolved analysis parameters used to
 	// produce this decomposition (after Options defaulting) so consumers can
 	// display "what produced these groups" without re-deriving it. MaxDepth is
@@ -24,9 +29,15 @@ type Result struct {
 // Node is one authorable definition (a unique AST entry). Structure between
 // nodes comes from graph edges collapsed to definition keys.
 type Node struct {
-	Key        string   `json:"key"`  // definition key, e.g. "workflow:OrderWorkflow"
-	Kind       string   `json:"kind"` // graph.KindWorkflow / KindActivity / KindNexusOperation
-	Name       string   `json:"name"`
+	Key  string `json:"key"`  // definition key, e.g. "workflow:OrderWorkflow"
+	Kind string `json:"kind"` // graph.KindWorkflow / KindActivity / KindNexusOperation
+	Name string `json:"name"`
+	// PackageID is the node's package identity, a key into the packages table;
+	// absent for the default package.
+	PackageID string `json:"packageId,omitempty"`
+	// Label is the node's display label: `fabric.Setup`, or the bare name in
+	// the default package.
+	Label      string   `json:"label"`
 	Workers    []string `json:"workers,omitempty"`    // hosting worker definition keys
 	Namespaces []string `json:"namespaces,omitempty"` // hosting namespace node IDs
 	Langs      []string `json:"langs,omitempty"`      // reserved for the language-boundary split (issue 23; no @lang yet)
@@ -54,7 +65,11 @@ type Root struct {
 // connected component of the binding+soft subgraph. Every definition lands in
 // exactly one chunk.
 type Chunk struct {
-	ID         string      `json:"id"`
+	ID string `json:"id"`
+	// BaseKey is the node key the id is built from (its smallest root, else
+	// member); Label is that node's label.
+	BaseKey    string      `json:"baseKey"`
+	Label      string      `json:"label"`
 	Roots      []ChunkRoot `json:"roots"`
 	Members    []string    `json:"members"`
 	Overlap    []string    `json:"overlap,omitempty"`
@@ -151,7 +166,17 @@ type Division struct {
 // still over the ceiling: a single, locally-best sub-division. A consumer that
 // doesn't walk the tree can ignore it and treat the section as a flat leaf.
 type Section struct {
-	ID         string     `json:"id"`
+	ID string `json:"id"`
+	// LabelKind names the strategy's grouping (root, branch, isolated,
+	// subtree, service, component, nexus, shared, core, trunk, worker,
+	// namespace); Subjects are the node keys or worker/namespace values it
+	// groups by, or the sentinel "none". The id is the parent id, "/",
+	// LabelKind, and ":" plus the subjects joined by "," when there are any.
+	LabelKind string   `json:"labelKind"`
+	Subjects  []string `json:"subjects,omitempty"`
+	// Label is the display text: the kind and its subjects' labels
+	// (`branch: fabric.Charge`), or the bare kind.
+	Label      string     `json:"label"`
 	Members    []string   `json:"members"`
 	Complexity int        `json:"complexity"`
 	Divisions  []Division `json:"divisions,omitempty"`

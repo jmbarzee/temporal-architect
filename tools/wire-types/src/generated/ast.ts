@@ -73,6 +73,16 @@ export interface OptionEntryJSON {
   nested?: OptionEntryJSON[];
 }
 /**
+ * PackageRef is one entry of an output's packages table, keyed by package
+ * identity.
+ */
+export interface PackageRef {
+  /**
+   * Name is the package's declared name.
+   */
+  name: string;
+}
+/**
  * WorkflowDefJSON is the JSON representation of WorkflowDef.
  */
 export interface WorkflowDefJSON {
@@ -87,6 +97,11 @@ export interface WorkflowDefJSON {
    * is the bare Name. Join graph nodes to definitions on it (issue #184).
    */
   qualifiedName?: string;
+  /**
+   * PackageID is the owning package's identity, a key into the envelope's
+   * packages table; absent for the default package.
+   */
+  packageId?: string;
   params: string;
   returnType?: string;
   idScheme?: IDSchemeJSON;
@@ -127,6 +142,11 @@ export interface ActivityDefJSON {
    * is the bare Name. Join graph nodes to definitions on it (issue #184).
    */
   qualifiedName?: string;
+  /**
+   * PackageID is the owning package's identity, a key into the envelope's
+   * packages table; absent for the default package.
+   */
+  packageId?: string;
   params: string;
   returnType?: string;
   defaultOptions?: OptionsBlockJSON;
@@ -151,6 +171,11 @@ export interface WorkerDefJSON {
   column: number /* int */;
   sourceFile?: string;
   name: string;
+  /**
+   * PackageID is the owning package's identity, a key into the envelope's
+   * packages table; absent for the default package.
+   */
+  packageId?: string;
   workflows: WorkerRefJSON[];
   activities: WorkerRefJSON[];
   services: WorkerRefJSON[];
@@ -196,6 +221,11 @@ export interface NamespaceDefJSON {
   column: number /* int */;
   sourceFile?: string;
   name: string;
+  /**
+   * PackageID is the owning package's identity, a key into the envelope's
+   * packages table; absent for the default package.
+   */
+  packageId?: string;
   /**
    * TemplateParams is the distinct {param} parameters in the namespace name, in
    * order of first appearance. Omitted (omitempty) for a static namespace so
@@ -538,5 +568,10 @@ export interface NexusServiceDefJSON {
    * Its operations' graph names are `${qualifiedName ?? name}.${op}`.
    */
   qualifiedName?: string;
+  /**
+   * PackageID is the owning package's identity, a key into the envelope's
+   * packages table; absent for the default package.
+   */
+  packageId?: string;
   operations?: (NexusOperationJSON | undefined)[];
 }
