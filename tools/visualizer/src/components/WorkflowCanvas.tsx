@@ -18,6 +18,7 @@ import {
   layoutToJSON,
 } from '@temporal-architect/graph-view'
 import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION } from '../adapter/dimensions'
+import { definitionMaps } from './definitionMaps'
 import { useEditorTheme } from '../theme/useEditorTheme'
 import { loadState, saveState, type StorageConfig } from '../adapter/storage'
 import type {
@@ -318,29 +319,7 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
   }, [focusKey, treeFilePinned, treeShowsFiles, updateFilter])
 
   // Build lookup maps for definitions (shared by both views)
-  const context = React.useMemo<DefinitionContext>(() => {
-    const workflows = new Map<string, WorkflowDef>()
-    const activities = new Map<string, ActivityDef>()
-    const workers = new Map<string, WorkerDef>()
-    const nexusServices = new Map<string, NexusServiceDef>()
-    const namespaces = new Map<string, NamespaceDef>()
-
-    for (const def of ast.definitions) {
-      if (def.type === 'workflowDef') {
-        workflows.set(def.name, def)
-      } else if (def.type === 'activityDef') {
-        activities.set(def.name, def)
-      } else if (def.type === 'workerDef') {
-        workers.set(def.name, def)
-      } else if (def.type === 'nexusServiceDef') {
-        nexusServices.set(def.name, def)
-      } else if (def.type === 'namespaceDef') {
-        namespaces.set(def.name, def)
-      }
-    }
-
-    return { workflows, activities, workers, nexusServices, namespaces }
-  }, [ast])
+  const context = React.useMemo(() => definitionMaps(ast.definitions), [ast])
 
   // The single entry point for all view switches. Reads the transition
   // intent, runs the reconciler, applies the result, and flips the

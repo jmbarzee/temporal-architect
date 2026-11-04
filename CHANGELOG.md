@@ -309,6 +309,13 @@ is now checked against the target's signals.
   `DUPLICATE_ENDPOINT` lands on each later one and names the first's namespace,
   and calls, routing checks and the graph all use the first, on every run
   (#290).
+- A workflow, activity, worker, namespace or nexus service declared twice in
+  one package is likewise its first declaration, not its last: references,
+  checks that relate definitions, the graph, decomposition and the visualizer
+  all use the first. The `DUPLICATE_*` error on the later one says where the
+  first is. Every declaration is still checked for an empty definition, and
+  every workflow, activity and nexus service body for its own problems; a
+  later worker or namespace gets no other checks.
 - A `DISPATCH_NO_REACHABLE_DEPLOYMENT` names an operation by its own service
   when another service's name prefixes it.
 - **LSP:** rename, references and go-to-definition ranges cover the name, not
