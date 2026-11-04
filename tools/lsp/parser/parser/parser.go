@@ -161,6 +161,7 @@ func ParseFile(input string) (*ast.File, error) {
 
 	file := &ast.File{}
 	sawClause := false // a package clause is recognized only as the first clause
+	sawDef := false    // imports come before definitions
 
 	for p.current.Type != token.EOF {
 		first := !sawClause
@@ -185,12 +186,16 @@ func ParseFile(input string) (*ast.File, error) {
 			if err != nil {
 				return nil, err
 			}
+			if sawDef {
+				return nil, misplacedImport(imp)
+			}
 			file.Imports = append(file.Imports, imp)
 		default:
 			parser, ok := topLevelParsers[p.current.Type]
 			if !ok {
 				return nil, p.errorf("unexpected token %s at top level", p.current.Type)
 			}
+			sawDef = true
 			def, err := parser(p)
 			if err != nil {
 				return nil, err
@@ -221,6 +226,7 @@ func ParseFileAll(input string) (*ast.File, []*ParseError) {
 
 	file := &ast.File{}
 	sawClause := false // a package clause is recognized only as the first clause
+	sawDef := false    // imports come before definitions
 
 	for p.current.Type != token.EOF {
 		start := p.current
@@ -255,6 +261,10 @@ func ParseFileAll(input string) (*ast.File, []*ParseError) {
 				p.recoverTopLevel(start)
 				continue
 			}
+			if sawDef {
+				// Still bound, so references through it do not cascade.
+				p.addError(misplacedImport(imp))
+			}
 			file.Imports = append(file.Imports, imp)
 			continue
 		default:
@@ -264,6 +274,7 @@ func ParseFileAll(input string) (*ast.File, []*ParseError) {
 				p.recoverTopLevel(start)
 				continue
 			}
+			sawDef = true
 			def, err := parser(p)
 			if err != nil {
 				if pe, ok := err.(*ParseError); ok {

@@ -266,6 +266,8 @@ is now checked against the target's signals.
 - Raw statements, `return` values and `case` values keep their source text as
   written: quotes, escapes, parentheses and spacing. A trailing comment stays a
   comment statement instead of joining the text (#295).
+- An `import` after a definition is a `parse/SYNTAX` error; imports go after
+  the `package` clause and before definitions (#299).
 - An undefined workflow, activity, signal or update used as a `promise` /
   `await` target is reported at its keyword, not at 0:0 (#276).
 - Resolver and validator diagnostics come out sorted by file, position, then

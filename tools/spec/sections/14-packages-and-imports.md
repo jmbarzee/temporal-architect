@@ -73,7 +73,8 @@ walked, are in [15 — Modules](./15-modules.md).
 
 ## Import Declarations
 
-After the optional package clause, a file may declare zero or more imports:
+After the optional package clause, a file may declare zero or more imports. They precede every
+definition; an import after a definition is a parse error (the import still binds):
 
 ```
 import_decl ::= 'import' [IDENT] STRING NEWLINE
