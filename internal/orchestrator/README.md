@@ -26,7 +26,7 @@ DevCycleWorkflow
 
 ## Components
 
-The authoritative component graph lives in `internal/harness/components.md`; the table below is an illustrative summary. The `skills` component covers all skills (design, author-go, author-infra, and the `temporal-architect` front-door) as one node.
+The authoritative component graph lives in `internal/harness/components.md`; the table below is an illustrative summary. The `skills` component covers all skills (design, the SDK authors `author-{lang}`, author-infra, and the `temporal-architect` front-door) as one node.
 
 Each component maps to a directory scope, review commands, and downstream edges:
 
@@ -56,12 +56,12 @@ internal/changes/
   skills/
     quality-design_REVISIONS_001.md
     alignment-design_REVISIONS_001.md
-    alignment-author_REVISIONS_001.md
+    alignment-author-{lang}_REVISIONS_001.md
   sampler/
     quality_REVISIONS_001.md
 ```
 
-All skill reviews share the single `skills/` directory, so the `{type}` prefix is source-encoded (e.g. `quality-design`, `alignment-author`) to keep concurrent reviews from colliding. `address-review` merges every `skills/*_REVISIONS_*.md` into one `skills/CHANGES_{NNN}.md`.
+All skill reviews share the single `skills/` directory, so the `{type}` prefix is source-encoded (e.g. `quality-design`, `alignment-author-{lang}`) to keep concurrent reviews from colliding. `address-review` merges every `skills/*_REVISIONS_*.md` into one `skills/CHANGES_{NNN}.md`.
 
 **Rules:**
 

@@ -35,12 +35,12 @@ Rows are the **union** of two sources:
 - **The routing table is a floor.** Every non-`Internal` change type contributes its routed component from the manifest's Propagation routing table. This catches an author who forgot a consumer.
 - **The prose is authoritative beyond it.** Every component named in a `## Downstream propagation` bullet gets a row *even when the routing table has no matching edge*. Pick its review command from that component's row in the manifest's Components table (quality vs alignment, per what the bullet asks). If the ask fits neither, that is an escalation — not a dropped row.
 
-**Why the union, and not the table alone.** This is the failure the seam exists to prevent. A real `dsl` CHANGES record named four downstream obligations — one for `parser`, one for `visualizer`, and two for `skills` (a design topic and an author-go reference file). The routing table gave `dsl | Grammar → parser` and nothing else. So `visualizer` and `skills` got no row, no sub-agent was ever dispatched for them, and three of the four asks were silently lost — including a construct that then rendered as nothing in the visualizer for months. Enriching a sub-agent's context cannot rescue a component that never got a sub-agent.
+**Why the union, and not the table alone.** This is the failure the seam exists to prevent. A real `dsl` CHANGES record named four downstream obligations — one for `parser`, one for `visualizer`, and two for `skills` (a design topic and a Go author reference file). The routing table gave `dsl | Grammar → parser` and nothing else. So `visualizer` and `skills` got no row, no sub-agent was ever dispatched for them, and three of the four asks were silently lost — including a construct that then rendered as nothing in the visualizer for months. Enriching a sub-agent's context cannot rescue a component that never got a sub-agent.
 
 | Component | Row source | Review command | Brief |
 |---|---|---|---|
 | `parser` | table + prose | `review-alignment-parser` | the parser bullet, verbatim |
-| `skills` | **prose only** | `review-alignment-author-skills` | the author-go bullet, verbatim |
+| `skills` | **prose only** | `review-alignment-author-skills` with `go` | the Go author bullet, verbatim |
 
 Deduplicate by **component**, not by change type: one sub-agent per downstream component, carrying every bullet and change type relevant to it.
 
@@ -60,7 +60,7 @@ Each sub-agent:
 3. Receives the relevant change-type list as *secondary* context.
 4. Follows the review command's full workflow — Explore → Catalog → Group → Write REVISIONS file to `internal/changes/{downstream-component}/` using the sequence number the main agent allocated.
 
-**Copy the bullet; do not summarize it.** The whole seam rests on this. A bullet like *"new `reference/signal-send.md` mapping the statement form to `ChildWorkflowFuture.SignalChildWorkflow` (the SDK returns a future; the DSL statement maps to the fire-and-forget call)"* survives only if compression is forbidden. Reduced to "update the author-go skill," it is indistinguishable from a generic sweep and the specific work goes undone.
+**Copy the bullet; do not summarize it.** The whole seam rests on this. A bullet like *"new `reference/signal-send.md` mapping the statement form to `ChildWorkflowFuture.SignalChildWorkflow` (the SDK returns a future; the DSL statement maps to the fire-and-forget call)"* survives only if compression is forbidden. Reduced to "update the Go author skill," it is indistinguishable from a generic sweep and the specific work goes undone.
 
 Give each sub-agent **only** the bullets for its own component. The visualizer agent reading the skills bullet is noise competing with its brief.
 
@@ -76,7 +76,7 @@ When all sub-agents complete, report:
 
 | Bullet (component) | Carried by | Outcome |
 |---|---|---|
-| `skills` — author-go signal-send reference | `skills/alignment-author_REVISIONS_002.md` | dispatched |
+| `skills` — Go author signal-send reference | `skills/alignment-author-{lang}_REVISIONS_002.md` | dispatched |
 | `visualizer` — render the `signalSend` edge | *crude REVISIONS* `visualizer/parser-output_REVISIONS_003.md` | bullet copied verbatim |
 | `parser` — (names an upstream component) | — | **unexecuted — back-edge, file as issue** |
 
