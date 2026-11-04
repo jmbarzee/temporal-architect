@@ -5,6 +5,7 @@ import (
 
 	"github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf/internal/cmdutil"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf/internal/command/check"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf/internal/command/fmtcmd"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf/internal/command/graph"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf/internal/command/lsp"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf/internal/command/mcp"
@@ -67,6 +68,7 @@ func newRootCmd(version string) *cobra.Command {
 
 	root.AddCommand(
 		check.New(),
+		fmtcmd.New(),
 		parse.New(),
 		symbols.New(),
 		graph.New(),

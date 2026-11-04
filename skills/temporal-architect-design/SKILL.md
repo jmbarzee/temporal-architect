@@ -57,7 +57,7 @@ Grade it against [design-checklist.md](./reference/design-checklist.md). The des
 
 ## `twf` CLI
 
-Run `twf check <file...>` after every edit. Before writing the first `package` clause, run `twf mod init <module path>` at the design's root (a packaged file with no `twf.mod` above it is ignored), then check that root — `twf check .` — so imports bind. `twf symbols [--json] <file...>` lists signatures. `twf spec` prints the full grammar (`--list` for slugs, `twf spec <slug>` for one section). Flags: `twf <command> --help`.
+Run `twf check <file...>` after every edit. Before writing the first `package` clause, run `twf mod init <module path>` at the design's root (a packaged file with no `twf.mod` above it is ignored), then check that root — `twf check .` — so imports bind. `twf fmt <file|dir>` re-indents with tabs, fixing `indented with spaces` errors. `twf symbols [--json] <file...>` lists signatures. `twf spec` prints the full grammar (`--list` for slugs, `twf spec <slug>` for one section). Flags: `twf <command> --help`.
 
 ## Handoff
 

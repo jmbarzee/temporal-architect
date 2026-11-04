@@ -57,4 +57,4 @@ mcpServers:
       - "mcp"
 ```
 
-The tools (`twf_check`, `twf_parse`, `twf_symbols`, `twf_graph`, `twf_graph_chunks`, `twf_spec_list`, `twf_spec_get`) are thin wrappers over the same parser pipeline as the CLI, so their JSON is identical. The embedded language specification is exposed as resources at `twf://spec` and `twf://spec/<slug>`.
+The tools (`twf_check`, `twf_parse`, `twf_symbols`, `twf_graph`, `twf_graph_chunks`, `twf_fmt`, `twf_spec_list`, `twf_spec_get`) are thin wrappers over the same parser pipeline as the CLI, so their JSON is identical. `twf_fmt` returns the text `twf fmt` would write and writes nothing. The embedded language specification is exposed as resources at `twf://spec` and `twf://spec/<slug>`.
