@@ -255,6 +255,8 @@ is now checked against the target's signals.
 
 - `twf check` no longer hangs on a top-level `nexus` call; it reports one
   `parse/SYNTAX` error (#263).
+- The help for `twf check`, `parse`, `graph`, `graph chunks` and `symbols`
+  says each argument may be a file or a directory.
 - A trailing `# comment` on a line that opens a block (a call followed by
   `options:`, a definition header, `nexus endpoint Ep`) no longer breaks the
   parse. A trailing comment on a block header is discarded; elsewhere it stays a

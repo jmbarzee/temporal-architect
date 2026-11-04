@@ -26,7 +26,7 @@ func New() *cobra.Command {
 	var ceiling, floor, maxDepth int
 	var by string
 	cmd := cmdutil.Silence(&cobra.Command{
-		Use:   "chunks [flags] <file...>",
+		Use:   "chunks [flags] <file|dir...>",
 		Short: "Topology-based work decomposition of the deployment graph",
 		Long: `Decompose a design into independently-implementable chunks over the same
 extracted deployment graph. Emits the #1 hard partition plus per-chunk

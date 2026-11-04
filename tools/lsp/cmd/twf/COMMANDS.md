@@ -62,12 +62,13 @@ Validate files; exit non-zero on error severity (text only)
 
 ### Synopsis
 
-Validate TWF files. Prints diagnostics to stderr as human-readable text and
-exits non-zero if any diagnostic has severity "error". Text only — for
+Validate TWF files; a directory expands to the .twf files beneath it. Prints
+diagnostics to stderr as human-readable text and exits non-zero if any
+diagnostic has severity "error". Text only — for
 structured diagnostics, use `twf parse`.
 
 ```
-twf check [flags] <file...>
+twf check [flags] <file|dir...>
 ```
 
 ### Options
@@ -90,11 +91,11 @@ Show the resolved deployment graph; --json for envelope output
 Emit the resolved deployment graph of the input files. Nodes are runtime
 deployments; edges are confirmed dispatches between them.
 
-Input: one or more .twf files. To reconstruct a graph from live executions,
-use the sampler (which writes an observed-graph JSON directly).
+Input: one or more .twf files or directories. To reconstruct a graph from live
+executions, use the sampler (which writes an observed-graph JSON directly).
 
 ```
-twf graph [flags] <file...>
+twf graph [flags] <file|dir...>
 ```
 
 ### Options
@@ -122,7 +123,7 @@ ranked divisions for any chunk over the ceiling, recursively re-dividing any
 section still over the ceiling. Recommendations are never auto-applied.
 
 ```
-twf graph chunks [flags] <file...>
+twf graph chunks [flags] <file|dir...>
 ```
 
 ### Options
@@ -244,12 +245,12 @@ Emit the canonical JSON envelope (AST + diagnostics + summary)
 
 ### Synopsis
 
-Emit the canonical JSON envelope for one or more TWF files. Always JSON;
+Emit the canonical JSON envelope for one or more TWF files or directories. Always JSON;
 diagnostics ride inside the envelope alongside the AST. Exits 0 even on a
 partial parse; hard I/O errors exit non-zero.
 
 ```
-twf parse <file...> [flags]
+twf parse <file|dir...> [flags]
 ```
 
 ### Options
@@ -294,7 +295,7 @@ twf spec [flags] [slug]
 List workflows and activities; --json for envelope output
 
 ```
-twf symbols [flags] <file...>
+twf symbols [flags] <file|dir...>
 ```
 
 ### Options

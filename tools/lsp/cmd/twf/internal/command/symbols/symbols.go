@@ -53,7 +53,7 @@ type SymbolJSON struct {
 func New() *cobra.Command {
 	var jsonOutput bool
 	cmd := cmdutil.Silence(&cobra.Command{
-		Use:   "symbols [flags] <file...>",
+		Use:   "symbols [flags] <file|dir...>",
 		Short: "List workflows and activities; --json for envelope output",
 		Args:  cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
