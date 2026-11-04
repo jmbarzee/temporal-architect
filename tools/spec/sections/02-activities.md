@@ -10,6 +10,8 @@ activity_def ::= 'activity' IDENT params ['->' return_type] ':' NEWLINE
 
 Return type is optional; if present, must be parenthesized (e.g., `-> (Result)`).
 
+An activity's IDENT is its registered Activity Type name, byte for byte; where an SDK's default differs, the code sets it explicitly.
+
 An optional `default_options:` block (see [Statement Syntax — Definition Default Options](./06-statement-syntax.md)) may lead the activity body, before any statements. It supplies the call-option defaults (timeouts, retry policy, task queue, priority) for every call to this activity; a call site's `options:` block overrides them per key.
 
 Activities have access to a restricted statement set (no temporal primitives like timers or child workflows). **Activities cannot call other activities** — this is not a Temporal primitive and is not supported. Activities may use the `heartbeat()` primitive to report progress during long-running operations. An activity body is otherwise free-form pseudocode ([Statement Syntax — Assignment](./06-statement-syntax.md#assignment)).

@@ -29,6 +29,8 @@ sync_operation  ::= 'sync' IDENT params '->' return_type ':' NEWLINE
   retried, so the workflow ID must derive from the operation's input; a backing workflow with no scheme is
   `NEXUS_RUN_WITHOUT_ID_SCHEME` (warning).
 
+The service IDENT is the Nexus service name and each operation IDENT its operation name, which caller and handler match byte for byte.
+
 **Example:**
 ```
 nexus service OrderService:
