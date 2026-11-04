@@ -52,7 +52,9 @@ is still `UNRESOLVED_IMPORT`, treated as external.
   (identity → declared name) on graph, chunks, parse and symbols output; AST
   definitions `packageId`; symbols `packageId` and `sourceFile`; decompose
   nodes `label` and `packageId`, chunks `label` and `baseKey`, sections
-  `label`, `labelKind` and `subjects`; graph diagnostics `file`.
+  `label`, `labelKind` and `subjects`; graph diagnostics `file`. Decompose
+  `nodes[].name` is now the bare name (`Work`, was `app.Work`); `key` keeps
+  the qualified form.
 - Diagnostics' `file` and definitions' `sourceFile` are the path as the input
   named the file (`designs/agent/v1/agent.twf`), not its base name. A file
   named twice is read once; directory walks skip `.*`, `_*`, `testdata` and
