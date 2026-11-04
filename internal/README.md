@@ -13,7 +13,7 @@ surfaces (and the `bump-brew` formula tool) live in the distribution repo
 | Path | Purpose |
 |---|---|
 | [`release/gen-skills-manifest/`](./release/gen-skills-manifest/) | Go tool — emits `skills/MANIFEST.md` and the `skills-vX.Y.Z.tar.gz` release asset |
-| [`tabify/`](./tabify/) | Go tool — re-indents every tracked `.twf` file and ` ```twf ` Markdown block with tabs (`go run ./internal/tabify [-check] [path ...]`); re-run it rather than hand-resolving a conflict in an indented block |
+| [`tabify/`](./tabify/) | Go tool — re-indents every tracked `.twf` file and ` ```twf ` Markdown block with tabs (`go run ./internal/tabify [-check] [path ...]`); re-run it rather than hand-resolving a conflict in an indented block. `make check-tabs`, part of `make check-docs` in CI, fails on any TWF it would change |
 | [`harness/`](./harness/) | `components.md` — the dev-cycle component manifest (graph, scopes, review mappings, propagation routing). Consumed by the `/dev-cycle` skill (`.claude/skills/dev-cycle/`, the agent-loop runtime) and the orchestrator |
 | [`orchestrator/`](./orchestrator/) | `.twf` design of the automated dev-cycle Temporal workflow (review → execute → propagate) — the durable twin of the `/dev-cycle` skill |
 | [`version.sh`](./version.sh) | Shell helper for `make release` — computes the next semver from `git describe` |
