@@ -48,12 +48,12 @@ id_scheme ::= 'id_scheme' ':' STRING NEWLINE
 
 ```twf
 workflow ShipItem(order: Order, item: Item) -> (Shipment):
-    id_scheme: "ship-{order.id}-{item.id}"
-    signal Shipped(trackingId: string):
-        ...
+	id_scheme: "ship-{order.id}-{item.id}"
+	signal Shipped(trackingId: string):
+		...
 
 workflow RateLimiter():
-    id_scheme: "rate-limiter"          # constant: no holes
+	id_scheme: "rate-limiter"          # constant: no holes
 ```
 
 - `id_scheme` is a hard keyword and the **first** body element, at most once
