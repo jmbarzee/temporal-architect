@@ -304,6 +304,8 @@ is now checked against the target's signals.
   `options:`, `close`, `set`, a raw line) is a `parse/SYNTAX` `unexpected
   indent` error, in activity bodies too. It used to pass as a raw statement
   and end the enclosing body early, so an unrelated error surfaced below it.
+  Comment lines alone may sit indented under any statement, nested or not.
+  `options:` under a `promise` or `await` says it takes none.
 - After a failed line, only a failed `if`'s own `else:` is skipped; a further
   `else:` is reported. A bare `await` in an `await one:` case names the token
   after it.
