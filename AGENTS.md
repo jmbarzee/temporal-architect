@@ -75,6 +75,8 @@ This project is **pre-v1 and in active greenfield development**. The priority is
 
 **Feature backlog and long-term planning live in [GitHub issues](https://github.com/jmbarzee/temporal-architect/issues), not in the repo.** Deferred features, design ideas, open questions, and cross-component work are all filed there and labelled by area (`area:dsl`, `area:parser`, `area:cli`, `area:decompose`, `area:visualizer`, `area:sampler`, `area:orchestrator`, `area:skills`) plus `epic`, `blocked`, `needs-design`, and `tech-debt`. When you defer something, open an issue — do not start a backlog file.
 
+Issues follow the metacensus `issues` skill's Epic → Task ladder, filed through the forms in `.github/ISSUE_TEMPLATE/`. This personal repo has no GitHub issue types, so **the title states the type** — `Initiative:` (a root Epic over Epics), `Epic:`, `Task:`, `Spike:`, `Bug:`. Composition is sub-issues and order is `blocked by` dependencies, not lists in a body; `needs-triage` → `agent-ready` is intake, `deviated` / `reached-up` mark drift at close.
+
 **Coordinate breaking changes through the `internal/changes/` directory — as scratch space, not an archive.** It is **absent between cycles** — gitignored, and deleted outright at close. While a cycle is running, each component (`internal/changes/dsl/`, `internal/changes/parser/`, `internal/changes/visualizer/`, `internal/changes/sampler/`, `internal/changes/skills/`) may hold two file types:
 
 - `REVISIONS_NNN.md` — planned work; deleted once consumed
