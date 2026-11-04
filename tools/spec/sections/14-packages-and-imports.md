@@ -73,7 +73,8 @@ walked, are in [15 — Modules](./15-modules.md).
 
 ## Import Declarations
 
-After the optional package clause, a file may declare zero or more imports:
+After the optional package clause, a file may declare zero or more imports. They precede every
+definition; an import after a definition is a parse error (the import still binds):
 
 ```
 import_decl ::= 'import' [IDENT] STRING NEWLINE
@@ -113,9 +114,10 @@ lies under no module in the run, `UNRESOLVED_IMPORT` (warning). Both treat the p
 **external**: references through it resolve as external, with no `UNDEFINED_*`. If the import's
 package is in the inputs but was ignored (see [Modules](#modules)), the import is silent — that
 error is already reported (a package whose own `twf.mod` is broken has no path, so an import of it
-is `UNRESOLVED_IMPORT` beside its `MODULE_FILE_INVALID`). An import never binds by name: an inline source (MCP `source`, an editor buffer with no file) has
+is `UNRESOLVED_IMPORT` beside its `MODULE_FILE_INVALID`). An import never binds by name: an editor buffer with no file has
 no import path, so nothing imports it and its own imports are external unless a package of the run
-has exactly their path. Import cycles between packages are allowed. How the path is looked up on
+has exactly their path. An inline source (MCP `source`) is in no module, so a package clause in it
+is `PACKAGE_OUTSIDE_MODULE`, as on disk. Import cycles between packages are allowed. How the path is looked up on
 disk is in [15 — Modules](./15-modules.md#finding-an-imported-package).
 
 Notes on the string path:

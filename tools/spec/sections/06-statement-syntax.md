@@ -481,6 +481,13 @@ continue_stmt ::= 'continue' NEWLINE
 assignment ::= IDENT '=' expr NEWLINE
 ```
 
+A line that starts no other statement is taken as a raw line (`raw_stmt`): an assignment, a call
+such as `notify(x)`, or pseudocode, kept as its source text. In a workflow context (a workflow
+body, a signal, query or update handler, a nexus operation body, and every block nested in them) a
+raw line may not begin with a keyword: `options = {}` or `update Name` there is a syntax error. An
+activity body is free-form pseudocode, so a keyword may begin a raw line there (`fail with X if
+…`); the [temporal keywords](./10-context-restrictions.md) are still rejected.
+
 ## Heartbeat (Activity-only)
 
 ```

@@ -181,7 +181,7 @@ func ImportPackageIDOf(imp *ImportDecl, file *File) string {
 }
 
 // PackageInfo is one kept package of a merged run: its identity, its declared
-// name, its import path ("" for a virtual source's package) and its module's
+// name, its import path ("" for a package stamped in no module) and its module's
 // path.
 type PackageInfo struct {
 	ID, Name, Path string

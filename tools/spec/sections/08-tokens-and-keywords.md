@@ -153,4 +153,4 @@ family; see [Endpoint Options](./03-workers-and-namespaces.md#endpoint-options).
 comment ::= '#' .* NEWLINE
 ```
 
-Comments start with `#` and continue to the end of the line. Comments can appear anywhere in the source and do not affect execution semantics. Comments are captured in the AST, except one that follows a block header — a line that ends in `:` or opens an indented block, such as a definition header, `if (...):`, or a call followed by `options:` — which is discarded.
+Comments start with `#` and continue to the end of the line. Comments can appear anywhere in the source and do not affect execution semantics. Comments are captured in the AST, except one that follows a block header — a line that ends in `:` or opens an indented block, such as a definition header, `if (...):`, or a call followed by `options:` — which is discarded, as are comments in or around a call's `options:` block and comments above a handler's `options:` or a definition's `default_options:` block.

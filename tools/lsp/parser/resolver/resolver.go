@@ -144,8 +144,9 @@ const (
 	// ErrModuleFileUnknownDirective: a directive other than `module` in a valid
 	// twf.mod, ignored. Warning severity.
 	ErrModuleFileUnknownDirective
-	// ErrPackageOutsideModule: an on-disk file with a package clause and no
-	// twf.mod above it; the file is excluded.
+	// ErrPackageOutsideModule: a file with a package clause and no twf.mod
+	// above it, or an in-memory source with one in no module; the file is
+	// excluded.
 	ErrPackageOutsideModule
 	// ErrDuplicateModule: a second module root declaring a module path already
 	// in the run; the later module's files are excluded.

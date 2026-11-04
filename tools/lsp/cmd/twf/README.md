@@ -81,13 +81,13 @@ go install ./cmd/twf
 
 ### `twf check`
 
-Validate TWF files. Prints diagnostics to stderr as human-readable text and
-exits non-zero if any diagnostic has severity `error`. **Text only** — for
+Validate TWF files; a directory expands to the `.twf` files beneath it. Prints
+diagnostics to stderr as human-readable text and exits non-zero if any diagnostic has severity `error`. **Text only** — for
 structured diagnostics, use `twf parse` (see below).
 
 ```bash
 twf check workflow.twf
-twf check *.twf
+twf check .
 twf check --lenient workflow.twf   # exit 0 even on errors (warnings still print)
 ```
 
@@ -109,7 +109,7 @@ Partial parse: 1 workflow(s), 0 activity(s), 1 error(s), 0 warning(s)
 
 ### `twf parse`
 
-Emit the canonical **JSON envelope** for one or more TWF files. Always JSON;
+Emit the canonical **JSON envelope** for one or more TWF files or directories. Always JSON;
 no flag is required. Diagnostics ride inside the envelope alongside the AST,
 so a single call satisfies a "draft → validate → fix → revalidate" loop
 without scraping stderr.
@@ -474,7 +474,8 @@ Example client config:
 **Tools** are thin wrappers over the same parser pipeline as the CLI, so their
 JSON output is identical to the corresponding subcommand. Each file tool takes
 `paths` (resolved on the filesystem where the server runs) **or** inline
-`source`:
+`source`, checked as a file outside every module (a `package` clause is
+`PACKAGE_OUTSIDE_MODULE`):
 
 | Tool | Mirrors |
 |---|---|
@@ -500,7 +501,7 @@ stdio-only.
 
 ```bash
 # Validate all TWF files in CI
-twf check $(find . -name "*.twf")
+twf check .
 ```
 
 ### AI Integration

@@ -74,6 +74,11 @@ func isWord(s string) bool {
 	return true
 }
 
+// misplacedImport is the error for an import that follows a definition.
+func misplacedImport(imp *ast.ImportDecl) *ParseError {
+	return &ParseError{Msg: "import must come before the file's definitions", Line: imp.Line, Column: imp.Column}
+}
+
 // parseImportDecl parses one import declaration in either form:
 //
 //	import "path"

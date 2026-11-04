@@ -27,7 +27,7 @@ module github.com/acme/shop   # twf.mod, at the design's root
 A package is **one directory** of a module, and its **import path** is the
 module path plus that directory: `orders/` is `github.com/acme/shop/orders`.
 A packaged file with no `twf.mod` above it is `PACKAGE_OUTSIDE_MODULE` and is
-ignored. Clause-less designs are unaffected and need no `twf.mod`.
+ignored; an MCP inline `source` is outside every module. Clause-less designs are unaffected and need no `twf.mod`.
 
 - `twf mod init <module path>` writes the file. The path is required; with no
   argument it fails and suggests one (from the enclosing module, the design's
@@ -50,8 +50,8 @@ paths are two packages; alias one to import both. New errors:
 module (it used to be a silent external). `IMPORT_NOT_LOADED` warns when a
 package is on disk but not among the inputs. A path under no module in the run
 is still `UNRESOLVED_IMPORT`, treated as external. No import binds by package
-name anywhere: an MCP inline `source` or an editor buffer with no file has no
-import path, so its imports are external, matching `twf check`.
+name anywhere: an editor buffer with no file has no import path, so its
+imports are external.
 
 ### ⚠️ Breaking: wire output
 
@@ -212,6 +212,17 @@ written. Any other backslash escape
 (`"\n"`, `"\d"`), accepted before, is now a `parse/LEX` error, which
 `twf check --lenient` does not excuse (#106).
 
+### ⚠️ Breaking: keyword-led raw lines in workflow bodies
+
+In a workflow body, a signal, query or update handler, a nexus operation body,
+and every block nested in them, a line led by a keyword that starts no
+statement is a `parse/SYNTAX` error. Raw lines that passed before now fail:
+`options = …`, `all = …` or `state.count = 1` in a workflow body, `complete = 1`
+in a query handler (rename the variable); a bare `timer(d)` or `update Name`
+(write `await timer(d)`, `await update Name`); pseudocode such as
+`fail with X` in a handler or nexus operation. Activity bodies stay free-form
+pseudocode, so `fail with X if …` still parses there (#291).
+
 ### ⚠️ Breaking: routing is namespace-scoped
 
 A task queue belongs to its namespace, so routing and endpoint linkage now
@@ -255,10 +266,24 @@ is now checked against the target's signals.
 
 - `twf check` no longer hangs on a top-level `nexus` call; it reports one
   `parse/SYNTAX` error (#263).
+- The help for `twf check`, `parse`, `graph`, `graph chunks` and `symbols`
+  says each argument may be a file or a directory.
 - A trailing `# comment` on a line that opens a block (a call followed by
   `options:`, a definition header, `nexus endpoint Ep`) no longer breaks the
   parse. A trailing comment on a block header is discarded; elsewhere it stays a
   comment statement (#275).
+- Own-line comments may sit between a call and its `options:` block, below the
+  block, or alone under the call, and above a handler's `options:` or a
+  definition's `default_options:` block (#301).
+- In workflow contexts, a keyword-led line that starts no statement, such as
+  `update Missing` or `options:` away from a call, is a `parse/SYNTAX` error in
+  every block. It no longer passes as a raw statement inside `await all:` or
+  below a body's first statement (#291).
+- Raw statements, `return` values and `case` values keep their source text as
+  written: quotes, escapes, parentheses and spacing. A trailing comment stays a
+  comment statement instead of joining the text (#295).
+- An `import` after a definition is a `parse/SYNTAX` error; imports go after
+  the `package` clause and before definitions (#299).
 - An undefined workflow, activity, signal or update used as a `promise` /
   `await` target is reported at its keyword, not at 0:0 (#276).
 - Resolver and validator diagnostics come out sorted by file, position, then
@@ -294,6 +319,10 @@ is now checked against the target's signals.
 - **Design skill:** `common-errors.md` covers the lexer's `LEX` errors
   (unterminated string, unterminated argument list, inconsistent indentation,
   unknown escape) (#105).
+- **Design skill:** wherever a design introduces a `package` clause — the
+  workflow, the package-per-domain convention, reverse engineering — it says to
+  run `twf mod init <module path>` at the design's root and check that root
+  (#309).
 
 ## v0.15.0 - Workflow ID Schemes & Addressed Signal Sends
 

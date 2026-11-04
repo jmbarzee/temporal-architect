@@ -34,7 +34,7 @@ namespace default:
 
 ## Activity Body Detail
 
-Activity bodies are free-form pseudocode (`raw_stmt`) standing in for the SDK implementation. Every activity needs at least one statement — comments alone don't count. Detail scales with how unobvious the behavior is from name and signature:
+Activity bodies are free-form pseudocode (`raw_stmt`) standing in for the SDK implementation; a line may even start with a keyword (`fail with NotFound if …`), which a workflow body rejects. Every activity needs at least one statement — comments alone don't count. Detail scales with how unobvious the behavior is from name and signature:
 
 **Obvious** — minimal body:
 

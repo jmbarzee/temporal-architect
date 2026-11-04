@@ -2,6 +2,8 @@ package parser
 
 import (
 	"encoding/json"
+	"fmt"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -197,5 +199,53 @@ func TestClauseSurvivesALeadingBOMOrIndentedComment(t *testing.T) {
 		if file.Package != "billing" || file.ClauseExcluded {
 			t.Errorf("%s: Package=%q excluded=%v, want billing kept", name, file.Package, file.ClauseExcluded)
 		}
+	}
+}
+
+// TestImportPlacement: imports follow the package clause and precede every
+// definition. An import after a definition is a parse error, and still binds
+// so references through it do not cascade (#299).
+func TestImportPlacement(t *testing.T) {
+	const (
+		wf  = "workflow W(x):\n    close complete(x)\n"
+		act = "activity A(x):\n    return x\n"
+		imp = "import \"a/b\"\n"
+		ali = "import c \"c/d\"\n"
+	)
+	tests := []struct {
+		name, src string
+		errs      []string // line and message of each error
+	}{
+		{"imports before definitions", imp + ali + wf, nil},
+		{"imports after the package clause", "package p\n\n" + imp + "# note\n" + ali + wf, nil},
+		{"import after a workflow", wf + imp, []string{"3 import must come before the file's definitions"}},
+		{"import after an activity", act + imp, []string{"3 import must come before the file's definitions"}},
+		{"import after a worker", "worker w:\n    workflow W\n" + imp, []string{"3 import must come before the file's definitions"}},
+		{"import after a namespace", "namespace ns:\n    worker w\n        options:\n            task_queue: \"q\"\n" + imp,
+			[]string{"5 import must come before the file's definitions"}},
+		{"import after a nexus service", "nexus service S:\n    async Op workflow W\n" + imp, []string{"3 import must come before the file's definitions"}},
+		{"import after a definition that fails", "workflow W(x)\n" + imp,
+			[]string{"1 definition requires ':' and an indented body", "2 import must come before the file's definitions"}},
+		{"import between definitions", imp + act + ali + wf, []string{"4 import must come before the file's definitions"}},
+		{"several imports after a definition", act + imp + ali,
+			[]string{"3 import must come before the file's definitions", "4 import must come before the file's definitions"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			file, errs := ParseFileAll(tt.src)
+			var got []string
+			for _, e := range errs {
+				got = append(got, fmt.Sprintf("%d %s", e.Line, e.Msg))
+			}
+			if !reflect.DeepEqual(got, tt.errs) {
+				t.Errorf("errors = %q, want %q", got, tt.errs)
+			}
+			if want := strings.Count(tt.src, "import "); len(file.Imports) != want {
+				t.Errorf("imports = %d, want %d", len(file.Imports), want)
+			}
+			if _, err := ParseFile(tt.src); (err != nil) != (tt.errs != nil) {
+				t.Errorf("ParseFile error = %v, want one: %v", err, tt.errs != nil)
+			}
+		})
 	}
 }

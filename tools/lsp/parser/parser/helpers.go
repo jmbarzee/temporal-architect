@@ -2,6 +2,7 @@ package parser
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
@@ -120,32 +121,21 @@ func (p *Parser) recoverTopLevel(start token.Token) {
 	}
 }
 
-// collectRawUntil reads and concatenates token literals until one of the
-// terminator token types is found. The terminator is NOT consumed.
-// Uses token positions to preserve original spacing.
+// collectRawUntil consumes tokens up to one of the terminator types, a comment,
+// or the end of the line, none of which it consumes, and returns the source the
+// consumed tokens span, verbatim and trimmed of surrounding whitespace. A
+// comment that ends the text is left for the caller's body to keep.
 func (p *Parser) collectRawUntil(terminators ...token.TokenType) string {
-	var b strings.Builder
-	lastEnd := 0 // column after last token
-	for {
-		for _, t := range terminators {
-			if p.current.Type == t {
-				return strings.TrimSpace(b.String())
-			}
+	start, end := p.current.Offset, p.current.Offset
+	for !slices.Contains(terminators, p.current.Type) {
+		switch p.current.Type {
+		case token.NEWLINE, token.COMMENT, token.EOF:
+			return strings.TrimSpace(p.src[start:end])
 		}
-		if p.current.Type == token.EOF {
-			return strings.TrimSpace(b.String())
-		}
-		// Reconstruct spacing: if this token starts after last token ended,
-		// insert spaces. For the first token or same-line adjacent tokens.
-		if lastEnd > 0 && p.current.Column > lastEnd {
-			for i := 0; i < p.current.Column-lastEnd; i++ {
-				b.WriteByte(' ')
-			}
-		}
-		b.WriteString(p.current.Literal)
-		lastEnd = p.current.Column + len(p.current.Literal)
+		end = p.current.End
 		p.advance()
 	}
+	return strings.TrimSpace(p.src[start:end])
 }
 
 // expectBlock consumes the COLON NEWLINE INDENT sequence that opens an
@@ -175,6 +165,25 @@ func (p *Parser) parseBodyAs(ctx bodyContext) ([]ast.Statement, error) {
 	body, err := p.parseBody()
 	p.bodyCtx = prev
 	return body, err
+}
+
+// parseHandlerBody parses a handler body as ctx, marking it as a handler's.
+func (p *Parser) parseHandlerBody(ctx bodyContext) ([]ast.Statement, error) {
+	p.inHandler = true
+	body, err := p.parseBodyAs(ctx)
+	p.inHandler = false
+	return body, err
+}
+
+// parseComment consumes a COMMENT and the NEWLINE ending its line, returning it
+// as a comment statement.
+func (p *Parser) parseComment() *ast.Comment {
+	c := &ast.Comment{Pos: ast.Pos{Line: p.current.Line, Column: p.current.Column}, Text: p.current.Literal}
+	p.advance()
+	if p.current.Type == token.NEWLINE {
+		p.advance()
+	}
+	return c
 }
 
 // skipBlankLinesAndComments consumes any NEWLINE and COMMENT tokens at the current position.
@@ -228,27 +237,30 @@ func (p *Parser) parseRefNameWithPackage() (pkg, name string, err error) {
 }
 
 // parseOptionalOptionsLine checks for an options block after a call:
-// INDENT OPTIONS COLON NEWLINE INDENT entries DEDENT NEWLINE DEDENT
-// Returns the options block (nil if no options found).
+// INDENT { COMMENT NEWLINE } OPTIONS COLON NEWLINE INDENT entries DEDENT
+// { COMMENT NEWLINE } DEDENT
+// Comments may sit above or below the block, as they may inside it, and alone
+// under the call. Returns the options block (nil if no options found).
 func (p *Parser) parseOptionalOptionsLine(ctx OptionsContext) (*ast.OptionsBlock, error) {
 	if p.current.Type != token.INDENT {
 		return nil, nil
 	}
-	if p.peek.Type != token.OPTIONS {
+	switch p.peek.Type {
+	case token.OPTIONS, token.COMMENT:
+		p.advance() // consume INDENT
+	default:
 		return nil, nil
 	}
-	// Consume INDENT
-	p.advance()
-	// Consume OPTIONS
-	p.advance()
-	// Parse the options block (expects COLON, NEWLINE, INDENT, entries, DEDENT)
-	opts, err := p.parseOptionsBlock(ctx)
-	if err != nil {
-		return nil, err
-	}
-	// Consume NEWLINE if present
-	if p.current.Type == token.NEWLINE {
-		p.advance()
+	p.skipBlankLinesAndComments()
+	var opts *ast.OptionsBlock
+	if p.current.Type == token.OPTIONS {
+		p.advance() // consume OPTIONS
+		var err error
+		// Parse the options block (expects COLON, NEWLINE, INDENT, entries, DEDENT)
+		if opts, err = p.parseOptionsBlock(ctx); err != nil {
+			return nil, err
+		}
+		p.skipBlankLinesAndComments()
 	}
 	if isAddressKey(p.current) {
 		if ctx == OptionsContextChildStart || ctx == OptionsContextClientStart {
@@ -256,9 +268,12 @@ func (p *Parser) parseOptionalOptionsLine(ctx OptionsContext) (*ast.OptionsBlock
 		}
 		return nil, p.codedErrorf(CodeAddressMisplaced, "%s: is an address key, valid only under a signal send", p.current.Literal)
 	}
-	// Expect DEDENT (outer)
-	if _, err := p.expect(token.DEDENT); err != nil {
-		return nil, err
+	if p.current.Type != token.DEDENT {
+		if opts == nil {
+			return nil, p.errorf("expected options: or a comment, got %s (%q)", p.current.Type, p.current.Literal)
+		}
+		return nil, p.errorf("expected the end of the options block, got %s (%q)", p.current.Type, p.current.Literal)
 	}
+	p.advance() // consume the outer DEDENT
 	return opts, nil
 }
