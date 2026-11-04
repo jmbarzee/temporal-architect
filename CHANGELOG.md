@@ -204,8 +204,9 @@ namespace payments:
 
 ### ⚠️ Breaking: string escapes
 
-A string literal accepts `\"` and `\\`, inside call arguments too, and its
-parsed value is unescaped (`"a\\b"` is `a\b`). Any other backslash escape
+A string literal accepts `\"` and `\\`, inside call arguments too. A string
+literal's value is unescaped (`"a\\b"` is `a\b`); argument text stays as
+written. Any other backslash escape
 (`"\n"`, `"\d"`), accepted before, is now a `parse/LEX` error, which
 `twf check --lenient` does not excuse (#106).
 
@@ -272,10 +273,10 @@ is now checked against the target's signals.
   Go-to-definition and hover work on a signal send's type head (#225).
 - **Visualizer:** "Show in Tree" on a nexus operation or endpoint scrolls to and
   flashes that row, not just the service or namespace that owns it (#249).
-- **Visualizer graph view:** wheel zoom no longer logs a passive-listener warning per
-  event, and the page behind the canvas no longer scrolls (#212). When the pane
-  resizes, for example when a host opens a side panel, the camera keeps the
-  point at the pane's centre in place (#210).
+- **Visualizer graph view:** wheel zoom no longer logs a passive-listener
+  warning per event, and the page behind the canvas no longer scrolls (#212).
+  When the pane resizes, for example when a host opens a side panel, the camera
+  keeps the point at the pane's centre in place (#210).
 - **Design skill:** `common-errors.md` covers the lexer's `LEX` errors
   (unterminated string, unterminated argument list, inconsistent indentation,
   unknown escape) (#105).
