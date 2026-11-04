@@ -229,8 +229,8 @@ func recoveryStop(run []byte) int {
 // parses: at its leading tabs when they are an open level (a stray space after
 // a line's indentation) and the line does not follow a block header
 // (afterHeader), which needs a deeper one; otherwise where an editor shows it,
-// a part level counting as a level, with a tab stop at a space-indented file's
-// own unit, or every four columns. Shown past the current level, it opens one
+// with a tab stop at a space-indented file's own unit, or every four columns:
+// at the nearest level, or a part level up on a block's first line. Shown past the current level, it opens one
 // level; otherwise it sits at the deepest open level it reaches.
 func (l *Lexer) measureIndent(run []byte, afterHeader bool) (width, bad int) {
 	bad = bytes.IndexByte(run, ' ')
@@ -252,7 +252,11 @@ func (l *Lexer) measureIndent(run []byte, afterHeader bool) (width, bad int) {
 			shown++
 		}
 	}
-	shown = (shown + stop - 1) / stop
+	if afterHeader {
+		shown = (shown + stop - 1) / stop // a block's first line opens it
+	} else {
+		shown = (2*shown + stop) / (2 * stop) // the nearest level
+	}
 	top := l.indentStack[len(l.indentStack)-1]
 	if shown > top {
 		return top + 1, bad

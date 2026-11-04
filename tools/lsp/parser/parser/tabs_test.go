@@ -82,9 +82,10 @@ func columnless(t *testing.T, file *ast.File) any {
 	return strip(v)
 }
 
-// A space-indented file, at four, three or two spaces per level, is a LEX error
-// on each indented line and otherwise parses as its tab twin, CRLF or not: the same AST but for columns and the
-// indentation inside raw text, and the same other diagnostics on the same lines.
+// A space-indented file, at four, three or two spaces per level, is a LEX
+// error on each indented line and otherwise parses as its tab twin, CRLF or
+// not: the same AST but for columns and the indentation inside raw text, and
+// the same other diagnostics on the same lines.
 func TestSpacesRecoverToTheTabAST(t *testing.T) {
 	const spacesMsg = "indented with spaces; .twf indents with tabs, one per level"
 	sources := map[string]string{"inline": tabsInline}
@@ -188,6 +189,11 @@ func TestSpaceIndentedBlocksKeepTheirStructure(t *testing.T) {
 		{
 			name: "a stray two spaces at depth one",
 			src:  "workflow W(x):\n\tactivity A(x)\n  close complete(x)\n\nactivity A(x):\n\treturn x\n",
+			lex:  1, body: []int{2, 1},
+		},
+		{
+			name: "a stray five spaces at depth one",
+			src:  "workflow W(x):\n\tactivity A(x)\n     close complete(x)\n\nactivity A(x):\n\treturn x\n",
 			lex:  1, body: []int{2, 1},
 		},
 		{
