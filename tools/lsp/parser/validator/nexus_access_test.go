@@ -175,10 +175,7 @@ func TestNexusCallerNotAllowed(t *testing.T) {
 // TestNexusCallerNotAllowedAttribution: the error lands on the call site and is
 // attributed to the calling definition.
 func TestNexusCallerNotAllowedAttribution(t *testing.T) {
-	file := mustParseAndResolve(t, accessFile(`allowed_caller_namespaces: ["orders"]`, "shop"))
-	for _, def := range file.Definitions {
-		stamp(def, "", "a.twf")
-	}
+	file := mustMergeNamedAndResolve(t, namedSource{file: "a.twf", src: accessFile(`allowed_caller_namespaces: ["orders"]`, "shop")})
 	for _, e := range Validate(file) {
 		if e.Kind != ErrNexusCallerNotAllowed {
 			continue

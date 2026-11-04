@@ -19,7 +19,8 @@ import "testing"
 // their own) plus a topology-owner package that imports both and declares a
 // single shared worker instantiated in one namespace on one task queue.
 
-const swPaymentsDomain = `package payments
+const swPaymentsDomain = `# path: acme/payments
+package payments
 
 workflow Charge(id):
     close complete(id)
@@ -28,7 +29,8 @@ activity Settle(id):
     return id
 `
 
-const swShippingDomain = `package shipping
+const swShippingDomain = `# path: acme/shipping
+package shipping
 
 workflow Ship(id):
     close complete(id)

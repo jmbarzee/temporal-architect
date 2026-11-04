@@ -279,3 +279,24 @@ func TestSpecResources(t *testing.T) {
 		t.Errorf("resource MIME = %q, want %q", mt, specMIME)
 	}
 }
+
+// TestInlineSourceResolvesLikeTheCLI: an inline source has no import path, so
+// its imports bind nothing — the same-leaf import is external, as `twf check`
+// reports for a file outside the package it names, never bound by name to the
+// source's own package.
+func TestInlineSourceResolvesLikeTheCLI(t *testing.T) {
+	cs := connect(t)
+	const src = "package fabric\n\nimport cf \"example.com/demo/cluster/fabric\"\n\nworkflow Setup():\n    workflow cf.Setup()\n    close complete(\"ok\")\n"
+	res := callTool(t, cs, "twf_check", map[string]any{"source": src})
+	var env struct {
+		Diagnostics []struct {
+			Code string `json:"code"`
+		} `json:"diagnostics"`
+	}
+	if err := json.Unmarshal([]byte(toolText(t, res)), &env); err != nil {
+		t.Fatalf("decode check envelope: %v", err)
+	}
+	if len(env.Diagnostics) != 1 || env.Diagnostics[0].Code != "UNRESOLVED_IMPORT" {
+		t.Errorf("diagnostics = %+v, want one UNRESOLVED_IMPORT", env.Diagnostics)
+	}
+}

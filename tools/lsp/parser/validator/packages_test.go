@@ -1,6 +1,7 @@
 package validator
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
@@ -36,29 +37,15 @@ type namedSource struct {
 // (issue #136), so the file an error is attributed to can be asserted.
 func mustMergeNamedAndResolve(t *testing.T, sources ...namedSource) *ast.File {
 	t.Helper()
-	merged := &ast.File{}
-	pkgs := map[string]bool{}
-	for _, s := range sources {
+	inputs := make([]ast.StampInput, len(sources))
+	for i, s := range sources {
 		f, err := parser.ParseFile(s.src)
 		if err != nil {
 			t.Fatalf("unexpected parse error: %v", err)
 		}
-		pkgs[f.Package] = true
-		for _, imp := range f.Imports {
-			imp.Package = f.Package
-			imp.SourceFile = s.file
-			merged.Imports = append(merged.Imports, imp)
-		}
-		for _, def := range f.Definitions {
-			stamp(def, f.Package, s.file)
-			merged.Definitions = append(merged.Definitions, def)
-		}
+		inputs[i] = ast.StampInput{File: f, SourceFile: s.file, Module: testPath(s.src)}
 	}
-	if len(pkgs) == 1 {
-		for p := range pkgs {
-			merged.Package = p
-		}
-	}
+	merged := ast.Stamp(inputs)
 	for _, e := range resolver.Resolve(merged) {
 		if e.Severity != "warning" {
 			t.Fatalf("unexpected resolve error: %s %q", e.Kind, e.Msg)
@@ -67,19 +54,16 @@ func mustMergeNamedAndResolve(t *testing.T, sources ...namedSource) *ast.File {
 	return merged
 }
 
-func stamp(def ast.Definition, pkg, file string) {
-	switch d := def.(type) {
-	case *ast.WorkflowDef:
-		d.Package, d.SourceFile = pkg, file
-	case *ast.ActivityDef:
-		d.Package, d.SourceFile = pkg, file
-	case *ast.WorkerDef:
-		d.Package, d.SourceFile = pkg, file
-	case *ast.NamespaceDef:
-		d.Package, d.SourceFile = pkg, file
-	case *ast.NexusServiceDef:
-		d.Package, d.SourceFile = pkg, file
+// testPath is the import path a test source declares on its first line
+// (`# path: acme/orderer`), or "" for a path-less package, whose imports bind
+// nothing.
+func testPath(src string) string {
+	first, _, _ := strings.Cut(src, "\n")
+	path, ok := strings.CutPrefix(first, "# path: ")
+	if !ok {
+		return ""
 	}
+	return strings.TrimSpace(path)
 }
 
 func countKind(errs []*Error, kind ErrorKind) int {
@@ -99,7 +83,8 @@ func countKind(errs []*Error, kind ErrorKind) int {
 // bare-name keying alpha's registration would mark the shared name "Process"
 // covered and mask beta's gap (zero warnings).
 func TestCrossPackageCoverageIndependent(t *testing.T) {
-	alpha := `package alpha
+	alpha := `# path: acme/alpha
+package alpha
 
 workflow Process(id):
     close complete(id)
@@ -141,7 +126,8 @@ namespace bns:
 // package's registrations were lost and its workflow was falsely flagged
 // UNCOVERED.
 func TestCrossPackageWorkerNameCollision(t *testing.T) {
-	alpha := `package alpha
+	alpha := `# path: acme/alpha
+package alpha
 
 workflow Alpha(id):
     close complete(id)
@@ -183,7 +169,8 @@ namespace bns:
 // mismatch (alpha.Charge undeployed) is reported; under bare-name keying beta's
 // "Charge" registration would hide it.
 func TestCrossPackageRoutingIndependent(t *testing.T) {
-	alpha := `package alpha
+	alpha := `# path: acme/alpha
+package alpha
 
 workflow Caller(x):
     activity Charge(x) -> y
@@ -220,7 +207,8 @@ namespace prod:
 // linkage must be judged per package, so the mismatch is reported. Endpoints
 // themselves stay flat-global (bare name).
 func TestCrossPackageEndpointServiceLinkage(t *testing.T) {
-	alpha := `package alpha
+	alpha := `# path: acme/alpha
+package alpha
 
 nexus service Svc:
     async Op workflow W
@@ -263,7 +251,8 @@ namespace prod:
 // namespace, and their workers on the same queue with different type sets are
 // a TASK_QUEUE_MISMATCH — exactly as if one file declared both.
 func TestCrossPackageNamespaceSharesQueues(t *testing.T) {
-	alpha := `package alpha
+	alpha := `# path: acme/alpha
+package alpha
 
 workflow A():
     close complete()

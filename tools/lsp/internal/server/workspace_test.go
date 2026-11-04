@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/resolver"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/validator"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/pipeline"
@@ -536,5 +537,33 @@ func TestWorkspaceModuleRootAboveFolderResolves(t *testing.T) {
 	doc := store.Open(uri, buf)
 	if hasKind(doc.ResolveErrs, resolver.ErrUnresolvedImport) || hasKind(doc.ResolveErrs, resolver.ErrUndefinedWorkflow) {
 		t.Errorf("module root not walked: %v", doc.ResolveErrs)
+	}
+}
+
+// TestBufferNeverBindsImportsByName: the buffer's isolated AST — what hover
+// and definition walk — binds an import only by path. Here the import's leaf
+// is the buffer's own package name; by name cf.Setup would resolve to the
+// buffer's own Setup.
+func TestBufferNeverBindsImportsByName(t *testing.T) {
+	dir := t.TempDir()
+	writeModule(t, dir, "example.com/demo")
+	buf := "package fabric\n\nimport cf \"example.com/demo/cluster/fabric\"\n\nworkflow Setup():\n    workflow cf.Setup()\n    close complete(\"ok\")\n"
+	_, uri := writeTWF(t, dir, "fabric/f.twf", buf)
+	store := NewDocumentStore()
+	store.SetFolders([]string{dir})
+	doc := store.Open(uri, buf)
+	wf := doc.File.Definitions[0].(*ast.WorkflowDef)
+	if got := wf.Body[0].(*ast.WorkflowCall).Workflow.Resolved; got == wf {
+		t.Error("cf.Setup resolved by name to the buffer's own Setup")
+	}
+
+	// A non-file buffer has no path at all: the import is external.
+	untitled := store.Open("untitled:Untitled-1", buf)
+	wf = untitled.File.Definitions[0].(*ast.WorkflowDef)
+	if wf.Body[0].(*ast.WorkflowCall).Workflow.Resolved != nil {
+		t.Error("an untitled buffer bound an import by name")
+	}
+	if !hasKind(untitled.ResolveErrs, resolver.ErrUnresolvedImport) {
+		t.Errorf("want UNRESOLVED_IMPORT, got %v", untitled.ResolveErrs)
 	}
 }
