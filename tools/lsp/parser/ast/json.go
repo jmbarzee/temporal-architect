@@ -1055,7 +1055,6 @@ type NexusTargetJSON struct {
 	Operation                 string           `json:"operation"`
 	Args                      string           `json:"args,omitempty"`
 	Result                    string           `json:"result,omitempty"`
-	Detach                    bool             `json:"detach,omitempty"`
 	ResolvedEndpoint          *ResolvedRefJSON `json:"resolvedEndpoint,omitempty"`
 	ResolvedEndpointNamespace string           `json:"resolvedEndpointNamespace,omitempty"`
 	ResolvedService           *ResolvedRefJSON `json:"resolvedService,omitempty"`
@@ -1096,7 +1095,6 @@ func marshalAsyncTarget(target AsyncTarget) AsyncTargetJSON {
 			Operation:      t.Operation.Name,
 			Args:           t.Args,
 			Result:         t.Result,
-			Detach:         t.Detach,
 		}
 		if t.Endpoint.Resolved != nil {
 			nj.ResolvedEndpoint = &ResolvedRefJSON{Name: t.Endpoint.Resolved.EndpointName, Line: t.Endpoint.Resolved.Line, Column: t.Endpoint.Resolved.Column}

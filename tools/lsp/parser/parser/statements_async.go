@@ -28,7 +28,10 @@ func parseAwaitStmt(p *Parser) (ast.Statement, error) {
 // timer(duration), signal Name [-> params], update Name [-> params],
 // activity Name(args) [-> result], workflow Name(args) [-> result]
 func parseSingleAwait(p *Parser, pos ast.Pos) (*ast.AwaitStmt, error) {
-	target, err := parseAsyncTarget(p, true, true, pos)
+	if err := p.rejectDetach(`a detached call is never awaited; drop "detach" to wait for its result, or "await" to start it and move on`); err != nil {
+		return nil, err
+	}
+	target, err := parseAsyncTarget(p, true)
 	if err != nil {
 		return nil, err
 	}
@@ -38,34 +41,44 @@ func parseSingleAwait(p *Parser, pos ast.Pos) (*ast.AwaitStmt, error) {
 	return &ast.AwaitStmt{Pos: pos, Target: target}, nil
 }
 
+// CodeDetachAwaited marks a detached call written where it would be awaited.
+const CodeDetachAwaited = "DETACH_AWAITED"
+
+// rejectDetach fails with msg when the current token is DETACH: a detached
+// call is never awaited, so it cannot follow await, fill a promise, or race
+// in await one.
+func (p *Parser) rejectDetach(msg string) error {
+	if p.current.Type != token.DETACH {
+		return nil
+	}
+	return p.codedErrorf(CodeDetachAwaited, "%s", msg)
+}
+
 // parseAsyncTarget parses an async target (timer, signal, update, activity,
-// workflow, nexus, ident). When allowArrows is true, result/param arrows are
-// parsed. When allowDetach is true, the DETACH prefix and IDENT fallback are
-// accepted.
-func parseAsyncTarget(p *Parser, allowArrows, allowDetach bool, pos ast.Pos) (ast.AsyncTarget, error) {
+// workflow, nexus, ident). awaited is true after await and in an await one
+// case, where result/param arrows and an ident target are accepted; it is
+// false in a promise.
+func parseAsyncTarget(p *Parser, awaited bool) (ast.AsyncTarget, error) {
 	switch p.current.Type {
 	case token.TIMER:
 		return parseTimerTarget(p)
 	case token.SIGNAL:
-		return parseSignalTarget(p, allowArrows)
+		return parseSignalTarget(p, awaited)
 	case token.UPDATE:
-		return parseUpdateTarget(p, allowArrows)
+		return parseUpdateTarget(p, awaited)
 	case token.ACTIVITY:
-		return parseActivityTarget(p, allowArrows)
-	case token.DETACH, token.WORKFLOW:
-		if !allowDetach && p.current.Type == token.DETACH {
-			return nil, p.errorf("expected timer, signal, update, activity, workflow, or nexus after '<-', got %s", p.current.Type)
-		}
-		return parseWorkflowOrNexusTarget(p, allowArrows, pos)
+		return parseActivityTarget(p, awaited)
+	case token.WORKFLOW:
+		return parseWorkflowTarget(p, awaited)
 	case token.NEXUS:
-		return parseNexusTarget(p, false, allowArrows, pos)
+		return parseNexusTarget(p, awaited)
 	case token.IDENT:
-		if !allowDetach {
+		if !awaited {
 			return nil, p.errorf("expected timer, signal, update, activity, workflow, or nexus after '<-', got %s", p.current.Type)
 		}
-		return parseIdentTarget(p, allowArrows)
+		return parseIdentTarget(p, awaited)
 	default:
-		if allowDetach {
+		if awaited {
 			return nil, p.errorf("expected timer, signal, update, activity, workflow, nexus, or identifier after 'await', got %s", p.current.Type)
 		}
 		return nil, p.errorf("expected timer, signal, update, activity, workflow, or nexus after '<-', got %s", p.current.Type)
@@ -139,23 +152,8 @@ func parseActivityTarget(p *Parser, allowArrows bool) (*ast.ActivityTarget, erro
 	return t, nil
 }
 
-// parseWorkflowOrNexusTarget handles the DETACH/WORKFLOW token cases.
-// After an optional DETACH prefix, it branches to either a nexus target
-// (detach nexus ...) or a workflow target (workflow ...).
-func parseWorkflowOrNexusTarget(p *Parser, allowArrows bool, pos ast.Pos) (ast.AsyncTarget, error) {
-	mode := ast.CallAttached
-	if p.current.Type == token.DETACH {
-		mode = ast.CallDetach
-		p.advance()
-	}
-
-	if p.current.Type == token.NEXUS {
-		return parseNexusTarget(p, mode == ast.CallDetach, allowArrows, pos)
-	}
-
-	if _, err := p.expect(token.WORKFLOW); err != nil {
-		return nil, err
-	}
+func parseWorkflowTarget(p *Parser, allowArrows bool) (*ast.WorkflowTarget, error) {
+	p.advance() // consume WORKFLOW
 	pkg, name, err := p.parseRefNameWithPackage()
 	if err != nil {
 		return nil, err
@@ -166,7 +164,6 @@ func parseWorkflowOrNexusTarget(p *Parser, allowArrows bool, pos ast.Pos) (ast.A
 	}
 	t := &ast.WorkflowTarget{
 		Workflow: refTo[*ast.WorkflowDef](pkg, name),
-		Mode:     mode,
 		Start:    p.workflowStartKind(),
 		Args:     args.Literal,
 	}
@@ -178,20 +175,11 @@ func parseWorkflowOrNexusTarget(p *Parser, allowArrows bool, pos ast.Pos) (ast.A
 		}
 		t.Result = result
 	}
-	if mode == ast.CallDetach && t.Result != "" {
-		return nil, &ParseError{
-			Msg:    "detach workflow cannot have a result (-> identifier)",
-			Line:   pos.Line,
-			Column: pos.Column,
-		}
-	}
 	return t, nil
 }
 
 // parseNexusTarget parses: NEXUS IDENT IDENT DOT IDENT ARGS [ ARROW IDENT ]
-// The detach parameter controls whether Detach is set on the result.
-// When detach is true and a result arrow is present, an error is returned.
-func parseNexusTarget(p *Parser, detach, allowArrows bool, pos ast.Pos) (*ast.NexusTarget, error) {
+func parseNexusTarget(p *Parser, allowArrows bool) (*ast.NexusTarget, error) {
 	p.advance() // consume NEXUS
 	endpoint, _, err := p.expectDeployName()
 	if err != nil {
@@ -210,7 +198,6 @@ func parseNexusTarget(p *Parser, detach, allowArrows bool, pos ast.Pos) (*ast.Ne
 		Service:   refTo[*ast.NexusServiceDef](svcPkg, service),
 		Operation: nameRef[*ast.NexusOperation](operation),
 		Args:      args.Literal,
-		Detach:    detach,
 	}
 	if allowArrows && p.current.Type == token.ARROW {
 		p.advance()
@@ -219,13 +206,6 @@ func parseNexusTarget(p *Parser, detach, allowArrows bool, pos ast.Pos) (*ast.Ne
 			return nil, err
 		}
 		t.Result = result
-	}
-	if t.Detach && t.Result != "" {
-		return nil, &ParseError{
-			Msg:    "detach nexus call cannot have a result (-> identifier)",
-			Line:   pos.Line,
-			Column: pos.Column,
-		}
 	}
 	return t, nil
 }
@@ -352,7 +332,10 @@ func parseAwaitOneCase(p *Parser) (*ast.AwaitOneCase, error) {
 		return c, nil
 	}
 
-	target, err := parseAsyncTarget(p, true, true, pos)
+	if err := p.rejectDetach(`a detached call cannot race in await one: it never completes; start it before the block, or drop "detach"`); err != nil {
+		return nil, err
+	}
+	target, err := parseAsyncTarget(p, true)
 	if err != nil {
 		return nil, err
 	}
@@ -415,7 +398,10 @@ func parsePromiseStmt(p *Parser) (ast.Statement, error) {
 		return nil, err
 	}
 
-	target, err := parseAsyncTarget(p, false, false, pos)
+	if err := p.rejectDetach(`a promise cannot hold a detached call; drop "detach" to await it later`); err != nil {
+		return nil, err
+	}
+	target, err := parseAsyncTarget(p, false)
 	if err != nil {
 		return nil, err
 	}

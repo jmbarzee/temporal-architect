@@ -65,6 +65,7 @@ Common error types:
 - Undefined nexus service (hard error — resolved per package, following any qualifier + import)
 - Nexus service has no matching operation
 - Detach nexus call with result binding
+- Detached call where it would be awaited (`DETACH_AWAITED`): after `await`, in a `promise`, or as an `await one` case — a [detached](./06-statement-syntax.md#workflow-call) call is never awaited
 - Async nexus operation references undefined workflow
 - Nexus endpoint routes to task queue with no worker in the endpoint's namespace registering the service (queues compared by spelling, so an endpoint never fronts a family)
 - Explicit `task_queue` routing (call site, else the target's `default_options:`): target activity/workflow not on any worker polling a queue that [matches](./03-workers-and-namespaces.md#queue-matching) it in the caller's namespace(s)
@@ -81,7 +82,7 @@ Common error types:
 - Unresolved import — imported package absent from the tree, treated as external (warning)
 - Unused import — a resolved import never referenced (warning)
 - Unknown option key in `options:` block (including handler `options:` blocks — e.g. `unfinished_policy` on a query handler, where only `description` is allowed)
-- Misplaced option key (`OPTION_MISPLACED`): a key its context cannot carry — `parent_close_policy` in a workflow `default_options:` block (it describes one parent↔child invocation, not the workflow type) or at a client start (no parent), and `workflow_id_conflict_policy` at a child start (a child start carries no conflict policy)
+- Misplaced option key (`OPTION_MISPLACED`): a key its context cannot carry — `parent_close_policy` in a workflow `default_options:` block (it describes one parent↔child invocation, not the workflow type) or at a client start (no parent) or a detached child start (always `ABANDON`), and `workflow_id_conflict_policy` at a child start (a child start carries no conflict policy)
 - Duplicate option key (`DUPLICATE_OPTION_KEY`): a key repeated in one options block, nested blocks included
 - Wrong value type for option key (e.g., number where duration expected)
 - Invalid enum value for option key (e.g., a value other than `abandon` / `warn_and_abandon` for `unfinished_policy`)

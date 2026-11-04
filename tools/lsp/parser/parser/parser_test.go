@@ -964,8 +964,6 @@ func TestTemporalKeywordInActivityError(t *testing.T) {
 	}
 }
 
-// REMOVED: TestSelectDetachError - detach workflow cases are now supported in await one blocks.
-
 func TestMultipleDefinitions(t *testing.T) {
 	input := `workflow Foo(x: int) -> (Result):
 	activity Bar(x) -> y

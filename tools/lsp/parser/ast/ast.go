@@ -537,7 +537,6 @@ type NexusTarget struct {
 	Operation Ref[*NexusOperation]
 	Args      string
 	Result    string
-	Detach    bool
 }
 
 func (*NexusTarget) asyncTarget() {}

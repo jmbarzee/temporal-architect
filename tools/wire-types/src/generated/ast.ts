@@ -342,7 +342,6 @@ export interface NexusTargetJSON {
   operation: string;
   args?: string;
   result?: string;
-  detach?: boolean;
   resolvedEndpoint?: ResolvedRefJSON;
   resolvedEndpointNamespace?: string;
   resolvedService?: ResolvedRefJSON;

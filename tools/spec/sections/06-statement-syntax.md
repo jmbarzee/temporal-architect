@@ -156,8 +156,10 @@ workflow ProcessOrder(order: Order) -> (Result):
 workflow_call ::= ['detach'] 'workflow' IDENT args ['->' result] [NEWLINE options_line]
 ```
 
-Modifiers:
-- `detach`: Fire-and-forget start (no result)
+**Detach.** `detach` waits until the start is confirmed, never for a result. From then on the started execution outlives the caller: the caller's cancellation does not reach it, and neither does its close.
+- **`detach workflow`**: a child start takes parent-close policy `ABANDON`, so a `parent_close_policy:` under it is `OPTION_MISPLACED`. A start that fails fails the caller, the same as any child start. A client start has no parent, so `detach` only drops the wait for a result.
+- **`detach nexus`**: Nexus has no parent-close policy. The caller waits until the operation starts, which for a sync operation means until it completes. The caller does not propagate cancellation (operation cancellation type `ABANDON`). When the caller closes, the operation keeps running, and its completion callback to the closed caller fails and is dropped.
+- A detached call is never awaited, so it cannot follow `await`, fill a `promise`, or be an `await one` case (`DETACH_AWAITED`). Under `await all:` it is done once started.
 
 **Start kind.** A start becomes the Temporal operation its enclosing body allows:
 
@@ -180,7 +182,7 @@ nexus_call ::= ['detach'] 'nexus' IDENT IDENT '.' IDENT args ['->' result] [NEWL
 
 Calls a nexus service operation. The three IDENTs are: Endpoint, Service.Operation (dot-separated).
 
-- `detach`: Fire-and-forget nexus call (no result)
+- `detach`: wait for the start, never the result ([Detach](#workflow-call))
 - Endpoint: The nexus endpoint name (defined in a namespace block)
 - Service.Operation: The nexus service and operation name (dot-separated)
 
@@ -295,9 +297,9 @@ update_target ::= 'update' IDENT ['->' params]
 
 activity_target ::= 'activity' IDENT args ['->' result]
 
-workflow_target ::= ['detach'] 'workflow' IDENT args ['->' result]
+workflow_target ::= 'workflow' IDENT args ['->' result]
 
-nexus_target ::= ['detach'] 'nexus' IDENT IDENT '.' IDENT args ['->' result]
+nexus_target ::= 'nexus' IDENT IDENT '.' IDENT args ['->' result]
 
 ident_target ::= IDENT ['->' result]
 
@@ -333,7 +335,7 @@ await_all_block ::= 'await' 'all' ':' NEWLINE
                     DEDENT
 ```
 
-Executes all contained statements concurrently and waits for ALL to complete before continuing.
+Executes all contained statements concurrently and waits for ALL to complete before continuing. A [detached](#workflow-call) call is complete once started.
 
 ## Await One Block
 
@@ -364,10 +366,10 @@ timer_case ::= 'timer' '(' duration ')' ':' NEWLINE
 activity_case ::= 'activity' IDENT args ['->' result] ':' NEWLINE
                   [INDENT statement+ DEDENT]
 
-workflow_case ::= ['detach'] 'workflow' IDENT args ['->' result] ':' NEWLINE
+workflow_case ::= 'workflow' IDENT args ['->' result] ':' NEWLINE
                   [INDENT statement+ DEDENT]
 
-nexus_case ::= ['detach'] 'nexus' IDENT IDENT '.' IDENT args ['->' result] ':' NEWLINE
+nexus_case ::= 'nexus' IDENT IDENT '.' IDENT args ['->' result] ':' NEWLINE
                [INDENT statement+ DEDENT]
 
 await_all_case ::= 'await' 'all' ':' NEWLINE

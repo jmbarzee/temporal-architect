@@ -18,6 +18,7 @@ const (
 	// signal or update handler) is a StartChildWorkflowExecution command; a
 	// client start (sync nexus operation body) goes through the client start API.
 	OptionsContextChildStart
+	OptionsContextDetachedChildStart
 	OptionsContextClientStart
 	OptionsContextWorker
 	OptionsContextNexusCall
@@ -110,8 +111,9 @@ var workflowStartSchema = map[string]*optionSchema{
 var parentClosePolicySchema = &optionSchema{valueType: "enum", allowed: []string{"TERMINATE", "ABANDON", "REQUEST_CANCEL"}}
 var conflictPolicySchema = &optionSchema{valueType: "enum", allowed: []string{"FAIL", "USE_EXISTING", "TERMINATE_EXISTING"}}
 
-// A child start has a parent, so it takes parent_close_policy, and carries no
-// conflict policy. A client start has no parent and carries both ID policies.
+// A child start has a parent, so it takes parent_close_policy (unless detached,
+// which always abandons), and carries no conflict policy. A client start has no
+// parent and carries both ID policies.
 var childStartOptionSchema = schemaWith(workflowStartSchema, "parent_close_policy", parentClosePolicySchema)
 var clientStartOptionSchema = schemaWith(workflowStartSchema, "workflow_id_conflict_policy", conflictPolicySchema)
 
@@ -147,12 +149,18 @@ type misplacedOption struct {
 }
 
 var workflowIDAtStart = misplacedOption{CodeIDAtStart, "a workflow start takes no workflow_id; the ID derives from the started type's id_scheme"}
+var childConflictPolicy = misplacedOption{CodeOptionMisplaced, "a child start takes no workflow_id_conflict_policy and fails on a running instance with the same ID; to reach a running instance, signal it by its scheme, or start it from a client start"}
 
 // optionMisplaced maps a context to the keys it rejects with a targeted error.
 var optionMisplaced = map[OptionsContext]map[string]misplacedOption{
 	OptionsContextChildStart: {
 		"workflow_id":                 workflowIDAtStart,
-		"workflow_id_conflict_policy": {CodeOptionMisplaced, "a child start takes no workflow_id_conflict_policy and fails on a running instance with the same ID; to reach a running instance, signal it by its scheme, or start it from a client start"},
+		"workflow_id_conflict_policy": childConflictPolicy,
+	},
+	OptionsContextDetachedChildStart: {
+		"workflow_id":                 workflowIDAtStart,
+		"workflow_id_conflict_policy": childConflictPolicy,
+		"parent_close_policy":         {CodeOptionMisplaced, `a detached start always abandons its child; drop parent_close_policy, or drop "detach" to choose a policy`},
 	},
 	OptionsContextClientStart: {
 		"workflow_id":         workflowIDAtStart,
@@ -205,17 +213,18 @@ var queryHandlerOptionSchema = map[string]*optionSchema{
 }
 
 var optionSchemas = map[OptionsContext]map[string]*optionSchema{
-	OptionsContextActivity:         activityOptionSchema,
-	OptionsContextChildStart:       childStartOptionSchema,
-	OptionsContextClientStart:      clientStartOptionSchema,
-	OptionsContextWorker:           workerOptionSchema,
-	OptionsContextNexusCall:        nexusCallOptionSchema,
-	OptionsContextEndpoint:         endpointOptionSchema,
-	OptionsContextSignalHandler:    signalHandlerOptionSchema,
-	OptionsContextUpdateHandler:    updateHandlerOptionSchema,
-	OptionsContextQueryHandler:     queryHandlerOptionSchema,
-	OptionsContextActivityDefaults: activityDefaultOptionSchema,
-	OptionsContextWorkflowDefaults: workflowDefaultOptionSchema,
+	OptionsContextActivity:           activityOptionSchema,
+	OptionsContextChildStart:         childStartOptionSchema,
+	OptionsContextDetachedChildStart: workflowStartSchema,
+	OptionsContextClientStart:        clientStartOptionSchema,
+	OptionsContextWorker:             workerOptionSchema,
+	OptionsContextNexusCall:          nexusCallOptionSchema,
+	OptionsContextEndpoint:           endpointOptionSchema,
+	OptionsContextSignalHandler:      signalHandlerOptionSchema,
+	OptionsContextUpdateHandler:      updateHandlerOptionSchema,
+	OptionsContextQueryHandler:       queryHandlerOptionSchema,
+	OptionsContextActivityDefaults:   activityDefaultOptionSchema,
+	OptionsContextWorkflowDefaults:   workflowDefaultOptionSchema,
 }
 
 // workflowStartKind is the kind of a workflow start at the current position: a
@@ -227,11 +236,14 @@ func (p *Parser) workflowStartKind() ast.StartKind {
 	return ast.StartChild
 }
 
-// workflowStartContext is the options context of a workflow start at the
-// current position.
-func (p *Parser) workflowStartContext() OptionsContext {
-	if p.workflowStartKind() == ast.StartClient {
+// workflowStartContext is the options context of a workflow start in mode at
+// the current position.
+func (p *Parser) workflowStartContext(mode ast.WorkflowCallMode) OptionsContext {
+	switch {
+	case p.workflowStartKind() == ast.StartClient:
 		return OptionsContextClientStart
+	case mode == ast.CallDetach:
+		return OptionsContextDetachedChildStart
 	}
 	return OptionsContextChildStart
 }

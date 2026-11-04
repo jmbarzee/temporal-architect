@@ -78,7 +78,7 @@ set_stmt ::= 'set' IDENT NEWLINE
 unset_stmt ::= 'unset' IDENT NEWLINE
 
 await_stmt ::= 'await' (timer_target | signal_target | update_target | activity_target | workflow_target | nexus_target | ident_target) NEWLINE
-nexus_target ::= ['detach'] 'nexus' deploy_name qualified_ref '.' IDENT args ['->' result]
+nexus_target ::= 'nexus' deploy_name qualified_ref '.' IDENT args ['->' result]
 ident_target ::= IDENT ['->' result]
 
 await_one_case ::= signal_case | update_case | timer_case | activity_case | workflow_case | nexus_case | await_all_case | ident_case
@@ -91,9 +91,9 @@ timer_case ::= 'timer' '(' duration ')' ':' NEWLINE [INDENT statement+ DEDENT]
 
 activity_case ::= 'activity' qualified_ref args ['->' result] ':' NEWLINE [INDENT statement+ DEDENT]
 
-workflow_case ::= ['detach'] 'workflow' qualified_ref args ['->' result] ':' NEWLINE [INDENT statement+ DEDENT]
+workflow_case ::= 'workflow' qualified_ref args ['->' result] ':' NEWLINE [INDENT statement+ DEDENT]
 
-nexus_case ::= ['detach'] 'nexus' deploy_name qualified_ref '.' IDENT args ['->' result] ':' NEWLINE [INDENT statement+ DEDENT]
+nexus_case ::= 'nexus' deploy_name qualified_ref '.' IDENT args ['->' result] ':' NEWLINE [INDENT statement+ DEDENT]
 
 ident_case ::= IDENT ['->' result] ':' NEWLINE [INDENT statement+ DEDENT]
 
