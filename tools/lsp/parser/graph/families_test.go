@@ -313,3 +313,259 @@ namespace n:
 		"containment worker:fam/namespace:n -> namespace:n",
 	})
 }
+
+// dispatched renders g's dispatch and nexusRoute edges with line and routing,
+// its unresolved entries and its coarsened edges with weight, sorted, so a
+// repeated edge shows as a repeated line.
+func dispatched(g *Graph) []string {
+	var out []string
+	for _, e := range g.Edges {
+		if e.Kind == EdgeContainment {
+			continue
+		}
+		s := fmt.Sprintf("%s %s -> %s @%d", e.Kind, e.From, e.To, e.Line)
+		if e.Routing != nil {
+			s += fmt.Sprintf(" %+v", *e.Routing)
+		}
+		out = append(out, s)
+	}
+	for _, u := range g.Unresolved {
+		out = append(out, fmt.Sprintf("unresolved %s %s %s @%d", u.Kind, u.From, u.Name, u.Line))
+	}
+	for _, c := range g.CoarsenedEdges {
+		out = append(out, fmt.Sprintf("coarsened %s %s -> %s x%d", c.Tier, c.From, c.To, c.Weight))
+	}
+	slices.Sort(out)
+	return out
+}
+
+// TestDoubleInstantiationDispatch: a worker instantiated twice in one
+// namespace is one node, so a call both instantiations route to one callee is
+// one edge, of every dispatch kind, counted once in the coarsened weight; an
+// unresolved call is one entry.
+func TestDoubleInstantiationDispatch(t *testing.T) {
+	src := `workflow W(x: X):
+    activity A(x) -> r
+        options:
+            task_queue: "acts"
+    workflow C(x) -> c
+    nexus Ep S.Sync(x) -> n
+    promise p <- workflow T(x)
+    signal p.Go(x)
+    activity Missing(x)
+    close complete(r)
+
+activity A(x: X) -> (X):
+    return x
+
+workflow C(x: X):
+    close complete(x)
+
+workflow T(x: X):
+    signal Go(y: X):
+        go = true
+    close complete(x)
+
+workflow B():
+    close complete()
+
+nexus service S:
+    sync Sync(x: X) -> (X):
+        activity A(x) -> r
+            options:
+                task_queue: "acts"
+        close complete(r)
+    async Async workflow B
+    async Lost workflow Nope
+
+worker fam:
+    workflow W
+    workflow C
+    workflow T
+    workflow B
+    nexus service S
+
+worker aw:
+    activity A
+
+namespace n:
+    worker fam
+        options:
+            task_queue: "tools"
+    worker fam
+        options:
+            task_queue: "tools-{id}"
+    worker aw
+        options:
+            task_queue: "acts"
+    nexus endpoint Ep
+        options:
+            task_queue: "tools"
+`
+	const (
+		w   = "workflow:W/worker:fam/namespace:n"
+		a   = "activity:A/worker:aw/namespace:n"
+		ep  = "nexusEndpoint:Ep/namespace:n"
+		op  = "nexusOperation:S."
+		fam = "/worker:fam/namespace:n"
+	)
+	checkRouted(t, dispatched(extractAllowingErrors(t, src)), []string{
+		"activityCall " + op + "Sync" + fam + " -> " + a + " @28 {Explicit:acts NexusEndpoint:}",
+		"activityCall " + w + " -> " + a + " @2 {Explicit:acts NexusEndpoint:}",
+		"asyncBacking " + op + "Async" + fam + " -> workflow:B" + fam + " @32 {Explicit: NexusEndpoint:}",
+		"coarsened worker worker:fam/namespace:n -> worker:aw/namespace:n x2",
+		"nexusCall " + w + " -> " + op + "Sync" + fam + " @6 {Explicit: NexusEndpoint:" + ep + "}",
+		"nexusRoute " + op + "Async" + fam + " -> " + ep + " @55",
+		"nexusRoute " + op + "Lost" + fam + " -> " + ep + " @55",
+		"nexusRoute " + op + "Sync" + fam + " -> " + ep + " @55",
+		"signalSend " + w + " -> workflow:T" + fam + " @8 {Explicit: NexusEndpoint:}",
+		"unresolved activityCall " + w + " Missing @9",
+		"unresolved asyncBacking " + op + "Lost" + fam + " Nope @33",
+		"workflowCall " + w + " -> workflow:C" + fam + " @5 {Explicit: NexusEndpoint:}",
+		"workflowCall " + w + " -> workflow:T" + fam + " @7 {Explicit: NexusEndpoint:}",
+	})
+
+	// Both instantiations on the endpoint's queue: one nexusRoute edge.
+	src = `nexus service S:
+    sync Sync(x: X) -> (X):
+        return x
+
+worker fam:
+    nexus service S
+
+namespace n:
+    worker fam
+        options:
+            task_queue: "tools"
+    worker fam
+        options:
+            task_queue: "tools"
+    nexus endpoint Ep
+        options:
+            task_queue: "tools"
+`
+	checkRouted(t, dispatched(extractAllowingErrors(t, src)), []string{
+		"nexusRoute " + op + "Sync" + fam + " -> " + ep + " @15",
+	})
+}
+
+// TestDoubleInstantiationDistinctCallees: when a worker's two instantiations in
+// one namespace route a call to different callees, each edge is kept, and so
+// is each of a worker's edges in different namespaces.
+func TestDoubleInstantiationDistinctCallees(t *testing.T) {
+	t.Run("one namespace", func(t *testing.T) {
+		src := `workflow W(x: X):
+    activity A(x) -> r
+    workflow C(x) -> c
+    close complete(r)
+
+activity A(x: X) -> (X):
+    return x
+
+workflow C(x: X):
+    close complete(x)
+
+workflow B():
+    close complete()
+
+nexus service S:
+    sync Sync(x: X) -> (X):
+        activity A(x) -> r
+        close complete(r)
+    async Async workflow B
+
+worker fam:
+    workflow W
+    nexus service S
+
+worker callee:
+    activity A
+    workflow C
+    workflow B
+
+worker other:
+    activity A
+    workflow C
+    workflow B
+
+namespace n:
+    worker fam
+        options:
+            task_queue: "a-{id}"
+    worker fam
+        options:
+            task_queue: "b-{id}"
+    worker callee
+        options:
+            task_queue: "a-{key}"
+    worker other
+        options:
+            task_queue: "b-{key}"
+`
+		const (
+			w    = "workflow:W/worker:fam/namespace:n"
+			sync = "nexusOperation:S.Sync/worker:fam/namespace:n"
+			back = "nexusOperation:S.Async/worker:fam/namespace:n"
+		)
+		var want []string
+		for _, to := range []string{"callee", "other"} {
+			at := "/worker:" + to + "/namespace:n"
+			want = append(want,
+				"activityCall "+sync+" -> activity:A"+at+" @17 {Explicit: NexusEndpoint:}",
+				"activityCall "+w+" -> activity:A"+at+" @2 {Explicit: NexusEndpoint:}",
+				"asyncBacking "+back+" -> workflow:B"+at+" @19 {Explicit: NexusEndpoint:}",
+				"coarsened worker worker:fam/namespace:n -> worker:"+to+"/namespace:n x4",
+				"workflowCall "+w+" -> workflow:C"+at+" @3 {Explicit: NexusEndpoint:}",
+			)
+		}
+		slices.Sort(want)
+		checkRouted(t, dispatched(extractAllowingErrors(t, src)), want)
+	})
+
+	t.Run("two namespaces", func(t *testing.T) {
+		src := `workflow W(x: X):
+    activity A(x) -> r
+        options:
+            task_queue: "acts"
+    close complete(r)
+
+activity A(x: X) -> (X):
+    return x
+
+worker fam:
+    workflow W
+
+worker aw:
+    activity A
+
+namespace n1:
+    worker fam
+        options:
+            task_queue: "tools"
+    worker fam
+        options:
+            task_queue: "tools-{id}"
+    worker aw
+        options:
+            task_queue: "acts"
+
+namespace n2:
+    worker fam
+        options:
+            task_queue: "tools"
+    worker aw
+        options:
+            task_queue: "acts"
+`
+		var want []string
+		for _, ns := range []string{"n1", "n2"} {
+			at := "/namespace:" + ns
+			want = append(want,
+				"activityCall workflow:W/worker:fam"+at+" -> activity:A/worker:aw"+at+" @2 {Explicit:acts NexusEndpoint:}",
+				"coarsened worker worker:fam"+at+" -> worker:aw"+at+" x1",
+			)
+		}
+		slices.Sort(want)
+		checkRouted(t, dispatched(extractAllowingErrors(t, src)), want)
+	})
+}
