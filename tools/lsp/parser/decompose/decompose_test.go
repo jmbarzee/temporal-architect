@@ -611,6 +611,64 @@ namespace ns:
 	}
 }
 
+// TestDuplicateDeclarationMeasuresFirst: a handler declared twice in one
+// workflow, or an operation twice in one nexus service (DUPLICATE_*), is its
+// first declaration, as the resolver keeps it: the later one's body and count
+// add nothing to complexity.
+func TestDuplicateDeclarationMeasuresFirst(t *testing.T) {
+	const later = `        activity Work()
+        if (x):
+            activity Work()
+`
+	src := func(laterHandler, laterOp string) string {
+		return `
+workflow W():
+    signal Ping():
+        step()
+` + laterHandler + `    close complete
+
+activity Work():
+    step()
+
+nexus service S:
+    sync Op() -> ():
+        close complete()
+` + laterOp + `
+worker w:
+    workflow W
+    activity Work
+    nexus service S
+
+namespace ns:
+    worker w
+        options:
+            task_queue: "q"
+`
+	}
+	complexity := func(src string) map[string]int {
+		file, parseErrs := parser.ParseFileAll(src)
+		for _, e := range parseErrs {
+			t.Fatalf("parse: %v", e)
+		}
+		resolver.Resolve(file)
+		out := map[string]int{}
+		for _, n := range Decompose(file, graph.Extract(file), Options{}).Nodes {
+			out[n.Key] = n.Complexity
+		}
+		return out
+	}
+	want := complexity(src("", ""))
+	got := complexity(src("    signal Ping():\n"+later, "    sync Op() -> ():\n"+later+"        close complete()\n"))
+	for _, k := range []string{graph.DefKey(graph.KindWorkflow, "W"), graph.DefKey(graph.KindNexusOperation, "S.Op")} {
+		if _, ok := want[k]; !ok {
+			t.Fatalf("no node %s", k)
+		}
+		if got[k] != want[k] {
+			t.Errorf("%s complexity = %d, want the first declaration's %d", k, got[k], want[k])
+		}
+	}
+}
+
 // ---------------------------------------------------------------------------
 // 9. Service-extraction strategy peels a shared hub + its dominated closure and
 //    separates the remainder into components (Phase 3b)

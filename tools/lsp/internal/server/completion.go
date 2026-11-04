@@ -126,12 +126,12 @@ func workflowCompletions(file *ast.File, enclosing *ast.WorkflowDef) []protocol.
 		}
 	}
 
-	// Add signal/update names from the enclosing workflow.
+	// Add signal/update names from the enclosing workflow, each once.
 	if enclosing != nil {
-		for _, s := range enclosing.Signals {
+		for _, s := range ast.FirstDeclared(enclosing.Signals) {
 			items = append(items, nameItem(s.Name, "Signal"))
 		}
-		for _, u := range enclosing.Updates {
+		for _, u := range ast.FirstDeclared(enclosing.Updates) {
 			items = append(items, nameItem(u.Name, "Update"))
 		}
 	}

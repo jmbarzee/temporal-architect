@@ -12,6 +12,34 @@ type Definition interface {
 	defNode()
 }
 
+// Declared is a name declared inside a definition: a workflow's signal,
+// query, update or condition, or a nexus service's operation.
+type Declared interface {
+	Node
+	DeclName() string
+}
+
+func (d *SignalDecl) DeclName() string     { return d.Name }
+func (d *QueryDecl) DeclName() string      { return d.Name }
+func (d *UpdateDecl) DeclName() string     { return d.Name }
+func (d *ConditionDecl) DeclName() string  { return d.Name }
+func (d *NexusOperation) DeclName() string { return d.Name }
+
+// FirstDeclared returns decls without any whose name an earlier one declares:
+// a name declared twice in one definition (a DUPLICATE_* resolve error) is its
+// first declaration's.
+func FirstDeclared[T Declared](decls []T) []T {
+	seen := map[string]bool{}
+	var kept []T
+	for _, d := range decls {
+		if !seen[d.DeclName()] {
+			seen[d.DeclName()] = true
+			kept = append(kept, d)
+		}
+	}
+	return kept
+}
+
 // Statement is a statement inside a body.
 type Statement interface {
 	Node
@@ -726,14 +754,15 @@ type IDValue struct {
 
 func (*SignalSendStmt) stmtNode() {}
 
-// DeclaresSignal reports whether the workflow declares a signal handler name.
-func (wf *WorkflowDef) DeclaresSignal(name string) bool {
+// Signal returns the workflow's signal handler named name, its first when the
+// name is declared twice, or nil when none is.
+func (wf *WorkflowDef) Signal(name string) *SignalDecl {
 	for _, sig := range wf.Signals {
 		if sig.Name == name {
-			return true
+			return sig
 		}
 	}
-	return false
+	return nil
 }
 
 // Target returns the workflow definition a send reaches: a type head's resolved
@@ -741,7 +770,7 @@ func (wf *WorkflowDef) DeclaresSignal(name string) bool {
 // when the head did not resolve, or its type does not declare the signal.
 func (s *SignalSendStmt) Target() *WorkflowDef {
 	if s.Head.Kind == SendHeadType {
-		if wf := s.Head.Type.Resolved; wf != nil && wf.DeclaresSignal(s.Signal) {
+		if wf := s.Head.Type.Resolved; wf != nil && wf.Signal(s.Signal) != nil {
 			return wf
 		}
 		return nil

@@ -71,17 +71,18 @@ func (wg *workGraph) computeComplexity(file *ast.File) {
 			if wn == nil {
 				continue
 			}
+			signals, queries, updates := ast.FirstDeclared(d.Signals), ast.FirstDeclared(d.Queries), ast.FirstDeclared(d.Updates)
 			m := measureBody(d.Body)
-			for _, h := range d.Signals {
+			for _, h := range signals {
 				m.add(measureBody(h.Body))
 			}
-			for _, q := range d.Queries {
+			for _, q := range queries {
 				m.add(measureBody(q.Body))
 			}
-			for _, u := range d.Updates {
+			for _, u := range updates {
 				m.add(measureBody(u.Body))
 			}
-			m.handlers = len(d.Signals) + len(d.Queries) + len(d.Updates)
+			m.handlers = len(signals) + len(queries) + len(updates)
 			wn.complexity = m.score()
 
 		case *ast.ActivityDef:
@@ -91,7 +92,7 @@ func (wg *workGraph) computeComplexity(file *ast.File) {
 
 		case *ast.NexusServiceDef:
 			svcQName := ast.QualifiedName(ast.PackageIDOf(d, file), d.Name)
-			for _, op := range d.Operations {
+			for _, op := range ast.FirstDeclared(d.Operations) {
 				// Sync ops carry a body; async ones don't (base score).
 				if wn := wg.nodes[graph.DefKey(graph.KindNexusOperation, svcQName+"."+op.Name)]; wn != nil {
 					wn.complexity = measureBody(op.Body).score()
@@ -104,7 +105,8 @@ func (wg *workGraph) computeComplexity(file *ast.File) {
 // firstDeclarations is the set of file's workflow, activity and nexus service
 // definitions that are the first of their kind, package and name: a name
 // declared twice (a DUPLICATE_* resolve error) is its first declaration's, as
-// the resolver keeps it.
+// the resolver keeps it. A handler or operation declared twice in one is
+// likewise its first (ast.FirstDeclared).
 func firstDeclarations(file *ast.File) map[ast.Definition]bool {
 	kept := map[ast.Definition]bool{}
 	seen := map[string]bool{}

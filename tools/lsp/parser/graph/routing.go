@@ -36,13 +36,13 @@ func (g *Graph) emitDispatchEdges(idx *astIndex) {
 		for _, callerDep := range idx.deploymentsHosting(KindWorkflow, wfQName) {
 			callerID := HostedID(KindWorkflow, wfQName, callerDep.WorkerName, callerDep.NamespaceName, false)
 			g.walkRunnable(idx, callerID, callerDep, wf.Body)
-			for _, s := range wf.Signals {
+			for _, s := range ast.FirstDeclared(wf.Signals) {
 				g.walkRunnable(idx, callerID, callerDep, s.Body)
 			}
-			for _, q := range wf.Queries {
+			for _, q := range ast.FirstDeclared(wf.Queries) {
 				g.walkRunnable(idx, callerID, callerDep, q.Body)
 			}
-			for _, u := range wf.Updates {
+			for _, u := range ast.FirstDeclared(wf.Updates) {
 				g.walkRunnable(idx, callerID, callerDep, u.Body)
 			}
 		}
@@ -52,7 +52,7 @@ func (g *Graph) emitDispatchEdges(idx *astIndex) {
 		g.walkFile = svc.SourceFile
 		svcQName := idx.defQName(svc, svc.Name)
 		serviceDeployments := idx.deploymentsHosting(KindNexusService, svcQName)
-		for _, op := range svc.Operations {
+		for _, op := range ast.FirstDeclared(svc.Operations) {
 			opName := nexusOpQualifiedName(svcQName, op.Name)
 			switch op.OpType {
 			case ast.NexusOpAsync:

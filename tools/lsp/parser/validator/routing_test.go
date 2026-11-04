@@ -840,3 +840,73 @@ worker wb:
 		})
 	}
 }
+
+// TestDuplicateDeclarationRoutesFirst: a signal or update declared twice in
+// one workflow, or an operation twice in one nexus service, is routing-checked
+// as its first declaration, as the resolver keeps it, not the later one, even
+// when the two differ in signature.
+func TestDuplicateDeclarationRoutesFirst(t *testing.T) {
+	const misrouted = `
+        activity A(x)
+            options:
+                task_queue: "nowhere"
+`
+	const routed = `
+        activity A(x)
+`
+	const async = "\n    async Op workflow V\n"
+	signal := func(body string) string { return "\n    signal Ping(x: X):" + body }
+	update := func(body string) string { return "\n    update Bump(x: X) -> (R):" + body }
+	sync := func(body string) string { return "\n    sync Op(x: X) -> ():" + body }
+	const misroutedErr = `activity A has task_queue "nowhere", but no worker on that queue in namespace n registers it`
+	tests := []struct {
+		name                string
+		handlers, ops, want string
+	}{
+		{"signal, first misrouted", signal(misrouted) + signal(routed), async, misroutedErr},
+		{"signal, later misrouted", signal(routed) + signal(misrouted), async, ""},
+		{"update, first misrouted", update(misrouted) + update(routed), async, misroutedErr},
+		{"update, later misrouted", update(routed) + update(misrouted), async, ""},
+		{"operation, first misrouted", "", sync(misrouted) + sync(routed), misroutedErr},
+		{"operation, later misrouted", "", sync(routed) + sync(misrouted), ""},
+		{"operation, async first and sync later misrouted", "", async + sync(misrouted), ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			src := "workflow W(x: X):" + tt.handlers + `
+    close complete()
+
+workflow V():
+    close complete()
+
+nexus service S:` + tt.ops + `
+activity A(x: X):
+    return
+
+worker w:
+    workflow W
+    workflow V
+    activity A
+    nexus service S
+
+namespace n:
+    worker w
+        options:
+            task_queue: "q"
+`
+			file, err := parser.ParseFile(src)
+			if err != nil {
+				t.Fatal(err)
+			}
+			resolver.Resolve(file)
+			got := routingMsgs(Validate(file))
+			var want []string
+			if tt.want != "" {
+				want = []string{tt.want}
+			}
+			if !slices.Equal(got, want) {
+				t.Errorf("routing diagnostics:\n got  %q\n want %q", got, want)
+			}
+		})
+	}
+}

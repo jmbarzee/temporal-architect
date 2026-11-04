@@ -287,6 +287,15 @@ is now checked against the target's signals.
   comment statement instead of joining the text (#295).
 - An `import` after a definition is a `parse/SYNTAX` error; imports go after
   the `package` clause and before definitions (#299).
+- A statement ends with its line: `break Missing`, `set Ready now` or a `-> r`
+  on a `promise` is a `parse/SYNTAX` error, no longer a statement plus a silent
+  raw line. Only a comment may follow a statement.
+- CRLF files parse: `\r\n` ends a line, and no `\r` reaches raw text, values or
+  comments.
+- A line holding only tabs, or tabs and spaces, is a blank line, as a
+  space-only line already was. A tab between tokens is whitespace.
+- **LSP:** a bad statement line drops only itself from the editor's outline,
+  hover and references; the definition around it and its other statements stay.
 - An undefined workflow, activity, signal or update used as a `promise` /
   `await` target is reported at its name, not at 0:0 (#276).
 - Diagnostics on a reference (`UNDEFINED_*`, `SIGNAL_SEND_UNDEFINED_SIGNAL`,
@@ -316,6 +325,11 @@ is now checked against the target's signals.
   first is. Every declaration is still checked for an empty definition, and
   every workflow, activity and nexus service body for its own problems; a
   later worker or namespace gets no other checks.
+- A signal, query, update or condition declared twice in one workflow, or an
+  operation twice in one nexus service, is now an error on the later one
+  (`DUPLICATE_SIGNAL`, `_QUERY`, `_UPDATE`, `_CONDITION`, `_NEXUS_OPERATION`),
+  and the first is kept everywhere, as for definitions. An endpoint declared
+  twice in one namespace likewise says where the first is.
 - A `DISPATCH_NO_REACHABLE_DEPLOYMENT` names an operation by its own service
   when another service's name prefixes it.
 - **LSP:** rename, references and go-to-definition ranges cover the name, not

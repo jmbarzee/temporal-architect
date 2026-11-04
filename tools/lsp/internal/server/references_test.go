@@ -185,6 +185,84 @@ func TestRenameEveryKind(t *testing.T) {
 	}
 }
 
+// duplicateDeclSource declares each in-definition name twice, the two
+// differing in signature: condition Ready, signal Ping, update Bump, and
+// operation Op (sync, then async).
+const duplicateDeclSource = `workflow W(wid: string):
+    id_scheme: "w-{wid}"
+    state:
+        condition Ready
+        condition Ready
+    signal Ping(a: string):
+        set Ready
+    signal Ping(b: int):
+        set Ready
+    update Bump() -> (string):
+        return "a"
+    update Bump(n: int) -> (int):
+        return 1
+    await signal Ping
+    await update Bump
+    await Ready
+    nexus e S.Op()
+    close complete()
+
+workflow Sender(wid: string):
+    signal W.Ping("x")
+        id: wid
+    promise h <- workflow W(wid)
+    signal h.Ping("y")
+    close complete()
+
+nexus service S:
+    sync Op() -> ():
+        close complete()
+    async Op workflow W
+
+namespace n:
+    nexus endpoint e
+        options:
+            task_queue: "q"
+`
+
+// TestDefinitionOfDuplicateIsFirst: a name declared twice in one definition
+// (DUPLICATE_*) is its first declaration, so go-to-definition from every
+// reference to it, a signal send's included, lands on the first.
+func TestDefinitionOfDuplicateIsFirst(t *testing.T) {
+	tests := []struct {
+		name         string
+		cursor, decl spot
+	}{
+		{"await signal", spot{13, "Ping", 0}, spot{5, "Ping", 0}},
+		{"signal send to a type", spot{20, "Ping", 0}, spot{5, "Ping", 0}},
+		{"signal send through a handle", spot{23, "Ping", 0}, spot{5, "Ping", 0}},
+		{"await update", spot{14, "Bump", 0}, spot{9, "Bump", 0}},
+		{"await condition", spot{15, "Ready", 0}, spot{3, "Ready", 0}},
+		{"set in the first handler", spot{6, "Ready", 0}, spot{3, "Ready", 0}},
+		{"set in the later handler", spot{8, "Ready", 0}, spot{3, "Ready", 0}},
+		{"nexus operation", spot{16, "Op", 0}, spot{27, "Op", 0}},
+	}
+	saved := "file://" + filepath.Join(t.TempDir(), "dup.twf")
+	for _, uri := range []string{saved, "untitled:Untitled-1"} {
+		for _, tt := range tests {
+			t.Run(uri+"/"+tt.name, func(t *testing.T) {
+				store := NewDocumentStore()
+				store.Open(uri, duplicateDeclSource)
+				at := protocol.TextDocumentPositionParams{
+					TextDocument: protocol.TextDocumentIdentifier{URI: uri},
+					Position:     wordAt(t, duplicateDeclSource, tt.cursor.line, tt.cursor.word, tt.cursor.nth),
+				}
+				def, err := definitionHandler(store)(nil, &protocol.DefinitionParams{TextDocumentPositionParams: at})
+				loc, ok := def.(protocol.Location)
+				want := wordAt(t, duplicateDeclSource, tt.decl.line, tt.decl.word, tt.decl.nth)
+				if err != nil || !ok || loc.URI != uri || loc.Range.Start != want {
+					t.Errorf("definition = %#v (err %v), want %s at %+v", def, err, uri, want)
+				}
+			})
+		}
+	}
+}
+
 // TestRenameOffANameDoesNothing: a cursor on a keyword names nothing.
 func TestRenameOffANameDoesNothing(t *testing.T) {
 	store := NewDocumentStore()

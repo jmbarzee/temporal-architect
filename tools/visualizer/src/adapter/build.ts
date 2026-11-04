@@ -15,6 +15,7 @@
 
 import type { Definition, TWFFile } from '../types/ast'
 import { qualifiedNameOf } from '../types/ast'
+import { setFirst } from '../components/definitionMaps'
 import type {
   CoarsenedEdge,
   NodeKind,
@@ -80,31 +81,33 @@ export interface AstOwner {
 
 export type AstLookup = ReadonlyMap<string, AstOwner>
 
+// A name declared twice (a DUPLICATE_* resolve error) is its first
+// declaration's, as the resolver keeps it.
 export function buildAstLookup(ast: TWFFile): AstLookup {
   const m = new Map<string, AstOwner>()
   for (const def of ast.definitions ?? []) {
     switch (def.type) {
       case 'workflowDef':
-        m.set(`workflow:${qualifiedNameOf(def)}`, { def })
+        setFirst(m, `workflow:${qualifiedNameOf(def)}`, { def })
         break
       case 'activityDef':
-        m.set(`activity:${qualifiedNameOf(def)}`, { def })
+        setFirst(m, `activity:${qualifiedNameOf(def)}`, { def })
         break
       case 'workerDef':
-        m.set(`worker:${def.name}`, { def })
+        setFirst(m, `worker:${def.name}`, { def })
         break
       case 'namespaceDef': {
-        m.set(`namespace:${def.name}`, { def })
+        setFirst(m, `namespace:${def.name}`, { def })
         for (const ep of def.endpoints ?? []) {
-          m.set(`nexusEndpoint:${ep.endpointName}`, { def, child: ep.endpointName })
+          setFirst(m, `nexusEndpoint:${ep.endpointName}`, { def, child: ep.endpointName })
         }
         break
       }
       case 'nexusServiceDef': {
         const service = qualifiedNameOf(def)
-        m.set(`nexusService:${service}`, { def })
+        setFirst(m, `nexusService:${service}`, { def })
         for (const op of def.operations ?? []) {
-          m.set(`nexusOperation:${service}.${op.name}`, { def, child: op.name })
+          setFirst(m, `nexusOperation:${service}.${op.name}`, { def, child: op.name })
         }
         break
       }

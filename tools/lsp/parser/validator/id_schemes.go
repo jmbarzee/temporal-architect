@@ -20,7 +20,7 @@ func (v *validationCtx) checkParentSends(defs []ast.Definition) {
 		}
 	}
 	for _, wf := range v.keptWorkflows(defs) {
-		walkWorkflow(wf, func(s ast.Statement) {
+		walkWorkflow(wf, true, func(s ast.Statement) {
 			if call, ok := s.(*ast.WorkflowCall); ok {
 				addStarter(call.Workflow.Resolved, wf)
 			}
@@ -32,7 +32,7 @@ func (v *validationCtx) checkParentSends(defs []ast.Definition) {
 	}
 
 	for _, sender := range v.keptWorkflows(defs) {
-		walkWorkflow(sender, func(s ast.Statement) {
+		walkWorkflow(sender, true, func(s ast.Statement) {
 			send, ok := s.(*ast.SignalSendStmt)
 			if !ok || send.Head.Address == nil || send.Head.Address.ID.Kind != ast.IDParent {
 				return
@@ -173,17 +173,23 @@ func (v *validationCtx) keptWorkflows(defs []ast.Definition) []*ast.WorkflowDef 
 }
 
 // walkWorkflow visits every statement, and every async target when onTarget is
-// non-nil, in a workflow's body and its handlers. onTarget also receives the
-// statement holding the target, which carries the position a target lacks.
-func walkWorkflow(wf *ast.WorkflowDef, onStmt func(ast.Statement), onTarget func(ast.AsyncTarget, ast.Statement)) {
+// non-nil, in a workflow's body and its handlers: every handler declaration,
+// or only each name's first when kept (see walkAllBodies). onTarget also
+// receives the statement holding the target, which carries the position a
+// target lacks.
+func walkWorkflow(wf *ast.WorkflowDef, kept bool, onStmt func(ast.Statement), onTarget func(ast.AsyncTarget, ast.Statement)) {
+	signals, queries, updates := wf.Signals, wf.Queries, wf.Updates
+	if kept {
+		signals, queries, updates = ast.FirstDeclared(signals), ast.FirstDeclared(queries), ast.FirstDeclared(updates)
+	}
 	bodies := [][]ast.Statement{wf.Body}
-	for _, s := range wf.Signals {
+	for _, s := range signals {
 		bodies = append(bodies, s.Body)
 	}
-	for _, q := range wf.Queries {
+	for _, q := range queries {
 		bodies = append(bodies, q.Body)
 	}
-	for _, u := range wf.Updates {
+	for _, u := range updates {
 		bodies = append(bodies, u.Body)
 	}
 	var opts []ast.WalkOption
