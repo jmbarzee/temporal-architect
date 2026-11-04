@@ -22,6 +22,7 @@ type Lexer struct {
 
 	indentStack []int // stack of indent widths, starts at [0]
 	afterHeader bool  // the line before this one ended in ':', so this one opens a block
+	spaceStop   int   // the recovery tab stop, fixed by the first indented line; 0 before it
 	eofEmitted  bool  // true after first EOF has been emitted
 }
 
@@ -178,6 +179,9 @@ func (l *Lexer) handleIndent() (token.Token, bool) {
 	}
 
 	run := l.input[start:end]
+	if l.spaceStop == 0 && len(run) > 0 {
+		l.spaceStop = recoveryStop(run)
+	}
 	indent, bad := l.measureIndent(run, l.afterHeader)
 	if bad >= 0 {
 		l.pending = append(l.pending, l.indentSpaceError(run, start, bad))
@@ -207,9 +211,15 @@ func (l *Lexer) indentEnd(i int) int {
 	return i
 }
 
-// tabStop is the display width of a tab where spaces stand in indentation,
-// used only to place such a line for recovery.
-const tabStop = 4
+// recoveryStop returns the tab stop that places space-indented lines for
+// recovery, given a file's first indented run: that run's width when it is all
+// spaces (a file indented with spaces, at its own unit), and four otherwise.
+func recoveryStop(run []byte) int {
+	if bytes.Count(run, []byte{' '}) == len(run) {
+		return len(run)
+	}
+	return 4
+}
 
 // measureIndent returns the width of a line's indentation run, in tabs, and
 // the index of the run's first space, or -1. TWF indents with tabs, one per
@@ -219,26 +229,30 @@ const tabStop = 4
 // parses: at its leading tabs when they are an open level (a stray space after
 // a line's indentation) and the line does not follow a block header
 // (afterHeader), which needs a deeper one; otherwise where an editor shows it,
-// with a tab stop every four columns. Shown past the current level, it opens
-// one level; otherwise it sits at the deepest open level it reaches.
+// a part level counting as a level, with a tab stop at a space-indented file's
+// own unit, or every four columns. Shown past the current level, it opens one
+// level; otherwise it sits at the deepest open level it reaches.
 func (l *Lexer) measureIndent(run []byte, afterHeader bool) (width, bad int) {
 	bad = bytes.IndexByte(run, ' ')
 	if bad < 0 {
 		return len(run), -1
 	}
-	tabs := bytes.Count(run[:bad], []byte{'\t'})
-	if bad == tabs && bad > 0 && !afterHeader && slices.Contains(l.indentStack, bad) {
+	if bad > 0 && !afterHeader && slices.Contains(l.indentStack, bad) {
 		return bad, bad
+	}
+	stop := l.spaceStop
+	if stop == 0 {
+		stop = recoveryStop(run)
 	}
 	shown := 0
 	for _, ch := range run {
 		if ch == '\t' {
-			shown += tabStop - shown%tabStop
+			shown += stop - shown%stop
 		} else {
 			shown++
 		}
 	}
-	shown /= tabStop
+	shown = (shown + stop - 1) / stop
 	top := l.indentStack[len(l.indentStack)-1]
 	if shown > top {
 		return top + 1, bad

@@ -209,14 +209,12 @@ namespace payments:
 `.twf` indents with tabs, one per level (`twf spec indentation`). A space in a
 line's indentation, alone or mixed with tabs, is a `parse/LEX` error at the
 line's first space, which `twf check --lenient` does not excuse. Blank lines
-may hold any whitespace. Each such line is still placed where an editor shows
-it (a tab every four columns), so the file's structure survives and every
+may hold any whitespace. A space-indented line is still placed where an editor
+shows it, at the file's own space unit, so the structure survives and every
 other diagnostic still reports.
 
-**Migration:** re-indent `.twf` files with tabs, for example with your
-editor's "convert indentation to tabs" at a tab size of your space unit. Every
-`.twf` file, `twf` Markdown block and test source in this repository is
-converted.
+**Migration:** re-indent `.twf` files with tabs (an editor's "convert
+indentation to tabs" at your space unit).
 
 ### ⚠️ Breaking: string escapes
 

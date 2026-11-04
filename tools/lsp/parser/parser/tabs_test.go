@@ -2,6 +2,7 @@ package parser
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -32,24 +33,16 @@ activity A(x):
 	return x
 `
 
-// reindent re-indents src, indented with tabs or four spaces per level, with
-// unit per level.
+// reindent re-indents src, indented with one tab per level, with unit per level.
 func reindent(t *testing.T, src, unit string) string {
 	t.Helper()
 	lines := strings.Split(src, "\n")
 	for i, line := range lines {
-		body := strings.TrimLeft(line, " \t")
-		run := line[:len(line)-len(body)]
-		var level int
-		switch {
-		case strings.Trim(run, "\t") == "":
-			level = len(run)
-		case strings.Trim(run, " ") == "" && len(run)%4 == 0:
-			level = len(run) / 4
-		default:
-			t.Fatalf("line %d is indented %q, not tabs or four spaces per level", i+1, run)
+		body := strings.TrimLeft(line, "\t")
+		if strings.HasPrefix(body, " ") && strings.TrimSpace(body) != "" {
+			t.Fatalf("line %d is indented with spaces", i+1)
 		}
-		lines[i] = strings.Repeat(unit, level) + body
+		lines[i] = strings.Repeat(unit, len(line)-len(body)) + body
 	}
 	return strings.Join(lines, "\n")
 }
@@ -89,8 +82,8 @@ func columnless(t *testing.T, file *ast.File) any {
 	return strip(v)
 }
 
-// A space-indented file is a LEX error on each indented line and otherwise
-// parses as its tab twin, CRLF or not: the same AST but for columns and the
+// A space-indented file, at four, three or two spaces per level, is a LEX error
+// on each indented line and otherwise parses as its tab twin, CRLF or not: the same AST but for columns and the
 // indentation inside raw text, and the same other diagnostics on the same lines.
 func TestSpacesRecoverToTheTabAST(t *testing.T) {
 	const spacesMsg = "indented with spaces; .twf indents with tabs, one per level"
@@ -103,10 +96,11 @@ func TestSpacesRecoverToTheTabAST(t *testing.T) {
 		sources[filepath.Base(path)] = string(data)
 	}
 	for name, src := range sources {
-		for _, nl := range []string{"\n", "\r\n"} {
-			t.Run(name+strings.ReplaceAll(nl, "\r", `\r`), func(t *testing.T) {
-				tabs := strings.ReplaceAll(reindent(t, src, "\t"), "\n", nl)
-				spaces := strings.ReplaceAll(reindent(t, src, "    "), "\n", nl)
+		for _, tc := range []struct{ nl, unit string }{{"\n", "    "}, {"\r\n", "    "}, {"\n", "  "}, {"\n", "   "}} {
+			nl, unit := tc.nl, tc.unit
+			t.Run(fmt.Sprintf("%s%s/%d", name, strings.ReplaceAll(nl, "\r", `\r`), len(unit)), func(t *testing.T) {
+				tabs := strings.ReplaceAll(src, "\n", nl)
+				spaces := strings.ReplaceAll(reindent(t, src, unit), "\n", nl)
 				wantFile, wantErrs := ParseFileAll(tabs)
 				gotFile, allErrs := ParseFileAll(spaces)
 				want, err := json.Marshal(columnless(t, wantFile))
@@ -187,6 +181,21 @@ func TestSpaceIndentedBlocksKeepTheirStructure(t *testing.T) {
 			lex:  3, body: []int{1, 2},
 		},
 		{
+			name: "a two-space file",
+			src:  "workflow W(x):\n  activity A(x)\n  if (x):\n    close complete(x)\n  close complete(x)\n\nactivity A(x):\n  return x\n",
+			lex:  5, body: []int{3, 1},
+		},
+		{
+			name: "a stray two spaces at depth one",
+			src:  "workflow W(x):\n\tactivity A(x)\n  close complete(x)\n\nactivity A(x):\n\treturn x\n",
+			lex:  1, body: []int{2, 1},
+		},
+		{
+			name: "a stray space opening await all",
+			src:  "workflow W(x):\n\tawait all:\n\t activity A(x)\n\t\tactivity A(x)\n\tclose complete(x)\n\nactivity A(x):\n\treturn x\n",
+			lex:  1, body: []int{2, 1},
+		},
+		{
 			name: "a stray eight spaces at depth two",
 			src:  "workflow W(x):\n\tif (x):\n\t\tactivity A(x)\n        activity A(x)\n\tclose complete(x)\n\nactivity A(x):\n\treturn x\n",
 			lex:  1, body: []int{2, 1},
@@ -238,7 +247,7 @@ func TestIndentationErrorComesFirst(t *testing.T) {
 	for _, tc := range []struct {
 		name, src, msg string
 	}{
-		{"spaces under a tab header", "workflow W(x):\n\tif (x):\n\t  close complete(x)\n", "indentation mixes tabs and spaces"},
+		{"a tab after spaces shows deeper", "workflow W(x):\n\tactivity A(x)\n    \tclose complete(x)\n", "indentation mixes tabs and spaces"},
 		{"mixed run under options", "workflow W(x):\n\tactivity A(x)\n\t\toptions:\n\t    start_to_close_timeout: 1m\n\tclose complete(x)\n", "indentation mixes tabs and spaces"},
 		{"dedent to no open block", "activity A(d) -> (string):\n\t\t# c\n\twork(d)\n", "inconsistent indentation"},
 	} {
