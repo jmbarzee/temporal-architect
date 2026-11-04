@@ -278,25 +278,41 @@ func (p *Parser) parseDotQualifiedIdent() (string, error) {
 
 // parseRefNameWithPackage parses a referenced name in a keyword-led call or
 // registration position, with an optional leading `IDENT.` package qualifier.
-// It returns (pkg, name): for `Foo` it returns ("", "Foo"); for `pkg.Foo` it
-// returns ("pkg", "Foo"). Because these positions are keyword-led, an
-// `IDENT DOT IDENT` prefix here is unambiguously a package-qualified name and
-// does not collide with `signal handle.Name` or the `nexus Ep Svc.Op` triple.
-// The unqualified form consumes exactly the same tokens as before.
-func (p *Parser) parseRefNameWithPackage() (pkg, name string, err error) {
+// It returns the qualifier and name tokens: for `Foo` a zero qualifier and
+// Foo; for `pkg.Foo`, pkg and Foo. Because these positions are
+// keyword-led, an `IDENT DOT IDENT` prefix here is unambiguously a
+// package-qualified name and does not collide with `signal handle.Name` or the
+// `nexus Ep Svc.Op` triple.
+func (p *Parser) parseRefNameWithPackage() (pkg, name token.Token, err error) {
 	first, err := p.expect(token.IDENT)
 	if err != nil {
-		return "", "", err
+		return token.Token{}, token.Token{}, err
 	}
 	if p.current.Type == token.DOT {
 		p.advance() // consume DOT
 		second, err := p.expect(token.IDENT)
 		if err != nil {
-			return "", "", err
+			return token.Token{}, token.Token{}, err
 		}
-		return first.Literal, second.Literal, nil
+		return first, second, nil
 	}
-	return "", first.Literal, nil
+	return token.Token{}, first, nil
+}
+
+// posOf returns tok's position.
+func posOf(tok token.Token) ast.Pos {
+	return ast.Pos{Line: tok.Line, Column: tok.Column}
+}
+
+// refTo builds a reference from its qualifier (zero when unqualified) and
+// name tokens.
+func refTo[T any](pkg, name token.Token) ast.Ref[T] {
+	return ast.Ref[T]{Pos: posOf(name), Package: pkg.Literal, PackagePos: posOf(pkg), Name: name.Literal}
+}
+
+// nameRef builds an unqualified reference.
+func nameRef[T any](name token.Token) ast.Ref[T] {
+	return refTo[T](token.Token{}, name)
 }
 
 // parseOptionalOptionsLine checks for an options block after a call:

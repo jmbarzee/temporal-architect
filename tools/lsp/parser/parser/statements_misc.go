@@ -23,7 +23,7 @@ func parseSetStmt(p *Parser) (ast.Statement, error) {
 
 	return &ast.SetStmt{
 		Pos:       pos,
-		Condition: ast.Ref[*ast.ConditionDecl]{Pos: pos, Name: name.Literal},
+		Condition: nameRef[*ast.ConditionDecl](name),
 	}, nil
 }
 
@@ -43,7 +43,7 @@ func parseUnsetStmt(p *Parser) (ast.Statement, error) {
 
 	return &ast.UnsetStmt{
 		Pos:       pos,
-		Condition: ast.Ref[*ast.ConditionDecl]{Pos: pos, Name: name.Literal},
+		Condition: nameRef[*ast.ConditionDecl](name),
 	}, nil
 }
 

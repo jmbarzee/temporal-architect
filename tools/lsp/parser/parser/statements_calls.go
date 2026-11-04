@@ -8,8 +8,8 @@ import (
 // callParts holds the shared parsed components of an activity or workflow call.
 type callParts struct {
 	pos     ast.Pos
-	pkg     string
-	name    string
+	pkg     token.Token
+	name    token.Token
 	args    string
 	result  string
 	options *ast.OptionsBlock
@@ -60,7 +60,7 @@ func parseActivityCall(p *Parser) (ast.Statement, error) {
 	}
 	return &ast.ActivityCall{
 		Pos:      cp.pos,
-		Activity: ast.Ref[*ast.ActivityDef]{Pos: cp.pos, Package: cp.pkg, Name: cp.name},
+		Activity: refTo[*ast.ActivityDef](cp.pkg, cp.name),
 		Args:     cp.args,
 		Result:   cp.result,
 		Options:  cp.options,
@@ -77,7 +77,7 @@ func parseWorkflowCall(p *Parser) (ast.Statement, error) {
 		Pos:      cp.pos,
 		Mode:     ast.CallAttached,
 		Start:    p.workflowStartKind(),
-		Workflow: ast.Ref[*ast.WorkflowDef]{Pos: cp.pos, Package: cp.pkg, Name: cp.name},
+		Workflow: refTo[*ast.WorkflowDef](cp.pkg, cp.name),
 		Args:     cp.args,
 		Result:   cp.result,
 		Options:  cp.options,

@@ -10,7 +10,7 @@
 
 import React from 'react'
 import { DEFAULT_VIEWPORT, fitToView, followResize } from '../../graph/viewport'
-import type { Viewport } from '../../graph/viewport'
+import type { PaneSize, Viewport } from '../../graph/viewport'
 import type { SimNode } from '../../graph/simulation'
 
 export interface ViewportController {
@@ -22,7 +22,7 @@ export interface ViewportController {
   // Cross-view "center on this node after warmup" request, consumed by the loop.
   pendingCenterRef: React.MutableRefObject<{ nodeId: string } | null>
   // The container's size, for a viewport computed against it.
-  measure: () => { width: number; height: number } | null
+  measure: () => PaneSize | null
   // Frame the viewport to the given nodes (measures the container first).
   fit: (nodes: SimNode[], padding?: number) => void
 }
@@ -36,10 +36,9 @@ export function useViewport(): ViewportController {
   // A resize keeps the world point at the pane's centre fixed. The shift is
   // the change since the size the viewport was last computed for: `measure()`
   // records that size, so a viewport framed after the host resized the pane,
-  // but before the observer ran, is not shifted again. The first measurement
-  // only records the size, and a zero-sized pane (hidden by its host) neither
-  // shifts the camera nor is shifted from.
-  const sizeRef = React.useRef<{ width: number; height: number } | null>(null)
+  // but before the observer ran, is not shifted again. `followResize` leaves
+  // the first measurement and a zero-sized (hidden) pane alone.
+  const sizeRef = React.useRef<PaneSize | null>(null)
   const measure = React.useCallback(() => {
     const container = containerRef.current
     if (!container) return null
@@ -53,9 +52,7 @@ export function useViewport(): ViewportController {
     const ro = new ResizeObserver(() => {
       const prev = sizeRef.current
       const size = measure()
-      if (!prev?.width || !prev.height || !size?.width || !size.height) return
-      const dw = size.width - prev.width, dh = size.height - prev.height
-      if (dw || dh) setViewport(vp => followResize(vp, dw, dh))
+      if (size) setViewport(vp => followResize(vp, prev, size))
     })
     ro.observe(container)
     return () => ro.disconnect()

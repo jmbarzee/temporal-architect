@@ -38,10 +38,19 @@ export function zoomAt(vp: Viewport, sx: number, sy: number, factor: number): Vi
   }
 }
 
-// Keep the world point under the pane's centre fixed across a resize: the
-// centre moves by half the size change, so the translation follows it.
-export function followResize(vp: Viewport, dw: number, dh: number): Viewport {
-  return { ...vp, x: vp.x + dw / 2, y: vp.y + dh / 2 }
+export interface PaneSize {
+  width: number
+  height: number
+}
+
+// Keep the world point under the pane's centre fixed across a resize from
+// `prev` to `next`: the centre moves by half the size change, so the
+// translation follows it. The first measurement (no `prev`) and a zero-sized
+// pane on either side (hidden by its host) leave the camera where it is.
+export function followResize(vp: Viewport, prev: PaneSize | null, next: PaneSize): Viewport {
+  if (!prev?.width || !prev.height || !next.width || !next.height) return vp
+  const dw = next.width - prev.width, dh = next.height - prev.height
+  return dw || dh ? { ...vp, x: vp.x + dw / 2, y: vp.y + dh / 2 } : vp
 }
 
 // Compute viewport that frames all given nodes with padding

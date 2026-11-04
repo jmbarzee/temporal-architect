@@ -24,15 +24,22 @@ type Document struct {
 	ResolveErrs  []*resolver.ResolveError
 	ValidateErrs []*validator.Error
 	edited       int // the store's edit count at this document's last edit
+
+	// sourceFile is how the buffer's definitions spell their SourceFile: its
+	// canonical path, or "" without one.
+	sourceFile string
+	// run is the merged AST of the buffer's workspace run, nil without one.
+	// References, rename and definition use it to reach other files.
+	run *ast.File
 }
 
 // analyze parses, resolves, and validates the document content.
 //
 // doc.File stays the single-buffer AST with the buffer's own line numbers, and
 // is always resolved in isolation so its Ref.Resolved pointers stay populated
-// for the positional features (hover, definition, references, rename,
-// signature-help, code-actions). doc.ParseErrs stay single-buffer (parse is
-// intra-file).
+// for the positional features (hover, signature-help, code-actions, and
+// definition, references and rename when there is no run). doc.ParseErrs stay
+// single-buffer (parse is intra-file).
 //
 // A `file:` buffer's doc.ResolveErrs and doc.ValidateErrs are those of
 // pipeline.ParseSources over its home inputs — its module root, the deepest
@@ -41,10 +48,12 @@ type Document struct {
 // filtered to the buffer's canonical identity: what `twf check <module root>
 // <folder> <dir> <file>` would report once the buffers are saved. A buffer
 // whose whole module is excluded also gets that module's error at its 1:1.
-// The merged AST is used only for diagnostics; it never becomes doc.File. If
+// The merged AST never becomes doc.File; it is kept as doc.run. If
 // the inputs cannot be read, the buffer keeps its single-buffer diagnostics.
 func (d *Document) analyze(folders []string, overlays map[string]string, runs map[string]analysis) {
 	d.File = nil
+	d.run = nil
+	d.sourceFile = ""
 	d.ParseErrs = nil
 	d.ResolveErrs = nil
 	d.ValidateErrs = nil
@@ -61,7 +70,8 @@ func (d *Document) analyze(folders []string, overlays map[string]string, runs ma
 	in := ast.StampInput{File: f}
 	if bufPath != "" {
 		canon = pipeline.Canonicalize(bufPath)
-		in.SourceFile = filepath.ToSlash(canon)
+		d.sourceFile = filepath.ToSlash(canon)
+		in.SourceFile = d.sourceFile
 		var modPath string
 		var err error
 		modRoot, modPath, err = pipeline.ModuleOf(filepath.Dir(canon))
@@ -104,7 +114,8 @@ func (d *Document) analyze(folders []string, overlays map[string]string, runs ma
 	if run.err != nil {
 		return
 	}
-	d.ResolveErrs, d.ValidateErrs = filterToBuffer(run.res, filepath.ToSlash(canon))
+	d.run = run.res.File
+	d.ResolveErrs, d.ValidateErrs = filterToBuffer(run.res, d.sourceFile)
 	if modRoot != "" {
 		d.ResolveErrs = append(d.ResolveErrs, lostModuleErrs(run.res, modRoot)...)
 	}

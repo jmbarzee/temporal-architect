@@ -264,6 +264,9 @@ is now checked against the target's signals.
 
 ### Fixes
 
+- With three or more copies of one module, each ignored copy's
+  `DUPLICATE_MODULE` names every other copy, so its message no longer depends
+  on input order (#303).
 - `twf check` no longer hangs on a top-level `nexus` call; it reports one
   `parse/SYNTAX` error (#263).
 - The help for `twf check`, `parse`, `graph`, `graph chunks` and `symbols`
@@ -294,7 +297,13 @@ is now checked against the target's signals.
 - **LSP:** a bad statement line drops only itself from the editor's outline,
   hover and references; the definition around it and its other statements stay.
 - An undefined workflow, activity, signal or update used as a `promise` /
-  `await` target is reported at its keyword, not at 0:0 (#276).
+  `await` target is reported at its name, not at 0:0 (#276).
+- Diagnostics on a reference (`UNDEFINED_*`, `SIGNAL_SEND_UNDEFINED_SIGNAL`,
+  `NEXUS_ASYNC_UNDEFINED_WORKFLOW`, `NAMESPACE_UNDEFINED_WORKER`,
+  `WORKER_DUPLICATE_TYPE_NAME`, `WORKER_REGISTERS_OPERATION`) point at the
+  referenced name, not the statement keyword; a qualifier's error points at
+  the qualifier. `twf parse` reports a worker entry's `column` at its name in
+  the same way; the shape is unchanged (#288).
 - Resolver and validator diagnostics come out sorted by file, position, then
   code, so the same input gives the same output on every run (#237).
 - Graph dispatch uses the target's `default_options:` `task_queue` when the
@@ -315,8 +324,19 @@ is now checked against the target's signals.
   the statement keyword, so a rename no longer overwrites `workflow` or
   `signal`, and renaming a Nexus endpoint edits the endpoint on a `nexus` call.
   Go-to-definition and hover work on a signal send's type head (#225).
+- **LSP:** rename, references and go-to-definition act on the name under the
+  cursor and match what it resolves to, not its spelling: a name beside a
+  same-spelled token (`nexus Orders Orders.Place`, `signal Child.Child.Go()`,
+  `promise Child <- workflow Child(wid)`) and two packages' same-named
+  declarations stay apart. They reach the workspace's other files, cover signal
+  sends, nexus operations, conditions and promises, and count columns in UTF-16.
+  The server watches `.twf` files, and a rename that would edit a closed file
+  changed on disk since it was read fails instead (#288, #300).
 - **Visualizer:** "Show in Tree" on a nexus operation or endpoint scrolls to and
   flashes that row, not just the service or namespace that owns it (#249).
+- **Visualizer:** a row the Tree scrolls to ("Show in Tree", in-tree navigation,
+  arrow keys) lands below the sticky filter bar, not under it. A repeat "Show in
+  Tree" on the same row scrolls to it again and restarts its flash (#293).
 - **Visualizer graph view:** wheel zoom no longer logs a passive-listener
   warning per event, and the page behind the canvas no longer scrolls (#212).
   When the pane resizes, for example when a host opens a side panel, the camera

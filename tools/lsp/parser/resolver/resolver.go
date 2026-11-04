@@ -624,7 +624,7 @@ func Resolve(file *ast.File) []*ResolveError {
 		for _, op := range svc.Operations {
 			switch op.OpType {
 			case ast.NexusOpAsync:
-				targetPkg, external, ok := s.resolveQualifier(svcPkg, op.Workflow.Package, op.Line, op.Column, svc.SourceFile)
+				targetPkg, external, ok := s.resolveQualifier(svcPkg, op.Workflow.Package, op.Workflow.PackagePos.Line, op.Workflow.PackagePos.Column, svc.SourceFile)
 				if !ok || external {
 					// Missing-import error already emitted, or the workflow lives
 					// in an external package — leave it unresolved without a
@@ -636,8 +636,8 @@ func Resolve(file *ast.File) []*ResolveError {
 				} else {
 					s.errs = append(s.errs, &ResolveError{
 						Msg:    fmt.Sprintf("nexus service %s: async operation %s references undefined workflow: %s", svc.Name, op.Name, op.Workflow.Name),
-						Line:   op.Line,
-						Column: op.Column,
+						Line:   op.Workflow.Line,
+						Column: op.Workflow.Column,
 						Kind:   ErrNexusAsyncUndefinedWorkflow,
 						Name:   op.Workflow.Name,
 						File:   svc.SourceFile,
@@ -681,7 +681,7 @@ func Resolve(file *ast.File) []*ResolveError {
 		nsPkg := effPkg(ast.PackageIDOf(ns, nil), s.filePkg)
 		for i := range ns.Workers {
 			nw := &ns.Workers[i]
-			targetPkg, external, ok := s.resolveQualifier(nsPkg, nw.Worker.Package, nw.Line, nw.Column, ns.SourceFile)
+			targetPkg, external, ok := s.resolveQualifier(nsPkg, nw.Worker.Package, nw.Worker.PackagePos.Line, nw.Worker.PackagePos.Column, ns.SourceFile)
 			if !ok || external {
 				continue
 			}
@@ -690,8 +690,8 @@ func Resolve(file *ast.File) []*ResolveError {
 			} else {
 				s.errs = append(s.errs, &ResolveError{
 					Msg:    fmt.Sprintf("namespace %s references undefined worker: %s", ns.Name, nw.Worker.Name),
-					Line:   nw.Line,
-					Column: nw.Column,
+					Line:   nw.Worker.Line,
+					Column: nw.Worker.Column,
 					Kind:   ErrNamespaceUndefinedWorker,
 					Name:   nw.Worker.Name,
 					File:   ns.SourceFile,
@@ -911,7 +911,8 @@ func (s *state) readOperationMentions(w *ast.WorkerDef, wPkg string) {
 			continue
 		}
 		w.OperationMentions = append(w.OperationMentions, ast.OperationMention{Pos: ref.Pos, ServiceIndex: i, Op: ref.Name})
-		ref.Package, ref.Name = "", ref.Package
+		ref.Pos, ref.Name = ref.PackagePos, ref.Package
+		ref.Package, ref.PackagePos = "", ast.Pos{}
 	}
 }
 
@@ -1085,7 +1086,7 @@ func (c *resolveCtx) resolveNexusRefs(endpoint *ast.Ref[*ast.NamespaceEndpoint],
 		})
 	}
 
-	targetPkg, external, ok := c.s.resolveQualifier(c.ownPkg, service.Package, service.Line, service.Column, c.file)
+	targetPkg, external, ok := c.s.resolveQualifier(c.ownPkg, service.Package, service.PackagePos.Line, service.PackagePos.Column, c.file)
 	if !ok || external {
 		return
 	}
@@ -1141,8 +1142,8 @@ func (c *resolveCtx) resolveAsyncTarget(target ast.AsyncTarget, line, column int
 		if !isPromise && !isCondition {
 			c.s.errs = append(c.s.errs, &ResolveError{
 				Msg:    fmt.Sprintf("undefined promise or condition: %s", t.Name),
-				Line:   line,
-				Column: column,
+				Line:   t.Line,
+				Column: t.Column,
 				Kind:   ErrUndefinedPromiseOrCondition,
 				Name:   t.Name,
 				File:   c.file,
@@ -1203,12 +1204,12 @@ func (c *resolveCtx) resolveTypeSend(s *ast.SignalSendStmt) {
 		if _, ok := c.s.workflows[pkgKey{c.ownPkg, h.Type.Name}]; ok || h.Type.Package != "" {
 			c.errorf(ErrTypeNeedsID, h.Pos, h.Type.Name, "a send to workflow type %s needs an id: line naming the instance", h.Type.Name)
 		} else {
-			c.errorf(ErrUndefinedPromiseOrCondition, h.Pos, h.Type.Name, "undefined handle or workflow type: %s", h.Type.Name)
+			c.errorf(ErrUndefinedPromiseOrCondition, h.Type.Pos, h.Type.Name, "undefined handle or workflow type: %s", h.Type.Name)
 			return
 		}
 	}
 
-	targetPkg, external, ok := c.s.resolveQualifier(c.ownPkg, h.Type.Package, h.Line, h.Column, c.file)
+	targetPkg, external, ok := c.s.resolveQualifier(c.ownPkg, h.Type.Package, h.Type.PackagePos.Line, h.Type.PackagePos.Column, c.file)
 	if !ok {
 		return
 	}
@@ -1218,7 +1219,7 @@ func (c *resolveCtx) resolveTypeSend(s *ast.SignalSendStmt) {
 	}
 	wf, found := c.s.workflows[pkgKey{targetPkg, h.Type.Name}]
 	if !found {
-		e := c.errorf(ErrUndefinedWorkflow, h.Pos, h.Type.Name, "undefined workflow: %s", h.Type.Name)
+		e := c.errorf(ErrUndefinedWorkflow, h.Type.Pos, h.Type.Name, "undefined workflow: %s", h.Type.Name)
 		if targetPkg != c.ownPkg {
 			e.Qualifier = h.Type.Package
 		}
@@ -1227,7 +1228,7 @@ func (c *resolveCtx) resolveTypeSend(s *ast.SignalSendStmt) {
 	h.Type.Resolved = wf
 
 	if !wf.DeclaresSignal(s.Signal) {
-		c.errorf(ErrUndefinedSignal, s.Pos, s.Signal, "signal %q is not declared by workflow %s", s.Signal, wf.Name)
+		c.errorf(ErrUndefinedSignal, s.SignalPos, s.Signal, "signal %q is not declared by workflow %s", s.Signal, wf.Name)
 	}
 	if h.Address != nil && h.Address.ID.Kind == ast.IDLiteral {
 		c.checkMirror(wf, h.Address.ID)
@@ -1285,7 +1286,7 @@ func (c *resolveCtx) resolveHandleSend(s *ast.SignalSendStmt) {
 		handle.Resolved = promise
 		return
 	}
-	c.errorf(ErrSignalSendUndefinedSignal, s.Pos, s.Signal, "signal %q is not declared by workflow %s", s.Signal, wt.Workflow.Resolved.Name)
+	c.errorf(ErrSignalSendUndefinedSignal, s.SignalPos, s.Signal, "signal %q is not declared by workflow %s", s.Signal, wt.Workflow.Resolved.Name)
 }
 
 // errorf appends an error-severity ResolveError attributed to the enclosing
@@ -1434,7 +1435,7 @@ func collectInto[T any](m map[pkgKey]T, key pkgKey, def T, kind string, errKind 
 // resolveQualifier; a same/imported-package name that is genuinely absent is an
 // undefined-reference error.
 func resolvePkgRef[T any](s *state, ownPkg string, ref *ast.Ref[T], defs map[pkgKey]T, kind string, errKind ErrorKind, file string) {
-	targetPkg, external, ok := s.resolveQualifier(ownPkg, ref.Package, ref.Line, ref.Column, file)
+	targetPkg, external, ok := s.resolveQualifier(ownPkg, ref.Package, ref.PackagePos.Line, ref.PackagePos.Column, file)
 	if !ok {
 		return
 	}

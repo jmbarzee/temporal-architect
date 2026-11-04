@@ -27,7 +27,8 @@ type Pos struct {
 func (p Pos) NodeLine() int   { return p.Line }
 func (p Pos) NodeColumn() int { return p.Column }
 
-// Ref is a named reference to another AST node, resolved after parsing.
+// Ref is a named reference to another AST node, resolved after parsing. Pos
+// is the position of the name token itself, after any qualifier.
 //
 // Package is an optional package qualifier written in a keyword-led call
 // position (e.g. `activity billing.Charge(...)` records Package="billing").
@@ -36,9 +37,10 @@ func (p Pos) NodeColumn() int { return p.Column }
 // Package (every current file) behaves exactly as before.
 type Ref[T any] struct {
 	Pos
-	Package  string
-	Name     string
-	Resolved T
+	Package    string
+	PackagePos Pos // runtime-only: the qualifier token; zero when unqualified
+	Name       string
+	Resolved   T
 	// External is the import path a qualified reference reaches when that
 	// path names a package outside the run (it stays unresolved). Runtime-only.
 	External string
@@ -230,6 +232,7 @@ func QualifiedName(pkg, name string) string {
 type WorkflowDef struct {
 	Pos
 	Name           string
+	NamePos        Pos           // runtime-only: the name token
 	Params         string        // opaque content inside parens
 	ReturnType     string        // opaque, optional
 	IDScheme       *IDScheme     // optional; the first body element
@@ -251,6 +254,7 @@ func (d *WorkflowDef) PackageID() string   { return d.PkgID }
 type ActivityDef struct {
 	Pos
 	Name           string
+	NamePos        Pos // runtime-only: the name token
 	Params         string
 	ReturnType     string
 	DefaultOptions *OptionsBlock // optional definition-level call-option defaults (head of body)
@@ -267,6 +271,7 @@ func (d *ActivityDef) PackageID() string   { return d.PkgID }
 type WorkerDef struct {
 	Pos
 	Name       string
+	NamePos    Pos // runtime-only: the name token
 	Workflows  []Ref[*WorkflowDef]
 	Activities []Ref[*ActivityDef]
 	Services   []Ref[*NexusServiceDef] // nexus service references
@@ -307,6 +312,7 @@ type NamespaceWorker struct {
 type NamespaceEndpoint struct {
 	Pos
 	EndpointName string
+	NamePos      Pos    // runtime-only: the name token
 	Namespace    string // set by resolver: name of the owning namespace
 	TaskQueue    string // set by resolver: endpoint's task_queue option
 	// TemplateParams holds the distinct {param} template parameters in EndpointName,
@@ -319,7 +325,8 @@ type NamespaceEndpoint struct {
 // NamespaceDef is a namespace definition that instantiates workers with options.
 type NamespaceDef struct {
 	Pos
-	Name string
+	Name    string
+	NamePos Pos // runtime-only: the name token
 	// TemplateParams holds the distinct {param} template parameters in Name, in order
 	// of first appearance (populated at parse time). Empty for a static namespace
 	// name, so its serialization stays byte-identical.
@@ -342,6 +349,7 @@ func (d *NamespaceDef) PackageID() string   { return d.PkgID }
 type SignalDecl struct {
 	Pos
 	Name    string
+	NamePos Pos // runtime-only: the name token
 	Params  string
 	Options *OptionsBlock // optional handler options block (leads the body)
 	Body    []Statement   // handler body
@@ -352,6 +360,7 @@ func (*SignalDecl) stmtNode() {}
 type QueryDecl struct {
 	Pos
 	Name       string
+	NamePos    Pos // runtime-only: the name token
 	Params     string
 	ReturnType string
 	Options    *OptionsBlock // optional handler options block (leads the body)
@@ -363,6 +372,7 @@ func (*QueryDecl) stmtNode() {}
 type UpdateDecl struct {
 	Pos
 	Name       string
+	NamePos    Pos // runtime-only: the name token
 	Params     string
 	ReturnType string
 	Options    *OptionsBlock // optional handler options block (leads the body)
@@ -503,6 +513,7 @@ type IdentResolution struct {
 }
 
 type IdentTarget struct {
+	Pos      // runtime-only: the name token
 	Name     string
 	Result   string
 	Resolved IdentResolution
@@ -649,9 +660,10 @@ type IDScheme struct {
 // no return value (fire-and-forget).
 type SignalSendStmt struct {
 	Pos
-	Head   SendHead
-	Signal string // signal name declared on the target workflow
-	Args   string // opaque parenthesized argument literal
+	Head      SendHead
+	Signal    string // signal name declared on the target workflow
+	SignalPos Pos    // runtime-only: the Signal name token
+	Args      string // opaque parenthesized argument literal
 }
 
 // SendHeadKind says whether a send's head names a workflow type or a handle.
@@ -755,14 +767,16 @@ type StateBlock struct {
 // ConditionDecl represents a condition declaration inside a state block.
 type ConditionDecl struct {
 	Pos
-	Name string
+	Name    string
+	NamePos Pos // runtime-only: the name token
 }
 
 // PromiseStmt represents a promise declaration: promise name <- async_target
 type PromiseStmt struct {
 	Pos
-	Name   string
-	Target AsyncTarget
+	Name    string
+	NamePos Pos // runtime-only: the name token
+	Target  AsyncTarget
 }
 
 func (*PromiseStmt) stmtNode() {}
@@ -800,6 +814,7 @@ type NexusOperation struct {
 	Pos
 	OpType     NexusOperationType
 	Name       string
+	NamePos    Pos               // runtime-only: the name token
 	Workflow   Ref[*WorkflowDef] // async only: backing workflow
 	Params     string            // sync only
 	ReturnType string            // sync only
@@ -810,6 +825,7 @@ type NexusOperation struct {
 type NexusServiceDef struct {
 	Pos
 	Name       string
+	NamePos    Pos // runtime-only: the name token
 	Operations []*NexusOperation
 	SourceFile string
 	Package    string // runtime-only; see Packaged note above

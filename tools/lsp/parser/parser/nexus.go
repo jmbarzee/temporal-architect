@@ -32,8 +32,9 @@ func parseNexusServiceDef(p *Parser) (ast.Definition, error) {
 	}
 
 	svc := &ast.NexusServiceDef{
-		Pos:  pos,
-		Name: name.Literal,
+		Pos:     pos,
+		Name:    name.Literal,
+		NamePos: posOf(name),
 	}
 
 	for p.current.Type != token.DEDENT && p.current.Type != token.EOF {
@@ -98,7 +99,8 @@ func parseAsyncOperation(p *Parser) (*ast.NexusOperation, error) {
 		Pos:      pos,
 		OpType:   ast.NexusOpAsync,
 		Name:     opName.Literal,
-		Workflow: ast.Ref[*ast.WorkflowDef]{Package: wfPkg, Name: wfName},
+		NamePos:  posOf(opName),
+		Workflow: refTo[*ast.WorkflowDef](wfPkg, wfName),
 	}, nil
 }
 
@@ -142,6 +144,7 @@ func parseSyncOperation(p *Parser) (*ast.NexusOperation, error) {
 		Pos:        pos,
 		OpType:     ast.NexusOpSync,
 		Name:       opName.Literal,
+		NamePos:    posOf(opName),
 		Params:     params.Literal,
 		ReturnType: retType.Literal,
 		Body:       body,
@@ -163,28 +166,28 @@ func parseNexusCall(p *Parser) (ast.Statement, error) {
 // Ref[T].Package surface #108 landed on the AST/wire); the two-segment
 // `Service.Operation` form consumes exactly the same tokens as before, so
 // unpackaged nexus calls are byte-identical.
-func (p *Parser) parseNexusServiceRef() (svcPkg string, svc, op token.Token, err error) {
+func (p *Parser) parseNexusServiceRef() (svcPkg, svc, op token.Token, err error) {
 	var zero token.Token
 	first, err := p.expect(token.IDENT)
 	if err != nil {
-		return "", zero, zero, err
+		return zero, zero, zero, err
 	}
 	if _, err = p.expect(token.DOT); err != nil {
-		return "", zero, zero, err
+		return zero, zero, zero, err
 	}
 	second, err := p.expect(token.IDENT)
 	if err != nil {
-		return "", zero, zero, err
+		return zero, zero, zero, err
 	}
 	if p.current.Type != token.DOT {
-		return "", first, second, nil // Service.Operation
+		return zero, first, second, nil // Service.Operation
 	}
 	p.advance() // consume the second DOT: pkg.Service.Operation
 	third, err := p.expect(token.IDENT)
 	if err != nil {
-		return "", zero, zero, err
+		return zero, zero, zero, err
 	}
-	return first.Literal, second, third, nil
+	return first, second, third, nil
 }
 
 // parseNexusCallInner is the shared parser for nexus calls (direct and detach).
@@ -237,9 +240,9 @@ func parseNexusCallInner(p *Parser, pos ast.Pos, detach bool) (ast.Statement, er
 	return &ast.NexusCall{
 		Pos:       pos,
 		Detach:    detach,
-		Endpoint:  ast.Ref[*ast.NamespaceEndpoint]{Pos: ast.Pos{Line: endpoint.Line, Column: endpoint.Column}, Name: endpoint.Literal},
-		Service:   ast.Ref[*ast.NexusServiceDef]{Pos: ast.Pos{Line: service.Line, Column: service.Column}, Package: svcPkg, Name: service.Literal},
-		Operation: ast.Ref[*ast.NexusOperation]{Pos: ast.Pos{Line: operation.Line, Column: operation.Column}, Name: operation.Literal},
+		Endpoint:  nameRef[*ast.NamespaceEndpoint](endpoint),
+		Service:   refTo[*ast.NexusServiceDef](svcPkg, service),
+		Operation: nameRef[*ast.NexusOperation](operation),
 		Args:      args.Literal,
 		Result:    result,
 		Options:   options,
@@ -302,7 +305,7 @@ func parseWorkflowCallOrNexus(p *Parser) (ast.Statement, error) {
 		Pos:      pos,
 		Mode:     ast.CallDetach,
 		Start:    p.workflowStartKind(),
-		Workflow: ast.Ref[*ast.WorkflowDef]{Pos: pos, Package: pkg, Name: name},
+		Workflow: refTo[*ast.WorkflowDef](pkg, name),
 		Args:     args.Literal,
 		Result:   result,
 		Options:  options,

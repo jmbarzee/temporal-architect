@@ -140,7 +140,7 @@ func TestParseFilesCleanFileYieldsNoErrors(t *testing.T) {
 // regression: with three files where package gamma imports alpha and beta —
 // each of which defines a Process workflow — and makes a bare `Process` call,
 // the UNDEFINED_WORKFLOW diagnostic must be attributed to gamma.twf at the
-// reference site (12:5), NOT to a defining file (alpha.twf/beta.twf) it was
+// reference site (12:14), NOT to a defining file (alpha.twf/beta.twf) it was
 // previously reverse-engineered onto from the error's name. The sibling
 // symptom is also asserted: the two UNUSED_IMPORT warnings now carry gamma.twf
 // instead of an empty file.
@@ -169,8 +169,8 @@ func TestParseFilesAttributesReferenceErrorToReferencingFile(t *testing.T) {
 	if want := spelled("ambiguous_cross_package_ref", "gamma", "gamma.twf"); undef.File != want {
 		t.Errorf("UNDEFINED_WORKFLOW file = %q, want %s (the referencing file)", undef.File, want)
 	}
-	if undef.Start.Line != 12 || undef.Start.Column != 5 {
-		t.Errorf("UNDEFINED_WORKFLOW at %d:%d, want 12:5 (the reference site)", undef.Start.Line, undef.Start.Column)
+	if undef.Start.Line != 12 || undef.Start.Column != 14 {
+		t.Errorf("UNDEFINED_WORKFLOW at %d:%d, want 12:14 (the reference site)", undef.Start.Line, undef.Start.Column)
 	}
 	if undef.Name != "Process" {
 		t.Errorf("UNDEFINED_WORKFLOW name = %q, want Process", undef.Name)
