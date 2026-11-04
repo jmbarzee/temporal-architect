@@ -1356,6 +1356,40 @@ func TestDuplicateKeepsFirst(t *testing.T) {
 	}
 }
 
+// TestDuplicateEndpointInOneNamespace: an endpoint declared twice in one
+// namespace keeps its first, and the error on the later one names the first's
+// line, in DUPLICATE_*'s format, rather than the namespace twice.
+func TestDuplicateEndpointInOneNamespace(t *testing.T) {
+	src := `workflow W():
+    nexus e S.Op()
+    close complete()
+
+nexus service S:
+    sync Op() -> ():
+        close complete()
+
+namespace n:
+    nexus endpoint e
+        options:
+            task_queue: "a"
+    nexus endpoint e
+        options:
+            task_queue: "b"
+`
+	file := mustParse(t, src)
+	var got []string
+	for _, e := range Resolve(file) {
+		got = append(got, fmt.Sprintf("%d:%d %s %s", e.Line, e.Column, e.Code(), e.Msg))
+	}
+	want := []string{`13:5 DUPLICATE_ENDPOINT duplicate nexus endpoint name "e" in namespace n (first at line 10)`}
+	if !slices.Equal(got, want) {
+		t.Fatalf("errors:\n got  %s\n want %s", strings.Join(got, "\n      "), strings.Join(want, "\n      "))
+	}
+	if ep := file.Definitions[0].(*ast.WorkflowDef).Body[0].(*ast.NexusCall).Endpoint.Resolved; ep != &findNamespace(file).Endpoints[0] {
+		t.Errorf("call resolved to %+v, want the first endpoint", ep)
+	}
+}
+
 // TestDuplicateNamespaceChecksFirst: a namespace declared twice in one package
 // is its first declaration, so the first's workers and endpoints are checked
 // and the later one's are not: the undefined worker and the endpoint name it
@@ -1395,6 +1429,81 @@ namespace n:
 		}
 		if !slices.Equal(got, want) {
 			t.Fatalf("errors:\n got  %s\n want %s", strings.Join(got, "\n      "), strings.Join(want, "\n      "))
+		}
+	}
+}
+
+// TestDuplicateDeclarationKeepsFirst: a signal, query, update or condition
+// declared twice in one workflow, or an operation twice in one nexus service,
+// keeps its first declaration: the DUPLICATE_* error lands on the later one
+// and names the first's line, and every reference resolves to the first, whose
+// signature differs from the later one's.
+func TestDuplicateDeclarationKeepsFirst(t *testing.T) {
+	src := `workflow W(x: X):
+    state:
+        condition Ready
+        condition Ready
+    signal Ping(a: A):
+        set Ready
+    signal Ping(b: B):
+        set Ready
+    query Status() -> (S):
+        return s
+    query Status(v: V) -> (T):
+        return t
+    update Bump(n: N) -> (R):
+        return r
+    update Bump() -> (Q):
+        return q
+    await signal Ping
+    await update Bump
+    await Ready
+    nexus e S.Op()
+    close complete()
+
+nexus service S:
+    sync Op(a: A) -> (R):
+        return r
+    async Op workflow W
+
+namespace n:
+    nexus endpoint e
+        options:
+            task_queue: "q"
+`
+	file := mustParse(t, src)
+	var got []string
+	for _, e := range Resolve(file) {
+		got = append(got, fmt.Sprintf("%d:%d %s %s", e.Line, e.Column, e.Code(), e.Msg))
+	}
+	want := []string{
+		`4:9 DUPLICATE_CONDITION duplicate condition in workflow W: Ready (first at line 3)`,
+		`7:5 DUPLICATE_SIGNAL duplicate signal in workflow W: Ping (first at line 5)`,
+		`11:5 DUPLICATE_QUERY duplicate query in workflow W: Status (first at line 9)`,
+		`15:5 DUPLICATE_UPDATE duplicate update in workflow W: Bump (first at line 13)`,
+		`26:5 DUPLICATE_NEXUS_OPERATION duplicate operation in nexus service S: Op (first at line 24)`,
+	}
+	if !slices.Equal(got, want) {
+		t.Fatalf("errors:\n got  %s\n want %s", strings.Join(got, "\n      "), strings.Join(want, "\n      "))
+	}
+
+	wf := file.Definitions[0].(*ast.WorkflowDef)
+	svc := file.Definitions[1].(*ast.NexusServiceDef)
+	ready := wf.State.Conditions[0]
+	refs := []struct {
+		name      string
+		got, want ast.Node
+	}{
+		{"await signal", wf.Body[0].(*ast.AwaitStmt).Target.(*ast.SignalTarget).Signal.Resolved, wf.Signals[0]},
+		{"await update", wf.Body[1].(*ast.AwaitStmt).Target.(*ast.UpdateTarget).Update.Resolved, wf.Updates[0]},
+		{"await condition", wf.Body[2].(*ast.AwaitStmt).Target.(*ast.IdentTarget).Resolved.Condition, ready},
+		{"set in the first handler", wf.Signals[0].Body[0].(*ast.SetStmt).Condition.Resolved, ready},
+		{"set in the later handler", wf.Signals[1].Body[0].(*ast.SetStmt).Condition.Resolved, ready},
+		{"nexus call", wf.Body[3].(*ast.NexusCall).Operation.Resolved, svc.Operations[0]},
+	}
+	for _, r := range refs {
+		if r.got != r.want {
+			t.Errorf("%s resolved to %+v, want the first declaration's %+v", r.name, r.got, r.want)
 		}
 	}
 }

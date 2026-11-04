@@ -724,6 +724,75 @@ namespace n:
 	}
 }
 
+// TestDuplicateDeclarationFirst: a signal or update declared twice in one
+// workflow, or an operation twice in one nexus service, is its first
+// declaration, as the resolver keeps it: the graph draws the first handler's
+// calls, and the first operation's, a sync one whose later namesake is async,
+// with one node and one containment edge, at the first's line.
+func TestDuplicateDeclarationFirst(t *testing.T) {
+	src := `workflow W(x: X):
+    signal Ping():
+        activity A(x)
+    signal Ping(y: Y):
+        activity B(y)
+    update Bump() -> (R):
+        activity A(x) -> r
+        return r
+    update Bump() -> (R):
+        activity B(x) -> r
+        return r
+    close complete()
+
+workflow V():
+    close complete()
+
+activity A(x: X):
+    return
+
+activity B(x: X):
+    return
+
+nexus service S:
+    sync Op(x: X) -> ():
+        activity A(x)
+        close complete()
+    async Op workflow V
+
+worker w:
+    workflow W
+    workflow V
+    activity A
+    activity B
+    nexus service S
+
+namespace n:
+    worker w
+        options:
+            task_queue: "q"
+`
+	const at = "/worker:w/namespace:n"
+	want := []string{
+		"activityCall nexusOperation:S.Op" + at + " -> activity:A" + at,
+		"activityCall workflow:W" + at + " -> activity:A" + at, // the signal's
+		"activityCall workflow:W" + at + " -> activity:A" + at, // the update's
+		"containment nexusOperation:S.Op" + at + " line 24",
+		"node nexusOperation:S.Op" + at,
+	}
+	g := extractAllowingErrors(t, src)
+	got := routed(g, EdgeActivityCall, EdgeAsyncBacking)
+	for _, e := range g.Edges {
+		if e.Kind == EdgeContainment && strings.HasPrefix(e.From, KindNexusOperation+":") {
+			got = append(got, fmt.Sprintf("containment %s line %d", e.From, e.Line))
+		}
+	}
+	for _, n := range g.Nodes {
+		if defKindOf(n.Definition) == KindNexusOperation {
+			got = append(got, "node "+n.ID)
+		}
+	}
+	checkRouted(t, got, want)
+}
+
 // TestDuplicateEndpointResolverBinding: the graph draws the endpoint the
 // resolver binds, among the namespaces it keeps by (package, name): the first
 // across packages, and a same-package namespace declared twice keeps its first

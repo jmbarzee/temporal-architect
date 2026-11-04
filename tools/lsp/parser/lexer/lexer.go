@@ -2,6 +2,7 @@ package lexer
 
 import (
 	"fmt"
+	"strings"
 	"unicode/utf8"
 
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/token"
@@ -57,8 +58,9 @@ func (l *Lexer) NextToken() token.Token {
 			}
 		}
 
-		// Skip spaces (not newlines) within a line.
-		l.skipSpaces()
+		// Skip spaces (not newlines) within a line. A tab is whitespace too,
+		// except where it would stand in a line's indentation.
+		l.skipSpaces(l.last != token.NEWLINE)
 
 		if l.pos >= len(l.input) {
 			return l.emitEOF()
@@ -68,9 +70,9 @@ func (l *Lexer) NextToken() token.Token {
 
 		var tok token.Token
 		switch {
-		case ch == '\n':
+		case l.newlineAt(l.pos) > 0:
 			tok = l.makeToken(token.NEWLINE, "")
-			l.advance()
+			l.pos += l.newlineAt(l.pos)
 			l.line++
 			l.col = 1
 			l.atBOL = true
@@ -160,15 +162,21 @@ func (l *Lexer) handleIndent() (token.Token, bool) {
 		l.col++
 	}
 
-	// Check for blank line (only whitespace then newline or EOF).
-	if l.pos >= len(l.input) {
-		// EOF after spaces — emit dedents to 0 (handled by emitEOF).
+	// Check for blank line (only spaces and tabs, then newline or EOF).
+	end := l.pos
+	for end < len(l.input) && isSpace(l.input[end]) {
+		end++
+	}
+	if end >= len(l.input) {
+		// EOF after whitespace — emit dedents to 0 (handled by emitEOF).
+		l.col += end - l.pos
+		l.pos = end
 		l.emitDedentsTo(0)
 		return token.Token{}, false
 	}
-	if l.input[l.pos] == '\n' {
+	if n := l.newlineAt(end); n > 0 {
 		// Blank line — skip entirely.
-		l.advance() // consume the newline
+		l.pos = end + n
 		l.line++
 		l.col = 1
 		l.atBOL = true
@@ -211,7 +219,7 @@ func (l *Lexer) emitEOF() token.Token {
 
 	// If the input doesn't end with a newline, emit a synthetic one so
 	// the parser always sees NEWLINE before DEDENT/EOF.
-	if len(l.input) > 0 && l.input[len(l.input)-1] != '\n' {
+	if n := len(l.input); n > 0 && l.newlineAt(n-1) == 0 {
 		nl := l.makeToken(token.NEWLINE, "")
 		l.emitPendingDedents()
 		l.pending = append(l.pending, l.makeToken(token.EOF, ""))
@@ -240,7 +248,7 @@ func (l *Lexer) scanComment() token.Token {
 	tok := l.makeToken(token.COMMENT, "")
 	l.advance() // consume '#'
 	start := l.pos
-	for l.pos < len(l.input) && l.input[l.pos] != '\n' {
+	for l.pos < len(l.input) && l.newlineAt(l.pos) == 0 {
 		l.advance()
 	}
 	tok.Literal = string(l.input[start:l.pos])
@@ -252,16 +260,24 @@ func (l *Lexer) scanComment() token.Token {
 func (l *Lexer) opensBlock() bool {
 	top := l.indentStack[len(l.indentStack)-1]
 	for i := l.pos; i < len(l.input); {
-		i++ // skip the '\n' ending the previous line
+		i += l.newlineAt(i) // skip the newline ending the previous line
 		indent := 0
 		for i < len(l.input) && l.input[i] == ' ' {
 			indent++
 			i++
 		}
-		if i < len(l.input) && l.input[i] == '\n' {
+		end := i
+		for end < len(l.input) && isSpace(l.input[end]) {
+			end++
+		}
+		if end >= len(l.input) {
+			return false
+		}
+		if l.newlineAt(end) > 0 {
+			i = end
 			continue // blank line
 		}
-		return i < len(l.input) && indent > top
+		return indent > top
 	}
 	return false
 }
@@ -314,7 +330,7 @@ func (l *Lexer) scanArgs() token.Token {
 			if len(stack) == 0 {
 				// Matched the opening '('; the argument group ends here.
 				tok := openTok
-				tok.Literal = string(l.input[start:l.pos])
+				tok.Literal = strings.ReplaceAll(string(l.input[start:l.pos]), "\r\n", "\n")
 				l.advance() // consume the matching ')'
 				return l.withEscapeError(tok, bad)
 			}
@@ -345,7 +361,7 @@ func (l *Lexer) scanStringSpan() (val string, bad *token.Token, ok bool) {
 			l.advance() // consume closing '"'
 			return string(b), bad, true
 		}
-		if ch == '\n' {
+		if l.newlineAt(l.pos) > 0 {
 			return "", nil, false
 		}
 		if ch == '\\' && l.pos+1 < len(l.input) {
@@ -531,10 +547,34 @@ func (l *Lexer) advance() {
 	l.col++
 }
 
-func (l *Lexer) skipSpaces() {
-	for l.pos < len(l.input) && l.input[l.pos] == ' ' {
+// skipSpaces skips spaces, and tabs too when tabs is set.
+func (l *Lexer) skipSpaces(tabs bool) {
+	for l.pos < len(l.input) && (l.input[l.pos] == ' ' || tabs && l.input[l.pos] == '\t') {
 		l.advance()
 	}
+}
+
+// newlineAt returns the length of the line ending at offset i: 1 for "\n", 2
+// for "\r\n", 1 for a "\r" that ends the input, and 0 where no line ends.
+func (l *Lexer) newlineAt(i int) int {
+	switch {
+	case i >= len(l.input):
+		return 0
+	case l.input[i] == '\n':
+		return 1
+	case l.input[i] != '\r':
+		return 0
+	case i+1 == len(l.input):
+		return 1
+	case l.input[i+1] == '\n':
+		return 2
+	}
+	return 0
+}
+
+// isSpace reports whether ch is a space or a tab.
+func isSpace(ch byte) bool {
+	return ch == ' ' || ch == '\t'
 }
 
 func isIdentStart(ch byte) bool {

@@ -157,6 +157,32 @@ nexus service Svc:
 	}
 }
 
+// TestIDPolicyDroppedHandler: ID policy checks are body-local, so a handler
+// the resolver drops (DUPLICATE_SIGNAL) is checked too.
+func TestIDPolicyDroppedHandler(t *testing.T) {
+	file, err := parser.ParseFile(`
+workflow Q(a: A):
+    id_scheme: "q-{a.id}"
+    default_options:
+        workflow_id_conflict_policy: USE_EXISTING
+    close complete()
+
+workflow P(a: A):
+    signal Go():
+        a = a
+    signal Go():
+        workflow Q(a)
+    close complete()
+`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resolver.Resolve(file)
+	if errs := Validate(file); !hasKind(errs, ErrChildStartConflictMismatch, "hint") {
+		t.Errorf("want CHILD_START_CONFLICT_MISMATCH from the dropped Go; got %v", errs)
+	}
+}
+
 // TestChildStartConflictMismatchPosition pins the hint for a promise-bound
 // child start at the statement holding it, since a target has no position.
 func TestChildStartConflictMismatchPosition(t *testing.T) {

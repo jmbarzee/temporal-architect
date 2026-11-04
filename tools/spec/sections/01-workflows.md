@@ -20,7 +20,7 @@ type_list ::= type (',' type)*
 type ::= IDENT | type '[' type ']' | type '{' ... '}'
 ```
 
-**Important:** The body opens in a fixed order: an optional `id_scheme:` line, an optional `default_options:` block, the state block, then signal/query/update declarations, then body statements. Each signal/query/update can only be declared once per workflow. Handler declarations end at the first body statement: a `signal`/`query`/`update` declaration after it is a targeted parse error. (A cross-workflow signal *send* may be the first body statement — see [Tokens and Keywords](./08-tokens-and-keywords.md) for how `signal` is disambiguated.)
+**Important:** The body opens in a fixed order: an optional `id_scheme:` line, an optional `default_options:` block, the state block, then signal/query/update declarations, then body statements. Each signal/query/update can only be declared once per workflow: a repeat is `DUPLICATE_SIGNAL`, `DUPLICATE_QUERY` or `DUPLICATE_UPDATE` on the later declaration, and the first is the handler. Handler declarations end at the first body statement: a `signal`/`query`/`update` declaration after it is a targeted parse error. (A cross-workflow signal *send* may be the first body statement — see [Tokens and Keywords](./08-tokens-and-keywords.md) for how `signal` is disambiguated.)
 
 An optional `default_options:` block (see [Statement Syntax — Definition Default Options](./06-statement-syntax.md)) leads the workflow body (after any `id_scheme:` line), before the `state:` block. It supplies the call-option defaults (timeouts, id-reuse and id-conflict policy, retry policy, task queue, priority) for every call that starts this workflow; a call site's `options:` block overrides them per key, and each start uses the defaults its kind can carry. It appears above `state:` because a definition's defaults are its external invocation contract, which reads above its internal state.
 
@@ -93,7 +93,7 @@ state_stmt ::= condition_decl | raw_stmt
 condition_decl ::= 'condition' IDENT NEWLINE
 ```
 
-**Restrictions:** No temporal primitives inside `state:` block. It is purely declarative.
+**Restrictions:** No temporal primitives inside `state:` block. It is purely declarative. A condition is declared once per workflow: a repeat is `DUPLICATE_CONDITION` on the later declaration, and the first is the condition.
 
 ## Signal Declarations
 

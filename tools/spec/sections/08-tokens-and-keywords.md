@@ -90,6 +90,17 @@
 - `,` - Separates elements within a `list_value` (and arguments within `arg_list`)
 - `#` - Comment
 
+## Lines and Whitespace
+
+```
+NEWLINE ::= '\n' | '\r\n'
+```
+
+A line ends at `\n` or `\r\n`, and a `\r` ending the file also ends its last line. The `\r` of a
+`\r\n` is part of the line end, never of a token: raw text, a return value, a comment or an
+argument list keeps `\n` line ends. Within a line, spaces and tabs separate tokens. A line holding
+only spaces and tabs is blank (see [Indentation Rules](./09-indentation.md)).
+
 ## Identifiers
 
 ```

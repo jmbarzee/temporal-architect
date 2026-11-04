@@ -41,3 +41,16 @@ statement ::= heartbeat_stmt
 ```
 
 For the syntax of each statement form, see [Statement Syntax](./06-statement-syntax.md).
+
+## Statement Lines
+
+A statement ends with its line. Only a comment may follow it there: `break Missing` or
+`set Ready later` is a syntax error, not a statement followed by a raw line. This holds for every
+statement of a fixed form (calls, sends, `await`, `promise`, `set`, `unset`, `close`, `break`,
+`continue`) and for the `condition`, `id_scheme:` and nexus `async` operation lines.
+
+A tool that reports every error at once (`twf check`, the language server) leaves a failed statement
+out and keeps parsing the rest of its body: the line, any block indented under it, and an `else:`
+clause after that block are skipped, and the definition holding them stays in the result. A failed
+line among a workflow's handler declarations or `state:` conditions is left out the same way. A
+complete statement followed by stray tokens is kept; only the stray tokens are skipped.
