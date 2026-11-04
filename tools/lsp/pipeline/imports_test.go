@@ -3,6 +3,8 @@ package pipeline_test
 import (
 	"strings"
 	"testing"
+
+	"github.com/jmbarzee/temporal-architect/tools/lsp/pipeline"
 )
 
 // importDesign is a module example.com/demo with two packages both named
@@ -109,5 +111,43 @@ func TestImportNotLoadedAndSink(t *testing.T) {
 	diags = runCheck(t, ".")
 	if got := strings.Join(codesOf(diags), ","); got != "SYNTAX" {
 		t.Errorf("diagnostics = %q, want only the excluded file's parse error", diags)
+	}
+}
+
+// TestExternalRegistrationsCompareByPath: two workers on one queue register
+// one external workflow through two qualifiers for its import path; they hold
+// the same types, so the queue is coherent.
+func TestExternalRegistrationsCompareByPath(t *testing.T) {
+	root := layout(t, map[string]string{
+		"twf.mod": "module example.com/demo\n",
+		"deploy/d.twf": `package deploy
+
+import pay "github.com/ext/payments"
+import payments "github.com/ext/payments"
+
+worker wa:
+    workflow pay.Charge
+
+worker wb:
+    workflow payments.Charge
+
+namespace ns:
+    worker wa
+        options:
+            task_queue: "q"
+    worker wb
+        options:
+            task_queue: "q"
+`,
+	})
+	t.Chdir(root)
+	_, diags, err := pipeline.ParseFiles([]string{"."})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, d := range diags {
+		if d.Code == "TASK_QUEUE_MISMATCH" {
+			t.Errorf("aliases of one external path compared unequal: %+v", d)
+		}
 	}
 }

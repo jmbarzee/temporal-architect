@@ -172,10 +172,10 @@ func (v *validationCtx) key(def ast.Packaged, name string) pkgKey {
 // refKey returns the (package, name) key a worker registration or call-site
 // reference resolves to: the resolved target's own package when resolved (so a
 // ref in package P to a same-named def keys to the package that actually holds
-// the def). A ref that did not resolve (external, undefined) keys by its
-// written qualifier under a prefix no package identity has, so it never
-// matches — and never covers — a real definition, while two such refs still
-// compare by what they name. Mirrors graph.hostedRefQName.
+// the def). A ref that did not resolve keys under a prefix no package identity
+// has, so it never matches — and never covers — a real definition: an external
+// one by the import path it reaches (so two aliases of one path compare equal),
+// an undefined one by its written qualifier. Mirrors graph.hostedRefQName.
 func refKey[T interface {
 	comparable
 	ast.Packaged
@@ -183,6 +183,9 @@ func refKey[T interface {
 	var zero T
 	if r.Resolved != zero {
 		return pkgKey{ast.PackageIDOf(r.Resolved, v.file), r.Name}
+	}
+	if r.External != "" {
+		return pkgKey{unresolvedPkg + r.External, r.Name}
 	}
 	return pkgKey{unresolvedPkg + r.Package, r.Name}
 }

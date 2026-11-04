@@ -1409,7 +1409,13 @@ func collectInto[T any](m map[pkgKey]T, key pkgKey, def T, kind string, errKind 
 // undefined-reference error.
 func resolvePkgRef[T any](s *state, ownPkg string, ref *ast.Ref[T], defs map[pkgKey]T, kind string, errKind ErrorKind, file string) {
 	targetPkg, external, ok := s.resolveQualifier(ownPkg, ref.Package, ref.Line, ref.Column, file)
-	if !ok || external {
+	if !ok {
+		return
+	}
+	if external {
+		if b := s.bindings[ownPkg][ref.Package]; b != nil {
+			ref.External = b.path
+		}
 		return
 	}
 	if def, found := defs[pkgKey{targetPkg, ref.Name}]; found {

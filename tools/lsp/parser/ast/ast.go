@@ -39,6 +39,9 @@ type Ref[T any] struct {
 	Package  string
 	Name     string
 	Resolved T
+	// External is the import path a qualified reference reaches when that
+	// path names a package outside the run (it stays unresolved). Runtime-only.
+	External string
 }
 
 // File represents a parsed .twf file.
