@@ -341,7 +341,7 @@ func TestFloorMergeIntoDispatchingChunk(t *testing.T) {
 	res := Decompose(nil, g, Options{Floor: 3})
 
 	callerChunk := "chunk:" + chunkBase(nil, []string{caller}) // {Caller}
-	nexusChunk := "chunk:" + op                   // {S.Op, BW} — smallest root is the op
+	nexusChunk := "chunk:" + op                                // {S.Op, BW} — smallest root is the op
 	cc := chunkByID(t, res, callerChunk)
 	nc := chunkByID(t, res, nexusChunk)
 

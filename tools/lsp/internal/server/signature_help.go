@@ -3,9 +3,9 @@ package server
 import (
 	"strings"
 
-	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
 	"github.com/jmbarzee/glsp"
 	protocol "github.com/jmbarzee/glsp/protocol_3_16"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
 )
 
 func signatureHelpHandler(store *DocumentStore) protocol.TextDocumentSignatureHelpFunc {

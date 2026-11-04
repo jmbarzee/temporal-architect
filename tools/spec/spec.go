@@ -34,9 +34,9 @@ type Section struct {
 }
 
 var (
-	loadOnce     sync.Once
-	loadedErr    error
-	sectionsList []Section
+	loadOnce       sync.Once
+	loadedErr      error
+	sectionsList   []Section
 	sectionsBySlug map[string]Section
 )
 

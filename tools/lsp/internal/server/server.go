@@ -22,7 +22,7 @@ func NewHandler(name, version string) (*protocol.Handler, *DocumentStore) {
 			Shutdown:    shutdownHandler(),
 			SetTrace:    setTraceHandler(),
 
-			TextDocumentDidOpen:  didOpenHandler(store),
+			TextDocumentDidOpen:   didOpenHandler(store),
 			TextDocumentDidChange: didChangeHandler(store),
 			TextDocumentDidClose:  didCloseHandler(store),
 
