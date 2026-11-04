@@ -1383,7 +1383,7 @@ namespace n:
             task_queue: "q"
 `
 	want := []string{
-		`7:5 NAMESPACE_UNDEFINED_WORKER namespace n references undefined worker: ghost`,
+		`7:12 NAMESPACE_UNDEFINED_WORKER namespace n references undefined worker: ghost`,
 		`10:5 DUPLICATE_ENDPOINT duplicate nexus endpoint name "e": defined in namespace m and namespace n`,
 		`14:1 DUPLICATE_NAMESPACE duplicate namespace definition: n (first at line 6)`,
 	}
