@@ -291,6 +291,25 @@ func TestPublishOneIdentityTwoSpellings(t *testing.T) {
 	p.open(t, store, aliasURI, buf)
 	wantCodes(t, p, "the first URI", realURI, "2:UNDEFINED_ACTIVITY")
 	wantCodes(t, p, "the second URI", aliasURI, "2:UNDEFINED_ACTIVITY")
+
+	// The two buffers diverge: both URIs show the most recently edited text's
+	// diagnostics, never the other buffer's stale parse errors.
+	store.Update(realURI, "workflow W(:\n")
+	store.Update(aliasURI, "workflow W(:\n")
+	if err := publishAll(p.context(), store); err != nil {
+		t.Fatal(err)
+	}
+	broken := p.codes(aliasURI)
+	if len(broken) == 0 {
+		t.Fatal("the broken text reported nothing")
+	}
+	wantCodes(t, p, "the first URI, broken", realURI, broken...)
+	store.Update(aliasURI, buf)
+	if err := publishAll(p.context(), store); err != nil {
+		t.Fatal(err)
+	}
+	wantCodes(t, p, "the stale URI, fixed through the other", realURI, "2:UNDEFINED_ACTIVITY")
+	wantCodes(t, p, "the edited URI", aliasURI, "2:UNDEFINED_ACTIVITY")
 }
 
 // TestWorkspaceMidMigration: a main checkout with a twf.mod and a worktree

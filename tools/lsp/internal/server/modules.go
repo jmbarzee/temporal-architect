@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
 
 	"github.com/jmbarzee/glsp"
 	protocol "github.com/jmbarzee/glsp/protocol_3_16"
@@ -132,6 +133,41 @@ type outsideWatch struct {
 	dirs      []string // the watched directories
 	id        string   // the registration, "" when none
 	n         int      // registrations made
+	calls     callQueue
+}
+
+// callQueue runs client calls one at a time, in the order they were queued,
+// off the caller's goroutine: a handler must not wait on the client, and a
+// registration must reach it before its unregistration.
+type callQueue struct {
+	mu      sync.Mutex
+	pending []func()
+	running bool
+}
+
+func (q *callQueue) push(call func()) {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	q.pending = append(q.pending, call)
+	if !q.running {
+		q.running = true
+		go q.drain()
+	}
+}
+
+func (q *callQueue) drain() {
+	for {
+		q.mu.Lock()
+		if len(q.pending) == 0 {
+			q.running = false
+			q.mu.Unlock()
+			return
+		}
+		call := q.pending[0]
+		q.pending = q.pending[1:]
+		q.mu.Unlock()
+		call()
+	}
 }
 
 // relativeWatcher is an LSP 3.17 FileSystemWatcher with a RelativePattern,
@@ -151,9 +187,9 @@ type relativeWatcher struct {
 // since modules are rediscovered on every analysis.
 func watchModuleFilesOutsideFolders(context *glsp.Context, store *DocumentStore) {
 	store.mu.Lock()
+	defer store.mu.Unlock()
 	w := &store.outside
 	if !w.supported || context.Call == nil {
-		store.mu.Unlock()
 		return
 	}
 	var files []string
@@ -164,37 +200,29 @@ func watchModuleFilesOutsideFolders(context *glsp.Context, store *DocumentStore)
 	}
 	dirs := moduleDirsOutside(store.folders, files)
 	if slices.Equal(dirs, w.dirs) {
-		store.mu.Unlock()
 		return
 	}
 	old := w.id
 	w.dirs, w.id = dirs, ""
+	method := string(protocol.MethodWorkspaceDidChangeWatchedFiles)
+	call := context.Call
 	if len(dirs) > 0 {
 		w.n++
 		w.id = fmt.Sprintf("twf-mod-watch-outside-%d", w.n)
-	}
-	id := w.id
-	store.mu.Unlock()
-
-	watchers := make([]relativeWatcher, len(dirs))
-	for i, dir := range dirs {
-		watchers[i].GlobPattern.BaseURI = pathToURI(filepath.ToSlash(dir))
-		watchers[i].GlobPattern.Pattern = module.FileName
-	}
-	method := string(protocol.MethodWorkspaceDidChangeWatchedFiles)
-	call := context.Call
-	go func() {
-		if id != "" {
-			call(protocol.ServerClientRegisterCapability, protocol.RegistrationParams{
-				Registrations: []protocol.Registration{{ID: id, Method: method, RegisterOptions: map[string]any{"watchers": watchers}}},
-			}, nil)
+		watchers := make([]relativeWatcher, len(dirs))
+		for i, dir := range dirs {
+			watchers[i].GlobPattern.BaseURI = pathToURI(filepath.ToSlash(dir))
+			watchers[i].GlobPattern.Pattern = module.FileName
 		}
-		if old != "" {
-			call(protocol.ServerClientUnregisterCapability, protocol.UnregistrationParams{
-				Unregisterations: []protocol.Unregistration{{ID: old, Method: method}},
-			}, nil)
+		params := protocol.RegistrationParams{
+			Registrations: []protocol.Registration{{ID: w.id, Method: method, RegisterOptions: map[string]any{"watchers": watchers}}},
 		}
-	}()
+		w.calls.push(func() { call(protocol.ServerClientRegisterCapability, params, nil) })
+	}
+	if old != "" {
+		params := protocol.UnregistrationParams{Unregisterations: []protocol.Unregistration{{ID: old, Method: method}}}
+		w.calls.push(func() { call(protocol.ServerClientUnregisterCapability, params, nil) })
+	}
 }
 
 // moduleDirsOutside lists, sorted, the directories outside every folder whose

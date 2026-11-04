@@ -90,8 +90,8 @@ func (d *Document) analyze(folders []string, overlays map[string]string, runs ma
 			}
 		}
 	}
+	isolated := ast.Stamp([]ast.StampInput{in})
 	if len(f.Definitions) > 0 {
-		isolated := ast.Stamp([]ast.StampInput{in})
 		d.ResolveErrs = resolver.Resolve(isolated)
 		d.ValidateErrs = validator.Validate(isolated)
 	}
@@ -134,12 +134,9 @@ func (d *Document) analyze(folders []string, overlays map[string]string, runs ma
 	if modRoot != "" {
 		d.ResolveErrs = append(d.ResolveErrs, lostModuleErrs(run.res, modRoot)...)
 	}
-	pkg := f.Package
-	if pkg != "" && in.Module != "" {
-		pkg = in.Module
-		if in.Dir != "" {
-			pkg += "/" + in.Dir
-		}
+	pkg := "" // the default package is not listed
+	if len(isolated.Packages) == 1 {
+		pkg = isolated.Packages[0].ID
 	}
 	d.elsewhere = moduleDiagnostics(run.res, d.sourceFile, pkg, filepath.Dir(canon), modRoot, home)
 }

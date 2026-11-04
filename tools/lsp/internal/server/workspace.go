@@ -134,14 +134,17 @@ type fileLine struct {
 // An excluded file's exclusion is its exclusion diagnostics, or, with none (a
 // failed clause, a lost module), its parse errors.
 func moduleDiagnostics(res pipeline.Result, buf, pkg, dir, modRoot, home string) []pipeline.Diagnostic {
-	modFile := func(root string) string {
-		if root == "" {
-			return ""
+	// The twf.mod files at the given roots; a root that is "" has none.
+	modFiles := func(roots ...string) map[string]bool {
+		m := map[string]bool{}
+		for _, r := range roots {
+			if r != "" {
+				m[filepath.ToSlash(filepath.Join(r, "twf.mod"))] = true
+			}
 		}
-		return filepath.ToSlash(filepath.Join(root, "twf.mod"))
+		return m
 	}
-	ownMod := modFile(modRoot)
-	rootMods := map[string]bool{modFile(dir): true, modFile(home): true}
+	ownMod, rootMods := modFiles(modRoot), modFiles(dir, home)
 
 	excluded := res.Excluded[buf]
 	lines := map[fileLine]bool{}
@@ -189,7 +192,7 @@ func moduleDiagnostics(res pipeline.Result, buf, pkg, dir, modRoot, home string)
 		case x.File == buf:
 			continue
 		case res.Excluded[x.File] && path.Dir(x.File) == filepath.ToSlash(dir) && exclusion(x):
-		case x.File == ownMod:
+		case ownMod[x.File]:
 		case rootMods[x.File] && x.Code == codeOf(resolver.ErrModuleFileInvalid):
 		case excluded:
 			continue

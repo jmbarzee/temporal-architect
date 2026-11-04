@@ -58,10 +58,17 @@ func (s *DocumentStore) publications() []protocol.PublishDiagnosticsParams {
 	docs := s.all()
 	sort.Slice(docs, func(i, j int) bool { return docs[i].URI < docs[j].URI })
 
-	open := map[string][]string{} // identity → open URIs
+	// A file open under several URIs has one text, the most recently edited
+	// buffer's (reanalyze's overlay order): that buffer supplies the file's own
+	// diagnostics for all of them.
+	open := map[string][]string{}     // identity → open URIs
+	current := map[string]*Document{} // identity → the buffer whose text it is
 	for _, d := range docs {
 		if d.sourceFile != "" {
 			open[d.sourceFile] = append(open[d.sourceFile], d.URI)
+			if c := current[d.sourceFile]; c == nil || d.edited >= c.edited {
+				current[d.sourceFile] = d
+			}
 		}
 	}
 	type key struct {
@@ -103,15 +110,18 @@ func (s *DocumentStore) publications() []protocol.PublishDiagnosticsParams {
 		return lines
 	}
 	for _, d := range docs {
-		own := []string{d.URI}
-		if d.sourceFile != "" {
-			own = open[d.sourceFile]
-		}
 		if sets[d.URI] == nil {
 			sets[d.URI] = []protocol.Diagnostic{}
 		}
-		for _, diag := range diagnostics(d) {
-			add(own, diag)
+		switch {
+		case d.sourceFile == "":
+			for _, diag := range diagnostics(d) {
+				add([]string{d.URI}, diag)
+			}
+		case current[d.sourceFile] == d:
+			for _, diag := range diagnostics(d) {
+				add(open[d.sourceFile], diag)
+			}
 		}
 		for _, x := range d.elsewhere {
 			uris := open[x.File]

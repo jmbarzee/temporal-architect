@@ -198,3 +198,17 @@ func TestRelativePatternSupport(t *testing.T) {
 		}
 	}
 }
+
+// TestCallQueueKeepsOrder: queued client calls run one at a time, in order.
+func TestCallQueueKeepsOrder(t *testing.T) {
+	var q callQueue
+	got := make(chan int, 100)
+	for i := range 100 {
+		q.push(func() { got <- i })
+	}
+	for want := range 100 {
+		if i := <-got; i != want {
+			t.Fatalf("call %d ran at position %d", i, want)
+		}
+	}
+}
