@@ -25,6 +25,7 @@ func codeActionHandler(store *DocumentStore) protocol.TextDocumentCodeActionFunc
 		actions = append(actions, addMissingDefinitionActions(doc, params)...)
 		actions = append(actions, convertReturnToCloseActions(doc, params)...)
 		actions = append(actions, createModuleFileActions(store, doc, params)...)
+		actions = append(actions, convertIndentationActions(doc, params)...)
 
 		// Return as interface slice for JSON encoding
 		result := make([]any, len(actions))
@@ -110,6 +111,30 @@ func addMissingDefinitionActions(doc *Document, params *protocol.CodeActionParam
 	}
 
 	return actions
+}
+
+// convertIndentationActions offers, once, to rewrite the buffer's indentation
+// to tabs when the range overlaps a space in some line's indentation.
+func convertIndentationActions(doc *Document, params *protocol.CodeActionParams) []protocol.CodeAction {
+	lines := doc.lines()
+	for _, pe := range doc.ParseErrs {
+		if !spaceIndented(pe) || !rangesOverlap(params.Range, posToRange(lines, pe.Line, pe.Column)) {
+			continue
+		}
+		edit, ok := indentEdit(doc.Content)
+		if !ok {
+			return nil
+		}
+		return []protocol.CodeAction{{
+			Title:       "Convert indentation to tabs",
+			Kind:        ptrTo(protocol.CodeActionKindQuickFix),
+			IsPreferred: boolPtr(true),
+			Edit: &protocol.WorkspaceEdit{
+				Changes: map[string][]protocol.TextEdit{doc.URI: {edit}},
+			},
+		}}
+	}
+	return nil
 }
 
 // convertReturnToCloseActions offers, on a `return` in a workflow body (not a
