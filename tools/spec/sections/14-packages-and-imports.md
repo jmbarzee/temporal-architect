@@ -95,8 +95,9 @@ Two forms (Go-style, alias-first):
 
 Imports are **package-scoped**: an import line in any file of a package is visible in every file of
 that package. A package's own name is bound to itself (`billing.Charge` inside `billing`). Each
-import line is checked in order; the first failure reports, and the line binds nothing (references
-through its qualifier stay quiet):
+import line is checked in order; the first failure reports, and the line binds nothing: references
+through its qualifier stay quiet, and the qualifier stays taken, so a later line using it for another
+path is `DUPLICATE_IMPORT_NAME`:
 
 | Error | When |
 |-------|------|
@@ -111,7 +112,8 @@ disk but not among the inputs, `IMPORT_NOT_LOADED` (warning; pass the directory 
 lies under no module in the run, `UNRESOLVED_IMPORT` (warning). Both treat the package as
 **external**: references through it resolve as external, with no `UNDEFINED_*`. If the import's
 package is in the inputs but was ignored (see [Modules](#modules)), the import is silent — that
-error is already reported. Import cycles between packages are allowed. How the path is looked up on
+error is already reported (a package whose own `twf.mod` is broken has no path, so an import of it
+is `UNRESOLVED_IMPORT` beside its `MODULE_FILE_INVALID`). Import cycles between packages are allowed. How the path is looked up on
 disk is in [15 — Modules](./15-modules.md#finding-an-imported-package).
 
 Notes on the string path:

@@ -93,8 +93,9 @@ looks on disk:
   remaining elements from the module root by exact directory names, never following a symlinked
   directory and stopping at an element a walk skips (`.*`, `_*`, `testdata`). Entering a directory
   with a `twf.mod`: a broken one is silent when its module has input files, else ends the walk; a
-  module that lost `DUPLICATE_MODULE` is silent; a module whose path does not lie under the import's
-  ends the walk; otherwise the walk continues inside that module.
+  module that lost `DUPLICATE_MODULE` is silent; a module the import does not lie under, or whose
+  path does not lie under the part of the path walked so far, ends the walk; otherwise the walk
+  continues inside that module.
 - At the last element, the directory **provides** the package when it holds a non-skipped `.twf`
   file whose first token is `package`. None of its package files among the inputs is
   `IMPORT_NOT_LOADED`; all of them ignored is silent.

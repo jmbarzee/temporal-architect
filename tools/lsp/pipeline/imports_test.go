@@ -151,3 +151,15 @@ namespace ns:
 		}
 	}
 }
+
+// TestImportNotFoundAtEveryLine: a failed lookup is reported at each line that
+// repeats it, so an editor showing either file sees why its references are quiet.
+func TestImportNotFoundAtEveryLine(t *testing.T) {
+	files := importDesign(`import "example.com/demo/fabirc/v1"`, "")
+	files["top/b.twf"] = "package top\n\nimport \"example.com/demo/fabirc/v1\"\n"
+	root := layout(t, files)
+	diags, _ := check(t, root)
+	if got := strings.Join(codesOf(diags), ","); got != "IMPORT_NOT_FOUND,IMPORT_NOT_FOUND" {
+		t.Errorf("diagnostics = %q, want IMPORT_NOT_FOUND on both lines", diags)
+	}
+}

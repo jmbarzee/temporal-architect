@@ -199,7 +199,8 @@ type ResolveError struct {
 	// node's SourceFile unstamped (e.g. a raw single-file parse).
 	File string
 	// Qualifier is the package qualifier as written, for an undefined
-	// reference made through one (`fabric.Setup`); empty otherwise.
+	// reference into another package (`fabric.Setup`); empty for a bare or
+	// self-qualified one.
 	Qualifier string
 }
 
@@ -359,6 +360,9 @@ type importBinding struct {
 	// warning is the external import's diagnostic, reported at every line
 	// binding this qualifier; it subsumes UNUSED_IMPORT.
 	warning *ResolveError
+	// failure is a failed lookup's error (IMPORT_NOT_FOUND), reported at every
+	// line binding this qualifier to this path.
+	failure *ResolveError
 	used    bool      // set once a reference resolves through this qualifier
 	lines   []lineRef // every import line binding this qualifier to this path
 }
@@ -828,6 +832,11 @@ func (s *state) bindImport(file *ast.File, imp *ast.ImportDecl) {
 	if b := s.bindings[x][qual]; b != nil {
 		if b.path == p {
 			b.lines = append(b.lines, at) // the same binding again
+			if b.failure != nil {
+				f := *b.failure
+				f.Line, f.Column, f.File = at.line, at.column, at.file
+				s.errs = append(s.errs, &f)
+			}
 			return
 		}
 		first := b.lines[0]
@@ -844,6 +853,7 @@ func (s *state) bindImport(file *ast.File, imp *ast.ImportDecl) {
 		b.sink = true
 	case looked && out.Kind == ast.ImportNotFound:
 		report(ErrImportNotFound, "", fmt.Sprintf("import %q: %s", p, out.Detail))
+		b.failure = s.errs[len(s.errs)-1]
 		b.sink = true
 	case looked && out.Kind == ast.ImportNotLoaded:
 		b.external = true
@@ -1195,7 +1205,10 @@ func (c *resolveCtx) resolveTypeSend(s *ast.SignalSendStmt) {
 	}
 	wf, found := c.s.workflows[pkgKey{targetPkg, h.Type.Name}]
 	if !found {
-		c.errorf(ErrUndefinedWorkflow, h.Pos, h.Type.Name, "undefined workflow: %s", h.Type.Name)
+		e := c.errorf(ErrUndefinedWorkflow, h.Pos, h.Type.Name, "undefined workflow: %s", h.Type.Name)
+		if targetPkg != c.ownPkg {
+			e.Qualifier = h.Type.Package
+		}
 		return
 	}
 	h.Type.Resolved = wf
@@ -1423,7 +1436,9 @@ func resolvePkgRef[T any](s *state, ownPkg string, ref *ast.Ref[T], defs map[pkg
 		return
 	}
 	msg := fmt.Sprintf("undefined %s: %s", kind, ref.Name)
+	qualifier := ""
 	if ref.Package != "" && targetPkg != ownPkg {
+		qualifier = ref.Package
 		msg = fmt.Sprintf("undefined %s: %s.%s", kind, ref.Package, ref.Name)
 		if path := s.pathOf[targetPkg]; path != "" {
 			msg += fmt.Sprintf(" (package %s)", path)
@@ -1436,7 +1451,7 @@ func resolvePkgRef[T any](s *state, ownPkg string, ref *ast.Ref[T], defs map[pkg
 		Kind:      errKind,
 		Name:      ref.Name,
 		File:      file,
-		Qualifier: ref.Package,
+		Qualifier: qualifier,
 	})
 }
 

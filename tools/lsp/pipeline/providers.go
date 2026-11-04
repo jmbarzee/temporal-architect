@@ -185,7 +185,7 @@ func (x *expander) walkProvider(p string, m knownModule, inputs map[string]*pars
 		return ast.ImportOutcome{Kind: ast.ImportSink}, ""
 	case inInputs == 0:
 		rel, _ := filepath.Rel(m.root, dir)
-		return ast.ImportOutcome{Kind: ast.ImportNotLoaded, Detail: fmt.Sprintf("pass its package directory %s (module %s)", path.Join(at, filepath.ToSlash(rel)), m.path)}, ""
+		return ast.ImportOutcome{Kind: ast.ImportNotLoaded, Detail: fmt.Sprintf("pass its package directory %s (module %s)", path.Join(at, filepath.ToSlash(rel)), modPath)}, ""
 	}
 	return ast.ImportOutcome{}, noPackage()
 }

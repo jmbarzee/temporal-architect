@@ -90,8 +90,6 @@ func printJSON(file *ast.File, diags []pipeline.Diagnostic, g *graph.Graph) int 
 	return 0
 }
 
-// printText renders the graph in a compact human-readable form.
-// Sections are omitted when empty so the happy-path output stays short.
 // nodeText renders a node id for humans: a hosted node as its label and its
 // deployment, rebuilt from containment (`fabric.Setup @ worker w / namespace
 // ns`); a worker, namespace or endpoint as its kind and name. Ids are opaque,
@@ -128,6 +126,8 @@ func nodeText(g *graph.Graph, byID map[string]*graph.Node, workerOf, namespaceOf
 	return text
 }
 
+// printText renders the graph in a compact human-readable form.
+// Sections are omitted when empty so the happy-path output stays short.
 func printText(g *graph.Graph) int {
 	byID := make(map[string]*graph.Node, len(g.Nodes))
 	for i := range g.Nodes {
