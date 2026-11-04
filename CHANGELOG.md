@@ -204,6 +204,18 @@ namespace payments:
   (`workflow a.Run` + `workflow b.Run`). Temporal registers by name, and the Go
   SDK panics on the second registration.
 
+### ⚠️ Breaking: indentation is tabs only
+
+`.twf` indents with tabs, one per level (`twf spec indentation`). A space in a
+line's indentation, alone or mixed with tabs, is a `parse/LEX` error at the
+line's first space, which `twf check --lenient` does not excuse. Blank lines
+may hold any whitespace. A space-indented line is still placed where an editor
+shows it, at the file's own space unit, so the structure survives and every
+other diagnostic still reports.
+
+**Migration:** re-indent `.twf` files with tabs (an editor's "convert
+indentation to tabs" at your space unit).
+
 ### ⚠️ Breaking: string escapes
 
 A string literal accepts `\"` and `\\`, inside call arguments too. A string
@@ -258,8 +270,6 @@ is now checked against the target's signals.
   site's file rather than the callee's; `TASK_QUEUE_IDENTICAL` and
   `TASK_QUEUE_MISMATCH` now carry a position; option value errors point at the
   value.
-- **Style:** tabs are the canonical `.twf` indentation, one per level. Spaces
-  stay accepted; one file uses one style (`twf spec indentation`).
 - **Visualizer:** worker families get a cardinality badge; packaged definitions
   get file chips; "Show in Tree" / "Show in Graph" resolve a node to its owning
   definition by qualified name, including nexus operation and endpoint nodes.
@@ -296,10 +306,8 @@ is now checked against the target's signals.
   comments.
 - A line holding only tabs, or tabs and spaces, is a blank line, as a
   space-only line already was. A tab between tokens is whitespace.
-- Tab-indented files parse. A file's first indented line sets its style, tabs
-  or spaces, and indentation that mixes the two, within a line or across
-  lines, is a `parse/LEX` error naming that style. A tab after a line's
-  leading spaces no longer turns the statement into a silent raw line.
+- A tab after a line's leading spaces no longer turns the statement into a
+  silent raw line; it is a `parse/LEX` error (see indentation, above).
 - A line indented under a statement that opens no block (a call with no
   `options:`, `close`, `set`, a raw line) is a `parse/SYNTAX` `unexpected
   indent` error, in activity bodies too. It used to pass as a raw statement

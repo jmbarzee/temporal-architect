@@ -21,10 +21,8 @@ type Lexer struct {
 	pending []token.Token   // queued tokens (INDENT/DEDENT, or a literal behind its escape error)
 
 	indentStack []int // stack of indent widths, starts at [0]
-	indentChar  byte  // ' ' or '\t', fixed by the first indented line; 0 before it
-	indentLine  int   // the line that fixed indentChar
-	indentUnit  int   // a spaces file's first indent width, its tab stop for recovery
 	afterHeader bool  // the line before this one ended in ':', so this one opens a block
+	spaceStop   int   // the recovery tab stop, fixed by the first indented line; 0 before it
 	eofEmitted  bool  // true after first EOF has been emitted
 }
 
@@ -181,13 +179,12 @@ func (l *Lexer) handleIndent() (token.Token, bool) {
 	}
 
 	run := l.input[start:end]
-	if l.indentChar == 0 && len(run) > 0 {
-		l.indentChar, l.indentLine = run[0], l.line
-		l.indentUnit = len(run) - len(bytes.TrimLeft(run, string(run[0])))
+	if l.spaceStop == 0 && len(run) > 0 {
+		l.spaceStop = recoveryStop(run)
 	}
 	indent, bad := l.measureIndent(run, l.afterHeader)
 	if bad >= 0 {
-		l.pending = append(l.pending, l.indentStyleError(run, start, bad))
+		l.pending = append(l.pending, l.indentSpaceError(run, start, bad))
 	}
 
 	top := l.indentStack[len(l.indentStack)-1]
@@ -214,35 +211,39 @@ func (l *Lexer) indentEnd(i int) int {
 	return i
 }
 
-// measureIndent returns the width of a line's indentation run, and the index
-// of the run's first character that breaks the file's style, or -1. A file
-// indents with tabs or with spaces, fixed by its first indented line (run[0]
-// stands in before that line is reached). With one character per file, widths
-// order the levels exactly as their whitespace prefixes do, so a tab's display
-// width never matters.
-//
-// A run that breaks the style is placed for recovery, so the rest of the file
-// still parses: at its in-style prefix when that is an open level (a stray
-// character after a line's indentation) and the line does not follow a block
-// header (afterHeader), which needs a deeper one; otherwise where an editor shows
-// it, with a tab stop at a spaces file's first indent width, or every four
-// columns in a tab file. Shown past the current level, it opens one level;
-// otherwise it sits at the deepest open level it reaches.
-func (l *Lexer) measureIndent(run []byte, afterHeader bool) (width, bad int) {
-	style := l.indentChar
-	if style == 0 && len(run) > 0 {
-		style = run[0]
+// recoveryStop returns the tab stop that places space-indented lines for
+// recovery, given a file's first indented run: that run's width when it is all
+// spaces (a file indented with spaces, at its own unit), and four otherwise.
+func recoveryStop(run []byte) int {
+	if bytes.Count(run, []byte{' '}) == len(run) {
+		return len(run)
 	}
-	bad = bytes.IndexFunc(run, func(r rune) bool { return byte(r) != style })
+	return 4
+}
+
+// measureIndent returns the width of a line's indentation run, in tabs, and
+// the index of the run's first space, or -1. TWF indents with tabs, one per
+// level; a space in indentation is an error.
+//
+// A run holding spaces is placed for recovery, so the rest of the file still
+// parses: at its leading tabs when they are an open level (a stray space after
+// a line's indentation) and the line does not follow a block header
+// (afterHeader), which needs a deeper one; otherwise where an editor shows it,
+// with a tab stop at a space-indented file's own unit, or every four columns:
+// at the nearest level, or a part level up on a block's first line. Shown past
+// the current level, it opens one level; otherwise it sits at the deepest open
+// level it reaches.
+func (l *Lexer) measureIndent(run []byte, afterHeader bool) (width, bad int) {
+	bad = bytes.IndexByte(run, ' ')
 	if bad < 0 {
 		return len(run), -1
 	}
 	if bad > 0 && !afterHeader && slices.Contains(l.indentStack, bad) {
 		return bad, bad
 	}
-	stop := l.indentUnit
-	if style == '\t' || stop == 0 {
-		stop = 4
+	stop := l.spaceStop
+	if stop == 0 {
+		stop = recoveryStop(run)
 	}
 	shown := 0
 	for _, ch := range run {
@@ -252,13 +253,14 @@ func (l *Lexer) measureIndent(run []byte, afterHeader bool) (width, bad int) {
 			shown++
 		}
 	}
-	step := stop
-	if style == '\t' {
-		shown, step = shown/stop, 1
+	if afterHeader {
+		shown = (shown + stop - 1) / stop // a block's first line opens it
+	} else {
+		shown = (2*shown + stop) / (2 * stop) // the nearest level
 	}
 	top := l.indentStack[len(l.indentStack)-1]
 	if shown > top {
-		return top + step, bad
+		return top + 1, bad
 	}
 	for i := len(l.indentStack) - 1; ; i-- {
 		if l.indentStack[i] <= shown {
@@ -267,16 +269,12 @@ func (l *Lexer) measureIndent(run []byte, afterHeader bool) (width, bad int) {
 	}
 }
 
-// indentStyleError returns the ILLEGAL for the indentation run starting at
-// offset start, positioned at run[bad], its first character off the file's style.
-func (l *Lexer) indentStyleError(run []byte, start, bad int) token.Token {
-	style, other := "tabs", "spaces"
-	if l.indentChar == ' ' {
-		style, other = other, style
-	}
-	msg := fmt.Sprintf("indented with %s, but this file indents with %s (set by line %d)", other, style, l.indentLine)
-	if bytes.IndexByte(run, l.indentChar) >= 0 {
-		msg = fmt.Sprintf("indentation mixes tabs and spaces; this file indents with %s (set by line %d)", style, l.indentLine)
+// indentSpaceError returns the ILLEGAL for the indentation run starting at
+// offset start, positioned at run[bad], its first space.
+func (l *Lexer) indentSpaceError(run []byte, start, bad int) token.Token {
+	msg := "indented with spaces; .twf indents with tabs, one per level"
+	if bytes.IndexByte(run, '\t') >= 0 {
+		msg = "indentation mixes tabs and spaces; .twf indents with tabs, one per level"
 	}
 	return token.Token{
 		Type:    token.ILLEGAL,

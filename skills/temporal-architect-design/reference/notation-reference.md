@@ -39,7 +39,7 @@ A quick reference; the grammar itself is `twf spec` (`twf spec --list` for secti
 | `import "full/module/path"` / `import alias "path"` | Import the package with exactly that path, referenced by the path's assumed name (last element, trailing `/vN` dropped) or the alias |
 | `pkg.Name` | Qualified reference into an imported package — e.g. `activity billing.ChargeCard`, `nexus Ep billing.PaymentService.Charge`. Same-package refs stay bare; endpoints are never qualified |
 
-Indent with one tab per level. Spaces are accepted, but one file uses one style: its first indented line sets it, and mixing is a `LEX` error (`twf spec indentation`).
+Indent with one tab per level; a space in indentation is a `LEX` error (`twf spec indentation`).
 
 Namespace and endpoint names — including the endpoint in every Nexus call — are `deploy_name`s: hyphens and `{param}` template parameters allowed (`twf spec tokens-and-keywords`).
 

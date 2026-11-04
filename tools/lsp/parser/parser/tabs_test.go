@@ -2,6 +2,7 @@ package parser
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -13,43 +14,35 @@ import (
 )
 
 // tabsInline covers handlers, options blocks, await all and multi-line raw
-// text, which a tab-indented file must parse as its space twin does.
+// text, which a space-indented twin must recover to.
 const tabsInline = `workflow P(x):
-    signal Go():
-        go = true
-    update U(v) -> (R):
-        return f(a,
-            b)
-    activity A(x) -> r
-        options:
-            start_to_close_timeout: 1m
-    await all:
-        activity A(x)
-        timer(1h)
-    close complete(x)
+	signal Go():
+		go = true
+	update U(v) -> (R):
+		return f(a,
+			b)
+	activity A(x) -> r
+		options:
+			start_to_close_timeout: 1m
+	await all:
+		activity A(x)
+		timer(1h)
+	close complete(x)
 
 activity A(x):
-    return x
+	return x
 `
 
-// reindent re-indents src, indented with tabs or four spaces per level, with
-// unit per level.
+// reindent re-indents src, indented with one tab per level, with unit per level.
 func reindent(t *testing.T, src, unit string) string {
 	t.Helper()
 	lines := strings.Split(src, "\n")
 	for i, line := range lines {
-		body := strings.TrimLeft(line, " \t")
-		run := line[:len(line)-len(body)]
-		var level int
-		switch {
-		case strings.Trim(run, "\t") == "":
-			level = len(run)
-		case strings.Trim(run, " ") == "" && len(run)%4 == 0:
-			level = len(run) / 4
-		default:
-			t.Fatalf("line %d is indented %q, not tabs or four spaces per level", i+1, run)
+		body := strings.TrimLeft(line, "\t")
+		if strings.HasPrefix(body, " ") && strings.TrimSpace(body) != "" {
+			t.Fatalf("line %d is indented with spaces", i+1)
 		}
-		lines[i] = strings.Repeat(unit, level) + body
+		lines[i] = strings.Repeat(unit, len(line)-len(body)) + body
 	}
 	return strings.Join(lines, "\n")
 }
@@ -89,10 +82,12 @@ func columnless(t *testing.T, file *ast.File) any {
 	return strip(v)
 }
 
-// A tab-indented file parses as its space twin, CRLF or not: the same AST but
-// for columns and the indentation inside raw text, and the same diagnostics on
-// the same lines.
-func TestTabsParseAsSpaces(t *testing.T) {
+// A space-indented file, at four, three or two spaces per level, is a LEX
+// error on each indented line and otherwise parses as its tab twin, CRLF or
+// not: the same AST but for columns and the indentation inside raw text, and
+// the same other diagnostics on the same lines.
+func TestSpacesRecoverToTheTabAST(t *testing.T) {
+	const spacesMsg = "indented with spaces; .twf indents with tabs, one per level"
 	sources := map[string]string{"inline": tabsInline}
 	for _, path := range crlfFixtures {
 		data, err := os.ReadFile(path)
@@ -102,12 +97,13 @@ func TestTabsParseAsSpaces(t *testing.T) {
 		sources[filepath.Base(path)] = string(data)
 	}
 	for name, src := range sources {
-		for _, nl := range []string{"\n", "\r\n"} {
-			t.Run(name+strings.ReplaceAll(nl, "\r", `\r`), func(t *testing.T) {
-				spaces := strings.ReplaceAll(reindent(t, src, "    "), "\n", nl)
-				tabs := strings.ReplaceAll(reindent(t, src, "\t"), "\n", nl)
-				wantFile, wantErrs := ParseFileAll(spaces)
-				gotFile, gotErrs := ParseFileAll(tabs)
+		for _, tc := range []struct{ nl, unit string }{{"\n", "    "}, {"\r\n", "    "}, {"\n", "  "}, {"\n", "   "}} {
+			nl, unit := tc.nl, tc.unit
+			t.Run(fmt.Sprintf("%s%s/%d", name, strings.ReplaceAll(nl, "\r", `\r`), len(unit)), func(t *testing.T) {
+				tabs := strings.ReplaceAll(src, "\n", nl)
+				spaces := strings.ReplaceAll(reindent(t, src, unit), "\n", nl)
+				wantFile, wantErrs := ParseFileAll(tabs)
+				gotFile, allErrs := ParseFileAll(spaces)
 				want, err := json.Marshal(columnless(t, wantFile))
 				if err != nil {
 					t.Fatal(err)
@@ -117,14 +113,26 @@ func TestTabsParseAsSpaces(t *testing.T) {
 					t.Fatal(err)
 				}
 				if string(got) != string(want) {
-					t.Errorf("tab AST differs from spaces:\n%s\n%s", got, want)
+					t.Errorf("space AST differs from tabs:\n%s\n%s", got, want)
+				}
+				var gotErrs []*ParseError
+				rejected := 0
+				for _, e := range allErrs {
+					if e.Msg == spacesMsg && e.Code() == CodeLexical {
+						rejected++
+						continue
+					}
+					gotErrs = append(gotErrs, e)
+				}
+				if rejected == 0 && strings.Contains(src, "\n\t") {
+					t.Errorf("no space-indentation error in %v", allErrs)
 				}
 				if len(gotErrs) != len(wantErrs) {
-					t.Fatalf("tab diagnostics %v, spaces %v", gotErrs, wantErrs)
+					t.Fatalf("space diagnostics %v, tabs %v", gotErrs, wantErrs)
 				}
 				for i := range wantErrs {
 					if g, w := gotErrs[i], wantErrs[i]; g.Msg != w.Msg || g.Line != w.Line || g.Code() != w.Code() {
-						t.Errorf("tab diagnostic %v, spaces %v", g, w)
+						t.Errorf("space diagnostic %v, tabs %v", g, w)
 					}
 				}
 			})
@@ -132,16 +140,16 @@ func TestTabsParseAsSpaces(t *testing.T) {
 	}
 }
 
-// Indentation that mixes tabs and spaces is one LEX error at its line, and
-// the line's statement is kept, not dropped as raw text.
+// A space in a line's indentation is one LEX error at its line, and the line's
+// statement is kept, not dropped as raw text.
 func TestMixedIndentationKeepsTheStatement(t *testing.T) {
 	for _, tc := range []struct {
 		name, src string
 		line      int
 	}{
-		{"tab after spaces", "workflow P(x):\n    activity A(x)\n    \tclose complete(x)\n", 3},
-		{"tab line in a spaces file", "workflow P(x):\n    activity A(x)\n\tclose complete(x)\n", 3},
-		{"spaces line in a tab file", "workflow P(x):\n\tactivity A(x)\n    close complete(x)\n", 3},
+		{"spaces after a tab", "workflow P(x):\n\tactivity A(x)\n\t  close complete(x)\n", 3},
+		{"two spaces and a tab", "workflow P(x):\n\tactivity A(x)\n  \tclose complete(x)\n", 3},
+		{"spaces", "workflow P(x):\n\tactivity A(x)\n    close complete(x)\n", 3},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			file, errs := ParseFileAll(tc.src)
@@ -159,43 +167,53 @@ func TestMixedIndentationKeepsTheStatement(t *testing.T) {
 	}
 }
 
-// Lines off the file's style are LEX errors, one each, and are placed where an
-// editor shows them, so a whole block or definition in the other style keeps
+// Lines indented with spaces are LEX errors, one each, and are placed where an
+// editor shows them, so a whole block or definition indented with spaces keeps
 // its structure and nothing else is reported.
-func TestOffStyleBlocksKeepTheirStructure(t *testing.T) {
+func TestSpaceIndentedBlocksKeepTheirStructure(t *testing.T) {
 	for _, tc := range []struct {
 		name, src string
 		lex       int
 		body      []int // statements per definition
 	}{
 		{
-			name: "a tab definition in a spaces file",
-			src:  "workflow W(x):\n    close complete(x)\n\nactivity A(x):\n\tif (x):\n\t\treturn x\n\treturn x\n",
+			name: "a space-indented definition in a tab file",
+			src:  "workflow W(x):\n\tclose complete(x)\n\nactivity A(x):\n    if (x):\n        return x\n    return x\n",
 			lex:  3, body: []int{1, 2},
 		},
 		{
-			name: "a two-space comment sets the style of a tab file",
-			src:  "workflow W(x):\n  # note\n\tif (x):\n\t\tactivity A(x)\n\tclose complete(x)\n\nactivity A(x):\n\treturn x\n",
-			lex:  4, body: []int{2, 1},
+			name: "a two-space file",
+			src:  "workflow W(x):\n  activity A(x)\n  if (x):\n    close complete(x)\n  close complete(x)\n\nactivity A(x):\n  return x\n",
+			lex:  5, body: []int{3, 1},
 		},
 		{
-			name: "a stray eight spaces at depth two of a tab file",
+			name: "a stray two spaces at depth one",
+			src:  "workflow W(x):\n\tactivity A(x)\n  close complete(x)\n\nactivity A(x):\n\treturn x\n",
+			lex:  1, body: []int{2, 1},
+		},
+		{
+			name: "a stray five spaces at depth one",
+			src:  "workflow W(x):\n\tactivity A(x)\n     close complete(x)\n\nactivity A(x):\n\treturn x\n",
+			lex:  1, body: []int{2, 1},
+		},
+		{
+			name: "a stray space opening await all",
+			src:  "workflow W(x):\n\tawait all:\n\t activity A(x)\n\t\tactivity A(x)\n\tclose complete(x)\n\nactivity A(x):\n\treturn x\n",
+			lex:  1, body: []int{2, 1},
+		},
+		{
+			name: "a stray eight spaces at depth two",
 			src:  "workflow W(x):\n\tif (x):\n\t\tactivity A(x)\n        activity A(x)\n\tclose complete(x)\n\nactivity A(x):\n\treturn x\n",
 			lex:  1, body: []int{2, 1},
 		},
 		{
-			name: "a tab after a block header's indentation",
-			src:  "workflow W(x):\n    if (x):\n    \tclose complete(x)\n    activity A(x)\n\nactivity A(x):\n    return x\n",
+			name: "spaces after a block header's tab",
+			src:  "workflow W(x):\n\tif (x):\n\t    close complete(x)\n\tactivity A(x)\n\nactivity A(x):\n\treturn x\n",
 			lex:  1, body: []int{2, 1},
 		},
 		{
-			name: "a tab after a commented block header's indentation, in a tab file",
+			name: "spaces after a commented block header's tab",
 			src:  "workflow W(x):\n\tif (x): # c\n\t    close complete(x)\n\tactivity A(x)\n\nactivity A(x):\n\treturn x\n",
-			lex:  1, body: []int{2, 1},
-		},
-		{
-			name: "two spaces and a tab at depth four",
-			src:  "workflow W(x):\n    activity A(x)\n  \tclose complete(x)\n\nactivity A(x):\n    return x\n",
 			lex:  1, body: []int{2, 1},
 		},
 	} {
@@ -235,9 +253,9 @@ func TestIndentationErrorComesFirst(t *testing.T) {
 	for _, tc := range []struct {
 		name, src, msg string
 	}{
-		{"spaces under a tab header", "workflow W(x):\n\tif (x):\n\t  close complete(x)\n", "indentation mixes tabs and spaces"},
+		{"a tab after spaces shows deeper", "workflow W(x):\n\tactivity A(x)\n    \tclose complete(x)\n", "indentation mixes tabs and spaces"},
 		{"mixed run under options", "workflow W(x):\n\tactivity A(x)\n\t\toptions:\n\t    start_to_close_timeout: 1m\n\tclose complete(x)\n", "indentation mixes tabs and spaces"},
-		{"dedent to no open block", "activity A(d) -> (string):\n        # c\n    work(d)\n", "inconsistent indentation"},
+		{"dedent to no open block", "activity A(d) -> (string):\n\t\t# c\n\twork(d)\n", "inconsistent indentation"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := ParseFile(tc.src)
