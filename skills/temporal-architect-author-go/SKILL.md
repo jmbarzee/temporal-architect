@@ -49,6 +49,14 @@ Then present the code for review.
 
 **Implementation depth.** `.twf` activity bodies are pseudocode and may describe more than you implement. Where you simplify, leave a `// TODO:` naming the elided logic (e.g. `// TODO: cross-field consistency checks (see TWF)`). Shallow bodies suit examples and prototypes; for production, ask which activities need full implementations.
 
+## Verify
+
+From the module root:
+
+```sh
+go build ./... && go vet ./... && go test ./...
+```
+
 ## Wire names
 
 A `.twf` name is the registered name, byte for byte; never rename the `.twf` to fit the code. The Go default is the function or method name with its package path and `-fm` suffix stripped (`getFunctionName`, sdk-go `internal/internal_worker.go`).
@@ -60,6 +68,21 @@ A `.twf` name is the registered name, byte for byte; never rename the `.twf` to 
 | signal / query / update | none: an explicit string | a constant equal to the `.twf` name |
 | Nexus service / operation | none: an explicit string | a constant equal to the `.twf` name ([nexus-service-def.md](./reference/nexus-service-def.md)) |
 | proto-driven workflow / activity | the annotation's `name:` | `name:` equal to the `.twf` name, with no package prefix ([proto-driven.md](./reference/proto-driven.md)) |
+
+## Delegation
+
+This skill owns the `.twf` ↔ Go translation: call shapes, wire names, options, project layout, verify. How to write Go Temporal code well belongs to Temporal's official `temporal-developer` skill, pinned at `v0.6.3`; load it for these topics:
+
+| Topic | `temporal-developer` |
+|---|---|
+| worker setup | `references/go/go.md` |
+| testing | `references/go/testing.md` |
+| determinism | `references/go/determinism.md`, `determinism-protection.md` |
+| errors | `references/go/error-handling.md` |
+| data | `references/go/data-handling.md` |
+| versioning | `references/go/versioning.md` |
+
+If it is not installed, install it from https://github.com/temporalio/skill-temporal-developer at `v0.6.3`, or read the topic's file there.
 
 ## Output conventions
 
