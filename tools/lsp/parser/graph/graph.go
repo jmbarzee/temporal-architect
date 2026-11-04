@@ -80,6 +80,8 @@ type Node struct {
 //
 // Only present on dispatch edges. Containment edges omit it entirely.
 type Routing struct {
+	// Explicit is the task_queue literal the user wrote for the call: on the
+	// call site, else on the target's default_options. Empty when implicit.
 	Explicit      string `json:"explicit,omitempty"`
 	NexusEndpoint string `json:"nexusEndpoint,omitempty"`
 }

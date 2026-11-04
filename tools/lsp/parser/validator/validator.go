@@ -261,11 +261,17 @@ func Validate(file *ast.File) []*Error {
 	// allowlists (walks resolved bodies).
 	v.walkAllBodies(file.Definitions)
 
-	// 7. id: parent claims, id_scheme overlap and ID policies (definition order, for stable output).
+	// 7. id: parent claims, id_scheme overlap and ID policies (definition order).
 	v.checkParentSends(file.Definitions)
 	v.checkIDSchemeOverlap(file.Definitions)
 	v.checkIDPolicies(file.Definitions)
 
+	// Checks walk definition maps, so sort for an order that holds run to run;
+	// the stable sort keeps same-code errors at one position in emission order
+	// (#237).
+	slices.SortStableFunc(v.errs, func(a, b *Error) int {
+		return cmp.Or(cmp.Compare(a.File, b.File), cmp.Compare(a.Line, b.Line), cmp.Compare(a.Column, b.Column), cmp.Compare(a.Code(), b.Code()))
+	})
 	return v.errs
 }
 

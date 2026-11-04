@@ -72,6 +72,11 @@ func signatureFor(node ast.Node) string {
 			prefix = "detach workflow"
 		}
 		return fmt.Sprintf("%s %s(%s)", prefix, n.Workflow.Name, n.Args)
+	case *ast.SignalSendStmt:
+		if t := n.Target(); t != nil {
+			return workflowSig(t)
+		}
+		return ""
 	case *ast.WorkerDef:
 		sig := fmt.Sprintf("worker %s", n.Name)
 		if len(n.Workflows) > 0 || len(n.Activities) > 0 || len(n.Services) > 0 {

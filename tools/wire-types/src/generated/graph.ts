@@ -81,6 +81,10 @@ export interface Node {
  * Only present on dispatch edges. Containment edges omit it entirely.
  */
 export interface Routing {
+  /**
+   * Explicit is the task_queue literal the user wrote for the call: on the
+   * call site, else on the target's default_options. Empty when implicit.
+   */
   explicit?: string;
   nexusEndpoint?: string;
 }

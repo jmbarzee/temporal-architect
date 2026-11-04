@@ -70,35 +70,41 @@ export function dimensionsFor(nodeType: NodeType, sourceFile: string | undefined
 // and endpoints live nested inside their service / namespace AST nodes — for
 // those we map the child's graph name (`${service}.${op}`, the service
 // qualified) to the parent definition, which is the one authors associate the
-// child with (#243).
+// child with (#243), and name the child's row inside it (#249).
 
-export type AstLookup = ReadonlyMap<string, Definition>
+/** A node's owning top-level definition and, for a nested node, its row's name. */
+export interface AstOwner {
+  def: Definition
+  child?: string
+}
+
+export type AstLookup = ReadonlyMap<string, AstOwner>
 
 export function buildAstLookup(ast: TWFFile): AstLookup {
-  const m = new Map<string, Definition>()
+  const m = new Map<string, AstOwner>()
   for (const def of ast.definitions ?? []) {
     switch (def.type) {
       case 'workflowDef':
-        m.set(`workflow:${qualifiedNameOf(def)}`, def)
+        m.set(`workflow:${qualifiedNameOf(def)}`, { def })
         break
       case 'activityDef':
-        m.set(`activity:${qualifiedNameOf(def)}`, def)
+        m.set(`activity:${qualifiedNameOf(def)}`, { def })
         break
       case 'workerDef':
-        m.set(`worker:${def.name}`, def)
+        m.set(`worker:${def.name}`, { def })
         break
       case 'namespaceDef': {
-        m.set(`namespace:${def.name}`, def)
+        m.set(`namespace:${def.name}`, { def })
         for (const ep of def.endpoints ?? []) {
-          m.set(`nexusEndpoint:${ep.endpointName}`, def)
+          m.set(`nexusEndpoint:${ep.endpointName}`, { def, child: ep.endpointName })
         }
         break
       }
       case 'nexusServiceDef': {
         const service = qualifiedNameOf(def)
-        m.set(`nexusService:${service}`, def)
+        m.set(`nexusService:${service}`, { def })
         for (const op of def.operations ?? []) {
-          m.set(`nexusOperation:${service}.${op.name}`, def)
+          m.set(`nexusOperation:${service}.${op.name}`, { def, child: op.name })
         }
         break
       }
@@ -196,7 +202,7 @@ export function buildGraph(parserGraph: ParserGraph, astLookup: AstLookup): Grap
   for (const pn of parserGraph.nodes) {
     const { kind } = splitDefinitionKey(pn.definition)
     const nodeType = nodeTypeFromKind(kind)
-    const def = astLookup.get(pn.definition)
+    const def = astLookup.get(pn.definition)?.def
     nodes.push({
       id: pn.id,
       values: dimensionsFor(nodeType, def?.sourceFile),
