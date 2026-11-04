@@ -41,7 +41,7 @@ The layers, root-down, each with its check.
 
 ## Verify
 
-One fenced command, run from the project root, that builds, vets, and tests the generated code and exits 0 only when all pass. Selective dispatch ([decomposition.md](decomposition.md#selective-dispatch)) runs it from this section, so it keeps this heading.
+One fenced command, run from the module root, that builds, statically checks, and tests the generated code and exits 0 only when all pass. Selective dispatch ([decomposition.md](decomposition.md#selective-dispatch)) runs it from this section, so it keeps this heading.
 
 ## Output conventions
 

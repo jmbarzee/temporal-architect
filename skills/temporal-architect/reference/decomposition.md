@@ -20,7 +20,7 @@ Discovered facts, one author subagent per hard chunk:
 
 - **Isolated components** — disconnected call structure is independent work.
 - **`nexusCall` cuts** — cross-namespace/worker by construction; the Nexus operation signature *is* the contract.
-- **SDK boundaries** — definitions registered on workers of different `@sdk` go to different authors. `twf graph chunks` does not split on them yet: cut them yourself.
+- **SDK boundaries** — each `@sdk` on the workers registering a definition goes to its own author. `twf graph chunks` does not split on them yet: cut them yourself.
 
 Every definition lands in exactly one hard chunk. A node reachable from two roots is reported as **overlap**: implement it once and let both chunks consume it.
 
