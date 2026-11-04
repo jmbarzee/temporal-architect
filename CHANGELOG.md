@@ -329,6 +329,9 @@ is now checked against the target's signals.
   changed on disk since it was read fails instead (#288, #300).
 - **Visualizer:** "Show in Tree" on a nexus operation or endpoint scrolls to and
   flashes that row, not just the service or namespace that owns it (#249).
+- **Visualizer:** a row the Tree scrolls to ("Show in Tree", in-tree navigation,
+  arrow keys) lands below the sticky filter bar, not under it. A repeat "Show in
+  Tree" on the same row scrolls to it again and restarts its flash (#293).
 - **Visualizer graph view:** wheel zoom no longer logs a passive-listener
   warning per event, and the page behind the canvas no longer scrolls (#212).
   When the pane resizes, for example when a host opens a side panel, the camera
