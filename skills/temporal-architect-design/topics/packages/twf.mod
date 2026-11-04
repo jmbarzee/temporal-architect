@@ -1,1 +1,1 @@
-module github.com/acme/shop/orders
+module github.com/acme/shop

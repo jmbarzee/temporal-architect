@@ -43,7 +43,7 @@ func (p *parsed) hasClause() bool { return p.file.PackagePos.Line != 0 }
 //     3b. INVALID_PACKAGE_PATH — a package whose derived path is invalid;
 //  4. DUPLICATE_PACKAGE — all but the first of directories sharing a path.
 //
-// Virtual sources have no directory and are subject to step 0 only.
+// Virtual sources have no directory; excludeVirtual applies steps 0 and 1b.
 func (x *expander) exclude(files []*parsed) []*resolver.ResolveError {
 	var errs []*resolver.ResolveError
 	report := func(p *parsed, kind resolver.ErrorKind, line, col int, name, msg string) {
@@ -111,10 +111,7 @@ func (x *expander) exclude(files []*parsed) []*resolver.ResolveError {
 		if p.excluded || p.src.canonical == "" || p.root != "" || !p.hasClause() {
 			continue
 		}
-		p.excluded = true
-		report(p, resolver.ErrPackageOutsideModule, p.file.PackagePos.Line, p.file.PackagePos.Column, p.file.Package, fmt.Sprintf(
-			"package %s is not in a module; run \"twf mod init <module path>\" in the design's root directory (with no argument it suggests one; see twf spec packages-and-imports)",
-			p.file.Package))
+		errs = append(errs, outsideModule(p))
 	}
 
 	// Step 2: one module path, one root. The later module (by its first input
@@ -274,6 +271,33 @@ func (x *expander) exclude(files []*parsed) []*resolver.ResolveError {
 		}
 	}
 	return errs
+}
+
+// excludeVirtual applies to virtual sources the exclusions that need no
+// directory: step 0, and step 1b for a source in no module.
+func excludeVirtual(files []*parsed) []*resolver.ResolveError {
+	var errs []*resolver.ResolveError
+	for _, p := range files {
+		p.excluded = p.file.ClauseExcluded
+		p.modPath = p.src.module
+		if !p.excluded && p.modPath == "" && p.hasClause() {
+			errs = append(errs, outsideModule(p))
+		}
+	}
+	return errs
+}
+
+// outsideModule excludes a packaged file in no module and returns its
+// PACKAGE_OUTSIDE_MODULE.
+func outsideModule(p *parsed) *resolver.ResolveError {
+	p.excluded = true
+	return &resolver.ResolveError{
+		Msg: fmt.Sprintf(
+			"package %s is not in a module; run \"twf mod init <module path>\" in the design's root directory (with no argument it suggests one; see twf spec packages-and-imports)",
+			p.file.Package),
+		Line: p.file.PackagePos.Line, Column: p.file.PackagePos.Column,
+		Kind: resolver.ErrPackageOutsideModule, Name: p.file.Package, File: p.src.base,
+	}
 }
 
 // clauseOf picks the clause a directory keeps: the path's assumed name when

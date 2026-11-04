@@ -144,8 +144,9 @@ const (
 	// ErrModuleFileUnknownDirective: a directive other than `module` in a valid
 	// twf.mod, ignored. Warning severity.
 	ErrModuleFileUnknownDirective
-	// ErrPackageOutsideModule: an on-disk file with a package clause and no
-	// twf.mod above it; the file is excluded.
+	// ErrPackageOutsideModule: a file with a package clause and no twf.mod
+	// above it, or an in-memory source with one in no module; the file is
+	// excluded.
 	ErrPackageOutsideModule
 	// ErrDuplicateModule: a second module root declaring a module path already
 	// in the run; the later module's files are excluded.
@@ -465,8 +466,14 @@ func Resolve(file *ast.File) []*ResolveError {
 
 	// Build the flat-global endpoint map across all namespaces. Endpoints are
 	// never package-qualified; a duplicate endpoint name across any two
-	// namespaces (in any package) stays a hard error.
-	for _, ns := range s.namespaces {
+	// namespaces (in any package) stays a hard error. The namespaces pass 1
+	// keeps are walked in definition order, so the first declaration keeps the
+	// name and each later one is the duplicate.
+	for _, def := range file.Definitions {
+		ns, ok := def.(*ast.NamespaceDef)
+		if !ok || s.namespaces[pkgKey{effPkg(ast.PackageIDOf(ns, nil), s.filePkg), ns.Name}] != ns {
+			continue
+		}
 		for i := range ns.Endpoints {
 			ep := &ns.Endpoints[i]
 			ep.Namespace = ns.Name
@@ -492,6 +499,7 @@ func Resolve(file *ast.File) []*ResolveError {
 					Name:   ep.EndpointName,
 					File:   ns.SourceFile,
 				})
+				continue
 			}
 			s.allEndpoints[ep.EndpointName] = ep
 		}
@@ -719,8 +727,7 @@ func Resolve(file *ast.File) []*ResolveError {
 
 	// Namespaces and workers are walked from maps, so sort for an order that
 	// holds run to run; the stable sort keeps same-code errors at one position
-	// in emission order (#237). Which endpoint a DUPLICATE_ENDPOINT lands on,
-	// and the namespaces it names, still follow map order.
+	// in emission order (#237).
 	slices.SortStableFunc(s.errs, func(a, b *ResolveError) int {
 		return cmp.Or(cmp.Compare(a.File, b.File), cmp.Compare(a.Line, b.Line), cmp.Compare(a.Column, b.Column), cmp.Compare(a.Code(), b.Code()))
 	})

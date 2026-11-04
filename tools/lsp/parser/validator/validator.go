@@ -156,7 +156,6 @@ type validationCtx struct {
 	workers       map[pkgKey]*ast.WorkerDef
 	namespaces    map[pkgKey]*ast.NamespaceDef
 	nexusServices map[pkgKey]*ast.NexusServiceDef
-	allEndpoints  map[string]*ast.NamespaceEndpoint
 	// nsDefs is every namespace in definition order, so queue checks that
 	// report per placement run in source order.
 	nsDefs []*ast.NamespaceDef
@@ -210,7 +209,6 @@ func Validate(file *ast.File) []*Error {
 		workers:       make(map[pkgKey]*ast.WorkerDef),
 		namespaces:    make(map[pkgKey]*ast.NamespaceDef),
 		nexusServices: make(map[pkgKey]*ast.NexusServiceDef),
-		allEndpoints:  make(map[string]*ast.NamespaceEndpoint),
 	}
 
 	// Build definition maps from the AST, keyed by (package, name).
@@ -227,21 +225,6 @@ func Validate(file *ast.File) []*Error {
 			v.nsDefs = append(v.nsDefs, d)
 		case *ast.NexusServiceDef:
 			v.nexusServices[v.key(d, d.Name)] = d
-		}
-	}
-
-	// Build the flat-global endpoint map. Endpoints are never package-scoped —
-	// they share one cluster-global namespace, so a bare name is the key. Walk
-	// definitions in order so a duplicate name (already DUPLICATE_ENDPOINT)
-	// resolves to the same declaration on every run.
-	for _, def := range file.Definitions {
-		ns, ok := def.(*ast.NamespaceDef)
-		if !ok || v.namespaces[v.key(ns, ns.Name)] != ns {
-			continue
-		}
-		for i := range ns.Endpoints {
-			ep := &ns.Endpoints[i]
-			v.allEndpoints[ep.EndpointName] = ep
 		}
 	}
 
@@ -768,9 +751,9 @@ func (v *validationCtx) walkStatements(stmts []ast.Statement, from caller) {
 			// UNDEFINED_SERVICE); either way the validator must not add a
 			// linkage error on top.
 			if n.Service.Resolved != nil {
-				v.checkEndpointServiceLinkage(n.Endpoint.Name, refKey(v, n.Service), n.Line, n.Column, from.file)
+				v.checkEndpointServiceLinkage(n.Endpoint.Resolved, refKey(v, n.Service), n.Line, n.Column, from.file)
 			}
-			v.checkCallerAllowed(n.Endpoint.Name, from, n.Line, n.Column)
+			v.checkCallerAllowed(n.Endpoint.Resolved, from, n.Line, n.Column)
 		case *ast.SignalSendStmt:
 			// A signal send is a *use* of its handle promise — no routing
 			// check applies (a signal is delivered to a child the sender
@@ -807,9 +790,9 @@ func (v *validationCtx) walkAsyncTarget(target ast.AsyncTarget, from caller, lin
 		// See the NexusCall case in walkStatements: skip the linkage check for
 		// an unresolved (external / already-reported) service.
 		if t.Service.Resolved != nil {
-			v.checkEndpointServiceLinkage(t.Endpoint.Name, refKey(v, t.Service), line, column, from.file)
+			v.checkEndpointServiceLinkage(t.Endpoint.Resolved, refKey(v, t.Service), line, column, from.file)
 		}
-		v.checkCallerAllowed(t.Endpoint.Name, from, line, column)
+		v.checkCallerAllowed(t.Endpoint.Resolved, from, line, column)
 	}
 }
 
@@ -996,11 +979,10 @@ func hasRef[T interface {
 // task queue in the endpoint's own namespace registers the given service
 // (identified by its resolved (package, name) key). The queues compare by
 // spelling: an endpoint targets one static queue, so it never fronts a family.
-// The endpoint is looked up flat-global by bare name. file is the calling
-// definition's SourceFile.
-func (v *validationCtx) checkEndpointServiceLinkage(endpoint string, service pkgKey, line, column int, file string) {
-	ep, ok := v.allEndpoints[endpoint]
-	if !ok {
+// The endpoint is the one the call resolved to, the first declaration of a
+// duplicated name. file is the calling definition's SourceFile.
+func (v *validationCtx) checkEndpointServiceLinkage(ep *ast.NamespaceEndpoint, service pkgKey, line, column int, file string) {
+	if ep == nil {
 		return // endpoint not found — already reported by resolver
 	}
 	tq := extractTaskQueue(ep.Options)
@@ -1015,11 +997,11 @@ func (v *validationCtx) checkEndpointServiceLinkage(endpoint string, service pkg
 	}
 
 	v.errs = append(v.errs, &Error{
-		Msg:    fmt.Sprintf("nexus endpoint %s routes to task queue %q in namespace %s, but no worker on that queue has service %s", endpoint, tq, ep.Namespace, service.name),
+		Msg:    fmt.Sprintf("nexus endpoint %s routes to task queue %q in namespace %s, but no worker on that queue has service %s", ep.EndpointName, tq, ep.Namespace, service.name),
 		Line:   line,
 		Column: column,
 		Kind:   ErrEndpointServiceLinkage,
-		Name:   endpoint,
+		Name:   ep.EndpointName,
 		File:   file,
 	})
 }
@@ -1030,9 +1012,8 @@ func (v *validationCtx) checkEndpointServiceLinkage(endpoint string, service pkg
 // the cross-team case an allowlist exists for. Entries match namespace names
 // by spelling, {param}s included. An endpoint without the option declares no
 // policy and is not checked.
-func (v *validationCtx) checkCallerAllowed(endpoint string, from caller, line, column int) {
-	ep, ok := v.allEndpoints[endpoint]
-	if !ok {
+func (v *validationCtx) checkCallerAllowed(ep *ast.NamespaceEndpoint, from caller, line, column int) {
+	if ep == nil {
 		return // endpoint not found — already reported by resolver
 	}
 	allowed, declared := allowedCallers(ep.Options)
@@ -1043,7 +1024,7 @@ func (v *validationCtx) checkCallerAllowed(endpoint string, from caller, line, c
 		if slices.Contains(allowed, ns) {
 			continue
 		}
-		msg := fmt.Sprintf("nexus call through endpoint %s originates in namespace %s, which is not in its allowed_caller_namespaces %s", endpoint, ns, formatList(allowed))
+		msg := fmt.Sprintf("nexus call through endpoint %s originates in namespace %s, which is not in its allowed_caller_namespaces %s", ep.EndpointName, ns, formatList(allowed))
 		if slices.ContainsFunc(allowed, func(e string) bool { return strings.HasPrefix(e, ns+".") }) {
 			msg += fmt.Sprintf("; did you mean %q? entries are .twf namespace names, not Cloud namespace IDs", ns)
 		}
