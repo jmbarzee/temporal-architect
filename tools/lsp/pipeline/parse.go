@@ -59,13 +59,13 @@ type Input struct {
 // Source is one in-memory TWF document. Name is used only for diagnostic
 // attribution; an empty Name defaults to "<source>.twf".
 //
-// A source has no directory, so its package has no import path and its
-// imports bind nothing in the run: they are external. Module and Dir place it
-// in a module instead — its package's path is Module, plus "/" and Dir when
-// Dir is set — so in-memory sources (tests, a caller that knows the context)
-// import each other by path. One request's sources are all in a module or
-// none. The file-level checks of on-disk inputs (clause conflicts, the name
-// rule) do not run on in-memory sources.
+// A source has no directory, so it is in no module: it is checked as a file
+// outside every module is, and a package clause is PACKAGE_OUTSIDE_MODULE.
+// Module and Dir place it in a module instead — its package's path is Module,
+// plus "/" and Dir when Dir is set — so in-memory sources (tests, a caller
+// that knows the context) import each other by path. One request's sources
+// are all in a module or none. The other file-level checks of on-disk inputs
+// (clause conflicts, the name rule) do not run on in-memory sources.
 type Source struct {
 	Name    string
 	Content string
@@ -279,15 +279,10 @@ func parseSources(sources []source, defaultFile string, x *expander) Result {
 	if x != nil {
 		pkgErrs = x.exclude(files)
 	} else {
-		for _, p := range files {
-			p.excluded = p.file.ClauseExcluded
-			p.modPath = p.src.module
-		}
+		pkgErrs = excludeVirtual(files)
 	}
 
-	// Merge the kept files. A package's identity is its import path; a
-	// package with none (a virtual source outside a module) is identified by
-	// its declared name, and nothing can import it.
+	// Merge the kept files. A package's identity is its import path.
 	var kept []ast.StampInput
 	for _, p := range files {
 		if p.excluded {

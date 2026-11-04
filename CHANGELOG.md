@@ -50,8 +50,8 @@ paths are two packages; alias one to import both. New errors:
 module (it used to be a silent external). `IMPORT_NOT_LOADED` warns when a
 package is on disk but not among the inputs. A path under no module in the run
 is still `UNRESOLVED_IMPORT`, treated as external. No import binds by package
-name anywhere: an MCP inline `source` or an editor buffer with no file has no
-import path, so its imports are external, matching `twf check`.
+name anywhere: an editor buffer with no file has no import path, so its
+imports are external.
 
 ### ⚠️ Breaking: wire output
 
@@ -269,6 +269,9 @@ is now checked against the target's signals.
   draws the missing dispatch edge (#245).
 - A worker instantiated twice in one namespace emits each of its containment
   edges once (#264).
+- **MCP:** an inline `source` with a `package` clause reports
+  `PACKAGE_OUTSIDE_MODULE` and is ignored, as `twf check` does for the file on
+  disk with no `twf.mod`; it used to pass (#308).
 - **LSP:** rename, references and go-to-definition ranges cover the name, not
   the statement keyword, so a rename no longer overwrites `workflow` or
   `signal`, and renaming a Nexus endpoint edits the endpoint on a `nexus` call.
