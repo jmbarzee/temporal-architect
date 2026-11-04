@@ -9,7 +9,7 @@ The Go signals the design skill's [reverse engineering](../../temporal-architect
 
 ## Registration
 
-- `worker.New(client, taskQueue, …)` starts a worker on a queue in its client's namespace (`client.Dial` `Namespace`). Each `worker.New` and the types registered on it make one `worker` block ([worker.md](./worker.md#registration)).
+- `worker.New(client, taskQueue, …)` starts a worker on a queue in its client's namespace (`client.Dial` `Namespace`). Each `worker.New` and the types registered on it make one `worker` block ([worker.md](./worker.md#registration)), annotated `@sdk(go, "<path>")` with the file that calls `worker.New`.
 - `RegisterWorkflow(fn)` registers the function's name; `RegisterActivity(&S{})` every exported method of `S`. `…WithOptions` with `Name` overrides the name, or prefixes a struct's methods.
 - A queue built from an instance key (`"sandbox-"+id`) is a [family](./worker.md#per-instance-worker-families) worker.
 - `nexus.NewService(name)` + `service.Register(ops…)` + `w.RegisterNexusService(service)` is a Nexus service and its operations ([nexus-service-def.md](./nexus-service-def.md)). A `Register` of only some of a service's operations is a forked contract.

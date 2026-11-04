@@ -129,6 +129,20 @@ Diagnostics for [per-instance worker families](./03-workers-and-namespaces.md#pe
 | `INSTANCE_FAMILY_VERSIONED` | a family with `versioning: build_id` or `deployment` | hint |
 | `INSTANCE_FAMILY_HOSTS_NEXUS_SERVICE` | a family worker registers a Nexus service, which no endpoint can reach | warning |
 
+### SDK Annotations
+
+Diagnostics for [`@sdk` annotations](./03-workers-and-namespaces.md#sdk-annotations).
+
+| Code | Trigger | Severity |
+|---|---|---|
+| `UNKNOWN_ANNOTATION` | an annotation other than `@sdk` | error |
+| `ANNOTATION_MISPLACED` | `@sdk` on anything but a worker, or annotations with no definition below them | error |
+| `UNKNOWN_SDK` | an `@sdk` naming no SDK, or one not in the `sdk` enum | error |
+| `DUPLICATE_SDK` | one SDK twice on one worker | error |
+| `INVALID_IMPL_PATH` | an absolute path, a URL, a `\`, or an empty path | error |
+| `IMPL_NOT_FOUND` | a path naming no file, read from the module root else the `.twf` file's directory; checked only for a file on disk | warning |
+| `WORKER_MULTI_SDK` | a worker with `@sdk` in more than one SDK | warning |
+
 ## Examples
 
 See the `skills/temporal-architect-design/topics/` directory for complete working examples of all language features.

@@ -97,6 +97,18 @@ Parse failures share the code `SYNTAX`; dispatch on the message until categorica
 | `UNINSTANTIATED_WORKER` | warning | Worker defined but never instantiated in any namespace | Instantiate it in a namespace, or remove the worker |
 | `EMPTY_WORKFLOW` / `EMPTY_ACTIVITY` / `EMPTY_WORKER` / `EMPTY_NAMESPACE` | warning | Block has no body / no registrations / no instantiations | Add content or remove the empty block |
 
+## `@sdk` annotations
+
+| Code | Kind | Severity | Cause | Fix |
+|------|------|----------|-------|-----|
+| `UNKNOWN_ANNOTATION` | parse | error | An annotation other than `@sdk` | Remove it; `@sdk` is the only annotation |
+| `ANNOTATION_MISPLACED` | parse | error | `@sdk` above a workflow, activity, namespace or Nexus service, or annotations with no definition below them | Move it above the worker that registers the definition |
+| `UNKNOWN_SDK` | parse | error | `@sdk` with no SDK, or one outside `go`, `typescript`, `python`, `java`, `dotnet`, `ruby`, `php`, `rust` | Name one of them, unquoted |
+| `DUPLICATE_SDK` | parse | error | One SDK twice on one worker | Keep one; the first is kept |
+| `INVALID_IMPL_PATH` | parse | error | An absolute path, a URL, a `\`, or an empty path | Write the entry file `/`-separated, relative to the module root (else the `.twf` file's directory) |
+| `IMPL_NOT_FOUND` | validate | warning | The path names no file | Fix the path, or drop it until the code exists: `@sdk(go)` |
+| `WORKER_MULTI_SDK` | validate | warning | `@sdk` in more than one SDK on one worker | Split it into one worker per SDK on its own queue, or justify the pattern next to the annotations ([task-queues.md](../topics/task-queues.md#one-worker-several-sdks)) |
+
 `id_scheme:` and addressed-send codes (`ID_*`, `TYPE_NEEDS_ID`, `ADDRESS_MISPLACED`, `NOT_A_PARENT`, …) are tabled in `twf spec resolution-and-errors`; the design rules behind them are in [workflow-id-schemes.md](../topics/workflow-id-schemes.md).
 
 `twf help` documents the JSON envelope that carries these diagnostics (`diagnostics[].code`).

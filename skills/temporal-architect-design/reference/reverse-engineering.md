@@ -17,19 +17,19 @@ The greenfield advice "write before you read the reference docs" inverts here: t
 3. **Fidelity check** — confirm the `.twf` matches what the code does ([Fidelity first](#fidelity-first-then-design-review)).
 4. **Design Review** — only now run the standard [Design Review](../SKILL.md#design-review).
 
-Mirror the code's layout: `twf mod init <module path>` at each code module's [root](#language-signals), with that module's path, so `.twf` import paths match the code's; each domain in its own [package](./twf-conventions.md#package-per-domain-directory), `import` across packages for cross-domain references, and an [impl-link header](./twf-conventions.md#impl-link-header) recording where the implementation lives. `worker` and `namespace` follow [Deployment topology during recovery](#deployment-topology-during-recovery).
+Mirror the code's layout: `twf mod init <module path>` at each code module's [root](#language-signals), with that module's path, so `.twf` import paths match the code's; each domain in its own [package](./twf-conventions.md#package-per-domain-directory), and `import` across packages for cross-domain references. `worker` and `namespace` follow [Deployment topology during recovery](#deployment-topology-during-recovery).
 
 ### B1b — Drift (`.twf` exists but is stale)
 
 - **Check (available now):** on a bounded slice, compare the `.twf` against current code and report divergences — missing activities, changed boundaries, dropped signals.
-- **Sync (deferred):** mechanical reconciliation waits on the twf↔impl mapping ([#24](https://github.com/jmbarzee/temporal-architect/issues/24)). Until then, re-extract the drifted slice (B1a steps 2–4), treating the code as the source of truth for *behavior* and the existing `.twf` for *intent*.
+- **Sync (deferred):** there is no mechanical reconciliation yet. Until there is, re-extract the drifted slice (B1a steps 2–4), treating the code as the source of truth for *behavior* and the existing `.twf` for *intent*.
 
 ## Deployment topology during recovery
 
 A real monorepo runs a few **shared worker processes**, each hosting many domains' types on one task queue. A slice has no view of the whole shared worker, so declaring a `worker`/`namespace` per slice either collides on the shared name or invents a placeholder — and the `UNINSTANTIATED_WORKER` / `UNCOVERED_*` warning wall follows.
 
 - **Domain slices emit symbols only** — no `worker` or `namespace`, and **never** a placeholder worker to quiet coverage warnings. "Symbols only" limits *deployment declarations*, not depth: a slice still recovers every workflow body — every call, child workflow, and signal. Stub bodies render as one-level trees and leave the routing diagnostics nothing to test.
-- **Author the shared topology once, at stitch** — a single topology-owner `deploy` package `import`s each domain and registers its types by **package-qualified ref**, one shared `worker` per real worker process (the forward `deploy/topology.twf` convention in [twf-conventions.md](./twf-conventions.md#package-per-domain-directory) and the [packages topic](../topics/packages.md)). project-discovery reads the shared worker → task queue → registered types mapping that fills it.
+- **Author the shared topology once, at stitch** — a single topology-owner `deploy` package `import`s each domain and registers its types by **package-qualified ref**, one shared `worker` per real worker process, annotated with its SDK and the entry file where project-discovery found it built — `@sdk(go, "cmd/worker/main.go")` ([twf-conventions.md](./twf-conventions.md#worker-implementation-sdk)) (the forward `deploy/topology.twf` convention in [twf-conventions.md](./twf-conventions.md#package-per-domain-directory) and the [packages topic](../topics/packages.md)). project-discovery reads the shared worker → task queue → registered types mapping that fills it.
 - **Coverage stays real.** Coverage and routing diagnostics run only for an analysis with a `namespace`, so a symbols-only slice is quiet on its own; at stitch the qualified registrations become genuine coverage, and `UNCOVERED_*` / `UNINSTANTIATED_WORKER` fire only on real gaps. See `twf spec workers-and-namespaces` (Shared Workers: Joint Ownership; Validator interplay).
 
 ## Decompose a large repo into slices
@@ -75,7 +75,7 @@ Reverse engineering names no SDK; each language author supplies the signals to r
 | `## Concurrency` | Which forms are `await all`, `await one`, `promise`, a synchronous call |
 | `## Codegen` | How generated code is recognized, and what it maps back to |
 
-**Read backward through the slice's language author**: its discovery file, then its forward (DSL → code) references for each call site. The language is the one whose `## Project roots` match the slice's root ([`@lang`](https://github.com/jmbarzee/temporal-architect/issues/23) will declare it). A slice in a language no author covers is an open question for the user, not a guess.
+**Read backward through the slice's language author**: its discovery file, then its forward (DSL → code) references for each call site. The language is the `@sdk` of the worker hosting the slice when the `.twf` has one, else the one whose `## Project roots` match the slice's root. A slice in a language no author covers is an open question for the user, not a guess.
 
 ## Fidelity first, then Design Review
 

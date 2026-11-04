@@ -71,7 +71,11 @@ type Node struct {
 	// collapse a parameterized family into one representative node plus a
 	// cardinality badge.
 	TemplateParams []string `json:"templateParams,omitempty"`
-	Orphan         bool     `json:"orphan,omitempty"`
+	// SDKs are the implementations of the worker a node deploys on, from its
+	// `@sdk` annotations: set on a worker node and on each node it hosts.
+	// Omitted when the worker has none, and on an orphan definition.
+	SDKs   []ast.SDKJSON `json:"sdks,omitempty"`
+	Orphan bool          `json:"orphan,omitempty"`
 }
 
 // Routing is the diagnostic cause of a dispatch edge. The effect (which

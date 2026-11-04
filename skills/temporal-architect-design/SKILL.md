@@ -76,7 +76,7 @@ Produce or review `.twf`; `temporal-architect` routes implementation, so don't s
 | Signal vs Update | External input into a workflow | [signals-queries-updates.md](./topics/signals-queries-updates.md) |
 | Workflow ID Schemes | A workflow whose ID is reconstructed later; signalling a workflow you hold no handle to | [workflow-id-schemes.md](./topics/workflow-id-schemes.md) |
 | Anti-Patterns | Common design mistakes | [anti-patterns.md](./reference/anti-patterns.md) |
-| `.twf` Conventions | Package-per-directory layout, impl-link header | [twf-conventions.md](./reference/twf-conventions.md) |
+| `.twf` Conventions | Package-per-directory layout, a worker's `@sdk` | [twf-conventions.md](./reference/twf-conventions.md) |
 | Packages & Imports | Cross-package references | [packages.md](./topics/packages.md) |
 | Workers & Task Queues | Worker grouping, routing, deployment | [task-queues.md](./topics/task-queues.md) |
 | Namespaces | Namespace count and boundaries | [namespaces.md](./reference/namespaces.md) |

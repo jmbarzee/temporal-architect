@@ -125,6 +125,10 @@ func (l *Lexer) NextToken() token.Token {
 			tok = l.makeToken(token.COMMA, ",")
 			l.advance()
 
+		case ch == '@':
+			tok = l.makeToken(token.AT, "@")
+			l.advance()
+
 		case isDigit(ch):
 			tok = l.scanNumber()
 

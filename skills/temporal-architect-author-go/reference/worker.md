@@ -1,6 +1,7 @@
 # worker
 
 ```twf
+@sdk(go, "cmd/orders-worker/main.go")
 worker orderTypes:
 	workflow ProcessOrder
 	activity ValidateOrder
@@ -41,6 +42,7 @@ func main() {
 
 ## Registration
 
+- The file that builds the worker and registers its types is its entry file. Once it exists, the `.twf` worker's `@sdk(go, "<path>")` names it, from the module root (else the `.twf` file's directory): add the annotation, or keep its path current when the file moves.
 - `worker.New(client, taskQueue, options)` — the task queue is the namespace worker's `task_queue` option. Several DSL `worker` blocks → several `worker.New` calls in one `main()`.
 - `RegisterWorkflow(fn)` — one call per workflow in the worker's type set.
 - `RegisterActivity(&Activities{...})` — the standard form: every exported method becomes an activity, sharing the dependencies injected on the struct. Register individual functions instead when activities span structs with different dependency sets, or have none.

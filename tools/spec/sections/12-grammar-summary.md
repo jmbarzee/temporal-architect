@@ -1,8 +1,12 @@
 # Grammar Summary
 
 ```
-file ::= [package_clause] import_decl* definition*
+file ::= [package_clause] import_decl* (annotation* definition)*
 definition ::= workflow_def | activity_def | worker_def | namespace_def | nexus_service_def
+
+annotation ::= '@' IDENT [ '(' annot_arg (',' annot_arg)* ')' ] NEWLINE
+annot_arg  ::= IDENT | STRING
+               # '@' 'sdk' '(' sdk [ ',' STRING ] ')' — on a worker only
 
 package_clause ::= 'package' IDENT NEWLINE          # optional; at most one; must be the first clause
 import_decl    ::= 'import' [IDENT] STRING NEWLINE   # optional leading IDENT = alias (Go-style, alias-first)

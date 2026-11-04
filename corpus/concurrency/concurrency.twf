@@ -3,6 +3,7 @@ namespace batches:
 		options:
 			task_queue: "batches"
 
+@sdk(go, "go/worker.go")
 worker batchTypes:
 	workflow Batch
 	workflow Audit

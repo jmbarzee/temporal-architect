@@ -15,6 +15,15 @@ func completionHandler(store *DocumentStore) protocol.TextDocumentCompletionFunc
 
 		line := int(params.Position.Line) + 1 // LSP 0-based → parser 1-based
 
+		text := lineText(doc.lines(), line)
+		prefix := text[:byteColumn(text, params.Position.Character)-1]
+		if items, ok := annotationCompletions(prefix); ok {
+			return &protocol.CompletionList{Items: items}, nil
+		}
+		if params.Context != nil && params.Context.TriggerCharacter != nil && *params.Context.TriggerCharacter == "(" {
+			return nil, nil // '(' completes only an annotation's arguments
+		}
+
 		ctx := findCompletionContext(doc.File, line)
 
 		var items []protocol.CompletionItem

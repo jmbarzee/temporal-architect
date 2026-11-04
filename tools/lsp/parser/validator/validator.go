@@ -42,6 +42,8 @@ const (
 	ErrInstanceFamilyVersioned
 	ErrNexusCallerNotAllowed
 	ErrWorkerDuplicateTypeName
+	ErrWorkerMultiSDK
+	ErrImplNotFound
 )
 
 // Error represents a validation error with position info.
@@ -132,6 +134,10 @@ func (k ErrorKind) String() string {
 		return "INSTANCE_FAMILY_VERSIONED"
 	case ErrWorkerDuplicateTypeName:
 		return "WORKER_DUPLICATE_TYPE_NAME"
+	case ErrWorkerMultiSDK:
+		return "WORKER_MULTI_SDK"
+	case ErrImplNotFound:
+		return "IMPL_NOT_FOUND"
 	}
 	return "UNKNOWN"
 }
@@ -240,9 +246,11 @@ func Validate(file *ast.File) []*Error {
 		}
 	}
 
-	// 1. Empty definition warnings, then registrations colliding by name.
+	// 1. Empty definition warnings, registrations colliding by name, and
+	// workers implemented in several SDKs.
 	v.checkEmptyDefinitions(file.Definitions)
 	v.checkWorkerTypeNames(file.Definitions)
+	v.checkMultiSDK(file.Definitions)
 
 	// 2. Task queue requirements.
 	v.checkTaskQueueRequirements()
@@ -348,6 +356,28 @@ func (v *validationCtx) checkWorkerTypeNames(defs []ast.Definition) {
 		checkTypeNames(v, w, "workflow", w.Workflows)
 		checkTypeNames(v, w, "activity", w.Activities)
 		checkTypeNames(v, w, "nexus service", w.Services)
+	}
+}
+
+// checkMultiSDK warns at the second `@sdk` of each worker implemented in more
+// than one SDK: every implementation must replay the worker's workflows
+// identically, a significant risk of nondeterminism errors.
+func (v *validationCtx) checkMultiSDK(defs []ast.Definition) {
+	for _, def := range defs {
+		w, ok := def.(*ast.WorkerDef)
+		if !ok || len(w.SDKs) < 2 {
+			continue
+		}
+		second := w.SDKs[1]
+		v.errs = append(v.errs, &Error{
+			Msg:      fmt.Sprintf("worker %s has implementations in %d SDKs; every implementation must replay its workflows identically, so justify the pattern explicitly next to the annotations", w.Name, len(w.SDKs)),
+			Line:     second.Line,
+			Column:   second.Column,
+			Severity: "warning",
+			Kind:     ErrWorkerMultiSDK,
+			Name:     w.Name,
+			File:     w.SourceFile,
+		})
 	}
 }
 

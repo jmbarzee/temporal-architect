@@ -1,4 +1,3 @@
-# impl: shop/orders
 package orders
 
 # Cross-package references are qualified by the imported package's leaf name and

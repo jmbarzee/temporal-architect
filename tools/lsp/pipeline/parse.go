@@ -347,7 +347,7 @@ func parseSources(sources []source, defaultFile string, x *expander) Result {
 		diags = append(diags, FromResolveError(e, e.File))
 	}
 
-	validateErrs := validator.Validate(merged)
+	validateErrs := append(validator.Validate(merged), implNotFound(files)...)
 	for _, e := range validateErrs {
 		if e.File == "" {
 			e.File = defaultFile

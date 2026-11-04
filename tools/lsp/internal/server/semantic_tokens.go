@@ -25,6 +25,7 @@ const (
 	semVariable
 	semProperty
 	semNumber
+	semDecorator
 	semCount // sentinel for compile-time check
 )
 
@@ -179,6 +180,9 @@ func classifyToken(tok token.Token, prevType token.TokenType, indentLevel int, i
 	case token.DURATION, token.NUMBER:
 		return semNumber, 0, true
 
+	case token.AT:
+		return semDecorator, 0, true
+
 	default:
 		return 0, 0, false
 	}
@@ -224,6 +228,9 @@ func classifyIdent(prevType token.TokenType, indentLevel int) (tokenType uint32,
 
 	case token.TASK_QUEUE:
 		return semVariable, 0, true
+
+	case token.AT:
+		return semDecorator, 0, true // an annotation's name
 
 	default:
 		// Category 4: Bare ident in body — loose statement (params, assignments, expressions).

@@ -89,6 +89,7 @@
 - `]` - Closes a `list_value` in an option value
 - `,` - Separates elements within a `list_value` (and arguments within `arg_list`)
 - `#` - Comment
+- `@` - Opens an [annotation](./03-workers-and-namespaces.md#sdk-annotations) (`@sdk`) on the lines above a definition
 
 ## Lines and Whitespace
 

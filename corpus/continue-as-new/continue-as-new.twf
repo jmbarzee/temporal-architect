@@ -3,6 +3,7 @@ namespace counters:
 		options:
 			task_queue: "counters"
 
+@sdk(go, "go/worker.go")
 worker counterTypes:
 	workflow Counter
 	activity Increment

@@ -20,10 +20,11 @@ packages:
       - "graph.go"
     type_mappings:
       ast.PackageRef: "PackageRef"
+      ast.SDKJSON: "SDKJSON"
     frontmatter: |
       // Source of truth: the Go DTO structs in tools/lsp. Regenerate: `make gen-types`.
       // String-literal enums and discriminated unions live in ../residue.ts.
-      import type { PackageRef } from "./ast";
+      import type { PackageRef, SDKJSON } from "./ast";
 
   - path: "github.com/jmbarzee/temporal-architect/tools/lsp/parser/observe"
     output_path: "tools/wire-types/src/generated/observe.ts"

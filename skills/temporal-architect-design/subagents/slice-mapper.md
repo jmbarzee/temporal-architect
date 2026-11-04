@@ -22,7 +22,9 @@ Scan CHEAPLY and STRUCTURALLY only — never read per-slice semantics:
 - project roots, proto / package tree (directory + proto package layout) → candidate
   slices, each with its language
 - registration wiring (worker construction, generated registration helpers, DI)
-  → which worker owns which types, i.e. the seams
+  → which worker owns which types, and the entry file each is built in, i.e. the seams
+- existing .twf workers' `@sdk` annotations → their language and entry file, read, not
+  re-derived
 - cross-package / cross-slice call sites (Nexus ops, cross-package child workflows,
   boundary-crossing imports) → the edges between slices
 

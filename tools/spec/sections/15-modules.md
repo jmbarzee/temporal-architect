@@ -39,6 +39,10 @@ Dot-less paths are valid.
 A package directory whose derived path is invalid (`kube (old)`) is `INVALID_PACKAGE_PATH`, and
 the package is ignored.
 
+An [`@sdk` path](./03-workers-and-namespaces.md#sdk-annotations) is not a module path: it names a
+file on disk, `/`-separated and possibly through `..`, read from the module root (the directory of
+`twf.mod`), else from the `.twf` file's directory.
+
 ## Inputs
 
 - A file's **identity** is its physical path: symlinks, `..`, letter case and Unicode
