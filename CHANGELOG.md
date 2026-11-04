@@ -330,10 +330,11 @@ is now checked against the target's signals.
   statement alone, keeping the line's indentation and trailing comment. The
   missing-workflow stub ends in `close complete`, not a bare `close`.
 - **LSP:** rename refuses a keyword, a string that is not a name (`a b`, `1x`,
-  an empty name, a malformed deployment name), a name another declaration of
-  the same kind holds in the same package, workflow or service (a workflow's
-  conditions and promises count as one kind), any other endpoint's name, and a
-  name a worker registering the renamed type already registers for that kind.
+  an empty name, a malformed deployment name), `parent` for a condition or
+  promise, a name another declaration of the same kind holds in the same
+  package, workflow or service (a workflow's conditions and promises count as
+  one kind), any other endpoint's name, and a name a worker registering the
+  renamed type already registers for that kind.
 - **MCP:** the `paths` and tool descriptions say each path may be a file or a
   directory.
 - **Visualizer:** "Show in Tree" on a nexus operation or endpoint scrolls to and

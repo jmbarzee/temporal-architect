@@ -8,6 +8,7 @@ import (
 	protocol "github.com/jmbarzee/glsp/protocol_3_16"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/lexer"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/resolver"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/token"
 )
 
@@ -80,6 +81,12 @@ func checkNewName(file *ast.File, occs []occurrence, at occurrence, newName stri
 		return fail("it is a keyword")
 	case tok.Type != token.IDENT || tok.Literal != newName:
 		return fail("it is not a name")
+	}
+	switch decl.decl.(type) {
+	case *ast.ConditionDecl, *ast.PromiseStmt:
+		if newName == resolver.ReservedName {
+			return fail("it is reserved for `id: parent`")
+		}
 	}
 
 	for _, o := range occs {

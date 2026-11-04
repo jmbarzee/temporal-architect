@@ -122,6 +122,8 @@ func TestRenameRejectsBadNames(t *testing.T) {
 		{"nexus endpoint", "nexus endpoint Orders", "Orders", "close", "keyword"},
 		{"condition", "condition ready", "ready", "set", "keyword"},
 		{"promise", "promise done", "done", "promise", "keyword"},
+		{"condition", "condition ready", "ready", "parent", "reserved"},
+		{"promise", "promise done", "done", "parent", "reserved"},
 
 		// Not a name.
 		{"workflow", "workflow Parent(", "Parent", "a b", "not a name"},
@@ -161,6 +163,7 @@ func TestRenameRejectsBadNames(t *testing.T) {
 		{"namespace", "namespace Prod", "Prod", "prod-east", ""},
 		{"nexus endpoint", "nexus endpoint Orders", "Orders", "orders-east", ""},
 		{"worker", "worker W:", "W", "Parent", ""},
+		{"workflow", "workflow Child(", "Child", "parent", ""},
 	}
 	before := NewDocumentStore().Open(renameURI, pairSource)
 	if len(before.ParseErrs)+len(before.ResolveErrs)+len(before.ValidateErrs) > 0 {
