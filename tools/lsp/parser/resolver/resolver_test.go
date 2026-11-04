@@ -1,6 +1,7 @@
 package resolver
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -1138,4 +1139,40 @@ func hasWarning(errs []*ResolveError, substr string) bool {
 		}
 	}
 	return false
+}
+
+// TestDiagnosticOrder pins Resolve's output to file, line, column, then code
+// order. Namespaces and workers are walked from maps, so without the final sort
+// this order changes from run to run (issue #237).
+func TestDiagnosticOrder(t *testing.T) {
+	input := `worker wa:
+    workflow MissingA
+
+worker wb:
+    workflow MissingB
+
+namespace na:
+    worker ghostA
+
+namespace nb:
+    worker ghostB
+
+namespace nc:
+    worker ghostC
+`
+	file := mustParse(t, input)
+	var got []string
+	for _, e := range Resolve(file) {
+		got = append(got, fmt.Sprintf("%d:%d %s", e.Line, e.Column, e.Code()))
+	}
+	want := []string{
+		"2:5 WORKER_UNDEFINED_WORKFLOW",
+		"5:5 WORKER_UNDEFINED_WORKFLOW",
+		"8:5 NAMESPACE_UNDEFINED_WORKER",
+		"11:5 NAMESPACE_UNDEFINED_WORKER",
+		"14:5 NAMESPACE_UNDEFINED_WORKER",
+	}
+	if strings.Join(got, "\n") != strings.Join(want, "\n") {
+		t.Errorf("diagnostic order:\n got %q\nwant %q", got, want)
+	}
 }
