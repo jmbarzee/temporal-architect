@@ -2,7 +2,7 @@
 
 ```twf
 workflow ProcessOrder(order: Order) -> (Result):
-    close complete(Result{status: "done"})
+	close complete(Result{status: "done"})
 ```
 
 ```go
@@ -17,7 +17,7 @@ func ProcessOrder(ctx workflow.Context, order Order) (Result, error) {
 
 ```twf
 workflow ShipItem(order: Order, item: Item) -> (Shipment):
-    id_scheme: "ship-{order.id}-{item.id}"
+	id_scheme: "ship-{order.id}-{item.id}"
 ```
 
 ```go
@@ -30,9 +30,9 @@ A type that has a scheme or ID policies, or backs a Nexus run operation, also ge
 
 ```twf
 workflow OrderTracker(orderId: string):
-    id_scheme: "tracker-{orderId}"
-    default_options:
-        workflow_id_conflict_policy: USE_EXISTING
+	id_scheme: "tracker-{orderId}"
+	default_options:
+		workflow_id_conflict_policy: USE_EXISTING
 ```
 
 ```go

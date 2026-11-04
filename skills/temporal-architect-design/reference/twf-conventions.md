@@ -14,8 +14,8 @@ import "github.com/acme/shop/orders"
 import "github.com/acme/shop/payments"
 
 worker orderWorker:
-    workflow orders.ProcessOrder
-    activity payments.ChargeCard
+	workflow orders.ProcessOrder
+	activity payments.ChargeCard
 ```
 
 Start the module once, at the design's root: `twf mod init github.com/acme/shop` there makes `orders/` the package `github.com/acme/shop/orders` imported above.
@@ -31,11 +31,11 @@ A clause-less file is the implicit default package, so single-package designs ne
 package orders
 
 workflow ProcessOrder(order: Order) -> (Result):
-    activity ChargePayment(order) -> receipt
-    close complete(Result{receipt})
+	activity ChargePayment(order) -> receipt
+	close complete(Result{receipt})
 
 activity ChargePayment(order: Order) -> (Receipt):
-    charge(order.payment)
+	charge(order.payment)
 ```
 
 State it even when co-location makes it look obvious: the mapping is a convention the tooling doesn't enforce, and a package may describe code under a differently named directory. The [project-discovery subagent](../subagents/project-discovery.md) reads it to jump to the code; [reverse-engineering](./reverse-engineering.md) writes it when recovering a `.twf`. It is the interim file-level form of per-symbol `@ref` annotations ([#24](https://github.com/jmbarzee/temporal-architect/issues/24)), which will supersede it.

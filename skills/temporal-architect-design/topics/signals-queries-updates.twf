@@ -4,233 +4,233 @@
 # --- Signal-driven order workflow ---
 
 workflow OrderTrackingWorkflow(orderId: string) -> (OrderResult):
-    signal PaymentReceived(transactionId: string, amount: decimal):
-        status = "payment_received"
-        lastTransactionId = transactionId
+	signal PaymentReceived(transactionId: string, amount: decimal):
+		status = "payment_received"
+		lastTransactionId = transactionId
 
-    query GetStatus() -> (string):
-        return status
+	query GetStatus() -> (string):
+		return status
 
-    query GetProgress() -> (Progress):
-        return Progress{status: status, orderId: orderId}
+	query GetProgress() -> (Progress):
+		return Progress{status: status, orderId: orderId}
 
-    activity LoadOrderRecord(orderId) -> order
+	activity LoadOrderRecord(orderId) -> order
 
-    status = "validating"
-    activity ValidateOrderRecord(order)
+	status = "validating"
+	activity ValidateOrderRecord(order)
 
-    status = "awaiting_payment"
+	status = "awaiting_payment"
 
-    await one:
-        signal PaymentReceived:
-            status = "completed"
-            close complete(OrderResult{status: "completed"})
-        timer(24h):
-            status = "payment_timeout"
-            close fail(OrderResult{status: "payment_timeout"})
+	await one:
+		signal PaymentReceived:
+			status = "completed"
+			close complete(OrderResult{status: "completed"})
+		timer(24h):
+			status = "payment_timeout"
+			close fail(OrderResult{status: "payment_timeout"})
 
 # --- Approval flow with multi-target await ---
 
 workflow ApprovalWorkflow(request: Request) -> (Decision):
-    signal Approved(approver: string):
-        approved = true
-        approver_name = approver
+	signal Approved(approver: string):
+		approved = true
+		approver_name = approver
 
-    signal Rejected(approver: string, reason: string):
-        rejected = true
-        reject_reason = reason
+	signal Rejected(approver: string, reason: string):
+		rejected = true
+		reject_reason = reason
 
-    approved = false
-    rejected = false
-    approver_name = ""
-    reject_reason = ""
+	approved = false
+	rejected = false
+	approver_name = ""
+	reject_reason = ""
 
-    activity NotifyApprovers(request)
+	activity NotifyApprovers(request)
 
-    await one:
-        signal Approved:
-            close complete(Decision{status: "approved", approver: approver_name})
-        signal Rejected:
-            close fail(Decision{status: "rejected", reason: reject_reason})
-        timer(7d):
-            activity NotifyExpired(request)
-            close fail(Decision{status: "expired"})
+	await one:
+		signal Approved:
+			close complete(Decision{status: "approved", approver: approver_name})
+		signal Rejected:
+			close fail(Decision{status: "rejected", reason: reject_reason})
+		timer(7d):
+			activity NotifyExpired(request)
+			close fail(Decision{status: "expired"})
 
 # --- Batch collector with signal accumulation ---
 
 workflow BatchCollector(batchId: string) -> (BatchResult):
-    signal AddItem(item: Item):
-        itemCount = itemCount + 1
+	signal AddItem(item: Item):
+		itemCount = itemCount + 1
 
-    signal CompleteBatch():
-        completed = true
+	signal CompleteBatch():
+		completed = true
 
-    itemCount = 0
-    completed = false
+	itemCount = 0
+	completed = false
 
-    for:
-        await one:
-            signal CompleteBatch:
-                break
-            timer(1h):
-                break
+	for:
+		await one:
+			signal CompleteBatch:
+				break
+			timer(1h):
+				break
 
-    activity RunBatchProcessing(batchId, itemCount) -> result
-    close complete(BatchResult{itemCount: itemCount, result: result})
+	activity RunBatchProcessing(batchId, itemCount) -> result
+	close complete(BatchResult{itemCount: itemCount, result: result})
 
 # --- Update-driven subscription workflow ---
 # Updates are read-write: caller sends data and blocks for a result.
 
 workflow SubscriptionWorkflow(userId: string):
-    signal Cancel():
-        options:
-            unfinished_policy: abandon
-            description: "Cancels the subscription"
-        cancelled = true
+	signal Cancel():
+		options:
+			unfinished_policy: abandon
+			description: "Cancels the subscription"
+		cancelled = true
 
-    update AddCredits(amount: int) -> (CreditResult):
-        options:
-            description: "Adds prepaid credits and returns the new balance"
-        credits = credits + amount
-        return CreditResult{total: credits}
+	update AddCredits(amount: int) -> (CreditResult):
+		options:
+			description: "Adds prepaid credits and returns the new balance"
+		credits = credits + amount
+		return CreditResult{total: credits}
 
-    update ChangePlan(newPlan: string) -> (ChangeResult):
-        activity ValidatePlan(newPlan) -> validation
-        if (validation.valid):
-            plan = newPlan
-            return ChangeResult{success: true, plan: plan}
-        else:
-            return ChangeResult{success: false, error: validation.reason}
+	update ChangePlan(newPlan: string) -> (ChangeResult):
+		activity ValidatePlan(newPlan) -> validation
+		if (validation.valid):
+			plan = newPlan
+			return ChangeResult{success: true, plan: plan}
+		else:
+			return ChangeResult{success: false, error: validation.reason}
 
-    query GetPlan() -> (string):
-        options:
-            description: "Current plan tier"
-        return plan
+	query GetPlan() -> (string):
+		options:
+			description: "Current plan tier"
+		return plan
 
-    plan = "free"
-    credits = 0
-    cancelled = false
+	plan = "free"
+	credits = 0
+	cancelled = false
 
-    for:
-        await one:
-            signal Cancel:
-                break
-            timer(30d):
-                activity BillUser(userId, plan)
+	for:
+		await one:
+			signal Cancel:
+				break
+			timer(30d):
+				activity BillUser(userId, plan)
 
-    close complete
+	close complete
 
 # --- Shipping workflow: update racing in await one ---
 # Shows update as an await one case competing with a timer.
 
 workflow ShippingWorkflow(orderId: string) -> (ShipResult):
-    update ChangeAddress(newAddress: Address) -> (AddressResult):
-        address = newAddress
-        return AddressResult{updated: true}
+	update ChangeAddress(newAddress: Address) -> (AddressResult):
+		address = newAddress
+		return AddressResult{updated: true}
 
-    query GetAddress() -> (Address):
-        return address
+	query GetAddress() -> (Address):
+		return address
 
-    activity LoadOrderRecord(orderId) -> order
-    address = order.shippingAddress
+	activity LoadOrderRecord(orderId) -> order
+	address = order.shippingAddress
 
-    await one:
-        update ChangeAddress:
-            activity NotifyShippingUpdate(orderId, address)
-        timer(1h):
-            activity FinalizeShipping(orderId, address)
+	await one:
+		update ChangeAddress:
+			activity NotifyShippingUpdate(orderId, address)
+		timer(1h):
+			activity FinalizeShipping(orderId, address)
 
-    activity Ship(orderId, address) -> shipment
-    close complete(ShipResult{shipment: shipment})
+	activity Ship(orderId, address) -> shipment
+	close complete(ShipResult{shipment: shipment})
 
 # --- Update handler waiting on condition ---
 # Shows the condition + update handler pattern where the caller blocks
 # until the condition is set by the main workflow body.
 
 workflow JobCoordinator(config: JobConfig):
-    state:
-        condition jobReady
+	state:
+		condition jobReady
 
-    signal Shutdown():
-        shutdownRequested = true
+	signal Shutdown():
+		shutdownRequested = true
 
-    update WaitUntilReady() -> (JobState):
-        await jobReady
-        return JobState{ready: true}
+	update WaitUntilReady() -> (JobState):
+		await jobReady
+		return JobState{ready: true}
 
-    query GetStatus() -> (string):
-        return status
+	query GetStatus() -> (string):
+		return status
 
-    status = "provisioning"
-    activity ProvisionJobRunner(config)
-    activity StartJobRunner(config)
-    set jobReady
-    status = "running"
+	status = "provisioning"
+	activity ProvisionJobRunner(config)
+	activity StartJobRunner(config)
+	set jobReady
+	status = "running"
 
-    await signal Shutdown
-    close complete
+	await signal Shutdown
+	close complete
 
 # --- Supporting activities ---
 
 activity LoadOrderRecord(orderId: string) -> (Order):
-    return db.get(orderId)
+	return db.get(orderId)
 
 activity ValidateOrderRecord(order: Order):
-    validate(order)
+	validate(order)
 
 activity NotifyApprovers(request: Request):
-    notify_approvers(request)
+	notify_approvers(request)
 
 activity NotifyExpired(request: Request):
-    notify_expired(request)
+	notify_expired(request)
 
 activity RunBatchProcessing(batchId: string, count: int) -> (BatchResult):
-    return process(batchId, count)
+	return process(batchId, count)
 
 activity BillUser(userId: string, plan: string):
-    bill(userId, plan)
+	bill(userId, plan)
 
 activity ValidatePlan(plan: string) -> (Validation):
-    return validate_plan(plan)
+	return validate_plan(plan)
 
 activity NotifyShippingUpdate(orderId: string, address: Address):
-    notify_shipping(orderId, address)
+	notify_shipping(orderId, address)
 
 activity FinalizeShipping(orderId: string, address: Address):
-    finalize(orderId, address)
+	finalize(orderId, address)
 
 activity Ship(orderId: string, address: Address) -> (Shipment):
-    return ship(orderId, address)
+	return ship(orderId, address)
 
 activity ProvisionJobRunner(config: JobConfig):
-    provision(config)
+	provision(config)
 
 activity StartJobRunner(config: JobConfig):
-    start(config)
+	start(config)
 
 # --- Worker and namespace ---
 
 worker handlerWorker:
-    workflow OrderTrackingWorkflow
-    workflow ApprovalWorkflow
-    workflow BatchCollector
-    workflow SubscriptionWorkflow
-    workflow ShippingWorkflow
-    workflow JobCoordinator
-    activity LoadOrderRecord
-    activity ValidateOrderRecord
-    activity NotifyApprovers
-    activity NotifyExpired
-    activity RunBatchProcessing
-    activity BillUser
-    activity ValidatePlan
-    activity NotifyShippingUpdate
-    activity FinalizeShipping
-    activity Ship
-    activity ProvisionJobRunner
-    activity StartJobRunner
+	workflow OrderTrackingWorkflow
+	workflow ApprovalWorkflow
+	workflow BatchCollector
+	workflow SubscriptionWorkflow
+	workflow ShippingWorkflow
+	workflow JobCoordinator
+	activity LoadOrderRecord
+	activity ValidateOrderRecord
+	activity NotifyApprovers
+	activity NotifyExpired
+	activity RunBatchProcessing
+	activity BillUser
+	activity ValidatePlan
+	activity NotifyShippingUpdate
+	activity FinalizeShipping
+	activity Ship
+	activity ProvisionJobRunner
+	activity StartJobRunner
 
 namespace handlers:
-    worker handlerWorker
-        options:
-            task_queue: "handlers"
+	worker handlerWorker
+		options:
+			task_queue: "handlers"

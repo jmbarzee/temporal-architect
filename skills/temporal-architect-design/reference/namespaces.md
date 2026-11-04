@@ -24,28 +24,28 @@ An outer agent plans and calls an inner agent that executes tools; each has its 
 
 ```twf
 worker outerAgentWorker:
-    workflow OuterAgent
-    activity PlanSteps
-    activity SummarizeOutcome
+	workflow OuterAgent
+	activity PlanSteps
+	activity SummarizeOutcome
 
 worker innerAgentWorker:
-    workflow InnerAgent
-    activity SearchTool
-    activity CalcTool
-    nexus service InnerAgentService
+	workflow InnerAgent
+	activity SearchTool
+	activity CalcTool
+	nexus service InnerAgentService
 
 namespace outerAgent:
-    worker outerAgentWorker
-        options:
-            task_queue: "outer-agent"
+	worker outerAgentWorker
+		options:
+			task_queue: "outer-agent"
 
 namespace innerAgent:
-    worker innerAgentWorker
-        options:
-            task_queue: "inner-agent"
-    nexus endpoint InnerAgentEndpoint
-        options:
-            task_queue: "inner-agent"
+	worker innerAgentWorker
+		options:
+			task_queue: "inner-agent"
+	nexus endpoint InnerAgentEndpoint
+		options:
+			task_queue: "inner-agent"
 ```
 
 ## Parameterized namespaces and endpoints
@@ -54,38 +54,38 @@ A `{param}` template parameter in a namespace or endpoint name (`namespace fabri
 
 ```twf
 nexus service BootstrapService:
-    async BootstrapShard workflow BootstrapShardWorkflow
+	async BootstrapShard workflow BootstrapShardWorkflow
 
 workflow BootstrapShardWorkflow(shardId: string):
-    id_scheme: "bootstrap/{shardId}"
-    activity InitShard(shardId)
-    close complete
+	id_scheme: "bootstrap/{shardId}"
+	activity InitShard(shardId)
+	close complete
 
 activity InitShard(shardId: string):
-    init(shardId)
+	init(shardId)
 
 workflow CallerWorkflow(org: string):
-    nexus fabric-shard-{org}-BootstrapShard BootstrapService.BootstrapShard(org)
-    close complete
+	nexus fabric-shard-{org}-BootstrapShard BootstrapService.BootstrapShard(org)
+	close complete
 
 worker bootstrapWorker:
-    workflow BootstrapShardWorkflow
-    activity InitShard
-    nexus service BootstrapService
+	workflow BootstrapShardWorkflow
+	activity InitShard
+	nexus service BootstrapService
 
 worker callerWorker:
-    workflow CallerWorkflow
+	workflow CallerWorkflow
 
 namespace fabric-shard-{org}:
-    worker bootstrapWorker
-        options:
-            task_queue: "bootstrap"
-    nexus endpoint fabric-shard-{org}-BootstrapShard
-        options:
-            task_queue: "bootstrap"
+	worker bootstrapWorker
+		options:
+			task_queue: "bootstrap"
+	nexus endpoint fabric-shard-{org}-BootstrapShard
+		options:
+			task_queue: "bootstrap"
 
 namespace app:
-    worker callerWorker
-        options:
-            task_queue: "app"
+	worker callerWorker
+		options:
+			task_queue: "app"
 ```

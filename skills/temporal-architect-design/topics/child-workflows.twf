@@ -4,164 +4,164 @@
 # --- Basic parent-child ---
 
 workflow ParentWorkflow(input: Input) -> (Result):
-    workflow ChildWorkflow(input.data) -> childResult
+	workflow ChildWorkflow(input.data) -> childResult
 
-    workflow ChildWorkflow(input.data) -> childResult2
-        options:
-            workflow_execution_timeout: 1h
-            retry_policy:
-                maximum_attempts: 3
+	workflow ChildWorkflow(input.data) -> childResult2
+		options:
+			workflow_execution_timeout: 1h
+			retry_policy:
+				maximum_attempts: 3
 
-    close complete(Result{childResult, childResult2})
+	close complete(Result{childResult, childResult2})
 
 workflow ChildWorkflow(data: Data) -> (ChildResult):
-    activity ValidateInput(data)
-    activity TransformData(data)
-    close complete(ChildResult{success: true})
+	activity ValidateInput(data)
+	activity TransformData(data)
+	close complete(ChildResult{success: true})
 
 # --- Sequential decomposition ---
 
 workflow DeployApplication(app: App) -> (DeployResult):
-    workflow DeployInfrastructure(app) -> infraResult
-    workflow DeployServices(app) -> servicesResult
+	workflow DeployInfrastructure(app) -> infraResult
+	workflow DeployServices(app) -> servicesResult
 
-    close complete(DeployResult{status: "deployed"})
+	close complete(DeployResult{status: "deployed"})
 
 workflow DeployInfrastructure(app: App) -> (DeployResult):
-    activity ProvisionDatabase(app.database)
-    activity RunMigrations(app.database)
-    close complete(DeployResult{status: "done"})
+	activity ProvisionDatabase(app.database)
+	activity RunMigrations(app.database)
+	close complete(DeployResult{status: "done"})
 
 workflow DeployServices(app: App) -> (DeployResult):
-    activity BuildArtifacts(app)
-    activity DeployContainers(app)
-    close complete(DeployResult{status: "done"})
+	activity BuildArtifacts(app)
+	activity DeployContainers(app)
+	close complete(DeployResult{status: "done"})
 
 # --- Parallel children ---
 
 workflow ParallelItemBatch(items: []Item) -> (BatchResult):
-    await all:
-        for (item in items):
-            workflow ProcessItem(item)
+	await all:
+		for (item in items):
+			workflow ProcessItem(item)
 
-    close complete(BatchResult{})
+	close complete(BatchResult{})
 
 workflow ProcessItem(item: Item) -> (ItemResult):
-    activity ProcessSingleItem(item) -> result
-    close complete(ItemResult{result})
+	activity ProcessSingleItem(item) -> result
+	close complete(ItemResult{result})
 
 # --- Conditional children ---
 
 workflow Onboarding(user: User) -> (OnboardingResult):
-    workflow CreateAccount(user) -> accountResult
+	workflow CreateAccount(user) -> accountResult
 
-    if (user.type == "enterprise"):
-        workflow EnterpriseSetup(user) -> setupResult
-    else:
-        workflow StandardSetup(user) -> setupResult
+	if (user.type == "enterprise"):
+		workflow EnterpriseSetup(user) -> setupResult
+	else:
+		workflow StandardSetup(user) -> setupResult
 
-    workflow SendWelcomeEmail(user) -> emailResult
-    close complete(OnboardingResult{success: true})
+	workflow SendWelcomeEmail(user) -> emailResult
+	close complete(OnboardingResult{success: true})
 
 workflow CreateAccount(user: User) -> (AccountResult):
-    activity CreateUserRecord(user)
-    close complete(AccountResult{success: true})
+	activity CreateUserRecord(user)
+	close complete(AccountResult{success: true})
 
 workflow EnterpriseSetup(user: User) -> (SetupResult):
-    activity ConfigureEnterprise(user)
-    close complete(SetupResult{done: true})
+	activity ConfigureEnterprise(user)
+	close complete(SetupResult{done: true})
 
 workflow StandardSetup(user: User) -> (SetupResult):
-    activity ConfigureStandard(user)
-    close complete(SetupResult{done: true})
+	activity ConfigureStandard(user)
+	close complete(SetupResult{done: true})
 
 workflow SendWelcomeEmail(user: User) -> (EmailResult):
-    activity SendEmail(user.email, "Welcome!")
-    close complete(EmailResult{sent: true})
+	activity SendEmail(user.email, "Welcome!")
+	close complete(EmailResult{sent: true})
 
 # --- Detached child (fire-and-forget) ---
 
 workflow ParentWithDetach(order: Order) -> (OrderResult):
-    activity ProcessOrder(order) -> result
-    detach workflow NotifyCustomer(order.customer)
-    close complete(OrderResult{status: "done"})
+	activity ProcessOrder(order) -> result
+	detach workflow NotifyCustomer(order.customer)
+	close complete(OrderResult{status: "done"})
 
 workflow NotifyCustomer(customer: Customer):
-    activity SendCustomerNotification(customer)
+	activity SendCustomerNotification(customer)
 
 # --- Supporting activities ---
 
 activity ValidateInput(data: Data):
-    validate(data)
+	validate(data)
 
 activity TransformData(data: Data):
-    transform(data)
+	transform(data)
 
 activity ProvisionDatabase(database: Database):
-    provision(database)
+	provision(database)
 
 activity RunMigrations(database: Database):
-    migrate(database)
+	migrate(database)
 
 activity BuildArtifacts(app: App):
-    build(app)
+	build(app)
 
 activity DeployContainers(app: App):
-    deploy(app)
+	deploy(app)
 
 activity ProcessSingleItem(item: Item) -> (Result):
-    return process(item)
+	return process(item)
 
 activity CreateUserRecord(user: User):
-    db.insert(user)
+	db.insert(user)
 
 activity ConfigureEnterprise(user: User):
-    setup_enterprise(user)
+	setup_enterprise(user)
 
 activity ConfigureStandard(user: User):
-    setup_standard(user)
+	setup_standard(user)
 
 activity SendEmail(email: string, message: string):
-    send(email, message)
+	send(email, message)
 
 activity ProcessOrder(order: Order) -> (OrderResult):
-    return process(order)
+	return process(order)
 
 activity SendCustomerNotification(customer: Customer):
-    notify(customer)
+	notify(customer)
 
 # --- Worker and namespace ---
 
 worker childWorkflowsWorker:
-    workflow ParentWorkflow
-    workflow ChildWorkflow
-    workflow DeployApplication
-    workflow DeployInfrastructure
-    workflow DeployServices
-    workflow ParallelItemBatch
-    workflow ProcessItem
-    workflow Onboarding
-    workflow CreateAccount
-    workflow EnterpriseSetup
-    workflow StandardSetup
-    workflow SendWelcomeEmail
-    workflow ParentWithDetach
-    workflow NotifyCustomer
-    activity ValidateInput
-    activity TransformData
-    activity ProvisionDatabase
-    activity RunMigrations
-    activity BuildArtifacts
-    activity DeployContainers
-    activity ProcessSingleItem
-    activity CreateUserRecord
-    activity ConfigureEnterprise
-    activity ConfigureStandard
-    activity SendEmail
-    activity ProcessOrder
-    activity SendCustomerNotification
+	workflow ParentWorkflow
+	workflow ChildWorkflow
+	workflow DeployApplication
+	workflow DeployInfrastructure
+	workflow DeployServices
+	workflow ParallelItemBatch
+	workflow ProcessItem
+	workflow Onboarding
+	workflow CreateAccount
+	workflow EnterpriseSetup
+	workflow StandardSetup
+	workflow SendWelcomeEmail
+	workflow ParentWithDetach
+	workflow NotifyCustomer
+	activity ValidateInput
+	activity TransformData
+	activity ProvisionDatabase
+	activity RunMigrations
+	activity BuildArtifacts
+	activity DeployContainers
+	activity ProcessSingleItem
+	activity CreateUserRecord
+	activity ConfigureEnterprise
+	activity ConfigureStandard
+	activity SendEmail
+	activity ProcessOrder
+	activity SendCustomerNotification
 
 namespace deployment:
-    worker childWorkflowsWorker
-        options:
-            task_queue: "deployment"
+	worker childWorkflowsWorker
+		options:
+			task_queue: "deployment"

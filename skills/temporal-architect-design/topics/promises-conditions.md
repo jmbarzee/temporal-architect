@@ -28,18 +28,18 @@ A `condition` is a named boolean — not a predicate expression — declared in 
 
 ```twf
 workflow Example():
-    state:
-        condition myCondition
-        balance = 0
-        status = "pending"
+	state:
+		condition myCondition
+		balance = 0
+		status = "pending"
 
-    signal Deposit(amount: decimal):
-        balance = balance + amount
-        if (balance >= 1000):
-            set myCondition
+	signal Deposit(amount: decimal):
+		balance = balance + amount
+		if (balance >= 1000):
+			set myCondition
 
-    await myCondition
-    close complete
+	await myCondition
+	close complete
 ```
 
 - `state:` comes first in the workflow, before signal/query/update handlers, and is purely declarative — no temporal primitives.

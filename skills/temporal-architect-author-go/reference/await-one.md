@@ -2,11 +2,11 @@
 
 ```twf
 await one:
-    signal PaymentReceived:
-        status = "processing"
-    timer(24h):
-        activity CancelOrder(orderId)
-        close fail(OrderResult{status: "cancelled"})
+	signal PaymentReceived:
+		status = "processing"
+	timer(24h):
+		activity CancelOrder(orderId)
+		close fail(OrderResult{status: "cancelled"})
 ```
 
 ```go

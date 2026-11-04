@@ -27,10 +27,10 @@ Draft from the description:
 
 ```twf
 workflow ProcessOrder(order: Order) -> (OrderResult):
-    activity ValidateOrder(order) -> validated
-    activity ChargePayment(order.payment) -> payment
-    activity ShipOrder(order, payment) -> shipment
-    close complete(OrderResult{shipment})
+	activity ValidateOrder(order) -> validated
+	activity ChargePayment(order.payment) -> payment
+	activity ShipOrder(order, payment) -> shipment
+	close complete(OrderResult{shipment})
 ```
 
 `twf check` reports `undefined activity` for all three; add the definitions → `✓ OK`.
@@ -39,14 +39,14 @@ Review: shipping is create shipment, await pickup, track — multiple steps with
 
 ```twf
 workflow ProcessOrder(order: Order) -> (OrderResult):
-    activity ValidateOrder(order) -> validated
-    activity ChargePayment(order.payment) -> payment
-        options:
-            start_to_close_timeout: 30s
-            retry_policy:
-                maximum_attempts: 3       # payment provider can be flaky
-    workflow ShipOrder(order, payment) -> shipment
-    close complete(OrderResult{shipment})
+	activity ValidateOrder(order) -> validated
+	activity ChargePayment(order.payment) -> payment
+		options:
+			start_to_close_timeout: 30s
+			retry_policy:
+				maximum_attempts: 3       # payment provider can be flaky
+	workflow ShipOrder(order, payment) -> shipment
+	close complete(OrderResult{shipment})
 ```
 
 ### Design Review

@@ -4,326 +4,326 @@
 # --- Process Workflow ---
 
 workflow OrderFulfillment(order: Order) -> (OrderResult):
-    activity ValidateRetailOrder(order) -> validated
-    if (validated.success == false):
-        close fail(OrderResult{status: "invalid", error: validated.error})
+	activity ValidateRetailOrder(order) -> validated
+	if (validated.success == false):
+		close fail(OrderResult{status: "invalid", error: validated.error})
 
-    activity ReserveInventory(order.items) -> reservation
+	activity ReserveInventory(order.items) -> reservation
 
-    activity ProcessPayment(order.payment) -> payment
+	activity ProcessPayment(order.payment) -> payment
 
-    activity ShipRetailOrder(order, reservation)
+	activity ShipRetailOrder(order, reservation)
 
-    activity SendConfirmation(order.customer)
+	activity SendConfirmation(order.customer)
 
-    close complete(OrderResult{status: "completed", trackingId: reservation.trackingId})
+	close complete(OrderResult{status: "completed", trackingId: reservation.trackingId})
 
 # --- Entity Workflow ---
 
 workflow AccountEntity(accountId: string, account: Account):
-    signal Deposit(amount: decimal):
-        account.balance = account.balance + amount
+	signal Deposit(amount: decimal):
+		account.balance = account.balance + amount
 
-    signal Withdraw(amount: decimal):
-        if (account.balance >= amount):
-            account.balance = account.balance - amount
+	signal Withdraw(amount: decimal):
+		if (account.balance >= amount):
+			account.balance = account.balance - amount
 
-    signal Close():
-        closePending = true
+	signal Close():
+		closePending = true
 
-    query GetBalance() -> (decimal):
-        return account.balance
+	query GetBalance() -> (decimal):
+		return account.balance
 
-    update Transfer(amount: decimal, toAccount: string) -> (TransferResult):
-        if (account.balance < amount):
-            return TransferResult{success: false, error: "insufficient funds"}
-        account.balance = account.balance - amount
-        activity RecordAccountTransaction(accountId, "transfer")
-        return TransferResult{success: true}
+	update Transfer(amount: decimal, toAccount: string) -> (TransferResult):
+		if (account.balance < amount):
+			return TransferResult{success: false, error: "insufficient funds"}
+		account.balance = account.balance - amount
+		activity RecordAccountTransaction(accountId, "transfer")
+		return TransferResult{success: true}
 
-    if (account == null):
-        activity LoadAccount(accountId) -> account
+	if (account == null):
+		activity LoadAccount(accountId) -> account
 
-    eventCount = 0
-    closePending = false
+	eventCount = 0
+	closePending = false
 
-    for:
-        await one:
-            signal Deposit:
-                activity RecordAccountTransaction(accountId, "deposit")
-            signal Withdraw:
-                activity RecordAccountTransaction(accountId, "withdraw")
-            signal Close:
-                activity CloseAccount(accountId)
-                close complete
-            timer(24h):
-                activity DailyReconciliation(accountId)
+	for:
+		await one:
+			signal Deposit:
+				activity RecordAccountTransaction(accountId, "deposit")
+			signal Withdraw:
+				activity RecordAccountTransaction(accountId, "withdraw")
+			signal Close:
+				activity CloseAccount(accountId)
+				close complete
+			timer(24h):
+				activity DailyReconciliation(accountId)
 
-        eventCount = eventCount + 1
-        if (eventCount > 1000):
-            close continue_as_new(accountId, account)
+		eventCount = eventCount + 1
+		if (eventCount > 1000):
+			close continue_as_new(accountId, account)
 
 # --- Saga Pattern (adapted without try/catch) ---
 
 workflow BookingWorkflow(booking: Booking) -> (BookingResult):
-    activity ReserveFlight(booking.flight) -> flight
+	activity ReserveFlight(booking.flight) -> flight
 
-    activity ReserveHotel(booking.hotel) -> hotel
-    if (hotel.failed):
-        activity CancelFlight(flight.id)
-        close fail(BookingResult{status: "hotel_failed"})
+	activity ReserveHotel(booking.hotel) -> hotel
+	if (hotel.failed):
+		activity CancelFlight(flight.id)
+		close fail(BookingResult{status: "hotel_failed"})
 
-    activity ReserveCar(booking.car) -> car
-    if (car.failed):
-        activity CancelFlight(flight.id)
-        activity CancelHotel(hotel.id)
-        close fail(BookingResult{status: "car_failed"})
+	activity ReserveCar(booking.car) -> car
+	if (car.failed):
+		activity CancelFlight(flight.id)
+		activity CancelHotel(hotel.id)
+		close fail(BookingResult{status: "car_failed"})
 
-    activity ChargeBookingPayment(booking.payment) -> payment
-    if (payment.failed):
-        workflow CompensateBooking(flight.id, hotel.id, car.id)
-        close fail(BookingResult{status: "payment_failed"})
+	activity ChargeBookingPayment(booking.payment) -> payment
+	if (payment.failed):
+		workflow CompensateBooking(flight.id, hotel.id, car.id)
+		close fail(BookingResult{status: "payment_failed"})
 
-    close complete(BookingResult{status: "confirmed"})
+	close complete(BookingResult{status: "confirmed"})
 
 # --- Saga compensation workflow (called on failure) ---
 
 workflow CompensateBooking(flight: string, hotel: string, car: string):
-    activity CancelFlight(flight)
-    activity CancelHotel(hotel)
-    activity CancelCar(car)
-    close complete
+	activity CancelFlight(flight)
+	activity CancelHotel(hotel)
+	activity CancelCar(car)
+	close complete
 
 # --- Fan-Out/Fan-In ---
 
 workflow BatchProcessor(items: []Item) -> (BatchResult):
-    await all:
-        for (item in items):
-            activity ProcessBatchItem(item)
+	await all:
+		for (item in items):
+			activity ProcessBatchItem(item)
 
-    activity AggregateResults(items) -> aggregated
-    close complete(BatchResult{processed: aggregated.count})
+	activity AggregateResults(items) -> aggregated
+	close complete(BatchResult{processed: aggregated.count})
 
 # --- Pipeline ---
 
 workflow DataPipeline(rawData: RawData) -> (ProcessedData):
-    activity Ingest(rawData) -> ingested
+	activity Ingest(rawData) -> ingested
 
-    activity Validate(ingested) -> validated
-    if (validated.valid == false):
-        close fail(ProcessedData{status: "invalid", errors: validated.errors})
+	activity Validate(ingested) -> validated
+	if (validated.valid == false):
+		close fail(ProcessedData{status: "invalid", errors: validated.errors})
 
-    activity Transform(validated.data) -> transformed
+	activity Transform(validated.data) -> transformed
 
-    activity Enrich(transformed) -> enriched
+	activity Enrich(transformed) -> enriched
 
-    activity Load(enriched)
+	activity Load(enriched)
 
-    close complete(ProcessedData{status: "complete", recordCount: enriched.count})
+	close complete(ProcessedData{status: "complete", recordCount: enriched.count})
 
 # --- State Machine ---
 
 workflow DocumentApproval(doc: Document) -> (ApprovalResult):
-    signal Submit():
-        phase = "pending_review"
+	signal Submit():
+		phase = "pending_review"
 
-    signal Approve():
-        phase = "approved"
+	signal Approve():
+		phase = "approved"
 
-    signal Reject():
-        phase = "rejected"
+	signal Reject():
+		phase = "rejected"
 
-    signal RequestChanges():
-        phase = "changes_requested"
+	signal RequestChanges():
+		phase = "changes_requested"
 
-    signal Withdraw():
-        phase = "withdrawn"
+	signal Withdraw():
+		phase = "withdrawn"
 
-    phase = "draft"
+	phase = "draft"
 
-    for:
-        switch (phase):
-            case "draft":
-                await one:
-                    signal Submit:
-                        activity NotifyReviewers(doc)
-                    timer(90d):
-                        phase = "expired"
-            case "pending_review":
-                await one:
-                    signal Approve:
-                    signal Reject:
-                    signal RequestChanges:
-                    timer(30d):
-                        phase = "expired"
-            case "changes_requested":
-                await one:
-                    signal Submit:
-                        activity NotifyReviewers(doc)
-                    signal Withdraw:
-                    timer(30d):
-                        phase = "expired"
-            case "approved":
-                activity PublishDocument(doc)
-                close complete(ApprovalResult{status: "approved"})
-            case "rejected":
-                activity ArchiveDocument(doc)
-                close complete(ApprovalResult{status: "rejected"})
-            case "withdrawn":
-                close complete(ApprovalResult{status: "withdrawn"})
-            case "expired":
-                close complete(ApprovalResult{status: "expired"})
+	for:
+		switch (phase):
+			case "draft":
+				await one:
+					signal Submit:
+						activity NotifyReviewers(doc)
+					timer(90d):
+						phase = "expired"
+			case "pending_review":
+				await one:
+					signal Approve:
+					signal Reject:
+					signal RequestChanges:
+					timer(30d):
+						phase = "expired"
+			case "changes_requested":
+				await one:
+					signal Submit:
+						activity NotifyReviewers(doc)
+					signal Withdraw:
+					timer(30d):
+						phase = "expired"
+			case "approved":
+				activity PublishDocument(doc)
+				close complete(ApprovalResult{status: "approved"})
+			case "rejected":
+				activity ArchiveDocument(doc)
+				close complete(ApprovalResult{status: "rejected"})
+			case "withdrawn":
+				close complete(ApprovalResult{status: "withdrawn"})
+			case "expired":
+				close complete(ApprovalResult{status: "expired"})
 
 # --- Polling ---
 
 workflow AwaitResourceReady(resourceId: string) -> (Resource):
-    promise deadline <- timer(30m)
-    backoff = 5s
-    maxBackoff = 60s
+	promise deadline <- timer(30m)
+	backoff = 5s
+	maxBackoff = 60s
 
-    for:
-        activity CheckResourceStatus(resourceId) -> status
+	for:
+		activity CheckResourceStatus(resourceId) -> status
 
-        if (status.ready):
-            activity GetResource(resourceId) -> resource
-            close complete(resource)
+		if (status.ready):
+			activity GetResource(resourceId) -> resource
+			close complete(resource)
 
-        if (status.failed):
-            close fail(Resource{error: status.error})
+		if (status.failed):
+			close fail(Resource{error: status.error})
 
-        await one:
-            timer(backoff):
-                backoff = min(backoff * 2, maxBackoff)
-            deadline:
-                close fail(Resource{error: "timeout"})
+		await one:
+			timer(backoff):
+				backoff = min(backoff * 2, maxBackoff)
+			deadline:
+				close fail(Resource{error: "timeout"})
 
 # --- Supporting activities ---
 
 activity ValidateRetailOrder(order: Order) -> (ValidateResult):
-    return validate(order)
+	return validate(order)
 
 activity ReserveInventory(items: []Item) -> (Reservation):
-    return reserve(items)
+	return reserve(items)
 
 activity ProcessPayment(payment: Payment) -> (PaymentResult):
-    return charge(payment)
+	return charge(payment)
 
 activity ShipRetailOrder(order: Order, reservation: Reservation):
-    ship(order, reservation)
+	ship(order, reservation)
 
 activity SendConfirmation(customer: Customer):
-    notify(customer)
+	notify(customer)
 
 activity LoadAccount(accountId: string) -> (Account):
-    return db.load(accountId)
+	return db.load(accountId)
 
 activity RecordAccountTransaction(accountId: string, txType: string):
-    db.record(accountId, txType)
+	db.record(accountId, txType)
 
 activity CloseAccount(accountId: string):
-    db.close(accountId)
+	db.close(accountId)
 
 activity DailyReconciliation(accountId: string):
-    reconcile(accountId)
+	reconcile(accountId)
 
 activity ReserveFlight(flight: FlightSpec) -> (FlightReservation):
-    return reserve(flight)
+	return reserve(flight)
 
 activity ReserveHotel(hotel: HotelSpec) -> (HotelReservation):
-    return reserve(hotel)
+	return reserve(hotel)
 
 activity ReserveCar(car: CarSpec) -> (CarReservation):
-    return reserve(car)
+	return reserve(car)
 
 activity ChargeBookingPayment(payment: Payment) -> (PaymentResult):
-    return charge(payment)
+	return charge(payment)
 
 activity CancelFlight(flightId: string):
-    cancel(flightId)
+	cancel(flightId)
 
 activity CancelHotel(hotelId: string):
-    cancel(hotelId)
+	cancel(hotelId)
 
 activity CancelCar(carId: string):
-    cancel(carId)
+	cancel(carId)
 
 activity ProcessBatchItem(item: Item) -> (ItemResult):
-    return process(item)
+	return process(item)
 
 activity AggregateResults(results: []ItemResult) -> (AggregateResult):
-    return aggregate(results)
+	return aggregate(results)
 
 activity Ingest(rawData: RawData) -> (IngestedData):
-    return ingest(rawData)
+	return ingest(rawData)
 
 activity Validate(data: IngestedData) -> (ValidationResult):
-    return validate(data)
+	return validate(data)
 
 activity Transform(data: ValidatedData) -> (TransformedData):
-    return transform(data)
+	return transform(data)
 
 activity Enrich(data: TransformedData) -> (EnrichedData):
-    return enrich(data)
+	return enrich(data)
 
 activity Load(data: EnrichedData):
-    load(data)
+	load(data)
 
 activity NotifyReviewers(doc: Document):
-    notify(doc.reviewers)
+	notify(doc.reviewers)
 
 activity PublishDocument(doc: Document):
-    publish(doc)
+	publish(doc)
 
 activity ArchiveDocument(doc: Document):
-    archive(doc)
+	archive(doc)
 
 activity CheckResourceStatus(resourceId: string) -> (ResourceStatus):
-    return check(resourceId)
+	return check(resourceId)
 
 activity GetResource(resourceId: string) -> (Resource):
-    return fetch(resourceId)
+	return fetch(resourceId)
 
 # --- Worker and namespace ---
 
 worker patternsWorker:
-    workflow OrderFulfillment
-    workflow AccountEntity
-    workflow BookingWorkflow
-    workflow CompensateBooking
-    workflow BatchProcessor
-    workflow DataPipeline
-    workflow DocumentApproval
-    workflow AwaitResourceReady
-    activity ValidateRetailOrder
-    activity ReserveInventory
-    activity ProcessPayment
-    activity ShipRetailOrder
-    activity SendConfirmation
-    activity LoadAccount
-    activity RecordAccountTransaction
-    activity CloseAccount
-    activity DailyReconciliation
-    activity ReserveFlight
-    activity ReserveHotel
-    activity ReserveCar
-    activity ChargeBookingPayment
-    activity CancelFlight
-    activity CancelHotel
-    activity CancelCar
-    activity ProcessBatchItem
-    activity AggregateResults
-    activity Ingest
-    activity Validate
-    activity Transform
-    activity Enrich
-    activity Load
-    activity NotifyReviewers
-    activity PublishDocument
-    activity ArchiveDocument
-    activity CheckResourceStatus
-    activity GetResource
+	workflow OrderFulfillment
+	workflow AccountEntity
+	workflow BookingWorkflow
+	workflow CompensateBooking
+	workflow BatchProcessor
+	workflow DataPipeline
+	workflow DocumentApproval
+	workflow AwaitResourceReady
+	activity ValidateRetailOrder
+	activity ReserveInventory
+	activity ProcessPayment
+	activity ShipRetailOrder
+	activity SendConfirmation
+	activity LoadAccount
+	activity RecordAccountTransaction
+	activity CloseAccount
+	activity DailyReconciliation
+	activity ReserveFlight
+	activity ReserveHotel
+	activity ReserveCar
+	activity ChargeBookingPayment
+	activity CancelFlight
+	activity CancelHotel
+	activity CancelCar
+	activity ProcessBatchItem
+	activity AggregateResults
+	activity Ingest
+	activity Validate
+	activity Transform
+	activity Enrich
+	activity Load
+	activity NotifyReviewers
+	activity PublishDocument
+	activity ArchiveDocument
+	activity CheckResourceStatus
+	activity GetResource
 
 namespace patterns:
-    worker patternsWorker
-        options:
-            task_queue: "patterns"
+	worker patternsWorker
+		options:
+			task_queue: "patterns"

@@ -35,10 +35,10 @@ A worker instantiation declares the versioning strategy its pool follows. This i
 
 ```twf
 namespace orders:
-    worker orderTypes
-        options:
-            task_queue: "orderProcessing"
-            versioning: deployment
+	worker orderTypes
+		options:
+			task_queue: "orderProcessing"
+			versioning: deployment
 ```
 
 | Value | Meaning |
@@ -55,8 +55,8 @@ Declare the new version as its own workflow with its own types; the caller (appl
 
 ```twf
 workflow PolicyV1(policy: PolicyV1Input) -> (PolicyV1Result):
-    ...
+	...
 
 workflow PolicyV2(policy: PolicyV2Input) -> (PolicyV2Result):
-    ...
+	...
 ```

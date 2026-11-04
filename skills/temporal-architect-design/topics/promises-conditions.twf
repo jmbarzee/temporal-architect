@@ -4,201 +4,201 @@
 # --- Start-now, wait-later (promises with activities) ---
 
 workflow ParallelProcessing(items: Items) -> (Result):
-    promise handleA <- activity ProcessA(items.a)
-    promise handleB <- activity ProcessB(items.b)
+	promise handleA <- activity ProcessA(items.a)
+	promise handleB <- activity ProcessB(items.b)
 
-    activity QuickSetup(items)
+	activity QuickSetup(items)
 
-    await handleA -> resultA
-    await handleB -> resultB
+	await handleA -> resultA
+	await handleB -> resultB
 
-    close complete(Result{a: resultA, b: resultB})
+	close complete(Result{a: resultA, b: resultB})
 
 # --- Promise with child workflow ---
 
 workflow WorkflowWithAsyncChild(input: Input) -> (Result):
-    promise childHandle <- workflow SlowChild(input.data)
+	promise childHandle <- workflow SlowChild(input.data)
 
-    activity QuickTask(input)
+	activity QuickTask(input)
 
-    await childHandle -> childResult
+	await childHandle -> childResult
 
-    close complete(Result{childResult})
+	close complete(Result{childResult})
 
 # --- Promise with timer ---
 
 workflow TimedOperation(data: Data) -> (Result):
-    promise timeout <- timer(5m)
+	promise timeout <- timer(5m)
 
-    promise work <- activity LongProcess(data)
+	promise work <- activity LongProcess(data)
 
-    await one:
-        work -> result:
-            close complete(Result{data: result})
-        timeout:
-            close fail(Result{error: "timed out"})
+	await one:
+		work -> result:
+			close complete(Result{data: result})
+		timeout:
+			close fail(Result{error: "timed out"})
 
 # --- Update handler waits on condition ---
 
 workflow ClusterManager(config: Config):
-    state:
-        condition clusterStarted
+	state:
+		condition clusterStarted
 
-    signal Shutdown():
-        shutdownRequested = true
+	signal Shutdown():
+		shutdownRequested = true
 
-    update WaitUntilStarted() -> (ClusterState):
-        await clusterStarted
-        return ClusterState{started: true}
+	update WaitUntilStarted() -> (ClusterState):
+		await clusterStarted
+		return ClusterState{started: true}
 
-    query GetStatus() -> (string):
-        return status
+	query GetStatus() -> (string):
+		return status
 
-    status = "provisioning"
-    activity ProvisionCluster(config)
-    activity StartCluster(config)
-    set clusterStarted
-    status = "running"
+	status = "provisioning"
+	activity ProvisionCluster(config)
+	activity StartCluster(config)
+	set clusterStarted
+	status = "running"
 
-    await signal Shutdown
-    close complete
+	await signal Shutdown
+	close complete
 
 # --- Condition racing against timer ---
 
 workflow DepositCollector(accountId: string) -> (CollectionResult):
-    state:
-        condition thresholdReached
+	state:
+		condition thresholdReached
 
-    signal Deposit(amount: decimal):
-        balance = balance + amount
-        if (balance >= 1000):
-            set thresholdReached
+	signal Deposit(amount: decimal):
+		balance = balance + amount
+		if (balance >= 1000):
+			set thresholdReached
 
-    balance = 0
+	balance = 0
 
-    await one:
-        thresholdReached:
-            close complete(CollectionResult{status: "threshold_reached", balance: balance})
-        timer(30d):
-            close complete(CollectionResult{status: "timeout", balance: balance})
+	await one:
+		thresholdReached:
+			close complete(CollectionResult{status: "threshold_reached", balance: balance})
+		timer(30d):
+			close complete(CollectionResult{status: "timeout", balance: balance})
 
 # --- Promise racing in await one ---
 
 workflow ResilientProcess(data: Data) -> (Result):
-    signal Cancel():
-        cancelRequested = true
+	signal Cancel():
+		cancelRequested = true
 
-    promise handle <- activity LongProcess(data)
+	promise handle <- activity LongProcess(data)
 
-    activity PrepareOutput(data)
+	activity PrepareOutput(data)
 
-    await one:
-        handle -> result:
-            close complete(Result{data: result})
-        signal Cancel:
-            close fail(Result{error: "cancelled"})
+	await one:
+		handle -> result:
+			close complete(Result{data: result})
+		signal Cancel:
+			close fail(Result{error: "cancelled"})
 
 # --- Promise with nexus workflow ---
 
 workflow CrossNamespaceAsync(payment: Payment) -> (Result):
-    promise payHandle <- nexus BillingEndpoint BillingService.ChargePayment(payment)
+	promise payHandle <- nexus BillingEndpoint BillingService.ChargePayment(payment)
 
-    activity PrepareReceipt(payment)
+	activity PrepareReceipt(payment)
 
-    await payHandle -> paymentResult
+	await payHandle -> paymentResult
 
-    close complete(Result{paymentId: paymentResult.id})
+	close complete(Result{paymentId: paymentResult.id})
 
 # --- Supporting activity definitions ---
 
 activity ProcessA(data: Data) -> (ResultA):
-    return processA(data)
+	return processA(data)
 
 activity ProcessB(data: Data) -> (ResultB):
-    return processB(data)
+	return processB(data)
 
 activity QuickSetup(items: Items):
-    setup(items)
+	setup(items)
 
 activity QuickTask(input: Input):
-    quick(input)
+	quick(input)
 
 activity LongProcess(data: Data) -> (ProcessResult):
-    return longProcess(data)
+	return longProcess(data)
 
 activity PrepareOutput(data: Data):
-    prepare(data)
+	prepare(data)
 
 activity ProvisionCluster(config: Config):
-    provision(config)
+	provision(config)
 
 activity StartCluster(config: Config):
-    start(config)
+	start(config)
 
 activity PrepareReceipt(payment: Payment):
-    prepare(payment)
+	prepare(payment)
 
 # --- Supporting workflow definitions ---
 
 workflow SlowChild(data: Data) -> (ChildResult):
-    activity DoSlowWork(data) -> result
-    close complete(ChildResult{result})
+	activity DoSlowWork(data) -> result
+	close complete(ChildResult{result})
 
 activity DoSlowWork(data: Data) -> (WorkResult):
-    return slowWork(data)
+	return slowWork(data)
 
 workflow BillingChargeWorkflow(payment: Payment) -> (PaymentResult):
-    id_scheme: "charge-{payment.id}"
-    activity ChargeCard(payment) -> result
-    close complete(PaymentResult{id: result.id})
+	id_scheme: "charge-{payment.id}"
+	activity ChargeCard(payment) -> result
+	close complete(PaymentResult{id: result.id})
 
 activity ChargeCard(payment: Payment) -> (ChargeResult):
-    return charge(payment)
+	return charge(payment)
 
 # --- Nexus service definition ---
 
 nexus service BillingService:
-    async ChargePayment workflow BillingChargeWorkflow
+	async ChargePayment workflow BillingChargeWorkflow
 
 # --- Worker and namespace definitions ---
 
 worker promisesWorker:
-    workflow ParallelProcessing
-    workflow WorkflowWithAsyncChild
-    workflow TimedOperation
-    workflow ClusterManager
-    workflow DepositCollector
-    workflow ResilientProcess
-    workflow CrossNamespaceAsync
-    workflow SlowChild
-    activity ProcessA
-    activity ProcessB
-    activity QuickSetup
-    activity QuickTask
-    activity LongProcess
-    activity PrepareOutput
-    activity ProvisionCluster
-    activity StartCluster
-    activity PrepareReceipt
-    activity DoSlowWork
+	workflow ParallelProcessing
+	workflow WorkflowWithAsyncChild
+	workflow TimedOperation
+	workflow ClusterManager
+	workflow DepositCollector
+	workflow ResilientProcess
+	workflow CrossNamespaceAsync
+	workflow SlowChild
+	activity ProcessA
+	activity ProcessB
+	activity QuickSetup
+	activity QuickTask
+	activity LongProcess
+	activity PrepareOutput
+	activity ProvisionCluster
+	activity StartCluster
+	activity PrepareReceipt
+	activity DoSlowWork
 
 worker billingWorker:
-    workflow BillingChargeWorkflow
-    activity ChargeCard
-    nexus service BillingService
+	workflow BillingChargeWorkflow
+	activity ChargeCard
+	nexus service BillingService
 
 # Two namespaces: billing owns the service and exposes the endpoint;
 # promises is the caller — CrossNamespaceAsync reaches across the boundary.
 
 namespace billing:
-    worker billingWorker
-        options:
-            task_queue: "billing"
-    nexus endpoint BillingEndpoint
-        options:
-            task_queue: "billing"
+	worker billingWorker
+		options:
+			task_queue: "billing"
+	nexus endpoint BillingEndpoint
+		options:
+			task_queue: "billing"
 
 namespace promises:
-    worker promisesWorker
-        options:
-            task_queue: "promises"
+	worker promisesWorker
+		options:
+			task_queue: "promises"

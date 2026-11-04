@@ -4,126 +4,126 @@
 # --- Basic timer: delayed notification ---
 
 workflow DelayedNotification(userId: string, delay: duration):
-    await timer(delay)
-    activity SendNotification(userId)
+	await timer(delay)
+	activity SendNotification(userId)
 
 # --- Deadline pattern: race between operation and timer ---
 
 workflow ProcessWithDeadline(data: Data) -> (Result):
-    await one:
-        activity LongOperation(data) -> result:
-            close complete(Result{success: true, data: result})
-        timer(1h):
-            activity Cleanup(data)
-            close fail(Result{success: false, error: "deadline exceeded"})
+	await one:
+		activity LongOperation(data) -> result:
+			close complete(Result{success: true, data: result})
+		timer(1h):
+			activity Cleanup(data)
+			close fail(Result{success: false, error: "deadline exceeded"})
 
 # --- Periodic execution within workflow ---
 
 workflow HealthMonitor(resourceId: string):
-    count = 0
+	count = 0
 
-    for:
-        activity CheckHealth(resourceId)
-        await timer(5m)
-        count = count + 1
-        if (count > 1000):
-            close continue_as_new(resourceId)
+	for:
+		activity CheckHealth(resourceId)
+		await timer(5m)
+		count = count + 1
+		if (count > 1000):
+			close continue_as_new(resourceId)
 
 # --- Polling with backoff ---
 
 workflow WaitForResource(resourceId: string) -> (Resource):
-    promise deadline <- timer(30m)
-    backoff = 1s
-    maxBackoff = 60s
+	promise deadline <- timer(30m)
+	backoff = 1s
+	maxBackoff = 60s
 
-    for:
-        activity CheckResource(resourceId) -> resource
-        if (resource.ready):
-            close complete(resource)
+	for:
+		activity CheckResource(resourceId) -> resource
+		if (resource.ready):
+			close complete(resource)
 
-        await one:
-            timer(backoff):
-                backoff = min(backoff * 2, maxBackoff)
-            deadline:
-                close fail(Resource{error: "timeout"})
+		await one:
+			timer(backoff):
+				backoff = min(backoff * 2, maxBackoff)
+			deadline:
+				close fail(Resource{error: "timeout"})
 
 # --- Deadline with periodic check ---
 
 workflow WaitForCompletion(jobId: string) -> (JobResult):
-    checks = 0
+	checks = 0
 
-    for:
-        activity GetJobStatus(jobId) -> status
-        if (status.complete):
-            close complete(JobResult{status: "complete", data: status.data})
+	for:
+		activity GetJobStatus(jobId) -> status
+		if (status.complete):
+			close complete(JobResult{status: "complete", data: status.data})
 
-        checks = checks + 1
-        if (checks > 100):
-            close complete(JobResult{status: "timeout"})
+		checks = checks + 1
+		if (checks > 100):
+			close complete(JobResult{status: "timeout"})
 
-        await timer(30s)
+		await timer(30s)
 
 # --- Polling with continue-as-new for history management ---
 
 workflow LongPoller(resourceId: string, iteration: int) -> (Resource):
-    count = 0
+	count = 0
 
-    for:
-        activity PollResource(resourceId) -> status
-        if (status.ready):
-            activity FetchResource(resourceId) -> resource
-            close complete(resource)
+	for:
+		activity PollResource(resourceId) -> status
+		if (status.ready):
+			activity FetchResource(resourceId) -> resource
+			close complete(resource)
 
-        await timer(5s)
-        count = count + 1
-        if (count >= 500):
-            close continue_as_new(resourceId, iteration + 1)
+		await timer(5s)
+		count = count + 1
+		if (count >= 500):
+			close continue_as_new(resourceId, iteration + 1)
 
 # --- Supporting activities ---
 
 activity SendNotification(userId: string):
-    send(userId)
+	send(userId)
 
 activity LongOperation(data: Data) -> (OperationResult):
-    return process(data)
+	return process(data)
 
 activity Cleanup(data: Data):
-    cleanup(data)
+	cleanup(data)
 
 activity CheckHealth(resourceId: string) -> (HealthStatus):
-    return check(resourceId)
+	return check(resourceId)
 
 activity CheckResource(resourceId: string) -> (Resource):
-    return check(resourceId)
+	return check(resourceId)
 
 activity GetJobStatus(jobId: string) -> (JobStatus):
-    return get_status(jobId)
+	return get_status(jobId)
 
 activity PollResource(resourceId: string) -> (ResourceStatus):
-    return poll(resourceId)
+	return poll(resourceId)
 
 activity FetchResource(resourceId: string) -> (Resource):
-    return fetch(resourceId)
+	return fetch(resourceId)
 
 # --- Worker and namespace ---
 
 worker schedulingWorker:
-    workflow DelayedNotification
-    workflow ProcessWithDeadline
-    workflow HealthMonitor
-    workflow WaitForResource
-    workflow WaitForCompletion
-    workflow LongPoller
-    activity SendNotification
-    activity LongOperation
-    activity Cleanup
-    activity CheckHealth
-    activity CheckResource
-    activity GetJobStatus
-    activity PollResource
-    activity FetchResource
+	workflow DelayedNotification
+	workflow ProcessWithDeadline
+	workflow HealthMonitor
+	workflow WaitForResource
+	workflow WaitForCompletion
+	workflow LongPoller
+	activity SendNotification
+	activity LongOperation
+	activity Cleanup
+	activity CheckHealth
+	activity CheckResource
+	activity GetJobStatus
+	activity PollResource
+	activity FetchResource
 
 namespace scheduling:
-    worker schedulingWorker
-        options:
-            task_queue: "scheduling"
+	worker schedulingWorker
+		options:
+			task_queue: "scheduling"

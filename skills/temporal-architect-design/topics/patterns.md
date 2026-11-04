@@ -35,11 +35,11 @@ Cap concurrency by fanning out per chunk:
 
 ```twf
 workflow RateLimitedBatch(items: []Item) -> (BatchResult):
-    for (batch in chunk(items, 10)):
-        await all:
-            for (item in batch):
-                activity ProcessItem(item)
-    close complete(BatchResult{})
+	for (batch in chunk(items, 10)):
+		await all:
+			for (item in batch):
+				activity ProcessItem(item)
+	close complete(BatchResult{})
 ```
 
 "First successful result" is the same fan-out with an SDK-level selection step after it.
