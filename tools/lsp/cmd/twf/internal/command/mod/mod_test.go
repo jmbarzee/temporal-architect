@@ -40,6 +40,9 @@ func TestInitWritesTheGivenPath(t *testing.T) {
 	if code, _, errOut := initIn(t, dir, "example.com/demo"); code == 0 || !strings.Contains(errOut, "already exists") {
 		t.Errorf("second init: exit %d, stderr %q", code, errOut)
 	}
+	if code, _, errOut := initIn(t, dir); code == 0 || !strings.Contains(errOut, "already exists") || strings.Contains(errOut, "for example") {
+		t.Errorf("init with no path in a module root: exit %d, stderr %q", code, errOut)
+	}
 }
 
 func TestInitRefuses(t *testing.T) {

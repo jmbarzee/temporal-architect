@@ -11,3 +11,10 @@ func TestOriginURL(t *testing.T) {
 		t.Error("no origin must give none")
 	}
 }
+
+func TestOriginURLIgnoresComments(t *testing.T) {
+	config := "[remote \"origin\"] # main remote\n\turl = git@b.com:y/z.git ; ssh\n"
+	if got, ok := originURL(config); !ok || got != "git@b.com:y/z.git" {
+		t.Errorf("originURL = %q, %v", got, ok)
+	}
+}

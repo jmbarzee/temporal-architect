@@ -39,13 +39,10 @@ var AllSources = []Source{Enclosing, Imports, Git, Placeholder}
 // that path is a valid module path. It never overwrites (O_EXCL). The error
 // text follows `go mod init`'s.
 func Create(dir, path string) error {
+	if err := CheckDir(dir); err != nil {
+		return err
+	}
 	dir = pipeline.Canonicalize(dir)
-	if existing := moduleFileIn(dir); existing != "" {
-		return fmt.Errorf("%s already exists", existing)
-	}
-	if dir == pipeline.TempRoot() {
-		return fmt.Errorf("cannot create a module in the temp directory %s (a twf.mod there is ignored)", dir)
-	}
 	if module.IsLocal(path) || filepath.IsAbs(path) {
 		msg := fmt.Sprintf("malformed module path %q: is a local import path", path)
 		if ex := Example(dir); ex != "" {
@@ -65,6 +62,19 @@ func Create(dir, path string) error {
 		err = cerr
 	}
 	return err
+}
+
+// CheckDir reports why a twf.mod cannot be created in dir: one already exists
+// there in some letter case, or dir is the temp root.
+func CheckDir(dir string) error {
+	dir = pipeline.Canonicalize(dir)
+	if existing := moduleFileIn(dir); existing != "" {
+		return fmt.Errorf("%s already exists", existing)
+	}
+	if dir == pipeline.TempRoot() {
+		return fmt.Errorf("cannot create a module in the temp directory %s (a twf.mod there is ignored)", dir)
+	}
+	return nil
 }
 
 // EnclosingModuleFile returns the twf.mod of the module that a module at dir
@@ -365,12 +375,12 @@ func findGitConfig(dir string) (string, string, error) {
 func originURL(config string) (string, bool) {
 	inOrigin := false
 	for _, raw := range strings.Split(config, "\n") {
-		line := strings.TrimSpace(raw)
-		if line == "" || line[0] == '#' || line[0] == ';' {
+		line := strings.TrimSpace(stripGitComment(raw))
+		if line == "" {
 			continue
 		}
 		if strings.HasPrefix(line, "[") {
-			section := strings.Trim(line, "[]")
+			section, _, _ := strings.Cut(strings.TrimPrefix(line, "["), "]")
 			name, sub, _ := strings.Cut(section, " ")
 			inOrigin = strings.EqualFold(name, "remote") && strings.Trim(strings.TrimSpace(sub), `"`) == "origin"
 			continue
@@ -384,4 +394,18 @@ func originURL(config string) (string, bool) {
 		}
 	}
 	return "", false
+}
+
+// stripGitComment drops a Git config comment (`#` or `;` outside quotes).
+func stripGitComment(line string) string {
+	quoted := false
+	for i, r := range line {
+		switch {
+		case r == '"':
+			quoted = !quoted
+		case !quoted && (r == '#' || r == ';'):
+			return line[:i]
+		}
+	}
+	return line
 }

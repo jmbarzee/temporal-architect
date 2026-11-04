@@ -185,3 +185,17 @@ func TestSoftKeywordsAsPackageNames(t *testing.T) {
 		}
 	}
 }
+
+// TestClauseSurvivesALeadingBOMOrIndentedComment: neither is text before the
+// clause, so the clause is still first and is never skipped by recovery.
+func TestClauseSurvivesALeadingBOMOrIndentedComment(t *testing.T) {
+	for name, src := range map[string]string{
+		"BOM":              "\ufeffpackage billing\n",
+		"indented comment": "    # note\npackage billing\n",
+	} {
+		file, _ := ParseFileAll(src)
+		if file.Package != "billing" || file.ClauseExcluded {
+			t.Errorf("%s: Package=%q excluded=%v, want billing kept", name, file.Package, file.ClauseExcluded)
+		}
+	}
+}

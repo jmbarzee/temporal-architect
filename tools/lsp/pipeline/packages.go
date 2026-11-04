@@ -117,7 +117,8 @@ func (x *expander) exclude(files []*parsed) []*resolver.ResolveError {
 	firstRoot := map[string]*mod{}
 	for _, m := range mods {
 		mp, ok := modPath[m.root]
-		if !ok {
+		if !ok || !hasKept(m.files) {
+			// A module left with no files by step 0 claims no path.
 			continue
 		}
 		key := strings.ToLower(mp)
@@ -262,16 +263,14 @@ func (x *expander) exclude(files []*parsed) []*resolver.ResolveError {
 	return errs
 }
 
-// clauseOf picks the clause a directory keeps: the path's assumed name when it
-// is usable and some file declares it, else the clause of the byte-wise first
+// clauseOf picks the clause a directory keeps: the path's assumed name when
+// some file declares it (a recovered keyword clause included), else the clause of the byte-wise first
 // file by canonical name, a file with a clause beating a clause-less one. ""
 // is the clause-less default package.
 func clauseOf(files []*parsed, assumed string) string {
-	if module.Usable(assumed) {
-		for _, p := range files {
-			if p.hasClause() && p.file.Package == assumed {
-				return assumed
-			}
+	for _, p := range files {
+		if p.hasClause() && p.file.Package == assumed {
+			return assumed
 		}
 	}
 	byName := append([]*parsed(nil), files...)
@@ -282,6 +281,15 @@ func clauseOf(files []*parsed, assumed string) string {
 		}
 	}
 	return ""
+}
+
+func hasKept(files []*parsed) bool {
+	for _, p := range files {
+		if !p.excluded {
+			return true
+		}
+	}
+	return false
 }
 
 func describeClause(p *parsed) string {

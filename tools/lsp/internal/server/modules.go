@@ -68,6 +68,9 @@ func executeCommandHandler(store *DocumentStore) protocol.WorkspaceExecuteComman
 		if dir == "" || path == "" {
 			return nil, fmt.Errorf("%s takes a directory and a module path", createModuleFileCommand)
 		}
+		if !isFolder(store.Folders(), dir) {
+			return nil, fmt.Errorf("%s writes only at a workspace folder's root, not %s", createModuleFileCommand, dir)
+		}
 		if err := modinit.Create(dir, path); err != nil {
 			context.Notify(protocol.ServerWindowShowMessage, protocol.ShowMessageParams{
 				Type:    protocol.MessageTypeError,
@@ -90,8 +93,22 @@ func didChangeWatchedFilesHandler(store *DocumentStore) protocol.WorkspaceDidCha
 	}
 }
 
+// isFolder reports whether dir is one of the workspace folders.
+func isFolder(folders []string, dir string) bool {
+	c := pipeline.Canonicalize(dir)
+	for _, f := range folders {
+		if pipeline.Canonicalize(f) == c {
+			return true
+		}
+	}
+	return false
+}
+
 // watchModuleFiles asks the client to report changes to any twf.mod. The
-// request runs in the background: a handler must not wait on the client.
+// request runs in the background: a handler must not wait on the client. (The
+// LSP 3.17 capability types drop `didChangeWatchedFiles`, so a client without
+// dynamic registration rejects it, harmlessly.) A twf.mod above every folder
+// is not watched; edits there are seen on the next buffer change.
 func watchModuleFiles(context *glsp.Context) {
 	go context.Call(protocol.ServerClientRegisterCapability, protocol.RegistrationParams{
 		Registrations: []protocol.Registration{{

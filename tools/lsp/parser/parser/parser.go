@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"strings"
 	"fmt"
 	"sort"
 
@@ -151,6 +152,7 @@ var temporalKeywords = map[token.TokenType]bool{
 
 // ParseFile parses a .twf source string into an AST File.
 func ParseFile(input string) (*ast.File, error) {
+	input = strings.TrimPrefix(input, "\ufeff") // a leading BOM is not text
 	l := lexer.New(input)
 	p := &Parser{lex: l}
 	p.advance() // fill current
@@ -161,7 +163,9 @@ func ParseFile(input string) (*ast.File, error) {
 
 	for p.current.Type != token.EOF {
 		first := !sawClause
-		if p.current.Type != token.NEWLINE && p.current.Type != token.COMMENT {
+		switch p.current.Type {
+		case token.NEWLINE, token.COMMENT, token.INDENT, token.DEDENT:
+		default:
 			sawClause = true
 		}
 		switch {
@@ -208,6 +212,7 @@ func ParseFile(input string) (*ast.File, error) {
 // possible instead of stopping at the first one. It returns a partial AST
 // (which may have successfully parsed definitions) alongside all parse errors.
 func ParseFileAll(input string) (*ast.File, []*ParseError) {
+	input = strings.TrimPrefix(input, "\ufeff") // a leading BOM is not text
 	l := lexer.New(input)
 	p := &Parser{lex: l, collecting: true}
 	p.advance() // fill current
@@ -219,7 +224,9 @@ func ParseFileAll(input string) (*ast.File, []*ParseError) {
 	for p.current.Type != token.EOF {
 		start := p.current
 		first := !sawClause
-		if p.current.Type != token.NEWLINE && p.current.Type != token.COMMENT {
+		switch p.current.Type {
+		case token.NEWLINE, token.COMMENT, token.INDENT, token.DEDENT:
+		default:
 			sawClause = true
 		}
 		switch {

@@ -197,3 +197,33 @@ func TestFailedClauseKeepsRecoveredName(t *testing.T) {
 		t.Errorf("kept %v: a recovered clause keeps its file, an unrecoverable one does not", defs)
 	}
 }
+
+func TestStepZeroOnlyModuleClaimsNoPath(t *testing.T) {
+	root := layout(t, map[string]string{
+		"a/twf.mod": "module m\n",
+		"a/x.twf":   "package\n",
+		"b/twf.mod": "module m\n",
+		"b/b.twf":   wf("", "B"),
+	})
+	diags, defs := check(t, root)
+	for _, d := range diags {
+		if strings.Contains(d, "DUPLICATE_MODULE") {
+			t.Errorf("a module with no kept files won DUPLICATE_MODULE: %q", diags)
+		}
+	}
+	if strings.Join(defs, ",") != "b/b.twf" {
+		t.Errorf("kept %v, want b/b.twf", defs)
+	}
+}
+
+func TestAssumedKeywordClauseWinsItsDirectory(t *testing.T) {
+	root := layout(t, map[string]string{
+		"twf.mod":     "module m\n",
+		"nexus/a.twf": wf("aaa", "A"),
+		"nexus/b.twf": "package nexus\n\nworkflow B():\n    close complete(\"ok\")\n",
+	})
+	_, defs := check(t, root)
+	if strings.Join(defs, ",") != "nexus/b.twf" {
+		t.Errorf("kept %v, want the file declaring the assumed name", defs)
+	}
+}

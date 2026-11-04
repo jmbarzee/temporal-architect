@@ -41,6 +41,10 @@ func runInit(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	if len(args) == 0 {
+		if err := modinit.CheckDir(cwd); err != nil {
+			fmt.Fprintf(stderr, "twf mod init: %v\n", err)
+			return 1
+		}
 		cands := modinit.Suggest(cwd, modinit.AllSources)
 		if len(cands) == 0 {
 			fmt.Fprintln(stderr, "twf mod init: a module path is required (twf mod init <module path>)")

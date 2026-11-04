@@ -76,3 +76,17 @@ func TestCreateModuleFileActionNotOfferedAboveRepositories(t *testing.T) {
 		t.Errorf("offered %+v above a repository", actions)
 	}
 }
+
+func TestCreateModuleFileCommandOnlyAtAFolderRoot(t *testing.T) {
+	dir := t.TempDir()
+	store := NewDocumentStore()
+	store.SetFolders([]string{filepath.Join(dir, "ws")})
+	ctx := &glsp.Context{Notify: func(string, any) {}}
+	_, err := executeCommandHandler(store)(ctx, &protocol.ExecuteCommandParams{Command: createModuleFileCommand, Arguments: []any{dir, "demo"}})
+	if err == nil {
+		t.Error("a directory that is not a workspace folder must be refused")
+	}
+	if _, statErr := os.Stat(filepath.Join(dir, "twf.mod")); statErr == nil {
+		t.Error("twf.mod was written")
+	}
+}
