@@ -9,5 +9,5 @@ import "acme/beta"
 # looks in gamma and does not resolve — issue #136.
 
 workflow Gamma(id):
-    workflow Process(id) -> out
-    close complete(out)
+	workflow Process(id) -> out
+	close complete(out)
