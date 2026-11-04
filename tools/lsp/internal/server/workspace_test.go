@@ -15,6 +15,9 @@ import (
 func writeTWF(t *testing.T, dir, name, content string) (abs, uri string) {
 	t.Helper()
 	abs = filepath.Join(dir, name)
+	if err := os.MkdirAll(filepath.Dir(abs), 0o755); err != nil {
+		t.Fatal(err)
+	}
 	if err := os.WriteFile(abs, []byte(content), 0o644); err != nil {
 		t.Fatalf("write %s: %v", abs, err)
 	}
@@ -24,6 +27,14 @@ func writeTWF(t *testing.T, dir, name, content string) (abs, uri string) {
 // canonical is how a Canonical-mode run spells the file at abs.
 func canonical(abs string) string {
 	return filepath.ToSlash(pipeline.Canonicalize(abs))
+}
+
+// writeModule writes a twf.mod declaring path at dir.
+func writeModule(t *testing.T, dir, path string) {
+	t.Helper()
+	if err := os.WriteFile(filepath.Join(dir, "twf.mod"), []byte("module "+path+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func hasKind(errs []*resolver.ResolveError, kind resolver.ErrorKind) bool {
@@ -42,7 +53,8 @@ func hasKind(errs []*resolver.ResolveError, kind resolver.ErrorKind) bool {
 func TestWorkspaceCrossPackageResolves(t *testing.T) {
 	dir := t.TempDir()
 
-	writeTWF(t, dir, "orderer.twf", `package orderer
+	writeModule(t, dir, "acme")
+	writeTWF(t, dir, "orderer/orderer.twf", `package orderer
 
 workflow ChannelJoin(id):
     close complete(id)
@@ -55,7 +67,7 @@ workflow ChannelJoin(id):
     workflow orderer.ChannelJoin(id) -> res
     close complete(res)
 `
-	_, peerURI := writeTWF(t, dir, "peer.twf", peer)
+	_, peerURI := writeTWF(t, dir, "peer/peer.twf", peer)
 
 	store := NewDocumentStore()
 	store.SetFolders([]string{dir})
@@ -87,7 +99,8 @@ workflow W():
     workflow external.Thing() -> r
     close complete(r)
 `
-	_, soloURI := writeTWF(t, dir, "solo.twf", solo)
+	writeModule(t, dir, "acme")
+	_, soloURI := writeTWF(t, dir, "solo/solo.twf", solo)
 
 	store := NewDocumentStore()
 	store.SetFolders([]string{dir})
@@ -154,10 +167,11 @@ workflow Gamma(id):
     workflow Process(id) -> out
     close complete(out)
 `
-	alphaAbs, alphaURI := writeTWF(t, dir, "alpha.twf", alpha)
+	writeModule(t, dir, "acme")
+	alphaAbs, alphaURI := writeTWF(t, dir, "alpha/alpha.twf", alpha)
 	_ = alphaAbs
-	writeTWF(t, dir, "beta.twf", beta)
-	gammaAbs, gammaURI := writeTWF(t, dir, "gamma.twf", gamma)
+	writeTWF(t, dir, "beta/beta.twf", beta)
+	gammaAbs, gammaURI := writeTWF(t, dir, "gamma/gamma.twf", gamma)
 
 	store := NewDocumentStore()
 	store.SetFolders([]string{dir})
@@ -197,7 +211,8 @@ func TestWorkspaceSiblingErrorDoesNotLeak(t *testing.T) {
 
 	// Sibling's undefined-activity error lands on line 6 — a line the buffer
 	// below does not own — so it must be filtered out.
-	writeTWF(t, dir, "sib.twf", `package sib
+	writeModule(t, dir, "acme")
+	writeTWF(t, dir, "sib/sib.twf", `package sib
 
 
 
@@ -209,7 +224,7 @@ workflow Sib():
 workflow Main():
     close complete("ok")
 `
-	_, mainURI := writeTWF(t, dir, "main.twf", main)
+	_, mainURI := writeTWF(t, dir, "main/main.twf", main)
 
 	store := NewDocumentStore()
 	store.SetFolders([]string{dir})
@@ -472,5 +487,54 @@ func TestWorkspaceSecondURIKeepsUnsavedText(t *testing.T) {
 	store.Open("file://"+filepath.Join(link, "w.twf"), disk)
 	if !hasKind(doc.ResolveErrs, resolver.ErrUndefinedActivity) {
 		t.Errorf("the second URI's disk text replaced the unsaved edit: %v", doc.ResolveErrs)
+	}
+}
+
+// TestWorkspacePackageOutsideModule: a packaged buffer with no twf.mod above it
+// reports PACKAGE_OUTSIDE_MODULE at its clause and nothing else.
+func TestWorkspacePackageOutsideModule(t *testing.T) {
+	dir := t.TempDir()
+	buf := "package fabric\n\nworkflow W():\n    activity Ghost()\n"
+	_, uri := writeTWF(t, dir, "fabric/f.twf", buf)
+	store := NewDocumentStore()
+	store.SetFolders([]string{dir})
+	doc := store.Open(uri, buf)
+	if len(doc.ResolveErrs) != 1 || doc.ResolveErrs[0].Kind != resolver.ErrPackageOutsideModule {
+		t.Errorf("got %v, want one PACKAGE_OUTSIDE_MODULE", doc.ResolveErrs)
+	}
+}
+
+// TestWorkspaceBrokenModuleShowsOnTheBuffer: a buffer whose twf.mod is broken
+// gets the MODULE_FILE_INVALID at its 1:1, and its module root is walked even
+// when it lies above every workspace folder.
+func TestWorkspaceBrokenModuleShowsOnTheBuffer(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "twf.mod"), []byte("modul x\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	buf := "package fabric\n\nworkflow W():\n    close complete(\"ok\")\n"
+	_, uri := writeTWF(t, dir, "fabric/f.twf", buf)
+	store := NewDocumentStore()
+	store.SetFolders([]string{filepath.Join(dir, "fabric")})
+	doc := store.Open(uri, buf)
+	if len(doc.ResolveErrs) != 1 || doc.ResolveErrs[0].Kind != resolver.ErrModuleFileInvalid || doc.ResolveErrs[0].Line != 1 {
+		t.Errorf("got %v, want the module's MODULE_FILE_INVALID at 1:1", doc.ResolveErrs)
+	}
+}
+
+// TestWorkspaceModuleRootAboveFolderResolves: a package importing a sibling
+// package resolves when the workspace folder is only the buffer's package
+// directory, since the module root is a home input.
+func TestWorkspaceModuleRootAboveFolderResolves(t *testing.T) {
+	dir := t.TempDir()
+	writeModule(t, dir, "acme")
+	writeTWF(t, dir, "orderer/orderer.twf", "package orderer\n\nworkflow Join(id):\n    close complete(id)\n")
+	buf := "package peer\n\nimport \"acme/orderer\"\n\nworkflow P(id):\n    workflow orderer.Join(id) -> r\n    close complete(r)\n"
+	_, uri := writeTWF(t, dir, "peer/peer.twf", buf)
+	store := NewDocumentStore()
+	store.SetFolders([]string{filepath.Join(dir, "peer")})
+	doc := store.Open(uri, buf)
+	if hasKind(doc.ResolveErrs, resolver.ErrUnresolvedImport) || hasKind(doc.ResolveErrs, resolver.ErrUndefinedWorkflow) {
+		t.Errorf("module root not walked: %v", doc.ResolveErrs)
 	}
 }

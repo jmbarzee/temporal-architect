@@ -17,6 +17,8 @@ require (
 	github.com/tliron/commonlog v0.2.18
 )
 
+require golang.org/x/mod v0.30.0
+
 require (
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.6 // indirect

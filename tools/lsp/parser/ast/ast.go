@@ -51,6 +51,18 @@ type File struct {
 	Package     string
 	Imports     []*ImportDecl
 	Definitions []Definition
+
+	// PackagePos is where the file's package clause starts; zero when the file
+	// is clause-less. Runtime-only, like the fields below.
+	PackagePos Pos
+	// PackageRecovered marks a clause that failed to parse (`package a.b`,
+	// `package nexus`) whose name was recovered from the token after `package`:
+	// the file keeps that package and reports the parse error.
+	PackageRecovered bool
+	// ClauseExcluded marks a file whose clause failed with nothing to recover,
+	// or that has a `package` line other than its first clause: it takes no
+	// part in packages or resolution and reports only its parse errors.
+	ClauseExcluded bool
 }
 
 // ImportDecl is a single `import [alias] "path"` declaration at file scope.

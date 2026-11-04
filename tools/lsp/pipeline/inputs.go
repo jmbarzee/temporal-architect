@@ -30,6 +30,11 @@ type expander struct {
 	listings map[string][]string
 	seen     map[string]bool
 	out      []inputFile
+
+	mods *modules
+	// modFilePos is the input position of each module's first file, keyed by
+	// the twf.mod's spelling, for diagnostic order.
+	modFilePos map[string]int
 }
 
 func newExpander(mode Mode, overlays map[string]string) (*expander, error) {
@@ -45,6 +50,8 @@ func newExpander(mode Mode, overlays map[string]string) (*expander, error) {
 		return nil, fmt.Errorf("working directory: %w", err)
 	}
 	e.physCwd = e.canonical(cwd)
+	e.mods = newModules(e.canonical(os.TempDir()))
+	e.modFilePos = map[string]int{}
 	for p, text := range overlays {
 		e.overlays[e.canonical(p)] = text
 	}

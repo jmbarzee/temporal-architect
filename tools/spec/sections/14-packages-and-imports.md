@@ -17,7 +17,11 @@ package_clause ::= 'package' IDENT NEWLINE
 ```
 
 - **At most one** `package` clause per file, and it must be the **first clause** (before any
-  `import` declarations and any definitions).
+  `import` declarations and any definitions). A `package` line anywhere else, or a second one, is
+  a parse error and the file is ignored.
+- The name is **one identifier**. A clause that fails to parse (`package a.b`, `package nexus`)
+  keeps the name of the token after `package` and reports the parse error; with no name to take
+  (`package "x"`), the file is ignored.
 - A `package` is a **compile-time, directory-scoped symbol-grouping construct**. It groups the
   symbols (workflows, activities, nexus services) declared across the files of a directory into
   one namespace of names, so that the same short name can appear in genuinely different packages
@@ -27,6 +31,45 @@ package_clause ::= 'package' IDENT NEWLINE
   [Package vs. Namespace](#package-vs-namespace) below. Temporal sees bare names, so one worker
   cannot register two same-named types of one kind from different packages
   ([`WORKER_DUPLICATE_TYPE_NAME`](./03-workers-and-namespaces.md#worker-definitions)).
+
+## Modules
+
+Every file with a package clause belongs to a **module**: the nearest `twf.mod` above it.
+
+```
+module example.com/demo   # twf.mod, at the design's root; '#' starts a comment
+```
+
+- A package is the input files of **one directory** of a module. Its **import path** is the
+  module path joined with the directory's path below the module root: in `module example.com/demo`,
+  the directory `fabric/v1` is the package `example.com/demo/fabric/v1`. The module root itself is
+  the package whose path is the module path.
+- The clause must be the path's **assumed name** — its last element, with a trailing version
+  element (`v` and digits) dropped: `…/fabric/v1` is `package fabric`. When that element cannot be
+  a package name (`library-temporal-kube`, `yaml.v3`, a keyword), any name is allowed and every
+  importer must alias the import.
+- One directory holds one package: its files declare the same package, or none.
+- Clause-less files are the [implicit default package](#implicit-default-package) and need no
+  module.
+- Start a module with `twf mod init <module path>` at the design's root. The path is required;
+  with none, `twf mod init` exits non-zero and suggests one (from the enclosing module, the
+  design's imports, or the Git remote). Any path [15 — Modules](./15-modules.md) accepts works,
+  dot-less included (`module acme`); a domain-style path is the convention for packages other
+  checkouts import.
+
+| Error | Means | Fix |
+|-------|-------|-----|
+| `PACKAGE_OUTSIDE_MODULE` | A packaged file has no `twf.mod` above it; the file is ignored | `twf mod init <module path>` at the design's root |
+| `PACKAGE_NAME_MISMATCH` | The clause is not the path's assumed name | Rename the clause, or the directory |
+| `PACKAGE_CLAUSE_CONFLICT` | A directory holds two packages, or a clause and clause-less files; the others are ignored | One package per directory |
+| `INVALID_PACKAGE_PATH` | A package directory's path is not a valid path; the package is ignored | Rename the directory |
+| `MODULE_FILE_INVALID` | The `twf.mod` cannot be used; its module's files are ignored | Exactly one `module <path>` line |
+| `MODULE_FILE_UNKNOWN_DIRECTIVE` | A `twf.mod` directive other than `module` (warning; ignored) | Remove it |
+| `DUPLICATE_MODULE` | A second root declares a module path already in the run; that copy is ignored | Check one copy |
+| `DUPLICATE_PACKAGE` | Two directories yield one import path; all but one are ignored | Rename or move one |
+
+An ignored file still reports its parse errors. Which file a conflict keeps, and how inputs are
+walked, are in [15 — Modules](./15-modules.md).
 
 ## Import Declarations
 
@@ -41,7 +84,7 @@ Two forms (Go-style, alias-first):
 - `import "<full/module/path>"` — import a package and reference it by its **leaf name**. The leaf
   name is the last path segment, except that a trailing `/vN` **version segment** (`v` followed by
   one or more digits, with a preceding segment) is **stripped** and the preceding segment used
-  instead — this is Go's `importPathToAssumedName` rule, the semantics this syntax is modeled on.
+  instead — the rule is modeled on Go's `importPathToAssumedName`.
   For example, `import "github.com/acme/orders/billing"` is referenced as `billing`, and
   `import "github.com/acme/orders/billing/v2"` is *also* referenced as `billing` (the `/v2` is
   stripped, not treated as the package name).
@@ -56,10 +99,9 @@ Two forms (Go-style, alias-first):
 
 Notes on the string path:
 
-- The path is the **full module-prefixed path** and is carried **verbatim** as a future
-  global-lookup key. It is **not enforced** in this slice — a single directory tree is assumed and
-  there is no global package management (no `go.mod`-style marker). Path validation and
-  module-resolution are future work.
+- The path is the imported package's **import path** (its module path plus directory, see
+  [Modules](#modules)). An import still binds to the in-tree package whose declared name is the
+  path's version-stripped leaf.
 - `as` is a reserved hard keyword registered alongside `package`/`import` in this slice; it has no
   grammar role here (the aliased-import surface is the leading-identifier form above).
 

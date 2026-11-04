@@ -340,6 +340,10 @@ The complete list of `kind` + `code` combinations:
 - `UNRESOLVED_IMPORT`, `UNUSED_IMPORT`, `QUALIFIED_REF_WITHOUT_IMPORT`
   (import/package resolution; `UNRESOLVED_IMPORT` and `UNUSED_IMPORT` are
   warnings)
+- `MODULE_FILE_INVALID`, `MODULE_FILE_UNKNOWN_DIRECTIVE` (warning),
+  `PACKAGE_OUTSIDE_MODULE`, `DUPLICATE_MODULE`, `PACKAGE_CLAUSE_CONFLICT`,
+  `INVALID_PACKAGE_PATH`, `DUPLICATE_PACKAGE`, `PACKAGE_NAME_MISMATCH`
+  (modules and package paths; see `twf spec modules`)
 - `ENDPOINT_PARAM_NOT_SUPERSET` (parameterized namespace and endpoint names)
 - `QUEUE_TEMPLATE_MALFORMED`, `ENDPOINT_TASK_QUEUE_TEMPLATED` (per-instance
   worker families)
@@ -403,6 +407,33 @@ $ twf spec nexus | head -3
 
 Nexus services define typed operation groups for cross-namespace communication:
 ```
+
+---
+
+### `twf mod init`
+
+```
+twf mod init <module path>
+```
+
+Writes `twf.mod` (`module <path>`) in the current directory. It never
+overwrites: an existing `twf.mod` in any letter case is refused, and the file
+is created with `O_EXCL`. The temp directory is refused too (a `twf.mod` there
+is ignored). Inside an existing module it creates a nested module and says so.
+
+The path is required. With none, it exits non-zero and suggests one, from the
+first source that yields a path keeping every package file's name valid:
+
+1. the enclosing module's path plus this directory's path below its root;
+2. the design's own imports — for an import whose path ends in a package
+   directory below here, the path minus that directory (several distinct
+   answers are all printed);
+3. the Git `origin` remote — host plus whole path, scheme, user info and port
+   dropped — plus this directory's path below the worktree root;
+4. `example.com/<directory name>`.
+
+The editor offers the same as a code action on `PACKAGE_OUTSIDE_MODULE`, from
+sources 2–3 only.
 
 ---
 

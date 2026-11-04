@@ -157,8 +157,13 @@ func ParseFile(input string) (*ast.File, error) {
 	p.advance() // fill peek
 
 	file := &ast.File{}
+	sawClause := false // a package clause is recognized only as the first clause
 
 	for p.current.Type != token.EOF {
+		first := !sawClause
+		if p.current.Type != token.NEWLINE && p.current.Type != token.COMMENT {
+			sawClause = true
+		}
 		switch {
 		case p.current.Type == token.NEWLINE:
 			p.advance()
@@ -167,7 +172,7 @@ func ParseFile(input string) (*ast.File, error) {
 			p.advance()
 			continue
 		case p.current.Type == token.PACKAGE:
-			if err := p.parsePackageClause(file); err != nil {
+			if err := p.parsePackageClause(file, first); err != nil {
 				return nil, err
 			}
 		case p.current.Type == token.IMPORT:
@@ -209,9 +214,14 @@ func ParseFileAll(input string) (*ast.File, []*ParseError) {
 	p.advance() // fill peek
 
 	file := &ast.File{}
+	sawClause := false // a package clause is recognized only as the first clause
 
 	for p.current.Type != token.EOF {
 		start := p.current
+		first := !sawClause
+		if p.current.Type != token.NEWLINE && p.current.Type != token.COMMENT {
+			sawClause = true
+		}
 		switch {
 		case p.current.Type == token.NEWLINE:
 			p.advance()
@@ -220,11 +230,12 @@ func ParseFileAll(input string) (*ast.File, []*ParseError) {
 			p.advance()
 			continue
 		case p.current.Type == token.PACKAGE:
-			if err := p.parsePackageClause(file); err != nil {
+			// The clause consumes its own line, so no top-level recovery: that
+			// would skip the import lines after it.
+			if err := p.parsePackageClause(file, first); err != nil {
 				if pe, ok := err.(*ParseError); ok {
 					p.addError(pe)
 				}
-				p.recoverTopLevel(start)
 			}
 			continue
 		case p.current.Type == token.IMPORT:

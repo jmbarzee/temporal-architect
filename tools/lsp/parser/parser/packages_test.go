@@ -130,3 +130,58 @@ worker w:
 		t.Errorf("clause-less file emitted an imports key: %s", data)
 	}
 }
+
+// TestPackageClauseRules covers S1b's clause rules: one IDENT, first clause
+// only, recovery from the token after `package`, and exclusion otherwise.
+func TestPackageClauseRules(t *testing.T) {
+	tests := []struct {
+		name      string
+		src       string
+		pkg       string
+		recovered bool
+		excluded  bool
+		errs      int
+		imports   int
+	}{
+		{"plain", "package billing\nimport \"a/b\"\n", "billing", false, false, 0, 1},
+		{"trailing comment", "package billing # main\n", "billing", false, false, 0, 0},
+		{"comment and blank lines first", "# header\n\npackage billing\n", "billing", false, false, 0, 0},
+		{"dotted name recovers its first element", "package a.b\nimport \"x/y\"\n", "a", true, false, 1, 1},
+		{"keyword name recovers", "package nexus\nimport \"x/y\"\n", "nexus", true, false, 1, 1},
+		{"no name excludes", "package\nimport \"x/y\"\n", "", false, true, 1, 1},
+		{"string name excludes", "package \"x\"\n", "", false, true, 1, 0},
+		{"duplicate excludes", "package a\npackage b\n", "a", false, true, 1, 0},
+		{"not first excludes", "import \"x/y\"\npackage a\n", "", false, true, 1, 1},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			file, errs := ParseFileAll(tt.src)
+			if file.Package != tt.pkg || file.PackageRecovered != tt.recovered || file.ClauseExcluded != tt.excluded {
+				t.Errorf("Package=%q recovered=%v excluded=%v, want %q %v %v", file.Package, file.PackageRecovered, file.ClauseExcluded, tt.pkg, tt.recovered, tt.excluded)
+			}
+			if len(errs) != tt.errs {
+				t.Errorf("errors = %v, want %d", errs, tt.errs)
+			}
+			if len(file.Imports) != tt.imports {
+				t.Errorf("imports = %d, want %d (a failed clause must not swallow the next lines)", len(file.Imports), tt.imports)
+			}
+		})
+	}
+}
+
+// TestSoftKeywordsAsPackageNames: names that lex as IDENT are valid package
+// names and qualifiers.
+func TestSoftKeywordsAsPackageNames(t *testing.T) {
+	for _, name := range []string{"service", "endpoint", "id", "run_id", "default_options", "parent"} {
+		src := "package " + name + "\n\nworkflow W():\n    workflow " + name + ".Other() -> r\n    close complete(r)\n"
+		file, errs := ParseFileAll(src)
+		if len(errs) != 0 || file.Package != name {
+			t.Errorf("package %s: Package=%q errs=%v", name, file.Package, errs)
+			continue
+		}
+		wf := file.Definitions[0].(*ast.WorkflowDef)
+		if wc, ok := wf.Body[0].(*ast.WorkflowCall); !ok || wc.Workflow.Package != name {
+			t.Errorf("qualifier %s: body = %#v", name, wf.Body[0])
+		}
+	}
+}
