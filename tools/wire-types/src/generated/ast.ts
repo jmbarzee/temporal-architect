@@ -179,6 +179,20 @@ export interface WorkerDefJSON {
   workflows: WorkerRefJSON[];
   activities: WorkerRefJSON[];
   services: WorkerRefJSON[];
+  /**
+   * SDKs are the worker's implementations, from its `@sdk` annotations;
+   * absent when it has none.
+   */
+  sdks?: SDKJSON[];
+}
+/**
+ * SDKJSON is one implementation of a worker: its SDK and, once code exists,
+ * its entry file, relative to the module root (else the .twf file's
+ * directory).
+ */
+export interface SDKJSON {
+  sdk: string;
+  impl?: string;
 }
 /**
  * NamespaceWorkerJSON is the JSON representation of a worker instantiation in a namespace.

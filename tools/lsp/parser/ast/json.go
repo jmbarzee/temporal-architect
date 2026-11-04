@@ -464,6 +464,27 @@ type WorkerDefJSON struct {
 	Workflows  []WorkerRefJSON `json:"workflows"`
 	Activities []WorkerRefJSON `json:"activities"`
 	Services   []WorkerRefJSON `json:"services"`
+	// SDKs are the worker's implementations, from its `@sdk` annotations;
+	// absent when it has none.
+	SDKs []SDKJSON `json:"sdks,omitempty"`
+}
+
+// SDKJSON is one implementation of a worker: its SDK and, once code exists,
+// its entry file, relative to the module root (else the .twf file's
+// directory).
+type SDKJSON struct {
+	SDK  string `json:"sdk"`
+	Impl string `json:"impl,omitempty"`
+}
+
+// MarshalSDKs converts a worker's implementations to JSON form; nil when it
+// has none.
+func MarshalSDKs(sdks []WorkerSDK) []SDKJSON {
+	var out []SDKJSON
+	for _, s := range sdks {
+		out = append(out, SDKJSON{SDK: s.SDK, Impl: s.Impl})
+	}
+	return out
 }
 
 func (w *WorkerDef) MarshalJSON() ([]byte, error) {
@@ -477,6 +498,7 @@ func (w *WorkerDef) MarshalJSON() ([]byte, error) {
 		Workflows:  marshalWorkerRefs(w.Workflows),
 		Activities: marshalWorkerRefs(w.Activities),
 		Services:   marshalWorkerRefs(w.Services),
+		SDKs:       MarshalSDKs(w.SDKs),
 	}
 	return json.Marshal(wj)
 }

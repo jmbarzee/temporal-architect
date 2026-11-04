@@ -127,12 +127,17 @@ parsed.
   (`"sandbox-{sandboxId}"` → `["sandboxId"]`), unioned when the worker is
   instantiated twice in one namespace (the node keeps the first `queue`). Omitted
   on a static node.
+- `sdks` (`{sdk, impl?}[]`, optional) — the implementations of the worker a node
+  deploys on, from its `@sdk` annotations (spec 03): on a worker node, orphan or
+  not, and on every node it hosts, which take the SDK by registration. Which one
+  a namespace runs is not modelled, so the whole set is carried. Omitted when the
+  worker has none, and on an orphan workflow, activity, service or operation.
 - `orphan` (bool, optional) — `true` when the definition exists in the AST but
   has no deployment. Implies no deployment-context fields at all. Omitted when
   false.
 
-Workflow and activity deployment nodes therefore carry **only** `id` and
-`definition`. Their worker and namespace are the containment chain; read the
+Workflow and activity deployment nodes therefore carry **only** `id`,
+`definition`, `name`, `packageId` and `sdks`. Their worker and namespace are the containment chain; read the
 edges.
 
 ## Edge kinds

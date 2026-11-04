@@ -3,6 +3,7 @@ namespace approvals:
 		options:
 			task_queue: "approvals"
 
+@sdk(go, "go/worker.go")
 worker approvalTypes:
 	workflow Approval
 

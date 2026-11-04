@@ -43,7 +43,7 @@ Roots are heuristic (`source: heuristic`): in-degree 0 in the binding subgraph, 
 
 The decomposition knows the design, not what is already implemented. For each chunk:
 
-1. Resolve its code through the `# impl: <dirs>` header (design skill's `twf-conventions.md`).
+1. Resolve its code through the `@sdk` path of the worker registering it (design skill's `twf-conventions.md`).
 2. No linked code → new → dispatch an author.
 3. Linked code → run the author's fast verify (e.g. `go build` / `go test` on the linked package). Clean against the current `.twf` → skip; a failure, or a `.twf` edit touching the chunk → dispatch.
 

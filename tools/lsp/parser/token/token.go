@@ -85,6 +85,7 @@ const (
 	LBRACKET   // [
 	RBRACKET   // ]
 	COMMA      // ,
+	AT         // @, opening an annotation
 
 	// Literals
 	NUMBER   // numeric literal (e.g. 3, 2.0)
@@ -165,6 +166,7 @@ var tokenTable = [...]tokenInfo{
 	LBRACKET:         {"LBRACKET", false},
 	RBRACKET:         {"RBRACKET", false},
 	COMMA:            {"COMMA", false},
+	AT:               {"AT", false},
 	NUMBER:           {"NUMBER", false},
 	DURATION:         {"DURATION", false},
 	IDENT:            {"IDENT", false},

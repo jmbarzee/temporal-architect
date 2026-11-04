@@ -22,20 +22,19 @@ Start the module once, at the design's root: `twf mod init github.com/acme/shop`
 
 A clause-less file is the implicit default package, so single-package designs need none of this. Modules, import paths, assumed names, `/vN` stripping, and aliases: [packages topic](../topics/packages.md) and `twf spec packages-and-imports`; resolution errors: [common-errors.md](./common-errors.md#packages-imports-and-external-references).
 
-## Impl-link header
+## Worker implementation: `@sdk`
 
-`.twf` comments (`#`) are free text, except this one named form — a top-of-file comment naming the implementation directories the file describes:
+An `@sdk` annotation above a worker names the SDK it is written in and, once code exists, its entry file — the one file where the worker is built and its types registered:
 
 ```twf
-# impl: order-service/workflows, order-service/activities
-package orders
-
-workflow ProcessOrder(order: Order) -> (Result):
-	activity ChargePayment(order) -> receipt
-	close complete(Result{receipt})
-
-activity ChargePayment(order: Order) -> (Receipt):
-	charge(order.payment)
+@sdk(go, "cmd/order-worker/main.go")
+worker orderWorker:
+	workflow orders.ProcessOrder
+	activity payments.ChargeCard
 ```
 
-State it even when co-location makes it look obvious: the mapping is a convention the tooling doesn't enforce, and a package may describe code under a differently named directory. The [project-discovery subagent](../subagents/project-discovery.md) reads it to jump to the code; [reverse-engineering](./reverse-engineering.md) writes it when recovering a `.twf`. It is the interim file-level form of per-symbol `@ref` annotations ([#24](https://github.com/jmbarzee/temporal-architect/issues/24)), which will supersede it.
+- **Add it whenever a worker is designed, authored or recovered**: `@sdk(go)` once the SDK is chosen, the path once the code exists. It is never required, and only workers carry it: a workflow, activity or Nexus service takes the SDK of the workers that register it.
+- **The path is read from the module root** (the directory of `twf.mod`), else from the `.twf` file's directory, and may use `..`. From the entry file an agent finds every registered type's code. `twf check` warns `IMPL_NOT_FOUND` when the file is missing.
+- **One SDK per worker.** A second `@sdk` in another SDK declares a second implementation of the same worker type — see [task-queues.md](../topics/task-queues.md#one-worker-several-sdks).
+
+The [project-discovery subagent](../subagents/project-discovery.md) follows the path to the code; [reverse-engineering](./reverse-engineering.md) writes it when recovering a worker.

@@ -34,6 +34,7 @@ A quick reference; the grammar itself is `twf spec` (`twf spec --list` for secti
 | `nexus service Name:` | Nexus service definition (top level) |
 | `async OpName workflow WorkflowName` / `sync OpName(params) -> (Type):` | Async / sync Nexus operation (in a service body) |
 | `worker name:` | Worker type set; `nexus service Name` inside registers a service |
+| `@sdk(go, "cmd/w/main.go")` | Above a worker: the SDK implementing it, and its entry file once code exists ([twf-conventions.md](./twf-conventions.md#worker-implementation-sdk)) |
 | `namespace name:` | Deployment: instantiates workers and `nexus endpoint Name`s with options |
 | `package Name` | Package clause — first line of a file; needs a `twf.mod` above it (`twf mod init <module path>` at the design's root) ([packages.md](../topics/packages.md)) |
 | `import "full/module/path"` / `import alias "path"` | Import the package with exactly that path, referenced by the path's assumed name (last element, trailing `/vN` dropped) or the alias |

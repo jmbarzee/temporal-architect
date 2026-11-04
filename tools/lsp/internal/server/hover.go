@@ -18,6 +18,12 @@ func hoverHandler(store *DocumentStore) protocol.TextDocumentHoverFunc {
 
 		line := int(params.Position.Line) + 1 // LSP 0-based → parser 1-based
 
+		if w, s := sdkAt(doc.File, line); s != nil {
+			return &protocol.Hover{
+				Contents: protocol.MarkupContent{Kind: protocol.MarkupKindMarkdown, Value: sdkHover(w, s)},
+			}, nil
+		}
+
 		node := findNodeAtLine(doc.File, line)
 		if node == nil {
 			return nil, nil

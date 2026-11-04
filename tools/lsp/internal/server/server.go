@@ -10,7 +10,7 @@ import (
 // Order must match the semXxx iota constants in semantic_tokens.go.
 // The array size [semCount] is a compile-time assertion: if the number of
 // iota constants changes without updating this list, the build breaks.
-var tokenTypeLegend = [semCount]string{"keyword", "function", "method", "event", "string", "comment", "operator", "parameter", "type", "variable", "property", "number"}
+var tokenTypeLegend = [semCount]string{"keyword", "function", "method", "event", "string", "comment", "operator", "parameter", "type", "variable", "property", "number", "decorator"}
 
 // NewHandler creates a protocol.Handler with all LSP methods registered.
 func NewHandler(name, version string) (*protocol.Handler, *DocumentStore) {
@@ -64,7 +64,7 @@ func initializeHandler(name, version string, store *DocumentStore) protocol.Init
 					HoverProvider:              &protocol316.HoverOptions{},
 					DefinitionProvider:         &protocol316.DefinitionOptions{},
 					DocumentSymbolProvider:     &protocol316.DocumentSymbolOptions{},
-					CompletionProvider:         &protocol316.CompletionOptions{},
+					CompletionProvider:         &protocol316.CompletionOptions{TriggerCharacters: []string{"@", "("}},
 					ReferencesProvider:         &protocol316.ReferenceOptions{},
 					RenameProvider:             &protocol316.RenameOptions{PrepareProvider: boolPtr(true)},
 					FoldingRangeProvider:       &protocol316.FoldingRangeOptions{},

@@ -209,6 +209,15 @@ func (p *Parser) parseFile() (*ast.File, error) {
 				return nil, misplacedImport(imp)
 			}
 			file.Imports = append(file.Imports, imp)
+		case p.current.Type == token.AT:
+			def, err := p.parseAnnotated()
+			if err != nil {
+				return nil, err
+			}
+			if def != nil {
+				sawDef = true
+				file.Definitions = append(file.Definitions, def)
+			}
 		default:
 			parser, ok := topLevelParsers[p.current.Type]
 			if !ok {
@@ -285,6 +294,20 @@ func ParseFileAll(input string) (*ast.File, []*ParseError) {
 				p.addError(misplacedImport(imp))
 			}
 			file.Imports = append(file.Imports, imp)
+			continue
+		case p.current.Type == token.AT:
+			def, err := p.parseAnnotated()
+			if err != nil {
+				if pe, ok := err.(*ParseError); ok {
+					p.addError(pe)
+				}
+				p.recoverTopLevel(start)
+				continue
+			}
+			if def != nil {
+				sawDef = true
+				file.Definitions = append(file.Definitions, def)
+			}
 			continue
 		default:
 			parser, ok := topLevelParsers[p.current.Type]
@@ -389,8 +412,11 @@ func optionsUnder(stmt ast.Statement) func(token.Token) string {
 
 // parseStatement parses one statement of a body in the body's context.
 func (p *Parser) parseStatement() (ast.Statement, error) {
-	if p.current.Type == token.COMMENT {
+	switch p.current.Type {
+	case token.COMMENT:
 		return p.parseComment(), nil
+	case token.AT:
+		return nil, p.bodyAnnotation()
 	}
 
 	var parseFn stmtParser

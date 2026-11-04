@@ -49,6 +49,15 @@ type workerDeployment struct {
 	worker *ast.WorkerDef
 }
 
+// sdks are the implementations of the deployment's worker, inherited by every
+// node it hosts.
+func (wd workerDeployment) sdks() []ast.SDKJSON {
+	if wd.worker == nil {
+		return nil
+	}
+	return ast.MarshalSDKs(wd.worker.SDKs)
+}
+
 // endpointDeployment captures one nexus endpoint instantiation. The
 // resolver enforces global uniqueness of endpoint names, so a single
 // (namespace, queue) pair per endpoint is sufficient.
@@ -274,15 +283,17 @@ func (g *Graph) enumerateNodes(idx *astIndex) {
 			Name:           wd.WorkerName,
 			Queue:          wd.Queue,
 			TemplateParams: wd.TemplateParams,
+			SDKs:           wd.sdks(),
 		})
 	}
 
-	for name := range idx.workers {
+	for name, w := range idx.workers {
 		if len(idx.deploymentsOfWorker(name)) == 0 {
 			g.addNode(Node{
 				ID:         WorkerID(name, ""),
 				Definition: DefKey(KindWorker, name),
 				Name:       name,
+				SDKs:       ast.MarshalSDKs(w.SDKs),
 				Orphan:     true,
 			})
 		}
@@ -340,6 +351,7 @@ func (g *Graph) enumerateNodes(idx *astIndex) {
 					PackageID:  pkg,
 					Worker:     DefKey(KindWorker, wd.WorkerName),
 					Queue:      wd.Queue,
+					SDKs:       wd.sdks(),
 				})
 			}
 		}
@@ -368,6 +380,7 @@ func (g *Graph) enumerateHosted(kind, name, bare, pkg string, idx *astIndex) {
 			Definition: DefKey(kind, name),
 			Name:       bare,
 			PackageID:  pkg,
+			SDKs:       wd.sdks(),
 		}
 		// Worker/namespace membership is the containment edge, not a
 		// denormalized field. nexusService is the lone exception: it still

@@ -86,6 +86,10 @@ func parseNamespaceDef(p *Parser) (ast.Definition, error) {
 				Options:        opts,
 			})
 
+		case token.AT:
+			if err := p.skipBodyAnnotation(); err != nil {
+				return nil, err
+			}
 		default:
 			return nil, p.errorf("unexpected %s in namespace block", p.current.Type)
 		}

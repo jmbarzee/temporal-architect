@@ -41,7 +41,7 @@ For an existing repo, dispatch the design skill's [project-discovery subagent](.
 | 1b. Activity stubs | Every activity with its real signature and a zero-value body, so workflows can reference it by nil-pointer method value ([activity-call.md](./reference/activity-call.md)) | `go build` | [activity-def.md](./reference/activity-def.md) |
 | 2. Workflow bodies | Activity and child calls, signals, timers, selectors | `go build` | [workflow-def.md](./reference/workflow-def.md), [composite-patterns.md](./reference/composite-patterns.md) |
 | 3. Activity impl | Thin methods + concrete implementations behind interfaces | `go build` | [activity-def.md](./reference/activity-def.md#activity-implementation-pattern) |
-| 4. Worker wiring | `cmd/` entry: build dependencies, register types, run | `go build` | [worker.md](./reference/worker.md) |
+| 4. Worker wiring | `cmd/` entry: build dependencies, register types, run; the `.twf` worker's `@sdk(go, "<entry>")` names it | `go build`, `twf check` | [worker.md](./reference/worker.md) |
 | 5. Tests | Floor: one happy-path `testsuite.WorkflowTestSuite` test per workflow. Non-trivial designs: three layers | `go test` | [three-layer-testing.md](./reference/three-layer-testing.md) |
 | 6. Final | | `go vet` | — |
 

@@ -47,6 +47,52 @@ worker orderTypes:
 	nexus service OrderService
 ```
 
+## SDK Annotations
+
+An `@sdk` annotation above a worker declares an implementation of it: the SDK it is written in
+and, once code exists, its entry file.
+
+```
+annotation ::= '@' IDENT [ '(' annot_arg (',' annot_arg)* ')' ] NEWLINE
+annot_arg  ::= IDENT | STRING
+
+sdk_annotation ::= '@' 'sdk' '(' sdk [ ',' STRING ] ')' NEWLINE
+sdk            ::= 'go' | 'typescript' | 'python' | 'java' | 'dotnet' | 'ruby' | 'php' | 'rust'
+```
+
+Annotations sit on the lines directly above a top-level definition: comment lines may sit among
+them, a blank line may not. `@sdk` is the only annotation, and it annotates only a worker. An
+annotation anywhere else is `ANNOTATION_MISPLACED`.
+
+- **The SDK belongs to the worker.** A worker implementation is written in one SDK. Its workflows,
+  activities and Nexus services take that SDK by being registered on it; a definition carries no
+  SDK of its own.
+- **The path is the worker's entry file**: the one file where the worker is built and its types
+  registered, so an agent finds every registered definition's code from there. It is
+  `/`-separated, may use `..`, and is read from the module root — the directory of the nearest
+  [`twf.mod`](./15-modules.md) — else from the `.twf` file's directory. An absolute path, a URL, a
+  `\`, or an empty path is `INVALID_IMPL_PATH`; a path naming no file is an `IMPL_NOT_FOUND`
+  warning, checked only for a `.twf` file on disk.
+- **Optional.** No worker needs one. Write it once the worker's SDK is chosen, and add the path once
+  its code exists.
+- **One implementation per SDK.** A second `@sdk` naming the same SDK is `DUPLICATE_SDK`. Two
+  `@sdk` naming different SDKs declare two implementations of one worker type, and raise the
+  `WORKER_MULTI_SDK` warning: every implementation polls the same task queues, so each must replay
+  the others' workflow histories exactly — an advanced pattern with a high risk of nondeterminism
+  errors. Use it only with an explicit, precise justification, written next to the annotations.
+  Which implementation a namespace runs is not modelled.
+
+```
+@sdk(go, "cmd/orders-worker/main.go")
+worker orderTypes:
+	workflow ProcessOrder
+	activity ChargePayment
+
+@sdk(typescript)              # designed, not yet implemented
+worker notifyTypes:
+	activity SendEmail
+```
+
 ## Namespace Definitions
 
 > **`namespace` is not `package`.** `namespace` is the Temporal **deployment** keyword described

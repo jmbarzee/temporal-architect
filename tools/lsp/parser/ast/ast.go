@@ -312,6 +312,7 @@ type WorkerDef struct {
 	Workflows  []Ref[*WorkflowDef]
 	Activities []Ref[*ActivityDef]
 	Services   []Ref[*NexusServiceDef] // nexus service references
+	SDKs       []WorkerSDK             // one per `@sdk` annotation, in source order
 	// OperationMentions records `nexus service` entries that also named an
 	// operation (`pkg.Svc.Op`, or `Svc.Op` once the resolver reads it so). A
 	// worker registers whole services, so each one is diagnosed; the entry in
@@ -321,6 +322,20 @@ type WorkerDef struct {
 	Package           string // runtime-only; see Packaged note above
 	PkgID             string // runtime-only; see Packaged note above
 }
+
+// WorkerSDK is one `@sdk(<sdk>[, "path"])` annotation on a worker: an
+// implementation of the worker in one SDK.
+type WorkerSDK struct {
+	Pos  // the annotation's '@'
+	SDK  string
+	Impl string // the implementation's entry file; "" until code exists
+	// ImplPos is the path string's opening quote; zero without Impl.
+	// Runtime-only.
+	ImplPos Pos
+}
+
+// SDKs are the Temporal SDKs an `@sdk` annotation names.
+var SDKs = []string{"go", "typescript", "python", "java", "dotnet", "ruby", "php", "rust"}
 
 // OperationMention is a worker `nexus service` entry that named an operation
 // of the service: Services[ServiceIndex] is the service, Op the operation.

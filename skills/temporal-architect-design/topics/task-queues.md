@@ -25,6 +25,19 @@ The worker `options:` block names worker behaviours **every Tier-1 SDK** has; ea
 
 Full key list: `twf spec workers-and-namespaces`.
 
+### One worker, several SDKs
+
+`@sdk` above a worker names its implementation ([twf-conventions.md](../reference/twf-conventions.md#worker-implementation-sdk)). Two `@sdk` in different SDKs declare two implementations of one worker type, polling the same queues — `WORKER_MULTI_SDK`. Every workflow task may land on either, so each must replay the other's histories exactly: an advanced pattern with a high risk of nondeterminism errors, as during an SDK migration. Default to one worker per SDK, each on its own queue. Keep two only with an explicit, precise justification written as a comment next to the annotations:
+
+```twf
+# Migrating orders from Go to TypeScript: both run the same workflow code
+# paths, verified by replaying production histories against each build.
+@sdk(go, "cmd/order-worker/main.go")
+@sdk(typescript, "ts/order-worker/src/worker.ts")
+worker orderWorker:
+	workflow ProcessOrder
+```
+
 ## Task Queue Design
 
 | Single Queue | Multiple Queues |

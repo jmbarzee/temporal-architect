@@ -8,10 +8,11 @@ A TWF file consists of an optional leading `package` clause, zero or more `impor
 and zero or more top-level definitions:
 
 ```
-file ::= [package_clause] import_decl* definition*
+file ::= [package_clause] import_decl* (annotation* definition)*
 definition ::= workflow_def | activity_def | worker_def | namespace_def | nexus_service_def
 ```
 
+An [annotation](./03-workers-and-namespaces.md#sdk-annotations) (`@sdk`) may sit above a worker.
 The `package` clause and `import` declarations are optional; a file with neither behaves exactly as
 before (see [Packages and Imports](./14-packages-and-imports.md)).
 
