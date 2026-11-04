@@ -438,29 +438,31 @@ func Resolve(file *ast.File) []*ResolveError {
 	}
 
 	// Pass 1: collect definitions keyed by (package, name), duplicate-detecting
-	// per key, and record which packages the tree contains.
+	// per key, and record which packages the tree contains. file.Definitions
+	// runs input files in order, then position, so a duplicated key is its
+	// first declaration's.
 	for _, def := range file.Definitions {
 		switch d := def.(type) {
 		case *ast.WorkflowDef:
 			p := effPkg(ast.PackageIDOf(d, nil), s.filePkg)
 			s.notePackage(p, d.Package)
-			collectInto(s.workflows, pkgKey{p, d.Name}, d, "workflow", ErrDuplicateWorkflow, d.Line, d.Column, d.SourceFile, &s.errs)
+			collectInto(s.workflows, pkgKey{p, d.Name}, d, "workflow", ErrDuplicateWorkflow, &s.errs)
 		case *ast.ActivityDef:
 			p := effPkg(ast.PackageIDOf(d, nil), s.filePkg)
 			s.notePackage(p, d.Package)
-			collectInto(s.activities, pkgKey{p, d.Name}, d, "activity", ErrDuplicateActivity, d.Line, d.Column, d.SourceFile, &s.errs)
+			collectInto(s.activities, pkgKey{p, d.Name}, d, "activity", ErrDuplicateActivity, &s.errs)
 		case *ast.WorkerDef:
 			p := effPkg(ast.PackageIDOf(d, nil), s.filePkg)
 			s.notePackage(p, d.Package)
-			collectInto(s.workers, pkgKey{p, d.Name}, d, "worker", ErrDuplicateWorker, d.Line, d.Column, d.SourceFile, &s.errs)
+			collectInto(s.workers, pkgKey{p, d.Name}, d, "worker", ErrDuplicateWorker, &s.errs)
 		case *ast.NamespaceDef:
 			p := effPkg(ast.PackageIDOf(d, nil), s.filePkg)
 			s.notePackage(p, d.Package)
-			collectInto(s.namespaces, pkgKey{p, d.Name}, d, "namespace", ErrDuplicateNamespace, d.Line, d.Column, d.SourceFile, &s.errs)
+			collectInto(s.namespaces, pkgKey{p, d.Name}, d, "namespace", ErrDuplicateNamespace, &s.errs)
 		case *ast.NexusServiceDef:
 			p := effPkg(ast.PackageIDOf(d, nil), s.filePkg)
 			s.notePackage(p, d.Package)
-			collectInto(s.nexusServices, pkgKey{p, d.Name}, d, "nexus service", ErrDuplicateNexusService, d.Line, d.Column, d.SourceFile, &s.errs)
+			collectInto(s.nexusServices, pkgKey{p, d.Name}, d, "nexus service", ErrDuplicateNexusService, &s.errs)
 		}
 	}
 
@@ -1304,9 +1306,9 @@ func (c *resolveCtx) errorf(kind ErrorKind, pos ast.Pos, name, format string, ar
 	return err
 }
 
-// reservedName is the one name a model may not declare: `id: parent` must mean
+// ReservedName is the one name a model may not declare: `id: parent` must mean
 // the parent execution, never a variable.
-const reservedName = "parent"
+const ReservedName = "parent"
 
 // paramList is an opaque parameter list and where it is declared.
 type paramList struct {
@@ -1343,27 +1345,27 @@ func (s *state) checkReservedNames(wf *ast.WorkflowDef) {
 func (s *state) checkReservedIn(file string, params []paramList, conditions []*ast.ConditionDecl, bodies [][]ast.Statement) {
 	report := func(pos ast.Pos, what string) {
 		s.errs = append(s.errs, &ResolveError{
-			Msg:    fmt.Sprintf("%q is reserved and cannot name a %s; `id: parent` addresses the parent execution", reservedName, what),
+			Msg:    fmt.Sprintf("%q is reserved and cannot name a %s; `id: parent` addresses the parent execution", ReservedName, what),
 			Line:   pos.Line,
 			Column: pos.Column,
 			Kind:   ErrReservedName,
-			Name:   reservedName,
+			Name:   ReservedName,
 			File:   file,
 		})
 	}
 	checkBinding := func(pos ast.Pos, binding string) {
-		if binding != "" && ast.IDPathRoot(binding) == reservedName {
+		if binding != "" && ast.IDPathRoot(binding) == ReservedName {
 			report(pos, "binding")
 		}
 	}
 
 	for _, pl := range params {
-		if ast.ParamNames(pl.params)[reservedName] {
+		if ast.ParamNames(pl.params)[ReservedName] {
 			report(pl.Pos, "param")
 		}
 	}
 	for _, cond := range conditions {
-		if cond.Name == reservedName {
+		if cond.Name == ReservedName {
 			report(cond.Pos, "condition")
 		}
 	}
@@ -1371,11 +1373,11 @@ func (s *state) checkReservedIn(file string, params []paramList, conditions []*a
 		ast.WalkStatements(body, func(st ast.Statement) bool {
 			switch st := st.(type) {
 			case *ast.PromiseStmt:
-				if st.Name == reservedName {
+				if st.Name == ReservedName {
 					report(st.Pos, "promise")
 				}
 			case *ast.ForStmt:
-				if ast.ParamNames(st.Variable)[reservedName] {
+				if ast.ParamNames(st.Variable)[ReservedName] {
 					report(st.Pos, "loop variable")
 				}
 			case *ast.ActivityCall:
@@ -1398,11 +1400,11 @@ func (s *state) checkReservedIn(file string, params []paramList, conditions []*a
 			case *ast.IdentTarget:
 				checkBinding(pos, t.Result)
 			case *ast.SignalTarget:
-				if ast.ParamNames(t.Params)[reservedName] {
+				if ast.ParamNames(t.Params)[ReservedName] {
 					report(pos, "binding")
 				}
 			case *ast.UpdateTarget:
-				if ast.ParamNames(t.Params)[reservedName] {
+				if ast.ParamNames(t.Params)[ReservedName] {
 					report(pos, "binding")
 				}
 			}
@@ -1411,21 +1413,28 @@ func (s *state) checkReservedIn(file string, params []paramList, conditions []*a
 	}
 }
 
-// collectInto registers a definition under its (package, name) key, appending a
-// duplicate error (per key, so same-named defs in different packages coexist)
-// if the key already exists.
-func collectInto[T any](m map[pkgKey]T, key pkgKey, def T, kind string, errKind ErrorKind, line, column int, file string, errs *[]*ResolveError) {
-	if _, exists := m[key]; exists {
-		*errs = append(*errs, &ResolveError{
-			Msg:    fmt.Sprintf("duplicate %s definition: %s", kind, key.name),
-			Line:   line,
-			Column: column,
-			Kind:   errKind,
-			Name:   key.name,
-			File:   file,
-		})
+// collectInto registers a definition under its (package, name) key, so
+// same-named defs in different packages coexist. A key already registered
+// keeps its first definition, and the later one gets a duplicate error naming
+// where the first is: its line, and its file when that is another.
+func collectInto[T ast.Definition](m map[pkgKey]T, key pkgKey, def T, kind string, errKind ErrorKind, errs *[]*ResolveError) {
+	first, exists := m[key]
+	if !exists {
+		m[key] = def
+		return
 	}
-	m[key] = def
+	at := fmt.Sprintf("line %d", first.NodeLine())
+	if f := ast.SourceFileOf(first); f != ast.SourceFileOf(def) {
+		at = fmt.Sprintf("%s:%d", f, first.NodeLine())
+	}
+	*errs = append(*errs, &ResolveError{
+		Msg:    fmt.Sprintf("duplicate %s definition: %s (first at %s)", kind, key.name, at),
+		Line:   def.NodeLine(),
+		Column: def.NodeColumn(),
+		Kind:   errKind,
+		Name:   key.name,
+		File:   ast.SourceFileOf(def),
+	})
 }
 
 // resolvePkgRef resolves a package-scoped reference (activity / workflow / nexus

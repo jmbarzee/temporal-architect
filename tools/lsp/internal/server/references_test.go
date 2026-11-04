@@ -424,7 +424,7 @@ func TestNameRangeCountsUTF16(t *testing.T) {
 	col := strings.Index(line, "Charge") + 1 // the parser's 1-based byte column
 	o := occurrence{name: "Charge"}
 	o.Line, o.Column = 2, col
-	got := nameRange([]string{"first line", line}, o)
+	got := nameRange([]string{"first line", line}, o.Pos, o.name)
 	want := protocol.Range{
 		Start: protocol.Position{Line: 1, Character: 10}, // 4 spaces, ", é, 😀 (2 units), ", space
 		End:   protocol.Position{Line: 1, Character: 16},
