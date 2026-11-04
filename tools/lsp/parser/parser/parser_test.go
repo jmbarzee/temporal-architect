@@ -2792,8 +2792,8 @@ func TestWorkerServiceThirdSegmentKeepsWorker(t *testing.T) {
 	}
 }
 
-// A trailing comment never stands between a block-opening line and the INDENT
-// that follows it, and is not captured as a statement.
+// A comment trailing a block-opening line never stands between the line and
+// the INDENT that follows it.
 func TestTrailingCommentBeforeBlock(t *testing.T) {
 	input := `workflow Child(x): # header
     close complete(x)
@@ -2817,6 +2817,51 @@ workflow Parent(x):
 	call := wf.Body[0].(*ast.WorkflowCall)
 	if got := optionEntries(call.Options); got != "workflow_execution_timeout=1h" {
 		t.Errorf("call-site options = %q, want %q", got, "workflow_execution_timeout=1h")
+	}
+}
+
+// The parser re-scans a deploy name; a comment after it still trails code.
+func TestTrailingCommentAfterDeployName(t *testing.T) {
+	input := `namespace ns: # note
+    nexus endpoint Ep # note
+        options:
+            task_queue: "q"
+`
+	file, err := ParseFile(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	ep := file.Definitions[0].(*ast.NamespaceDef).Endpoints[0]
+	if ep.EndpointName != "Ep" || optionEntries(ep.Options) != "task_queue=q" {
+		t.Errorf("endpoint = %q with options %q, want Ep with task_queue=q", ep.EndpointName, optionEntries(ep.Options))
+	}
+}
+
+// A comment trailing a line that opens no block is kept as a comment statement
+// after the line's own statement.
+func TestTrailingCommentKeptAsStatement(t *testing.T) {
+	input := `workflow W(x):
+    activity Foo(x) -> y # local activity
+    close complete(y) # done
+`
+	file, err := ParseFile(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	var got []string
+	for _, stmt := range file.Definitions[0].(*ast.WorkflowDef).Body {
+		if c, ok := stmt.(*ast.Comment); ok {
+			got = append(got, fmt.Sprintf("comment %d:%d %q", c.Line, c.Column, c.Text))
+		} else {
+			got = append(got, fmt.Sprintf("%T", stmt))
+		}
+	}
+	want := []string{
+		"*ast.ActivityCall", `comment 2:26 " local activity"`,
+		"*ast.CloseStmt", `comment 3:23 " done"`,
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("body = %q, want %q", got, want)
 	}
 }
 

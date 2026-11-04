@@ -128,7 +128,8 @@ semantics.
 ```
 NUMBER ::= [0-9]+ ['.' [0-9]+]
 DURATION ::= NUMBER ('ms' | 's' | 'm' | 'h' | 'd')
-STRING ::= '"' ( [^"\\\n] | '\"' | '\\' )* '"'
+STRING ::= '"' ( string_char | '\"' | '\\' )* '"'
+string_char ::= any character except '"', '\', or a newline
 ```
 
 A `STRING` is single-line. `\"` and `\\` are its only escapes, standing for `"` and `\`; any other
@@ -152,4 +153,4 @@ family; see [Endpoint Options](./03-workers-and-namespaces.md#endpoint-options).
 comment ::= '#' .* NEWLINE
 ```
 
-Comments start with `#` and continue to the end of the line. Comments can appear anywhere in the source and do not affect execution semantics. A comment on a line of its own is captured in the AST; a trailing comment, one that follows code on its line, is not.
+Comments start with `#` and continue to the end of the line. Comments can appear anywhere in the source and do not affect execution semantics. Comments are captured in the AST, except one that follows a block header — a line that ends in `:` or opens an indented block, such as a definition header, `if (...):`, or a call followed by `options:` — which is discarded.

@@ -94,8 +94,8 @@ const (
 	IDENT            // non-keyword identifiers
 	STRING           // quoted string
 	ARGS             // raw content between ( and ), no nested parens
-	COMMENT          // text after # on a line of its own
-	TRAILING_COMMENT // text after # that follows code on its line
+	COMMENT          // text after #
+	TRAILING_COMMENT // text after # on a block header: a line ending in ':' or opening an indented block
 	RAW_TEXT         // anything else
 
 	tokenCount // sentinel: must be last — used for compile-time table size check

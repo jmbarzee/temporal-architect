@@ -2,6 +2,7 @@ package lexer
 
 import (
 	"fmt"
+	"unicode/utf8"
 
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/token"
 )
@@ -9,12 +10,12 @@ import (
 // Lexer tokenizes .twf source input with indentation-aware INDENT/DEDENT emission.
 type Lexer struct {
 	input   []byte
-	pos     int           // current position in input
-	line    int           // 1-based line number
-	col     int           // 1-based column number
-	atBOL   bool          // at beginning of line (for indent processing)
-	code    bool          // a token was emitted on this line, so '#' starts a trailing comment
-	pending []token.Token // queued tokens (INDENT/DEDENT, or a literal behind its escape error)
+	pos     int             // current position in input
+	line    int             // 1-based line number
+	col     int             // 1-based column number
+	atBOL   bool            // at beginning of line (for indent processing)
+	last    token.TokenType // last token emitted on this line; NEWLINE before the first
+	pending []token.Token   // queued tokens (INDENT/DEDENT, or a literal behind its escape error)
 
 	indentStack []int // stack of indent levels, starts at [0]
 	eofEmitted  bool  // true after first EOF has been emitted
@@ -28,6 +29,7 @@ func New(input string) *Lexer {
 		line:        1,
 		col:         1,
 		atBOL:       true,
+		last:        token.NEWLINE,
 		indentStack: []int{0},
 	}
 }
@@ -75,7 +77,9 @@ func (l *Lexer) NextToken() token.Token {
 
 		case ch == '#':
 			tok = l.scanComment()
-			if l.code {
+			// A comment after a block header (a line ending in ':' or opening
+			// an indented block) would sit between the header and its block.
+			if l.last != token.NEWLINE && (l.last == token.COLON || l.opensBlock()) {
 				tok.Type = token.TRAILING_COMMENT
 			}
 
@@ -125,7 +129,7 @@ func (l *Lexer) NextToken() token.Token {
 			tok = l.scanRawText()
 		}
 
-		l.code = tok.Type != token.NEWLINE
+		l.last = tok.Type
 		return tok
 	}
 }
@@ -242,6 +246,25 @@ func (l *Lexer) scanComment() token.Token {
 	return tok
 }
 
+// opensBlock reports whether the line ending at l.pos is followed, past any
+// blank lines, by a more indented line: whether an INDENT follows its NEWLINE.
+func (l *Lexer) opensBlock() bool {
+	top := l.indentStack[len(l.indentStack)-1]
+	for i := l.pos; i < len(l.input); {
+		i++ // skip the '\n' ending the previous line
+		indent := 0
+		for i < len(l.input) && l.input[i] == ' ' {
+			indent++
+			i++
+		}
+		if i < len(l.input) && l.input[i] == '\n' {
+			continue // blank line
+		}
+		return i < len(l.input) && indent > top
+	}
+	return false
+}
+
 // scanArgs consumes an argument group delimited by the opening '(' up to its
 // matching ')'. The scan is balanced and string-aware: it maintains a delimiter
 // stack (pushing on '(' '{' '[', popping on ')' '}' ']') so nested groups don't
@@ -331,7 +354,8 @@ func (l *Lexer) scanStringSpan() (val string, bad *token.Token, ok bool) {
 				ch = next
 			default:
 				if bad == nil {
-					tok := l.makeToken(token.ILLEGAL, fmt.Sprintf(`unknown escape \%c in string literal (only \" and \\ are escapes)`, next))
+					r, _ := utf8.DecodeRune(l.input[l.pos+1:])
+					tok := l.makeToken(token.ILLEGAL, fmt.Sprintf(`unknown escape \%c in string literal (only \" and \\ are escapes)`, r))
 					bad = &tok
 				}
 			}
@@ -407,6 +431,7 @@ func (l *Lexer) RescanDeployName(tok token.Token) (token.Token, error) {
 	l.line = tok.Line
 	l.col = tok.Column
 	l.atBOL = false
+	l.last = token.IDENT // the name re-scanned below
 	l.pending = nil
 	l.eofEmitted = false
 	return l.scanDeployName()

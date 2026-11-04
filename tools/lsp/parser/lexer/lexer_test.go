@@ -773,13 +773,14 @@ func TestEmptyListLiteralTokens(t *testing.T) {
 }
 
 func TestTrailingComment(t *testing.T) {
-	// A '#' after code on its line is a TRAILING_COMMENT; on a line of its own,
-	// at any indent, it is a COMMENT.
-	input := "a(\n) # one\n# two\n  # three\n"
+	// A '#' after a block header (a line ending in ':' or opening an indented
+	// block, past blank lines) is a TRAILING_COMMENT; any other is a COMMENT.
+	input := "a(\n) # one\n\n  b # two\n  # three\n  c: # four\n"
 	expected := []token.TokenType{
 		token.IDENT, token.ARGS, token.TRAILING_COMMENT, token.NEWLINE,
+		token.INDENT, token.IDENT, token.COMMENT, token.NEWLINE,
 		token.COMMENT, token.NEWLINE,
-		token.INDENT, token.COMMENT, token.NEWLINE,
+		token.IDENT, token.COLON, token.TRAILING_COMMENT, token.NEWLINE,
 		token.DEDENT, token.EOF,
 	}
 	l := New(input)

@@ -55,6 +55,9 @@ func (p *Parser) parseOptionalIDScheme(params string) (*ast.IDScheme, error) {
 		}
 	}
 	p.advance() // consume STRING
+	if p.current.Type == token.COMMENT {
+		p.advance()
+	}
 	if p.current.Type == token.NEWLINE {
 		p.advance()
 	}
