@@ -236,14 +236,10 @@ func signatureForAwait(n *ast.AwaitStmt) string {
 		}
 		return fmt.Sprintf("await activity %s(%s)", t.Activity.Name, t.Args)
 	case *ast.WorkflowTarget:
-		prefix := "await workflow"
-		if t.Mode == ast.CallDetach {
-			prefix = "await detach workflow"
-		}
 		if t.Result != "" {
-			return fmt.Sprintf("%s %s(%s) -> %s", prefix, t.Workflow.Name, t.Args, t.Result)
+			return fmt.Sprintf("await workflow %s(%s) -> %s", t.Workflow.Name, t.Args, t.Result)
 		}
-		return fmt.Sprintf("%s %s(%s)", prefix, t.Workflow.Name, t.Args)
+		return fmt.Sprintf("await workflow %s(%s)", t.Workflow.Name, t.Args)
 	case *ast.NexusTarget:
 		sig := fmt.Sprintf("await nexus %s %s.%s(%s)", t.Endpoint.Name, t.Service.Name, t.Operation.Name, t.Args)
 		if t.Result != "" {

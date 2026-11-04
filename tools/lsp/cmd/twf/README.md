@@ -349,7 +349,7 @@ The complete list of `kind` + `code` combinations:
 - `SYNTAX` — any parser failure without a more specific code (categorization is
   future work — [#32](https://github.com/jmbarzee/temporal-architect/issues/32))
 - `LEX` — a structural lexical error (`--lenient` never demotes it)
-- `OPTION_MISPLACED`, `DUPLICATE_OPTION_KEY`
+- `OPTION_MISPLACED`, `DUPLICATE_OPTION_KEY`, `DETACH_AWAITED`
 - `ID_SCHEME_MISPLACED`, `ID_SCHEME_MALFORMED`, `ID_VALUE_MALFORMED`,
   `ID_AT_START`, `ADDRESS_MISPLACED`
 

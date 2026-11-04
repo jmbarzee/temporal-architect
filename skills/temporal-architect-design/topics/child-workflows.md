@@ -21,7 +21,7 @@
 |------|--------|----------|
 | **Synchronous** | `workflow Name(args) -> result` | Parent blocks until the child completes; result bound |
 | **Async** | `promise p <- workflow Name(args)` … `await p -> result` | Parent continues; awaits the promise later |
-| **Fire-and-forget** | `detach workflow Name(args)` | Parent never waits, gets no result; implies `ABANDON`, so the child survives parent completion, cancellation, or failure |
+| **Detached** | `detach workflow Name(args)` | Parent waits for the start only; the child outlives it (Detach in `twf spec statement-syntax`) |
 
 `promise` and `detach` work the same on nexus calls — see [nexus.md](./nexus.md#execution-modes). Per-call config (`workflow_execution_timeout`, `retry_policy`, `parent_close_policy`, …) goes in an `options:` block under the call.
 

@@ -212,10 +212,7 @@ export type TimerTarget = TimerTargetJSON;
 export type SignalTarget = SignalTargetJSON;
 export type UpdateTarget = UpdateTargetJSON;
 export type ActivityTarget = ActivityTargetJSON;
-export type WorkflowTarget = WorkflowTargetJSON & {
-  mode: WorkflowCallMode;
-  start: WorkflowStartKind;
-};
+export type WorkflowTarget = WorkflowTargetJSON & { start: WorkflowStartKind };
 export type NexusTarget = NexusTargetJSON;
 export type IdentTarget = IdentTargetJSON;
 

@@ -523,7 +523,6 @@ func (*ActivityTarget) asyncTarget() {}
 
 type WorkflowTarget struct {
 	Workflow Ref[*WorkflowDef]
-	Mode     WorkflowCallMode
 	Start    StartKind
 	Args     string
 	Result   string
@@ -537,7 +536,6 @@ type NexusTarget struct {
 	Operation Ref[*NexusOperation]
 	Args      string
 	Result    string
-	Detach    bool
 }
 
 func (*NexusTarget) asyncTarget() {}

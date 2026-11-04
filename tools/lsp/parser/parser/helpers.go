@@ -419,7 +419,8 @@ func (p *Parser) parseOptionalOptionsLine(ctx OptionsContext) (*ast.OptionsBlock
 		}
 	}
 	if isAddressKey(p.current) {
-		if ctx == OptionsContextChildStart || ctx == OptionsContextClientStart {
+		switch ctx {
+		case OptionsContextChildStart, OptionsContextDetachedChildStart, OptionsContextClientStart:
 			return nil, p.codedErrorf(CodeIDAtStart, "a workflow start takes no %s:; the ID derives from the started type's id_scheme", p.current.Literal)
 		}
 		return nil, p.codedErrorf(CodeAddressMisplaced, "%s: is an address key, valid only under a signal send", p.current.Literal)
