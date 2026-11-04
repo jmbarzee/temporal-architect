@@ -12,15 +12,15 @@ import (
 // list, a raw text run, blank lines, indentation and dedentation.
 const lineEndsSource = `# header
 workflow W(x): # trailing
-    s = "done"
+	s = "done"
 
-    activity A(a,
-        b) -> r
-    x = y + 1
-        z = 2
+	activity A(a,
+		b) -> r
+	x = y + 1
+		z = 2
 
 activity A(x):
-    return x
+	return x
 `
 
 // A CRLF file lexes as its LF twin: the same tokens on the same lines and
@@ -65,7 +65,7 @@ func TestCRLFLexesAsLF(t *testing.T) {
 // A lone "\r" ending the input ends its last line.
 func TestTrailingCarriageReturnEndsTheLine(t *testing.T) {
 	assertTypes(t, "x\r", []token.TokenType{token.IDENT, token.NEWLINE, token.EOF})
-	assertTypes(t, "workflow:\n    x\r", []token.TokenType{
+	assertTypes(t, "workflow:\n\tx\r", []token.TokenType{
 		token.WORKFLOW, token.COLON, token.NEWLINE, token.INDENT, token.IDENT, token.NEWLINE, token.DEDENT, token.EOF,
 	})
 	assertTypes(t, "x # note\r", []token.TokenType{token.IDENT, token.COMMENT, token.NEWLINE, token.EOF})
@@ -103,7 +103,7 @@ func TestWhitespaceOnlyLinesAreBlank(t *testing.T) {
 	for _, blank := range []string{"", " ", "\t", "\t\t", " \t", "\t ", "    \t  "} {
 		for _, nl := range []string{"\n", "\r\n"} {
 			src := strings.Join([]string{
-				blank, "workflow:", blank, "    a", blank, "    b", blank, "activity", blank, "",
+				blank, "workflow:", blank, "\ta", blank, "\tb", blank, "activity", blank, "",
 			}, nl)
 			t.Run(strings.NewReplacer("\t", `\t`, "\r", `\r`).Replace(blank+nl), func(t *testing.T) {
 				assertTypes(t, src, block)
@@ -113,18 +113,18 @@ func TestWhitespaceOnlyLinesAreBlank(t *testing.T) {
 	// A whitespace line at the end of the input, with no line end after it,
 	// lexes as a space-only one does.
 	var spaceTail []token.TokenType
-	for _, tok := range New("workflow:\n    a\n ").AllTokens() {
+	for _, tok := range New("workflow:\n\ta\n ").AllTokens() {
 		spaceTail = append(spaceTail, tok.Type)
 	}
 	for _, tail := range []string{"\t", " \t", "\t "} {
-		assertTypes(t, "workflow:\n    a\n"+tail, spaceTail)
+		assertTypes(t, "workflow:\n\ta\n"+tail, spaceTail)
 	}
 }
 
 // A blank line of tabs between a block header and its block leaves the
 // header's trailing comment discarded, as a blank line of spaces does.
 func TestTabBlankLineUnderBlockHeader(t *testing.T) {
-	assertTypes(t, "workflow: # note\n\t\n    a\n", []token.TokenType{
+	assertTypes(t, "workflow: # note\n\t\n\ta\n", []token.TokenType{
 		token.WORKFLOW, token.COLON, token.TRAILING_COMMENT, token.NEWLINE, token.INDENT, token.IDENT, token.NEWLINE, token.DEDENT, token.EOF,
 	})
 }
@@ -133,7 +133,7 @@ func TestTabBlankLineUnderBlockHeader(t *testing.T) {
 func TestTabBetweenTokensIsWhitespace(t *testing.T) {
 	assertTypes(t, "break\t\n", []token.TokenType{token.BREAK, token.NEWLINE, token.EOF})
 	assertTypes(t, "set\tReady \t# note\n", []token.TokenType{token.SET, token.IDENT, token.COMMENT, token.NEWLINE, token.EOF})
-	assertTypes(t, "workflow:\t# note\n    a\n", []token.TokenType{
+	assertTypes(t, "workflow:\t# note\n\ta\n", []token.TokenType{
 		token.WORKFLOW, token.COLON, token.TRAILING_COMMENT, token.NEWLINE, token.INDENT, token.IDENT, token.NEWLINE, token.DEDENT, token.EOF,
 	})
 }

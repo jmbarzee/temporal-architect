@@ -237,10 +237,10 @@ func TestParseFilesAttributesValidateErrorToCallSiteFile(t *testing.T) {
 func TestStructuralLexErrorSurfacesAndBlocksLenient(t *testing.T) {
 	// An unterminated string mid-file. The definition that follows must survive.
 	src := "workflow Foo(x: int) -> (Result):\n" +
-		"    activity Log(\"oops) -> ok\n" +
+		"\tactivity Log(\"oops) -> ok\n" +
 		"\n" +
 		"activity Bar(y: string) -> (string):\n" +
-		"    return y\n"
+		"\treturn y\n"
 
 	file, diags, err := pipeline.ParseSource("t.twf", src)
 	if err != nil {

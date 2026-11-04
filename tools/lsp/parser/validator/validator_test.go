@@ -50,7 +50,7 @@ func hasWarning(errs []*Error, substr string) bool {
 
 func TestEmptyWorkflowWarning(t *testing.T) {
 	input := `workflow EmptyWorkflow(x: int) -> (int):
-    # nothing here
+	# nothing here
 `
 	file := mustParseAndResolve(t, input)
 	errs := Validate(file)
@@ -61,7 +61,7 @@ func TestEmptyWorkflowWarning(t *testing.T) {
 
 func TestCommentOnlyActivityWarning(t *testing.T) {
 	input := `activity CommentOnly(x: int) -> (int):
-    # nothing here
+	# nothing here
 `
 	file := mustParseAndResolve(t, input)
 	errs := Validate(file)
@@ -72,15 +72,15 @@ func TestCommentOnlyActivityWarning(t *testing.T) {
 
 func TestEmptyWorkerWarning(t *testing.T) {
 	input := `workflow Foo(x: int) -> (int):
-    return x
+	return x
 
 worker emptyWorker:
-    # no registrations
+	# no registrations
 
 namespace ns:
-    worker emptyWorker
-        options:
-            task_queue: "q"
+	worker emptyWorker
+		options:
+			task_queue: "q"
 `
 	file := mustParseAndResolve(t, input)
 	errs := Validate(file)
@@ -91,7 +91,7 @@ namespace ns:
 
 func TestEmptyNamespaceWarning(t *testing.T) {
 	input := `namespace emptyNs:
-    # no workers
+	# no workers
 `
 	file := mustParseAndResolve(t, input)
 	errs := Validate(file)
@@ -105,16 +105,16 @@ func TestEmptyNamespaceWarning(t *testing.T) {
 // its own line, as is an empty first declaration.
 func TestEmptyDefinitionEveryDeclaration(t *testing.T) {
 	file, err := parser.ParseFile(`workflow W(x: int) -> (int):
-    return x
+	return x
 
 workflow W(x: int) -> (int):
-    # nothing here
+	# nothing here
 
 activity A(x: int) -> (int):
-    # nothing here
+	# nothing here
 
 activity A(x: int) -> (int):
-    return x
+	return x
 `)
 	if err != nil {
 		t.Fatal(err)
@@ -137,24 +137,24 @@ activity A(x: int) -> (int):
 func TestDroppedWorkerAndNamespaceUnchecked(t *testing.T) {
 	const flawed = `
 worker w:
-    workflow W
-    workflow W
+	workflow W
+	workflow W
 
 namespace n:
-    worker w
-    nexus endpoint e
+	worker w
+	nexus endpoint e
 `
 	const clean = `
 worker w:
-    workflow W
+	workflow W
 
 namespace n:
-    worker w
-        options:
-            task_queue: "q"
-    nexus endpoint e
-        options:
-            task_queue: "q"
+	worker w
+		options:
+			task_queue: "q"
+	nexus endpoint e
+		options:
+			task_queue: "q"
 `
 	tests := []struct {
 		name         string
@@ -175,7 +175,7 @@ namespace n:
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			file, err := parser.ParseFile("workflow W():\n    close complete()\n" + tt.first + tt.later)
+			file, err := parser.ParseFile("workflow W():\n\tclose complete()\n" + tt.first + tt.later)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -198,13 +198,13 @@ namespace n:
 
 func TestWorkerMissingTaskQueue(t *testing.T) {
 	input := `workflow Foo(x: int) -> (int):
-    return x
+	return x
 
 worker w:
-    workflow Foo
+	workflow Foo
 
 namespace orders:
-    worker w
+	worker w
 `
 	file := mustParseAndResolve(t, input)
 	errs := Validate(file)
@@ -215,16 +215,16 @@ namespace orders:
 
 func TestNexusEndpointMissingTaskQueue(t *testing.T) {
 	input := `worker w:
-    workflow W
+	workflow W
 
 workflow W():
-    close complete(Result{})
+	close complete(Result{})
 
 namespace ns:
-    worker w
-        options:
-            task_queue: "q"
-    nexus endpoint Ep
+	worker w
+		options:
+			task_queue: "q"
+	nexus endpoint Ep
 `
 	file := mustParseAndResolve(t, input)
 	errs := Validate(file)
@@ -237,18 +237,18 @@ namespace ns:
 
 func TestWorkerNotInstantiated(t *testing.T) {
 	input := `workflow Foo(x: int) -> (int):
-    return x
+	return x
 
 worker usedWorker:
-    workflow Foo
+	workflow Foo
 
 worker unusedWorker:
-    workflow Foo
+	workflow Foo
 
 namespace orders:
-    worker usedWorker
-        options:
-            task_queue: "q"
+	worker usedWorker
+		options:
+			task_queue: "q"
 `
 	file := mustParseAndResolve(t, input)
 	errs := Validate(file)
@@ -259,18 +259,18 @@ namespace orders:
 
 func TestNexusServiceNotOnWorker(t *testing.T) {
 	input := `nexus service UnusedService:
-    async Op workflow W
+	async Op workflow W
 
 workflow W():
-    close complete(Result{})
+	close complete(Result{})
 
 worker w:
-    workflow W
+	workflow W
 
 namespace ns:
-    worker w
-        options:
-            task_queue: "q"
+	worker w
+		options:
+			task_queue: "q"
 `
 	file := mustParseAndResolve(t, input)
 	errs := Validate(file)
@@ -283,29 +283,29 @@ namespace ns:
 
 func TestTaskQueueCoherence(t *testing.T) {
 	input := `workflow A(x: int) -> (int):
-    return x
+	return x
 
 workflow B(x: int) -> (int):
-    return x
+	return x
 
 activity C(x: int) -> (int):
-    return x
+	return x
 
 worker worker1:
-    workflow A
-    activity C
+	workflow A
+	activity C
 
 worker worker2:
-    workflow B
-    activity C
+	workflow B
+	activity C
 
 namespace ns:
-    worker worker1
-        options:
-            task_queue: "sharedQueue"
-    worker worker2
-        options:
-            task_queue: "sharedQueue"
+	worker worker1
+		options:
+			task_queue: "sharedQueue"
+	worker worker2
+		options:
+			task_queue: "sharedQueue"
 `
 	file := mustParseAndResolve(t, input)
 	errs := Validate(file)
@@ -318,27 +318,27 @@ namespace ns:
 
 func TestExplicitTaskQueueRouting(t *testing.T) {
 	input := `workflow Caller(x: int) -> (int):
-    activity Target(x) -> y
-        options:
-            task_queue: "other-queue"
-    return y
+	activity Target(x) -> y
+		options:
+			task_queue: "other-queue"
+	return y
 
 activity Target(x: int) -> (int):
-    return x
+	return x
 
 worker callerWorker:
-    workflow Caller
+	workflow Caller
 
 worker targetWorker:
-    activity Target
+	activity Target
 
 namespace ns:
-    worker callerWorker
-        options:
-            task_queue: "main-queue"
-    worker targetWorker
-        options:
-            task_queue: "other-queue"
+	worker callerWorker
+		options:
+			task_queue: "main-queue"
+	worker targetWorker
+		options:
+			task_queue: "other-queue"
 `
 	file := mustParseAndResolve(t, input)
 	errs := Validate(file)
@@ -351,27 +351,27 @@ namespace ns:
 
 func TestExplicitTaskQueueRoutingMismatch(t *testing.T) {
 	input := `workflow Caller(x: int) -> (int):
-    activity Target(x) -> y
-        options:
-            task_queue: "wrong-queue"
-    return y
+	activity Target(x) -> y
+		options:
+			task_queue: "wrong-queue"
+	return y
 
 activity Target(x: int) -> (int):
-    return x
+	return x
 
 worker callerWorker:
-    workflow Caller
+	workflow Caller
 
 worker targetWorker:
-    activity Target
+	activity Target
 
 namespace ns:
-    worker callerWorker
-        options:
-            task_queue: "main-queue"
-    worker targetWorker
-        options:
-            task_queue: "other-queue"
+	worker callerWorker
+		options:
+			task_queue: "main-queue"
+	worker targetWorker
+		options:
+			task_queue: "other-queue"
 `
 	file := mustParseAndResolve(t, input)
 	errs := Validate(file)
@@ -382,20 +382,20 @@ namespace ns:
 
 func TestImplicitTaskQueueRouting(t *testing.T) {
 	input := `workflow Caller(x: int) -> (int):
-    activity Target(x) -> y
-    return y
+	activity Target(x) -> y
+	return y
 
 activity Target(x: int) -> (int):
-    return x
+	return x
 
 worker w:
-    workflow Caller
-    activity Target
+	workflow Caller
+	activity Target
 
 namespace ns:
-    worker w
-        options:
-            task_queue: "shared-queue"
+	worker w
+		options:
+			task_queue: "shared-queue"
 `
 	file := mustParseAndResolve(t, input)
 	errs := Validate(file)
@@ -408,25 +408,25 @@ namespace ns:
 
 func TestImplicitTaskQueueRoutingMismatch(t *testing.T) {
 	input := `workflow Caller(x: int) -> (int):
-    activity Unreachable(x) -> y
-    return y
+	activity Unreachable(x) -> y
+	return y
 
 activity Unreachable(x: int) -> (int):
-    return x
+	return x
 
 worker callerWorker:
-    workflow Caller
+	workflow Caller
 
 worker otherWorker:
-    activity Unreachable
+	activity Unreachable
 
 namespace ns:
-    worker callerWorker
-        options:
-            task_queue: "main-queue"
-    worker otherWorker
-        options:
-            task_queue: "other-queue"
+	worker callerWorker
+		options:
+			task_queue: "main-queue"
+	worker otherWorker
+		options:
+			task_queue: "other-queue"
 `
 	file := mustParseAndResolve(t, input)
 	errs := Validate(file)
@@ -437,20 +437,20 @@ namespace ns:
 
 func TestImplicitTaskQueueChildWorkflowRouting(t *testing.T) {
 	input := `workflow Parent(x: int) -> (int):
-    workflow Child(x) -> y
-    return y
+	workflow Child(x) -> y
+	return y
 
 workflow Child(x: int) -> (int):
-    return x
+	return x
 
 worker w:
-    workflow Parent
-    workflow Child
+	workflow Parent
+	workflow Child
 
 namespace ns:
-    worker w
-        options:
-            task_queue: "shared-queue"
+	worker w
+		options:
+			task_queue: "shared-queue"
 `
 	file := mustParseAndResolve(t, input)
 	errs := Validate(file)
@@ -463,27 +463,27 @@ namespace ns:
 
 func TestExplicitTaskQueueWorkflowRouting(t *testing.T) {
 	input := `workflow Parent(x: int) -> (int):
-    workflow Child(x) -> y
-        options:
-            task_queue: "child-queue"
-    return y
+	workflow Child(x) -> y
+		options:
+			task_queue: "child-queue"
+	return y
 
 workflow Child(x: int) -> (int):
-    return x
+	return x
 
 worker parentWorker:
-    workflow Parent
+	workflow Parent
 
 worker childWorker:
-    workflow Child
+	workflow Child
 
 namespace ns:
-    worker parentWorker
-        options:
-            task_queue: "parent-queue"
-    worker childWorker
-        options:
-            task_queue: "child-queue"
+	worker parentWorker
+		options:
+			task_queue: "parent-queue"
+	worker childWorker
+		options:
+			task_queue: "child-queue"
 `
 	file := mustParseAndResolve(t, input)
 	errs := Validate(file)
@@ -498,22 +498,22 @@ namespace ns:
 
 func TestNexusEndpointServiceLinkage(t *testing.T) {
 	input := `nexus service Svc:
-    async Op workflow W
+	async Op workflow W
 
 workflow W():
-    nexus Ep Svc.Op(x) -> result
-    close complete(result)
+	nexus Ep Svc.Op(x) -> result
+	close complete(result)
 
 worker w:
-    workflow W
+	workflow W
 
 namespace ns:
-    worker w
-        options:
-            task_queue: "q"
-    nexus endpoint Ep
-        options:
-            task_queue: "q"
+	worker w
+		options:
+			task_queue: "q"
+	nexus endpoint Ep
+		options:
+			task_queue: "q"
 `
 	file := mustParseAndResolve(t, input)
 	errs := Validate(file)
@@ -529,23 +529,23 @@ namespace ns:
 // this test exists so that if one is ever added it cannot regress this case.
 func TestSignalSendHandleCountsAsUse(t *testing.T) {
 	input := `workflow OrderSaga(order: string) -> (string):
-    promise pay <- workflow ProcessPayment(order)
-    signal pay.OrderShipped(order)
-    close complete(order)
+	promise pay <- workflow ProcessPayment(order)
+	signal pay.OrderShipped(order)
+	close complete(order)
 
 workflow ProcessPayment(order: string) -> (string):
-    signal OrderShipped(id: string):
-        shipped = true
-    return order
+	signal OrderShipped(id: string):
+		shipped = true
+	return order
 
 worker sagaWorker:
-    workflow OrderSaga
-    workflow ProcessPayment
+	workflow OrderSaga
+	workflow ProcessPayment
 
 namespace ecommerce:
-    worker sagaWorker
-        options:
-            task_queue: "orders"
+	worker sagaWorker
+		options:
+			task_queue: "orders"
 `
 	file := mustParseAndResolve(t, input)
 	errs := Validate(file)
@@ -565,29 +565,29 @@ namespace ecommerce:
 // changes from run to run (issue #237).
 func TestDiagnosticOrder(t *testing.T) {
 	input := `workflow WA():
-    # empty
+	# empty
 
 workflow WB():
-    # empty
+	# empty
 
 activity AA():
-    # empty
+	# empty
 
 activity AB():
-    # empty
+	# empty
 
 worker wa:
-    # empty
+	# empty
 
 worker wb:
-    # empty
+	# empty
 
 namespace na:
-    # empty
+	# empty
 
 namespace nb:
-    worker wa
-    worker wb
+	worker wa
+	worker wb
 `
 	file := mustParseAndResolve(t, input)
 	// Attribute the runnables to b.twf and the rest to a.twf, so file order
@@ -612,8 +612,8 @@ namespace nb:
 		"a.twf:13:1 EMPTY_WORKER",
 		"a.twf:16:1 EMPTY_WORKER",
 		"a.twf:19:1 EMPTY_NAMESPACE",
-		"a.twf:23:5 MISSING_TASK_QUEUE",
-		"a.twf:24:5 MISSING_TASK_QUEUE",
+		"a.twf:23:2 MISSING_TASK_QUEUE",
+		"a.twf:24:2 MISSING_TASK_QUEUE",
 		"b.twf:1:1 EMPTY_WORKFLOW",
 		"b.twf:1:1 UNCOVERED_WORKFLOW",
 		"b.twf:4:1 EMPTY_WORKFLOW",

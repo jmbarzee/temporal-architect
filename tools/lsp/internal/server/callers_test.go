@@ -12,7 +12,7 @@ import (
 func TestCallersSkipChangedLine(t *testing.T) {
 	ns := &ast.NamespaceDef{Name: "Shop"}
 	ep := &ast.NamespaceEndpoint{Options: &ast.OptionsBlock{Entries: []*ast.OptionEntry{{
-		Pos: ast.Pos{Line: 1, Column: 13},
+		Pos: ast.Pos{Line: 1, Column: 4},
 		Key: "allowed_caller_namespaces",
 	}}}}
 	namespaces := map[string]*ast.NamespaceDef{"Shop": ns}
@@ -21,8 +21,8 @@ func TestCallersSkipChangedLine(t *testing.T) {
 		line string
 		want int
 	}{
-		{"current", `            allowed_caller_namespaces: ["Shop"]`, 1},
-		{"changed on disk", `            task_queue: "Shop"`, 0},
+		{"current", "\t\t\tallowed_caller_namespaces: [\"Shop\"]", 1},
+		{"changed on disk", "\t\t\ttask_queue: \"Shop\"", 0},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			var x indexer

@@ -13,17 +13,17 @@ import (
 // statements. "body" is the reference: a workflow body past its first
 // statement, where handler declarations no longer parse.
 var keywordLineBlocks = []struct{ name, src string }{
-	{"body", "workflow P(x):\n    activity A(x)\n    %s\n    close complete(x)\n"},
-	{"await all", "workflow P(x):\n    await all:\n        %s\n    close complete(x)\n"},
-	{"await one case", "workflow P(x):\n    await one:\n        timer(1m):\n            %s\n    close complete(x)\n"},
-	{"await all in await one", "workflow P(x):\n    await one:\n        await all:\n            %s\n    close complete(x)\n"},
-	{"if", "workflow P(x):\n    if (x):\n        %s\n    close complete(x)\n"},
-	{"else", "workflow P(x):\n    if (x):\n        activity A(x)\n    else:\n        %s\n    close complete(x)\n"},
-	{"for", "workflow P(x):\n    for (i in x):\n        %s\n    close complete(x)\n"},
-	{"switch case", "workflow P(x):\n    switch (x):\n        case 1:\n            %s\n    close complete(x)\n"},
-	{"switch else", "workflow P(x):\n    switch (x):\n        case 1:\n            activity A(x)\n        else:\n            %s\n    close complete(x)\n"},
-	{"signal handler", "workflow P(x):\n    signal S(v):\n        activity A(v)\n        %s\n    close complete(x)\n"},
-	{"update handler", "workflow P(x):\n    update U(v) -> (R):\n        activity A(v)\n        %s\n    close complete(x)\n"},
+	{"body", "workflow P(x):\n\tactivity A(x)\n\t%s\n\tclose complete(x)\n"},
+	{"await all", "workflow P(x):\n\tawait all:\n\t\t%s\n\tclose complete(x)\n"},
+	{"await one case", "workflow P(x):\n\tawait one:\n\t\ttimer(1m):\n\t\t\t%s\n\tclose complete(x)\n"},
+	{"await all in await one", "workflow P(x):\n\tawait one:\n\t\tawait all:\n\t\t\t%s\n\tclose complete(x)\n"},
+	{"if", "workflow P(x):\n\tif (x):\n\t\t%s\n\tclose complete(x)\n"},
+	{"else", "workflow P(x):\n\tif (x):\n\t\tactivity A(x)\n\telse:\n\t\t%s\n\tclose complete(x)\n"},
+	{"for", "workflow P(x):\n\tfor (i in x):\n\t\t%s\n\tclose complete(x)\n"},
+	{"switch case", "workflow P(x):\n\tswitch (x):\n\t\tcase 1:\n\t\t\t%s\n\tclose complete(x)\n"},
+	{"switch else", "workflow P(x):\n\tswitch (x):\n\t\tcase 1:\n\t\t\tactivity A(x)\n\t\telse:\n\t\t\t%s\n\tclose complete(x)\n"},
+	{"signal handler", "workflow P(x):\n\tsignal S(v):\n\t\tactivity A(v)\n\t\t%s\n\tclose complete(x)\n"},
+	{"update handler", "workflow P(x):\n\tupdate U(v) -> (R):\n\t\tactivity A(v)\n\t\t%s\n\tclose complete(x)\n"},
 }
 
 // keywordLineOutcome parses src and returns its error message, or "ok" after
@@ -79,14 +79,14 @@ func TestKeywordLineSameInEveryBlock(t *testing.T) {
 // activity body, nested blocks included.
 func TestKeywordLineStrictOnlyInWorkflowContexts(t *testing.T) {
 	strict := []struct{ name, src string }{
-		{"state field in a workflow body", "workflow P(x):\n    activity A(x)\n    state.count = 1\n"},
-		{"options in a workflow body", "workflow P(x):\n    activity A(x)\n    options = {}\n"},
-		{"all in a workflow body", "workflow P(x):\n    all = x\n    close complete(x)\n"},
-		{"complete in a query handler", "workflow P(x):\n    query Q() -> (R):\n        complete = 1\n        return x\n"},
-		{"fail in a query handler's if", "workflow P(x):\n    query Q() -> (R):\n        if (x):\n            fail(x)\n        return x\n"},
-		{"update in await all", "workflow P(x):\n    await all:\n        update Missing\n    close complete(x)\n"},
-		{"complete in a sync nexus operation", "nexus service Svc:\n    sync Op(x) -> (R):\n        complete = 1\n        return x\n"},
-		{"in within a sync nexus operation's for", "nexus service Svc:\n    sync Op(x) -> (R):\n        for (i in x):\n            in parallel, run(i)\n        return x\n"},
+		{"state field in a workflow body", "workflow P(x):\n\tactivity A(x)\n\tstate.count = 1\n"},
+		{"options in a workflow body", "workflow P(x):\n\tactivity A(x)\n\toptions = {}\n"},
+		{"all in a workflow body", "workflow P(x):\n\tall = x\n\tclose complete(x)\n"},
+		{"complete in a query handler", "workflow P(x):\n\tquery Q() -> (R):\n\t\tcomplete = 1\n\t\treturn x\n"},
+		{"fail in a query handler's if", "workflow P(x):\n\tquery Q() -> (R):\n\t\tif (x):\n\t\t\tfail(x)\n\t\treturn x\n"},
+		{"update in await all", "workflow P(x):\n\tawait all:\n\t\tupdate Missing\n\tclose complete(x)\n"},
+		{"complete in a sync nexus operation", "nexus service Svc:\n\tsync Op(x) -> (R):\n\t\tcomplete = 1\n\t\treturn x\n"},
+		{"in within a sync nexus operation's for", "nexus service Svc:\n\tsync Op(x) -> (R):\n\t\tfor (i in x):\n\t\t\tin parallel, run(i)\n\t\treturn x\n"},
 	}
 	for _, tt := range strict {
 		t.Run(tt.name, func(t *testing.T) {
@@ -98,20 +98,20 @@ func TestKeywordLineStrictOnlyInWorkflowContexts(t *testing.T) {
 	}
 
 	file, err := ParseFile(`activity A(x):
-    fail with X if x is missing
-    complete the transfer
-    in parallel, notify(x)
-    if (x):
-        fail(x)
-    for (i in x):
-        options = load(i)
-        case i
-    switch (x):
-        case 1:
-            as needed, retry(x)
-        else:
-            else fall back
-    return x
+	fail with X if x is missing
+	complete the transfer
+	in parallel, notify(x)
+	if (x):
+		fail(x)
+	for (i in x):
+		options = load(i)
+		case i
+	switch (x):
+		case 1:
+			as needed, retry(x)
+		else:
+			else fall back
+	return x
 `)
 	if err != nil {
 		t.Fatalf("activity body: unexpected error: %v", err)
@@ -134,34 +134,34 @@ func TestKeywordLineStrictOnlyInWorkflowContexts(t *testing.T) {
 // names.
 func TestMisplacedKeywordErrors(t *testing.T) {
 	tests := []struct{ name, src, want string }{
-		{"update in await all", "workflow P(x):\n    await all:\n        update Missing\n    close complete(x)\n",
-			"3:9 update arrivals must be awaited: `await update Name`"},
-		{"update before the first statement", "workflow P(x):\n    update Missing\n    close complete(x)\n",
-			"2:5 update arrivals must be awaited: `await update Name`"},
-		{"update with a comment before the first statement", "workflow P(x):\n    update Missing # note\n    close complete(x)\n",
-			"2:5 update arrivals must be awaited: `await update Name`"},
-		{"signal handler after a statement", "workflow P(x):\n    activity A(x)\n    signal S(v):\n        return\n",
-			"3:5 signal handler S is declared after the workflow body's first statement; declare handlers before it"},
-		{"update handler inside a handler", "workflow P(x):\n    signal S(v):\n        update U(v) -> (R):\n            return v\n",
-			"3:9 update handler U is declared inside a handler; declare handlers at the top of the workflow body"},
-		{"signal handler inside a handler", "workflow P(x):\n    update U(v) -> (R):\n        signal S(v):\n            return\n",
-			"3:9 signal handler S is declared inside a handler; declare handlers at the top of the workflow body"},
-		{"update handler in a sync nexus operation", "nexus service Svc:\n    sync Op(x) -> (R):\n        update U(v) -> (R):\n            return v\n",
-			"3:9 a sync nexus operation declares no update handlers; declare U in a workflow"},
-		{"signal handler in a sync nexus operation", "nexus service Svc:\n    sync Op(x) -> (R):\n        signal S(v):\n            return\n",
-			"3:9 a sync nexus operation declares no signal handlers; declare S in a workflow"},
-		{"bare update in a sync nexus operation", "nexus service Svc:\n    sync Op(x) -> (R):\n        update Missing\n",
-			"3:9 a sync nexus operation receives no updates; only a workflow awaits one"},
-		{"update handler after a statement", "workflow P(x):\n    await all:\n        update U(v) -> (R):\n            return v\n",
-			"3:9 update handler U is declared after the workflow body's first statement; declare handlers before it"},
-		{"query handler after a statement", "workflow P(x):\n    activity A(x)\n    query Q() -> (R):\n        return x\n",
-			"3:5 query handler Q is declared after the workflow body's first statement; declare handlers before it"},
-		{"timer", "workflow P(x):\n    await all:\n        timer(1m)\n",
-			"3:9 a timer must be awaited: `await timer(duration)`"},
-		{"options without a call", "workflow P(x):\n    await all:\n        options:\n",
-			`3:9 "options" cannot start a statement`},
-		{"keyword in a query handler", "workflow P(x):\n    query Q() -> (R):\n        complete = 1\n        return x\n",
-			`3:9 "complete" cannot start a statement`},
+		{"update in await all", "workflow P(x):\n\tawait all:\n\t\tupdate Missing\n\tclose complete(x)\n",
+			"3:3 update arrivals must be awaited: `await update Name`"},
+		{"update before the first statement", "workflow P(x):\n\tupdate Missing\n\tclose complete(x)\n",
+			"2:2 update arrivals must be awaited: `await update Name`"},
+		{"update with a comment before the first statement", "workflow P(x):\n\tupdate Missing # note\n\tclose complete(x)\n",
+			"2:2 update arrivals must be awaited: `await update Name`"},
+		{"signal handler after a statement", "workflow P(x):\n\tactivity A(x)\n\tsignal S(v):\n\t\treturn\n",
+			"3:2 signal handler S is declared after the workflow body's first statement; declare handlers before it"},
+		{"update handler inside a handler", "workflow P(x):\n\tsignal S(v):\n\t\tupdate U(v) -> (R):\n\t\t\treturn v\n",
+			"3:3 update handler U is declared inside a handler; declare handlers at the top of the workflow body"},
+		{"signal handler inside a handler", "workflow P(x):\n\tupdate U(v) -> (R):\n\t\tsignal S(v):\n\t\t\treturn\n",
+			"3:3 signal handler S is declared inside a handler; declare handlers at the top of the workflow body"},
+		{"update handler in a sync nexus operation", "nexus service Svc:\n\tsync Op(x) -> (R):\n\t\tupdate U(v) -> (R):\n\t\t\treturn v\n",
+			"3:3 a sync nexus operation declares no update handlers; declare U in a workflow"},
+		{"signal handler in a sync nexus operation", "nexus service Svc:\n\tsync Op(x) -> (R):\n\t\tsignal S(v):\n\t\t\treturn\n",
+			"3:3 a sync nexus operation declares no signal handlers; declare S in a workflow"},
+		{"bare update in a sync nexus operation", "nexus service Svc:\n\tsync Op(x) -> (R):\n\t\tupdate Missing\n",
+			"3:3 a sync nexus operation receives no updates; only a workflow awaits one"},
+		{"update handler after a statement", "workflow P(x):\n\tawait all:\n\t\tupdate U(v) -> (R):\n\t\t\treturn v\n",
+			"3:3 update handler U is declared after the workflow body's first statement; declare handlers before it"},
+		{"query handler after a statement", "workflow P(x):\n\tactivity A(x)\n\tquery Q() -> (R):\n\t\treturn x\n",
+			"3:2 query handler Q is declared after the workflow body's first statement; declare handlers before it"},
+		{"timer", "workflow P(x):\n\tawait all:\n\t\ttimer(1m)\n",
+			"3:3 a timer must be awaited: `await timer(duration)`"},
+		{"options without a call", "workflow P(x):\n\tawait all:\n\t\toptions:\n",
+			`3:3 "options" cannot start a statement`},
+		{"keyword in a query handler", "workflow P(x):\n\tquery Q() -> (R):\n\t\tcomplete = 1\n\t\treturn x\n",
+			`3:3 "complete" cannot start a statement`},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

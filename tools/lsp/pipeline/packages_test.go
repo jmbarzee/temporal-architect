@@ -27,7 +27,7 @@ func wf(pkg, name string) string {
 	if pkg != "" {
 		clause = "package " + pkg + "\n\n"
 	}
-	return clause + "workflow " + name + "():\n    close complete(\"ok\")\n"
+	return clause + "workflow " + name + "():\n\tclose complete(\"ok\")\n"
 }
 
 // check runs `twf check .` in root and returns "file:line:col CODE: message"
@@ -86,7 +86,7 @@ func TestPackageOutsideModule(t *testing.T) {
 func TestModuleFileInvalidIsFatalToItsModule(t *testing.T) {
 	root := layout(t, map[string]string{
 		"twf.mod":         "modul example.com/demo\n",
-		"fabric/v1/f.twf": "package fabric\n\nworkflow W():\n    activity Ghost()\n",
+		"fabric/v1/f.twf": "package fabric\n\nworkflow W():\n\tactivity Ghost()\n",
 	})
 	diags, defs := check(t, root)
 	want := `twf.mod:1:1 MODULE_FILE_INVALID: unknown directive "modul"; expected "module <path>"`
@@ -329,8 +329,8 @@ func TestTempRootModuleFileIsIgnored(t *testing.T) {
 func TestFailedClauseKeepsRecoveredName(t *testing.T) {
 	root := layout(t, map[string]string{
 		"twf.mod":      "module example.com/demo\n",
-		"fabric/f.twf": "package fabric.x\n\nworkflow F():\n    close complete(\"ok\")\n",
-		"fabric/g.twf": "package\n\nworkflow G():\n    close complete(\"ok\")\n",
+		"fabric/f.twf": "package fabric.x\n\nworkflow F():\n\tclose complete(\"ok\")\n",
+		"fabric/g.twf": "package\n\nworkflow G():\n\tclose complete(\"ok\")\n",
 	})
 	diags, defs := check(t, root)
 	if len(diags) != 2 || !strings.Contains(diags[0], "fabric/f.twf:1:15") || !strings.Contains(diags[1], "fabric/g.twf:1:1") {
@@ -363,7 +363,7 @@ func TestAssumedKeywordClauseWinsItsDirectory(t *testing.T) {
 	root := layout(t, map[string]string{
 		"twf.mod":     "module m\n",
 		"nexus/a.twf": wf("aaa", "A"),
-		"nexus/b.twf": "package nexus\n\nworkflow B():\n    close complete(\"ok\")\n",
+		"nexus/b.twf": "package nexus\n\nworkflow B():\n\tclose complete(\"ok\")\n",
 	})
 	_, defs := check(t, root)
 	if strings.Join(defs, ",") != "nexus/b.twf" {

@@ -54,7 +54,7 @@ func TestIdentifier(t *testing.T) {
 }
 
 func TestSingleLevelIndent(t *testing.T) {
-	input := "workflow:\n    body\n"
+	input := "workflow:\n\tbody\n"
 	expected := []token.TokenType{
 		token.WORKFLOW, token.COLON, token.NEWLINE,
 		token.INDENT, token.IDENT, token.NEWLINE,
@@ -70,7 +70,7 @@ func TestSingleLevelIndent(t *testing.T) {
 }
 
 func TestNestedIndent(t *testing.T) {
-	input := "a:\n    b:\n        c\n"
+	input := "a:\n\tb:\n\t\tc\n"
 	expected := []token.TokenType{
 		token.IDENT, token.COLON, token.NEWLINE,
 		token.INDENT, token.IDENT, token.COLON, token.NEWLINE,
@@ -87,7 +87,7 @@ func TestNestedIndent(t *testing.T) {
 }
 
 func TestMultiLevelDedent(t *testing.T) {
-	input := "a:\n    b:\n        c\nd\n"
+	input := "a:\n\tb:\n\t\tc\nd\n"
 	expected := []token.TokenType{
 		token.IDENT, token.COLON, token.NEWLINE,
 		token.INDENT, token.IDENT, token.COLON, token.NEWLINE,
@@ -106,7 +106,7 @@ func TestMultiLevelDedent(t *testing.T) {
 }
 
 func TestBlankLineSkipping(t *testing.T) {
-	input := "a:\n    b\n\n    c\n"
+	input := "a:\n\tb\n\n\tc\n"
 	expected := []token.TokenType{
 		token.IDENT, token.COLON, token.NEWLINE,
 		token.INDENT, token.IDENT, token.NEWLINE,
@@ -124,7 +124,7 @@ func TestBlankLineSkipping(t *testing.T) {
 }
 
 func TestBlankLineWithSpacesSkipping(t *testing.T) {
-	input := "a:\n    b\n    \n    c\n"
+	input := "a:\n\tb\n    \n\tc\n"
 	expected := []token.TokenType{
 		token.IDENT, token.COLON, token.NEWLINE,
 		token.INDENT, token.IDENT, token.NEWLINE,
@@ -233,7 +233,7 @@ func TestColon(t *testing.T) {
 }
 
 func TestEOFDedentEmission(t *testing.T) {
-	input := "a:\n    b:\n        c"
+	input := "a:\n\tb:\n\t\tc"
 	expected := []token.TokenType{
 		token.IDENT, token.COLON, token.NEWLINE,
 		token.INDENT, token.IDENT, token.COLON, token.NEWLINE,
@@ -252,7 +252,7 @@ func TestEOFDedentEmission(t *testing.T) {
 
 func TestWorkflowHeaderTokenStream(t *testing.T) {
 	input := `workflow OrderFulfillment(orderId: string) -> (OrderResult):
-    activity GetOrder(orderId) -> order
+	activity GetOrder(orderId) -> order
 `
 	expected := []struct {
 		typ token.TokenType
@@ -410,7 +410,7 @@ func TestNumberToken(t *testing.T) {
 }
 
 func TestEmitEOFIdempotent(t *testing.T) {
-	input := "a:\n    b"
+	input := "a:\n\tb"
 	l := New(input)
 	_ = l.AllTokens()
 
@@ -427,9 +427,9 @@ func TestEmitEOFIdempotent(t *testing.T) {
 }
 
 func TestInconsistentDedent(t *testing.T) {
-	// Indent stack will be [0, 4] after the indent. Dedenting to column 3
+	// Indent stack will be [0, 2] after the indent. Dedenting to width 1
 	// doesn't match any stack level, so an ILLEGAL token should appear.
-	input := "a:\n    b\n   c\n"
+	input := "a:\n\t\tb\n\tc\n"
 	l := New(input)
 	tokens := l.AllTokens()
 
@@ -559,7 +559,7 @@ func TestMultiLineArgs(t *testing.T) {
 }
 
 func TestOptionsBlockTokenStream(t *testing.T) {
-	input := "activity Foo(x) -> y\n    options:\n        task_queue: \"workers\"\n        start_to_close: 60s\n"
+	input := "activity Foo(x) -> y\n\toptions:\n\t\ttask_queue: \"workers\"\n\t\tstart_to_close: 60s\n"
 	expected := []struct {
 		typ token.TokenType
 		lit string
@@ -775,7 +775,7 @@ func TestEmptyListLiteralTokens(t *testing.T) {
 func TestTrailingComment(t *testing.T) {
 	// A '#' after a block header (a line ending in ':' or opening an indented
 	// block, past blank lines) is a TRAILING_COMMENT; any other is a COMMENT.
-	input := "a(\n) # one\n\n  b # two\n  # three\n  c: # four\n"
+	input := "a(\n) # one\n\n\tb # two\n\t# three\n\tc: # four\n"
 	expected := []token.TokenType{
 		token.IDENT, token.ARGS, token.TRAILING_COMMENT, token.NEWLINE,
 		token.INDENT, token.IDENT, token.COMMENT, token.NEWLINE,

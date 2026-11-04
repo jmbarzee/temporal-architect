@@ -59,15 +59,15 @@ func TestWorkspaceCrossPackageResolves(t *testing.T) {
 	writeTWF(t, dir, "orderer/orderer.twf", `package orderer
 
 workflow ChannelJoin(id):
-    close complete(id)
+	close complete(id)
 `)
 	peer := `package peer
 
 import "acme/orderer"
 
 workflow ChannelJoin(id):
-    workflow orderer.ChannelJoin(id) -> res
-    close complete(res)
+	workflow orderer.ChannelJoin(id) -> res
+	close complete(res)
 `
 	_, peerURI := writeTWF(t, dir, "peer/peer.twf", peer)
 
@@ -98,8 +98,8 @@ func TestWorkspaceExternalImportWarns(t *testing.T) {
 import "some/external"
 
 workflow W():
-    workflow external.Thing() -> r
-    close complete(r)
+	workflow external.Thing() -> r
+	close complete(r)
 `
 	writeModule(t, dir, "acme")
 	_, soloURI := writeTWF(t, dir, "solo/solo.twf", solo)
@@ -131,7 +131,7 @@ workflow W():
 // still reports UNDEFINED_ACTIVITY.
 func TestWorkspaceNoRootIsolatedBuffer(t *testing.T) {
 	content := `workflow W():
-    activity GhostActivity()
+	activity GhostActivity()
 `
 	store := NewDocumentStore() // no SetRoot
 	doc := store.Open("file:///tmp/isolated.twf", content)
@@ -153,12 +153,12 @@ func TestWorkspaceReferenceErrorSurfacesOnlyOnReferencingBuffer(t *testing.T) {
 	alpha := `package alpha
 
 workflow Process(id):
-    close complete(id)
+	close complete(id)
 `
 	beta := `package beta
 
 workflow Process(id):
-    close complete(id)
+	close complete(id)
 `
 	gamma := `package gamma
 
@@ -166,8 +166,8 @@ import "acme/alpha"
 import "acme/beta"
 
 workflow Gamma(id):
-    workflow Process(id) -> out
-    close complete(out)
+	workflow Process(id) -> out
+	close complete(out)
 `
 	writeModule(t, dir, "acme")
 	alphaAbs, alphaURI := writeTWF(t, dir, "alpha/alpha.twf", alpha)
@@ -219,12 +219,12 @@ func TestWorkspaceSiblingErrorDoesNotLeak(t *testing.T) {
 
 
 workflow Sib():
-    activity GhostActivity()
+	activity GhostActivity()
 `)
 	main := `package main
 
 workflow Main():
-    close complete("ok")
+	close complete("ok")
 `
 	_, mainURI := writeTWF(t, dir, "main/main.twf", main)
 
@@ -254,18 +254,18 @@ func TestWorkspaceValidatesMergedTree(t *testing.T) {
 	dir := t.TempDir()
 
 	writeTWF(t, dir, "deploy.twf", `worker w:
-    workflow Registered
+	workflow Registered
 
 namespace ns:
-    worker w
-        options:
-            task_queue: "q"
+	worker w
+		options:
+			task_queue: "q"
 `)
 	buf := `workflow Registered():
-    close complete("ok")
+	close complete("ok")
 
 workflow Orphan():
-    close complete("ok")
+	close complete("ok")
 `
 	bufAbs, bufURI := writeTWF(t, dir, "flows.twf", buf)
 
@@ -293,14 +293,14 @@ func TestWorkspaceSiblingValidateErrorDoesNotLeak(t *testing.T) {
 	dir := t.TempDir()
 
 	deploy := `worker w:
-    workflow W
+	workflow W
 
 namespace ns:
-    worker w
+	worker w
 `
 	_, deployURI := writeTWF(t, dir, "deploy.twf", deploy)
 	buf := `workflow W():
-    close complete("ok")
+	close complete("ok")
 `
 	_, bufURI := writeTWF(t, dir, "flows.twf", buf)
 
@@ -322,11 +322,11 @@ func TestWorkspaceUnsavedBufferJoinsTree(t *testing.T) {
 	dir := t.TempDir()
 
 	writeTWF(t, dir, "callee.twf", `workflow Callee():
-    close complete("ok")
+	close complete("ok")
 `)
 	buf := `workflow Caller():
-    workflow Callee() -> r
-    close complete(r)
+	workflow Callee() -> r
+	close complete(r)
 `
 	store := NewDocumentStore()
 	store.SetFolders([]string{dir})
@@ -342,12 +342,12 @@ func TestWorkspaceUnsavedBufferJoinsTree(t *testing.T) {
 // folder's walk, so it sees its own directory only — never main's copies.
 func TestWorkspaceWorktreeBufferStaysApart(t *testing.T) {
 	main := t.TempDir()
-	writeTWF(t, main, "flows.twf", "workflow Shared():\n    close complete(\"ok\")\n")
+	writeTWF(t, main, "flows.twf", "workflow Shared():\n\tclose complete(\"ok\")\n")
 	wt := filepath.Join(main, ".claude", "worktrees", "x")
 	if err := os.MkdirAll(wt, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	buf := "workflow Shared():\n    close complete(\"ok\")\n"
+	buf := "workflow Shared():\n\tclose complete(\"ok\")\n"
 	_, uri := writeTWF(t, wt, "flows.twf", buf)
 
 	store := NewDocumentStore()
@@ -373,8 +373,8 @@ func TestWorkspaceSameNamedFilesDoNotLeak(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	writeTWF(t, filepath.Join(dir, "a"), "flows.twf", "workflow A():\n    activity Ghost()\n")
-	buf := "workflow B():\n    close complete(\"ok\")\n"
+	writeTWF(t, filepath.Join(dir, "a"), "flows.twf", "workflow A():\n\tactivity Ghost()\n")
+	buf := "workflow B():\n\tclose complete(\"ok\")\n"
 	_, uri := writeTWF(t, filepath.Join(dir, "b"), "flows.twf", buf)
 
 	store := NewDocumentStore()
@@ -389,8 +389,8 @@ func TestWorkspaceSameNamedFilesDoNotLeak(t *testing.T) {
 // is what every other buffer's analysis reads.
 func TestWorkspaceUnsavedTextReachesOtherBuffers(t *testing.T) {
 	dir := t.TempDir()
-	_, calleeURI := writeTWF(t, dir, "callee.twf", "workflow Old():\n    close complete(\"ok\")\n")
-	caller := "workflow Caller():\n    workflow Callee() -> r\n    close complete(r)\n"
+	_, calleeURI := writeTWF(t, dir, "callee.twf", "workflow Old():\n\tclose complete(\"ok\")\n")
+	caller := "workflow Caller():\n\tworkflow Callee() -> r\n\tclose complete(r)\n"
 	_, callerURI := writeTWF(t, dir, "caller.twf", caller)
 
 	store := NewDocumentStore()
@@ -399,7 +399,7 @@ func TestWorkspaceUnsavedTextReachesOtherBuffers(t *testing.T) {
 	if !hasKind(callerDoc.ResolveErrs, resolver.ErrUndefinedWorkflow) {
 		t.Fatalf("expected UNDEFINED_WORKFLOW before the edit, got %v", callerDoc.ResolveErrs)
 	}
-	store.Open(calleeURI, "workflow Callee():\n    close complete(\"ok\")\n")
+	store.Open(calleeURI, "workflow Callee():\n\tclose complete(\"ok\")\n")
 	if hasKind(callerDoc.ResolveErrs, resolver.ErrUndefinedWorkflow) {
 		t.Errorf("caller did not see callee's unsaved text: %v", callerDoc.ResolveErrs)
 	}
@@ -418,7 +418,7 @@ func TestWorkspaceSymlinkedFolderOneIdentity(t *testing.T) {
 	if err := os.Symlink(real, link); err != nil {
 		t.Skipf("symlink: %v", err)
 	}
-	buf := "workflow W():\n    activity Ghost()\n"
+	buf := "workflow W():\n\tactivity Ghost()\n"
 	_, uri := writeTWF(t, real, "w.twf", buf)
 
 	store := NewDocumentStore()
@@ -440,8 +440,8 @@ func TestWorkspaceSkippedBufferKeepsSiblings(t *testing.T) {
 	if err := os.MkdirAll(draft, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	writeTWF(t, draft, "callee.twf", "workflow Callee():\n    close complete(\"ok\")\n")
-	buf := "workflow Caller():\n    workflow Callee() -> r\n    close complete(r)\n"
+	writeTWF(t, draft, "callee.twf", "workflow Callee():\n\tclose complete(\"ok\")\n")
+	buf := "workflow Caller():\n\tworkflow Callee() -> r\n\tclose complete(r)\n"
 	_, uri := writeTWF(t, draft, "caller.twf", buf)
 
 	store := NewDocumentStore()
@@ -480,12 +480,12 @@ func TestWorkspaceSecondURIKeepsUnsavedText(t *testing.T) {
 	if err := os.Symlink(dir, link); err != nil {
 		t.Skipf("symlink: %v", err)
 	}
-	disk := "workflow W():\n    close complete(\"ok\")\n"
+	disk := "workflow W():\n\tclose complete(\"ok\")\n"
 	_, uri := writeTWF(t, dir, "w.twf", disk)
 	store := NewDocumentStore()
 	store.SetFolders([]string{dir})
 	doc := store.Open(uri, disk)
-	store.Update(uri, "workflow W():\n    activity Ghost()\n")
+	store.Update(uri, "workflow W():\n\tactivity Ghost()\n")
 	store.Open("file://"+filepath.Join(link, "w.twf"), disk)
 	if !hasKind(doc.ResolveErrs, resolver.ErrUndefinedActivity) {
 		t.Errorf("the second URI's disk text replaced the unsaved edit: %v", doc.ResolveErrs)
@@ -496,7 +496,7 @@ func TestWorkspaceSecondURIKeepsUnsavedText(t *testing.T) {
 // reports PACKAGE_OUTSIDE_MODULE at its clause and nothing else.
 func TestWorkspacePackageOutsideModule(t *testing.T) {
 	dir := t.TempDir()
-	buf := "package fabric\n\nworkflow W():\n    activity Ghost()\n"
+	buf := "package fabric\n\nworkflow W():\n\tactivity Ghost()\n"
 	_, uri := writeTWF(t, dir, "fabric/f.twf", buf)
 	store := NewDocumentStore()
 	store.SetFolders([]string{dir})
@@ -514,7 +514,7 @@ func TestWorkspaceBrokenModuleShowsOnTheBuffer(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "twf.mod"), []byte("modul x\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	buf := "package fabric\n\nworkflow W():\n    close complete(\"ok\")\n"
+	buf := "package fabric\n\nworkflow W():\n\tclose complete(\"ok\")\n"
 	_, uri := writeTWF(t, dir, "fabric/f.twf", buf)
 	store := NewDocumentStore()
 	store.SetFolders([]string{filepath.Join(dir, "fabric")})
@@ -530,8 +530,8 @@ func TestWorkspaceBrokenModuleShowsOnTheBuffer(t *testing.T) {
 func TestWorkspaceModuleRootAboveFolderResolves(t *testing.T) {
 	dir := t.TempDir()
 	writeModule(t, dir, "acme")
-	writeTWF(t, dir, "orderer/orderer.twf", "package orderer\n\nworkflow Join(id):\n    close complete(id)\n")
-	buf := "package peer\n\nimport \"acme/orderer\"\n\nworkflow P(id):\n    workflow orderer.Join(id) -> r\n    close complete(r)\n"
+	writeTWF(t, dir, "orderer/orderer.twf", "package orderer\n\nworkflow Join(id):\n\tclose complete(id)\n")
+	buf := "package peer\n\nimport \"acme/orderer\"\n\nworkflow P(id):\n\tworkflow orderer.Join(id) -> r\n\tclose complete(r)\n"
 	_, uri := writeTWF(t, dir, "peer/peer.twf", buf)
 	store := NewDocumentStore()
 	store.SetFolders([]string{filepath.Join(dir, "peer")})
@@ -548,7 +548,7 @@ func TestWorkspaceModuleRootAboveFolderResolves(t *testing.T) {
 func TestBufferNeverBindsImportsByName(t *testing.T) {
 	dir := t.TempDir()
 	writeModule(t, dir, "example.com/demo")
-	buf := "package fabric\n\nimport cf \"example.com/demo/cluster/fabric\"\n\nworkflow Setup():\n    workflow cf.Setup()\n    close complete(\"ok\")\n"
+	buf := "package fabric\n\nimport cf \"example.com/demo/cluster/fabric\"\n\nworkflow Setup():\n\tworkflow cf.Setup()\n\tclose complete(\"ok\")\n"
 	_, uri := writeTWF(t, dir, "fabric/f.twf", buf)
 	store := NewDocumentStore()
 	store.SetFolders([]string{dir})

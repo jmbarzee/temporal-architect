@@ -11,21 +11,21 @@ import (
 // workflowLineContexts place a line, at %s, in each kind of body that holds
 // workflow statements.
 var workflowLineContexts = []struct{ name, src string }{
-	{"workflow body", "workflow P(x):\n    activity A(x)\n    %s\n    close complete(x)\n"},
-	{"signal handler", "workflow P(x):\n    signal S(v):\n        %s\n    close complete(x)\n"},
-	{"update handler", "workflow P(x):\n    update U(v) -> (R):\n        %s\n    close complete(x)\n"},
-	{"if", "workflow P(x):\n    if (x):\n        %s\n    close complete(x)\n"},
-	{"for", "workflow P(x):\n    for (i in x):\n        %s\n    close complete(x)\n"},
-	{"await all", "workflow P(x):\n    await all:\n        %s\n    close complete(x)\n"},
-	{"await one case", "workflow P(x):\n    await one:\n        timer(1m):\n            %s\n    close complete(x)\n"},
-	{"sync nexus operation", "nexus service Svc:\n    sync Op(x) -> (R):\n        %s\n        return x\n"},
+	{"workflow body", "workflow P(x):\n\tactivity A(x)\n\t%s\n\tclose complete(x)\n"},
+	{"signal handler", "workflow P(x):\n\tsignal S(v):\n\t\t%s\n\tclose complete(x)\n"},
+	{"update handler", "workflow P(x):\n\tupdate U(v) -> (R):\n\t\t%s\n\tclose complete(x)\n"},
+	{"if", "workflow P(x):\n\tif (x):\n\t\t%s\n\tclose complete(x)\n"},
+	{"for", "workflow P(x):\n\tfor (i in x):\n\t\t%s\n\tclose complete(x)\n"},
+	{"await all", "workflow P(x):\n\tawait all:\n\t\t%s\n\tclose complete(x)\n"},
+	{"await one case", "workflow P(x):\n\tawait one:\n\t\ttimer(1m):\n\t\t\t%s\n\tclose complete(x)\n"},
+	{"sync nexus operation", "nexus service Svc:\n\tsync Op(x) -> (R):\n\t\t%s\n\t\treturn x\n"},
 }
 
 // activityLineContexts place a line, at %s, in the bodies that hold activity
 // statements, inside a for loop so break and continue belong.
 var activityLineContexts = []struct{ name, src string }{
-	{"activity body", "activity A(x):\n    for (i in x):\n        %s\n    return x\n"},
-	{"query handler", "workflow P(x):\n    query Q() -> (R):\n        for (i in x):\n            %s\n        return x\n    close complete(x)\n"},
+	{"activity body", "activity A(x):\n\tfor (i in x):\n\t\t%s\n\treturn x\n"},
+	{"query handler", "workflow P(x):\n\tquery Q() -> (R):\n\t\tfor (i in x):\n\t\t\t%s\n\t\treturn x\n\tclose complete(x)\n"},
 }
 
 // shortStatements are statements of a fixed form, each with the name its error
@@ -84,9 +84,9 @@ func TestShortStatementEndsItsLine(t *testing.T) {
 // The declaration lines of a fixed form end their line the same way.
 func TestDeclarationLineEndsItsLine(t *testing.T) {
 	cases := []struct{ name, src, line, what string }{
-		{"condition", "workflow P(x):\n    state:\n        %s\n    close complete(x)\n", "condition Ready", "condition Ready"},
-		{"id_scheme", "workflow P(x):\n    %s\n    close complete(x)\n", `id_scheme: "p-{x}"`, "id_scheme:"},
-		{"async operation", "nexus service Svc:\n    %s\n", "async Op workflow W", "an async operation"},
+		{"condition", "workflow P(x):\n\tstate:\n\t\t%s\n\tclose complete(x)\n", "condition Ready", "condition Ready"},
+		{"id_scheme", "workflow P(x):\n\t%s\n\tclose complete(x)\n", `id_scheme: "p-{x}"`, "id_scheme:"},
+		{"async operation", "nexus service Svc:\n\t%s\n", "async Op workflow W", "an async operation"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -140,7 +140,7 @@ func TestPromiseTakesNoResult(t *testing.T) {
 // The only await an await one case takes is `await all:`; another is named in
 // the error, which used to print a Go struct.
 func TestAwaitInAwaitOneCase(t *testing.T) {
-	_, err := ParseFile("workflow P(x):\n    await one:\n        await timer(1m):\n            activity A(x)\n    close complete(x)\n")
+	_, err := ParseFile("workflow P(x):\n\tawait one:\n\t\tawait timer(1m):\n\t\t\tactivity A(x)\n\tclose complete(x)\n")
 	want := "expected 'await all' in await one case, got 'await timer'"
 	if err == nil || err.(*ParseError).Msg != want || err.(*ParseError).Line != 3 {
 		t.Errorf("got %v, want %q on line 3", err, want)
@@ -149,7 +149,7 @@ func TestAwaitInAwaitOneCase(t *testing.T) {
 
 // A bare `await` in an await one case names the token after it.
 func TestBareAwaitInAwaitOneCase(t *testing.T) {
-	_, err := ParseFile("workflow W():\n    await one:\n        await\n        timer(1m):\n            break\n")
+	_, err := ParseFile("workflow W():\n\tawait one:\n\t\tawait\n\t\ttimer(1m):\n\t\t\tbreak\n")
 	want := "expected 'await all' in await one case, got 'await NEWLINE'"
 	if err == nil || err.(*ParseError).Msg != want || err.(*ParseError).Line != 3 {
 		t.Errorf("got %v, want %q on line 3", err, want)
@@ -158,7 +158,7 @@ func TestBareAwaitInAwaitOneCase(t *testing.T) {
 
 // A trailing comment after a short statement stays a comment statement.
 func TestShortStatementKeepsTrailingComment(t *testing.T) {
-	file, err := ParseFile("workflow P(x):\n    for (i in x):\n        break # done\n    close complete(x)\n")
+	file, err := ParseFile("workflow P(x):\n\tfor (i in x):\n\t\tbreak # done\n\tclose complete(x)\n")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

@@ -90,9 +90,9 @@ func TestPublishContributionDedupedAndCleared(t *testing.T) {
 	dir := t.TempDir()
 	writeModule(t, dir, "example.com/m")
 	_, closed := writeTWF(t, dir, "c/z.twf", "import \"other.org/ext\"\n")
-	a := "workflow A():\n    close complete(\"ok\")\n"
+	a := "workflow A():\n\tclose complete(\"ok\")\n"
 	_, aURI := writeTWF(t, dir, "a/x.twf", a)
-	b := "workflow B():\n    close complete(\"ok\")\n"
+	b := "workflow B():\n\tclose complete(\"ok\")\n"
 	_, bURI := writeTWF(t, dir, "b/y.twf", b)
 
 	store := NewDocumentStore()
@@ -117,12 +117,12 @@ func TestPublishContributionDedupedAndCleared(t *testing.T) {
 func TestPublishClosedSiblingImportsAndCauses(t *testing.T) {
 	dir := t.TempDir()
 	writeModule(t, dir, "example.com/m")
-	_, prov := writeTWF(t, dir, "prov/a.twf", "package\n\nworkflow X():\n    close complete(\"ok\")\n")
+	_, prov := writeTWF(t, dir, "prov/a.twf", "package\n\nworkflow X():\n\tclose complete(\"ok\")\n")
 	writeFile(t, filepath.Join(dir, "brk", "twf.mod"), "modul x\n")
 	writeTWF(t, dir, "brk/c.twf", "package brk\n")
 	_, sib := writeTWF(t, dir, "use/b.twf", "package use\n\nimport \"example.com/m/nope\"\nimport \"other.org/ext\"\nimport \"example.com/m/brk\"\n")
 	_, conflict := writeTWF(t, dir, "use/c.twf", "package other\n")
-	buf := "package use\n\nimport \"example.com/m/prov\"\n\nworkflow W():\n    close complete(\"ok\")\n"
+	buf := "package use\n\nimport \"example.com/m/prov\"\n\nworkflow W():\n\tclose complete(\"ok\")\n"
 	_, uri := writeTWF(t, dir, "use/a.twf", buf)
 
 	store := NewDocumentStore()
@@ -149,7 +149,7 @@ func TestPublishElsewhereInUTF16(t *testing.T) {
 		writeModule(t, dir, "example.com/m")
 		const line = `import "example.com/m/é"` // 25 bytes, 24 UTF-16 units
 		_, sib := writeTWF(t, dir, "use/b.twf", "package use"+eol+eol+line+eol)
-		buf := "package use\n\nworkflow W():\n    close complete(\"ok\")\n"
+		buf := "package use\n\nworkflow W():\n\tclose complete(\"ok\")\n"
 		_, uri := writeTWF(t, dir, "use/a.twf", buf)
 		store := NewDocumentStore()
 		store.SetFolders([]string{dir})
@@ -171,7 +171,7 @@ func TestPublishElsewhereInUTF16(t *testing.T) {
 func TestPublishOwnModuleErrors(t *testing.T) {
 	dir := t.TempDir()
 	writeFile(t, filepath.Join(dir, "twf.mod"), "modul x\n")
-	buf := "package fabric\n\nworkflow W():\n    close complete(\"ok\")\n"
+	buf := "package fabric\n\nworkflow W():\n\tclose complete(\"ok\")\n"
 	_, uri := writeTWF(t, dir, "fabric/f.twf", buf)
 	store := NewDocumentStore()
 	store.SetFolders([]string{filepath.Join(dir, "fabric")})
@@ -187,9 +187,9 @@ func TestPublishOwnModuleErrors(t *testing.T) {
 func TestPublishBrokenModuleAtHomeFolder(t *testing.T) {
 	ws := t.TempDir()
 	writeFile(t, filepath.Join(ws, "twf.mod"), "modul x\n")
-	writeTWF(t, ws, "top.twf", "workflow Top():\n    close complete(\"ok\")\n")
+	writeTWF(t, ws, "top.twf", "workflow Top():\n\tclose complete(\"ok\")\n")
 	writeTWF(t, ws, "sub/twf.mod", "module example.com/sub\n")
-	buf := "workflow W():\n    close complete(\"ok\")\n"
+	buf := "workflow W():\n\tclose complete(\"ok\")\n"
 	_, uri := writeTWF(t, ws, "sub/w.twf", buf)
 	store := NewDocumentStore()
 	store.SetFolders([]string{ws})
@@ -205,9 +205,9 @@ func TestPublishBrokenModuleAtHomeFolder(t *testing.T) {
 func TestPublishLostDuplicateModule(t *testing.T) {
 	dir := t.TempDir()
 	writeModule(t, dir, "example.com/x")
-	writeTWF(t, dir, "backup/a.twf", "workflow A():\n    close complete(\"ok\")\n")
+	writeTWF(t, dir, "backup/a.twf", "workflow A():\n\tclose complete(\"ok\")\n")
 	writeModule(t, filepath.Join(dir, "backup"), "example.com/x")
-	buf := "import \"other.org/ext\"\n\nworkflow Z():\n    activity Ghost()\n"
+	buf := "import \"other.org/ext\"\n\nworkflow Z():\n\tactivity Ghost()\n"
 	_, uri := writeTWF(t, dir, "z.twf", buf)
 	store := NewDocumentStore()
 	store.SetFolders([]string{dir})
@@ -231,10 +231,10 @@ func TestPublishOtherDuplicateModuleOnlyWhenImported(t *testing.T) {
 			t.Fatal(err)
 		}
 		writeModule(t, filepath.Join(ws, c), "example.com/x")
-		writeTWF(t, ws, c+"/q/q.twf", "package q\n\nworkflow Q():\n    close complete(\"ok\")\n")
+		writeTWF(t, ws, c+"/q/q.twf", "package q\n\nworkflow Q():\n\tclose complete(\"ok\")\n")
 	}
-	plain := "package p\n\nworkflow P():\n    close complete(\"ok\")\n"
-	importing := "package p\n\nimport \"example.com/x/q\"\n\nworkflow P():\n    workflow q.Q()\n    close complete(\"ok\")\n"
+	plain := "package p\n\nworkflow P():\n\tclose complete(\"ok\")\n"
+	importing := "package p\n\nimport \"example.com/x/q\"\n\nworkflow P():\n\tworkflow q.Q()\n\tclose complete(\"ok\")\n"
 	_, aURI := writeTWF(t, ws, "a/p/p.twf", plain)
 	_, bURI := writeTWF(t, ws, "b/p/p.twf", importing)
 	aMod, bMod := fileURI(filepath.Join(ws, "a", "twf.mod")), fileURI(filepath.Join(ws, "b", "twf.mod"))
@@ -276,7 +276,7 @@ func TestPublishOneIdentityTwoSpellings(t *testing.T) {
 		}
 	}
 	writeTWF(t, real, "c.twf", "import \"other.org/ext\"\n")
-	buf := "workflow W():\n    activity Ghost()\n"
+	buf := "workflow W():\n\tactivity Ghost()\n"
 	writeTWF(t, real, "w.twf", buf)
 	realURI, aliasURI := fileURI(filepath.Join(real, "w.twf")), fileURI(filepath.Join(alias, "w.twf"))
 	closed := fileURI(filepath.Join(alias, "c.twf"))
@@ -321,8 +321,8 @@ func TestPublishOneIdentityTwoSpellings(t *testing.T) {
 func TestWorkspaceMidMigration(t *testing.T) {
 	main := t.TempDir()
 	writeModule(t, main, "example.com/main")
-	writeTWF(t, main, "flows.twf", "workflow Shared():\n    close complete(\"ok\")\n")
-	buf := "workflow Shared():\n    close complete(\"ok\")\n"
+	writeTWF(t, main, "flows.twf", "workflow Shared():\n\tclose complete(\"ok\")\n")
+	buf := "workflow Shared():\n\tclose complete(\"ok\")\n"
 	wt := filepath.Join(main, ".claude", "worktrees", "x")
 	_, uri := writeTWF(t, wt, "flows.twf", buf)
 	for _, folders := range [][]string{{main}, {main, wt}} {
@@ -340,8 +340,8 @@ func TestWorkspaceMidMigration(t *testing.T) {
 func TestSkippedImportHint(t *testing.T) {
 	dir := t.TempDir()
 	writeModule(t, dir, "example.com/m")
-	writeTWF(t, dir, "_x/b/b.twf", "package b\n\nworkflow B():\n    close complete(\"ok\")\n")
-	writeTWF(t, dir, "testdata/t/t.twf", "package t\n\nworkflow T():\n    close complete(\"ok\")\n")
+	writeTWF(t, dir, "_x/b/b.twf", "package b\n\nworkflow B():\n\tclose complete(\"ok\")\n")
+	writeTWF(t, dir, "testdata/t/t.twf", "package t\n\nworkflow T():\n\tclose complete(\"ok\")\n")
 	notFound := func(doc *Document) string {
 		for _, e := range doc.ResolveErrs {
 			if e.Code() == "IMPORT_NOT_FOUND" {
@@ -353,7 +353,7 @@ func TestSkippedImportHint(t *testing.T) {
 
 	// From outside the skipped directory, a folder there would not be this
 	// file's home: the hint says to move the package.
-	outside := "package peer\n\nimport \"example.com/m/testdata/t\"\n\nworkflow P():\n    workflow t.T()\n    close complete(\"ok\")\n"
+	outside := "package peer\n\nimport \"example.com/m/testdata/t\"\n\nworkflow P():\n\tworkflow t.T()\n\tclose complete(\"ok\")\n"
 	_, outsideURI := writeTWF(t, dir, "peer/p.twf", outside)
 	store := NewDocumentStore()
 	store.SetFolders([]string{dir})
@@ -363,7 +363,7 @@ func TestSkippedImportHint(t *testing.T) {
 	}
 
 	// From inside it, opening it as the folder loads the package.
-	inside := "package a\n\nimport \"example.com/m/_x/b\"\n\nworkflow A():\n    workflow b.B()\n    close complete(\"ok\")\n"
+	inside := "package a\n\nimport \"example.com/m/_x/b\"\n\nworkflow A():\n\tworkflow b.B()\n\tclose complete(\"ok\")\n"
 	_, insideURI := writeTWF(t, dir, "_x/a/a.twf", inside)
 	store = NewDocumentStore()
 	store.SetFolders([]string{dir})
@@ -382,18 +382,18 @@ func TestSkippedImportHint(t *testing.T) {
 // TestUntitledBufferMatchesInlineSource: a buffer with no file reports what an
 // MCP inline source and `twf check` on the same text outside a module do.
 func TestUntitledBufferMatchesInlineSource(t *testing.T) {
-	const wf = "workflow W(x):\n    close complete(x)\n"
-	const imp = "import cf \"example.com/demo/cluster/fabric\"\n\nworkflow Setup():\n    workflow cf.Setup()\n    close complete(\"ok\")\n"
+	const wf = "workflow W(x):\n\tclose complete(x)\n"
+	const imp = "import cf \"example.com/demo/cluster/fabric\"\n\nworkflow Setup():\n\tworkflow cf.Setup()\n\tclose complete(\"ok\")\n"
 	cases := []struct{ name, src string }{
 		{"empty", ""},
 		{"no package clause", wf},
 		{"package clause", "package orders\n\n" + wf},
 		{"package clause with an import", "package fabric\n\n" + imp},
-		{"package clause with an undefined call", "package orders\n\nworkflow W():\n    activity Ghost()\n"},
+		{"package clause with an undefined call", "package orders\n\nworkflow W():\n\tactivity Ghost()\n"},
 		{"package clause with a parse error", "package orders\n\nworkflow W(:\n"},
 		{"failed package clause", "package\n\n" + wf},
 		{"no package clause with an import", imp},
-		{"no package clause with an undefined call", "workflow W():\n    activity Ghost()\n"},
+		{"no package clause with an undefined call", "workflow W():\n\tactivity Ghost()\n"},
 	}
 	dir := t.TempDir()
 	render := func(line, column int, severity, code, msg string) string {

@@ -9,32 +9,32 @@ import (
 // idTargets declares the workflow types the addressed-send cases send to.
 const idTargets = `
 workflow ShipItem(order: Order, item: Item):
-    id_scheme: "ship-{order.id}-{item.id}"
-    signal Shipped(trackingId: string):
-        shipped = true
-    activity Ship(order, item)
+	id_scheme: "ship-{order.id}-{item.id}"
+	signal Shipped(trackingId: string):
+		shipped = true
+	activity Ship(order, item)
 
 workflow Plain(x: X):
-    signal Poke():
-        poked = true
-    activity Do(x)
+	signal Poke():
+		poked = true
+	activity Do(x)
 
 activity Ship(order: Order, item: Item):
-    ship(order, item)
+	ship(order, item)
 
 activity Do(x: X):
-    do(x)
+	do(x)
 `
 
 func TestAddressedSendResolves(t *testing.T) {
 	input := `workflow Sender(event: Event, wid: string, rid: string):
-    signal ShipItem.Shipped(event.tracking)
-        id: "ship-{event.orderId}-{event.sku}"
-    signal ShipItem.Shipped("recovered")
-        id: wid
-        run_id: rid
-    signal Plain.Poke()
-        id: wid
+	signal ShipItem.Shipped(event.tracking)
+		id: "ship-{event.orderId}-{event.sku}"
+	signal ShipItem.Shipped("recovered")
+		id: wid
+		run_id: rid
+	signal Plain.Poke()
+		id: wid
 ` + idTargets
 	file := mustParse(t, input)
 	if errs := Resolve(file); len(errs) > 0 {
@@ -58,33 +58,33 @@ func TestIDResolveDiagnostics(t *testing.T) {
 		severity string
 	}{
 		{"type head without id", `
-    signal ShipItem.Shipped(t)`, ErrTypeNeedsID, ""},
+	signal ShipItem.Shipped(t)`, ErrTypeNeedsID, ""},
 		{"handle head with id", `
-    promise ship <- workflow ShipItem(o, i)
-    signal ship.Shipped(t)
-        id: wid`, ErrHandleTakesNoID, ""},
+	promise ship <- workflow ShipItem(o, i)
+	signal ship.Shipped(t)
+		id: wid`, ErrHandleTakesNoID, ""},
 		{"literal on a type with no scheme", `
-    signal Plain.Poke()
-        id: "plain-{a}"`, ErrNoIDScheme, ""},
+	signal Plain.Poke()
+		id: "plain-{a}"`, ErrNoIDScheme, ""},
 		{"literal fixed text differs", `
-    signal ShipItem.Shipped(t)
-        id: "shp-{a}-{b}"`, ErrIDMirrorMismatch, ""},
+	signal ShipItem.Shipped(t)
+		id: "shp-{a}-{b}"`, ErrIDMirrorMismatch, ""},
 		{"literal hole count differs", `
-    signal ShipItem.Shipped(t)
-        id: "ship-{a}"`, ErrIDMirrorMismatch, ""},
+	signal ShipItem.Shipped(t)
+		id: "ship-{a}"`, ErrIDMirrorMismatch, ""},
 		{"literal copied from the scheme", `
-    signal ShipItem.Shipped(t)
-        id: "ship-{order.id}-{item.id}"`, ErrMirrorCopiedFromScheme, "hint"},
+	signal ShipItem.Shipped(t)
+		id: "ship-{order.id}-{item.id}"`, ErrMirrorCopiedFromScheme, "hint"},
 		{"undefined type head", `
-    signal Missing.Shipped(t)
-        id: wid`, ErrUndefinedWorkflow, ""},
+	signal Missing.Shipped(t)
+		id: wid`, ErrUndefinedWorkflow, ""},
 		{"undefined signal on a type head", `
-    signal ShipItem.Lost(t)
-        id: wid`, ErrUndefinedSignal, ""},
+	signal ShipItem.Lost(t)
+		id: wid`, ErrUndefinedSignal, ""},
 		{"parent as a promise", `
-    promise parent <- workflow Plain(a)`, ErrReservedName, ""},
+	promise parent <- workflow Plain(a)`, ErrReservedName, ""},
 		{"parent as a binding", `
-    activity Do(a) -> parent`, ErrReservedName, ""},
+	activity Do(a) -> parent`, ErrReservedName, ""},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -102,25 +102,25 @@ func TestIDResolveDiagnostics(t *testing.T) {
 func TestReservedNameDeclarations(t *testing.T) {
 	for name, input := range map[string]string{
 		"workflow param": `workflow W(parent: P):
-    activity Do(parent)
+	activity Do(parent)
 `,
 		"handler param": `workflow W(x: X):
-    signal S(parent: P):
-        x = parent
-    activity Do(x)
+	signal S(parent: P):
+		x = parent
+	activity Do(x)
 `,
 		"condition": `workflow W(x: X):
-    state:
-        condition parent
-    activity Do(x)
+	state:
+		condition parent
+	activity Do(x)
 `,
 		"loop variable": `workflow W(items: Items):
-    for (parent in items):
-        activity Do(parent)
+	for (parent in items):
+		activity Do(parent)
 `,
 		"sync nexus param": `nexus service Svc:
-    sync Op(parent: P) -> (R):
-        activity Do(parent)
+	sync Op(parent: P) -> (R):
+		activity Do(parent)
 `,
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -136,8 +136,8 @@ func TestReservedNameDeclarations(t *testing.T) {
 
 func TestHandleShadowsSameNamedType(t *testing.T) {
 	input := `workflow Sender(o: Order, i: Item):
-    promise ShipItem <- workflow ShipItem(o, i)
-    signal ShipItem.Shipped(t)
+	promise ShipItem <- workflow ShipItem(o, i)
+	signal ShipItem.Shipped(t)
 ` + idTargets
 	file := mustParse(t, input)
 	if errs := Resolve(file); len(errs) > 0 {
@@ -155,8 +155,8 @@ func TestExternalTypeHeadCarriedUnchecked(t *testing.T) {
 import "acme/shipping"
 
 workflow Sender(wid: string):
-    signal shipping.ShipItem.Shipped(t)
-        id: wid
+	signal shipping.ShipItem.Shipped(t)
+		id: wid
 `
 	file := mustParse(t, input)
 	for _, e := range Resolve(file) {

@@ -21,15 +21,15 @@ import "acme/shared"
 import legacy "acme/legacy"
 
 activity Charge(amt) -> (ok):
-    return ok
+	return ok
 
 workflow Order(id):
-    activity shared.Ship(id) -> done
-    workflow billing.Sub(id) -> r
+	activity shared.Ship(id) -> done
+	workflow billing.Sub(id) -> r
 
 worker w:
-    activity Charge
-    workflow shared.Remote
+	activity Charge
+	workflow shared.Remote
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -109,13 +109,13 @@ worker w:
 // anywhere in its JSON (omitempty), so existing golden output is unchanged.
 func TestUnqualifiedRefsEmitNoPackage(t *testing.T) {
 	input := `activity Charge(amt) -> (ok):
-    return ok
+	return ok
 
 workflow Order(id):
-    activity Charge(id) -> done
+	activity Charge(id) -> done
 
 worker w:
-    activity Charge
+	activity Charge
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -175,7 +175,7 @@ func TestPackageClauseRules(t *testing.T) {
 // names and qualifiers.
 func TestSoftKeywordsAsPackageNames(t *testing.T) {
 	for _, name := range []string{"service", "endpoint", "id", "run_id", "default_options", "parent"} {
-		src := "package " + name + "\n\nworkflow W():\n    workflow " + name + ".Other() -> r\n    close complete(r)\n"
+		src := "package " + name + "\n\nworkflow W():\n\tworkflow " + name + ".Other() -> r\n\tclose complete(r)\n"
 		file, errs := ParseFileAll(src)
 		if len(errs) != 0 || file.Package != name {
 			t.Errorf("package %s: Package=%q errs=%v", name, file.Package, errs)
@@ -193,7 +193,7 @@ func TestSoftKeywordsAsPackageNames(t *testing.T) {
 func TestClauseSurvivesALeadingBOMOrIndentedComment(t *testing.T) {
 	for name, src := range map[string]string{
 		"BOM":              "\ufeffpackage billing\n",
-		"indented comment": "    # note\npackage billing\n",
+		"indented comment": "\t# note\npackage billing\n",
 	} {
 		file, _ := ParseFileAll(src)
 		if file.Package != "billing" || file.ClauseExcluded {
@@ -207,8 +207,8 @@ func TestClauseSurvivesALeadingBOMOrIndentedComment(t *testing.T) {
 // so references through it do not cascade (#299).
 func TestImportPlacement(t *testing.T) {
 	const (
-		wf  = "workflow W(x):\n    close complete(x)\n"
-		act = "activity A(x):\n    return x\n"
+		wf  = "workflow W(x):\n\tclose complete(x)\n"
+		act = "activity A(x):\n\treturn x\n"
 		imp = "import \"a/b\"\n"
 		ali = "import c \"c/d\"\n"
 	)
@@ -220,10 +220,10 @@ func TestImportPlacement(t *testing.T) {
 		{"imports after the package clause", "package p\n\n" + imp + "# note\n" + ali + wf, nil},
 		{"import after a workflow", wf + imp, []string{"3 import must come before the file's definitions"}},
 		{"import after an activity", act + imp, []string{"3 import must come before the file's definitions"}},
-		{"import after a worker", "worker w:\n    workflow W\n" + imp, []string{"3 import must come before the file's definitions"}},
-		{"import after a namespace", "namespace ns:\n    worker w\n        options:\n            task_queue: \"q\"\n" + imp,
+		{"import after a worker", "worker w:\n\tworkflow W\n" + imp, []string{"3 import must come before the file's definitions"}},
+		{"import after a namespace", "namespace ns:\n\tworker w\n\t\toptions:\n\t\t\ttask_queue: \"q\"\n" + imp,
 			[]string{"5 import must come before the file's definitions"}},
-		{"import after a nexus service", "nexus service S:\n    async Op workflow W\n" + imp, []string{"3 import must come before the file's definitions"}},
+		{"import after a nexus service", "nexus service S:\n\tasync Op workflow W\n" + imp, []string{"3 import must come before the file's definitions"}},
 		{"import after a definition that fails", "workflow W(x)\n" + imp,
 			[]string{"1 definition requires ':' and an indented body", "2 import must come before the file's definitions"}},
 		{"import between definitions", imp + act + ali + wf, []string{"4 import must come before the file's definitions"}},

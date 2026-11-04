@@ -27,7 +27,7 @@ func mustParseWorkflowBody(t *testing.T, body string) []ast.Statement {
 }
 
 func TestLastLineInStmts(t *testing.T) {
-	body := mustParseWorkflowBody(t, "    activity Foo()\n    activity Bar()\n")
+	body := mustParseWorkflowBody(t, "\tactivity Foo()\n\tactivity Bar()\n")
 	result := lastLineInStmts(body, 0)
 	if result != 3 {
 		t.Errorf("expected last line 3, got %d", result)
@@ -36,9 +36,9 @@ func TestLastLineInStmts(t *testing.T) {
 
 func TestLastLineInStmtsNested(t *testing.T) {
 	body := mustParseWorkflowBody(t,
-		"    if (cond):\n"+
-			"        activity Foo()\n"+
-			"        activity Bar()\n")
+		"\tif (cond):\n"+
+			"\t\tactivity Foo()\n"+
+			"\t\tactivity Bar()\n")
 	result := lastLineInStmts(body, 0)
 	if result != 4 {
 		t.Errorf("expected last line 4, got %d", result)
@@ -54,8 +54,8 @@ func TestLastLineInStmtsEmpty(t *testing.T) {
 
 func TestFindNodeInStmts(t *testing.T) {
 	body := mustParseWorkflowBody(t,
-		"    activity Foo()\n"+
-			"    activity Bar()\n")
+		"\tactivity Foo()\n"+
+			"\tactivity Bar()\n")
 
 	// Line 2 = "activity Foo()"
 	node := findNodeInStmts(body, 2)
@@ -86,8 +86,8 @@ func TestFindNodeInStmts(t *testing.T) {
 
 func TestFindNodeInStmtsNested(t *testing.T) {
 	body := mustParseWorkflowBody(t,
-		"    if (cond):\n"+
-			"        activity Foo()\n")
+		"\tif (cond):\n"+
+			"\t\tactivity Foo()\n")
 
 	// Line 3 = "activity Foo()" inside the if body
 	node := findNodeInStmts(body, 3)
@@ -100,7 +100,7 @@ func TestFindNodeInStmtsNested(t *testing.T) {
 }
 
 func TestFindNodeInStmtsNotFound(t *testing.T) {
-	body := mustParseWorkflowBody(t, "    activity Foo()\n")
+	body := mustParseWorkflowBody(t, "\tactivity Foo()\n")
 	node := findNodeInStmts(body, 999)
 	if node != nil {
 		t.Errorf("expected nil for non-existent line, got %T", node)
@@ -109,9 +109,9 @@ func TestFindNodeInStmtsNotFound(t *testing.T) {
 
 func TestFindReturnStatements(t *testing.T) {
 	body := mustParseWorkflowBody(t,
-		"    if (cond):\n"+
-			"        return x\n"+
-			"    return y\n")
+		"\tif (cond):\n"+
+			"\t\treturn x\n"+
+			"\treturn y\n")
 
 	returns := findReturnStatements(body)
 	if len(returns) != 2 {
@@ -120,7 +120,7 @@ func TestFindReturnStatements(t *testing.T) {
 }
 
 func TestFindReturnStatementsNone(t *testing.T) {
-	body := mustParseWorkflowBody(t, "    activity Foo()\n")
+	body := mustParseWorkflowBody(t, "\tactivity Foo()\n")
 	returns := findReturnStatements(body)
 	if len(returns) != 0 {
 		t.Errorf("expected 0 return statements, got %d", len(returns))

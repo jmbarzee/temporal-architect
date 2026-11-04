@@ -12,57 +12,57 @@ import (
 // each named beside an earlier token of the same text, and declares every
 // kind of name.
 const refPositionsSource = `workflow p(p: string):
-    state:
-        condition c
-    signal s(c: string):
-        set c
-    query q() -> (string):
-        return "q"
-    update u():
-        unset c
-    activity p.p(p)
-    workflow p.p(p)
-    detach workflow p.p(p)
-    nexus p p.p.p(p)
-    detach nexus p p.p(p)
-    promise p <- workflow p.p(p)
-    promise a <- activity p.p(p)
-    promise n <- nexus p p.p.p(p)
-    await workflow p.p(p)
-    await signal s
-    await update u
-    await p
-    await one:
-        c:
-            close complete()
-    signal p.p.s()
-        id: p
-    signal p.s()
-        id: p
-    signal a.s()
-    close complete()
+	state:
+		condition c
+	signal s(c: string):
+		set c
+	query q() -> (string):
+		return "q"
+	update u():
+		unset c
+	activity p.p(p)
+	workflow p.p(p)
+	detach workflow p.p(p)
+	nexus p p.p.p(p)
+	detach nexus p p.p(p)
+	promise p <- workflow p.p(p)
+	promise a <- activity p.p(p)
+	promise n <- nexus p p.p.p(p)
+	await workflow p.p(p)
+	await signal s
+	await update u
+	await p
+	await one:
+		c:
+			close complete()
+	signal p.p.s()
+		id: p
+	signal p.s()
+		id: p
+	signal a.s()
+	close complete()
 
 activity p(p: string):
-    p(p)
+	p(p)
 
 nexus service p:
-    async p workflow p.p
-    sync y(p: string) -> (string):
-        return p
+	async p workflow p.p
+	sync y(p: string) -> (string):
+		return p
 
 worker p:
-    workflow p.p
-    activity p.p
-    nexus service p.p
-    nexus service p.p.p
+	workflow p.p
+	activity p.p
+	nexus service p.p
+	nexus service p.p.p
 
 namespace p:
-    worker p
-        options:
-            task_queue: "q"
-    nexus endpoint p
-        options:
-            task_queue: "q"
+	worker p
+		options:
+			task_queue: "q"
+	nexus endpoint p
+		options:
+			task_queue: "q"
 `
 
 // TestRefPositionsSpellTheirNames: every reference's Pos is its name token and

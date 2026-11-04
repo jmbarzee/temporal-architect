@@ -25,7 +25,7 @@ func tree(t *testing.T, files ...string) string {
 			}
 			return -1
 		}, name)
-		writeFile(t, filepath.Join(root, filepath.FromSlash(f)), "workflow W"+name+"():\n    close complete(\"ok\")\n")
+		writeFile(t, filepath.Join(root, filepath.FromSlash(f)), "workflow W"+name+"():\n\tclose complete(\"ok\")\n")
 	}
 	return root
 }

@@ -11,15 +11,15 @@ import (
 // (DUPLICATE_SIGNAL, DUPLICATE_UPDATE) is offered once.
 func TestCompletionListsDuplicateHandlerOnce(t *testing.T) {
 	file, err := parser.ParseFile(`workflow W():
-    signal Ping():
-        a = 1
-    signal Ping(b: B):
-        a = 2
-    update Bump() -> (R):
-        return r
-    update Bump() -> (R):
-        return r
-    close complete()
+	signal Ping():
+		a = 1
+	signal Ping(b: B):
+		a = 2
+	update Bump() -> (R):
+		return r
+	update Bump() -> (R):
+		return r
+	close complete()
 `)
 	if err != nil {
 		t.Fatal(err)

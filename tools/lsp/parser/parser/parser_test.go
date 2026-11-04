@@ -13,7 +13,7 @@ import (
 
 func TestMinimalWorkflowDef(t *testing.T) {
 	input := `workflow Foo(x: int) -> (Result):
-    return x
+	return x
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -49,8 +49,8 @@ func TestMinimalWorkflowDef(t *testing.T) {
 
 func TestMinimalActivityDef(t *testing.T) {
 	input := `activity GetOrder(orderId: string) -> (Order):
-    order = db.get(orderId)
-    return order
+	order = db.get(orderId)
+	return order
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -76,16 +76,16 @@ func TestMinimalActivityDef(t *testing.T) {
 
 func TestWorkflowWithDeclarations(t *testing.T) {
 	input := `workflow OrderWorkflow(orderId: string) -> (OrderResult):
-    signal PaymentReceived(transactionId: string, amount: decimal):
-        status = "paid"
-    query GetStatus() -> (OrderStatus):
-        return OrderStatus{phase: currentPhase}
-    update ChangeAddress(addr: Address) -> (UpdateResult):
-        address = addr
-        return UpdateResult{ok: true}
+	signal PaymentReceived(transactionId: string, amount: decimal):
+		status = "paid"
+	query GetStatus() -> (OrderStatus):
+		return OrderStatus{phase: currentPhase}
+	update ChangeAddress(addr: Address) -> (UpdateResult):
+		address = addr
+		return UpdateResult{ok: true}
 
-    activity GetOrder(orderId) -> order
-    return OrderResult{status: "completed"}
+	activity GetOrder(orderId) -> order
+	return OrderResult{status: "completed"}
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -126,11 +126,11 @@ func TestWorkflowWithDeclarations(t *testing.T) {
 
 func TestSignalDeclWithBody(t *testing.T) {
 	input := `workflow Foo(x: int) -> (Result):
-    signal Cancel(reason: string):
-        cancelled = true
-        return Result{cancelled: true}
+	signal Cancel(reason: string):
+		cancelled = true
+		return Result{cancelled: true}
 
-    return Result{}
+	return Result{}
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -154,10 +154,10 @@ func TestSignalDeclWithBody(t *testing.T) {
 
 func TestQueryDeclWithBody(t *testing.T) {
 	input := `workflow Foo(x: int) -> (Result):
-    query GetStatus() -> (Status):
-        return Status{phase: currentPhase}
+	query GetStatus() -> (Status):
+		return Status{phase: currentPhase}
 
-    return Result{}
+	return Result{}
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -181,11 +181,11 @@ func TestQueryDeclWithBody(t *testing.T) {
 
 func TestUpdateDeclWithBody(t *testing.T) {
 	input := `workflow Foo(x: int) -> (Result):
-    update ChangeAddr(addr: Addr) -> (Result):
-        address = addr
-        return Result{ok: true}
+	update ChangeAddr(addr: Addr) -> (Result):
+		address = addr
+		return Result{ok: true}
 
-    return Result{}
+	return Result{}
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -214,7 +214,7 @@ func TestUpdateDeclWithBody(t *testing.T) {
 
 func TestActivityCallWithResult(t *testing.T) {
 	input := `workflow Foo(x: int) -> (Result):
-    activity GetOrder(orderId) -> order
+	activity GetOrder(orderId) -> order
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -238,7 +238,7 @@ func TestActivityCallWithResult(t *testing.T) {
 
 func TestWorkflowCallAttachedChild(t *testing.T) {
 	input := `workflow Foo(x: int) -> (Result):
-    workflow ShipOrder(order) -> shipResult
+	workflow ShipOrder(order) -> shipResult
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -262,7 +262,7 @@ func TestWorkflowCallAttachedChild(t *testing.T) {
 
 func TestPromiseActivity(t *testing.T) {
 	input := `workflow Foo(x: int) -> (Result):
-    promise p <- activity ProcessAsync(data)
+	promise p <- activity ProcessAsync(data)
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -290,7 +290,7 @@ func TestPromiseActivity(t *testing.T) {
 
 func TestWorkflowCallDetach(t *testing.T) {
 	input := `workflow Foo(x: int) -> (Result):
-    detach workflow SendNotification(customer)
+	detach workflow SendNotification(customer)
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -308,7 +308,7 @@ func TestWorkflowCallDetach(t *testing.T) {
 
 func TestNexusCallBasic(t *testing.T) {
 	input := `workflow Foo(x: int) -> (Result):
-    nexus PaymentEndpoint PaymentService.Charge(card) -> chargeResult
+	nexus PaymentEndpoint PaymentService.Charge(card) -> chargeResult
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -341,10 +341,10 @@ func TestNexusCallBasic(t *testing.T) {
 
 func TestPromiseWorkflow(t *testing.T) {
 	input := `workflow Foo(x: int) -> (Result):
-    promise p <- workflow ProcessAsync(data)
+	promise p <- workflow ProcessAsync(data)
 
 workflow ProcessAsync(data: Data) -> (Result):
-    close complete(Result{})
+	close complete(Result{})
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -369,7 +369,7 @@ workflow ProcessAsync(data: Data) -> (Result):
 
 func TestPromiseTimer(t *testing.T) {
 	input := `workflow Foo(x: int) -> (Result):
-    promise timeout <- timer(5m)
+	promise timeout <- timer(5m)
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -394,9 +394,9 @@ func TestPromiseTimer(t *testing.T) {
 
 func TestPromiseSignal(t *testing.T) {
 	input := `workflow Foo(x: int) -> (Result):
-    signal Approved():
-        approved = true
-    promise p <- signal Approved
+	signal Approved():
+		approved = true
+	promise p <- signal Approved
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -418,11 +418,11 @@ func TestPromiseSignal(t *testing.T) {
 
 func TestStateBlockWithCondition(t *testing.T) {
 	input := `workflow Foo(x: int) -> (Result):
-    state:
-        condition clusterStarted
-        balance = 0
+	state:
+		condition clusterStarted
+		balance = 0
 
-    close complete(Result{})
+	close complete(Result{})
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -445,15 +445,15 @@ func TestStateBlockWithCondition(t *testing.T) {
 
 func TestSetUnsetStatements(t *testing.T) {
 	input := `workflow Foo(x: int) -> (Result):
-    state:
-        condition ready
+	state:
+		condition ready
 
-    signal Activate():
-        set ready
+	signal Activate():
+		set ready
 
-    set ready
-    unset ready
-    close complete(Result{})
+	set ready
+	unset ready
+	close complete(Result{})
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -483,11 +483,11 @@ func TestSetUnsetStatements(t *testing.T) {
 
 func TestAwaitIdent(t *testing.T) {
 	input := `workflow Foo(x: int) -> (Result):
-    state:
-        condition ready
+	state:
+		condition ready
 
-    await ready
-    close complete(Result{})
+	await ready
+	close complete(Result{})
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -509,12 +509,12 @@ func TestAwaitIdent(t *testing.T) {
 
 func TestAwaitIdentWithResult(t *testing.T) {
 	input := `workflow Foo(x: int) -> (Result):
-    promise p <- activity Process(data)
-    await p -> result
-    close complete(Result{})
+	promise p <- activity Process(data)
+	await p -> result
+	close complete(Result{})
 
 activity Process(data: Data) -> (Result):
-    return Result{}
+	return Result{}
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -539,14 +539,14 @@ activity Process(data: Data) -> (Result):
 
 func TestAwaitOneIdentCase(t *testing.T) {
 	input := `workflow Foo(x: int) -> (Result):
-    state:
-        condition ready
+	state:
+		condition ready
 
-    await one:
-        ready:
-            close complete(Result{status: "ready"})
-        timer(5m):
-            close fail(Result{status: "timeout"})
+	await one:
+		ready:
+			close complete(Result{status: "ready"})
+		timer(5m):
+			close fail(Result{status: "timeout"})
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -574,7 +574,7 @@ func TestAwaitOneIdentCase(t *testing.T) {
 
 func TestDetachWithArrowError(t *testing.T) {
 	input := `workflow Foo(x: int) -> (Result):
-    detach workflow Send(x) -> result
+	detach workflow Send(x) -> result
 `
 	_, err := ParseFile(input)
 	if err == nil {
@@ -612,11 +612,11 @@ func TestBodylessDefinitionError(t *testing.T) {
 
 func TestOptionsOnCall(t *testing.T) {
 	input := `workflow Foo(x: int) -> (Result):
-    activity CreateShipment(order) -> shipment
-        options:
-            start_to_close_timeout: 30s
-            retry_policy:
-                maximum_attempts: 3
+	activity CreateShipment(order) -> shipment
+		options:
+			start_to_close_timeout: 30s
+			retry_policy:
+				maximum_attempts: 3
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -646,9 +646,9 @@ func TestOptionsOnCall(t *testing.T) {
 
 func TestOptionsOnWorkflowCall(t *testing.T) {
 	input := `workflow Foo(x: int) -> (Result):
-    workflow ShipOrder(order) -> result
-        options:
-            workflow_execution_timeout: 24h
+	workflow ShipOrder(order) -> result
+		options:
+			workflow_execution_timeout: 24h
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -681,9 +681,9 @@ func TestOptionsOnWorkflowCall(t *testing.T) {
 
 func TestAwaitAllBlock(t *testing.T) {
 	input := `workflow Foo(x: int) -> (Result):
-    await all:
-        activity ReserveInventory(order) -> inventory
-        activity ProcessPayment(order) -> payment
+	await all:
+		activity ReserveInventory(order) -> inventory
+		activity ProcessPayment(order) -> payment
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -702,11 +702,11 @@ func TestAwaitAllBlock(t *testing.T) {
 func TestAwaitOneBlock(t *testing.T) {
 	// await one cases support timer (with bodies), and nested await all.
 	input := `workflow Foo(x: int) -> (Result):
-    await one:
-        timer (1h):
-            activity HandleTimeout1()
-        timer (24h):
-            activity HandleTimeout2()
+	await one:
+		timer (1h):
+			activity HandleTimeout1()
+		timer (24h):
+			activity HandleTimeout2()
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -750,13 +750,13 @@ func TestAwaitOneBlock(t *testing.T) {
 
 func TestSwitchBlock(t *testing.T) {
 	input := `workflow Foo(x: int) -> (Result):
-    switch (batch.type):
-        case "invoice":
-            activity ProcessInvoice(batch)
-        case "refund":
-            activity ProcessRefund(batch)
-        else:
-            activity HandleUnknown(batch)
+	switch (batch.type):
+		case "invoice":
+			activity ProcessInvoice(batch)
+		case "refund":
+			activity ProcessRefund(batch)
+		else:
+			activity HandleUnknown(batch)
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -780,10 +780,10 @@ func TestSwitchBlock(t *testing.T) {
 
 func TestIfElse(t *testing.T) {
 	input := `workflow Foo(x: int) -> (Result):
-    if (validated.priority == "high"):
-        activity ExpediteOrder(order)
-    else:
-        activity StandardProcessing(order)
+	if (validated.priority == "high"):
+		activity ExpediteOrder(order)
+	else:
+		activity StandardProcessing(order)
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -807,8 +807,8 @@ func TestIfElse(t *testing.T) {
 
 func TestForInfinite(t *testing.T) {
 	input := `workflow Foo(x: int) -> (Result):
-    for:
-        activity Poll(x)
+	for:
+		activity Poll(x)
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -823,8 +823,8 @@ func TestForInfinite(t *testing.T) {
 
 func TestForConditional(t *testing.T) {
 	input := `workflow Foo(x: int) -> (Result):
-    for (retries < 3):
-        activity TryOnce(x)
+	for (retries < 3):
+		activity TryOnce(x)
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -842,8 +842,8 @@ func TestForConditional(t *testing.T) {
 
 func TestForIteration(t *testing.T) {
 	input := `workflow Foo(x: int) -> (Result):
-    for (item in order.items):
-        activity ProcessItem(item)
+	for (item in order.items):
+		activity ProcessItem(item)
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -864,7 +864,7 @@ func TestForIteration(t *testing.T) {
 
 func TestContinueAsNew(t *testing.T) {
 	input := `workflow Foo(x: int) -> (Result):
-    close continue_as_new(newArgs)
+	close continue_as_new(newArgs)
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -885,10 +885,10 @@ func TestContinueAsNew(t *testing.T) {
 
 func TestBreakContinue(t *testing.T) {
 	input := `workflow Foo(x: int) -> (Result):
-    for:
-        if (done):
-            break
-        continue
+	for:
+		if (done):
+			break
+		continue
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -910,7 +910,7 @@ func TestBreakContinue(t *testing.T) {
 
 func TestRawStmt(t *testing.T) {
 	input := `workflow Foo(x: int) -> (Result):
-    order.status = "completed"
+	order.status = "completed"
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -929,8 +929,8 @@ func TestRawStmt(t *testing.T) {
 
 func TestComment(t *testing.T) {
 	input := `workflow Foo(x: int) -> (Result):
-    # this is a comment
-    return x
+	# this is a comment
+	return x
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -956,7 +956,7 @@ func TestComment(t *testing.T) {
 
 func TestTemporalKeywordInActivityError(t *testing.T) {
 	input := `activity Foo(x: int) -> (Result):
-    timer 1h
+	timer 1h
 `
 	_, err := ParseFile(input)
 	if err == nil {
@@ -968,11 +968,11 @@ func TestTemporalKeywordInActivityError(t *testing.T) {
 
 func TestMultipleDefinitions(t *testing.T) {
 	input := `workflow Foo(x: int) -> (Result):
-    activity Bar(x) -> y
-    return y
+	activity Bar(x) -> y
+	return y
 
 activity Bar(x: int) -> (int):
-    return x
+	return x
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -991,10 +991,10 @@ activity Bar(x: int) -> (int):
 
 func TestActivityCallWithOptions(t *testing.T) {
 	input := `workflow Foo(x: int) -> (Result):
-    activity CreateShipment(order) -> shipment
-        options:
-            start_to_close_timeout: 30s
-    activity GetOrder(orderId) -> order
+	activity CreateShipment(order) -> shipment
+		options:
+			start_to_close_timeout: 30s
+	activity GetOrder(orderId) -> order
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -1019,11 +1019,11 @@ func TestActivityCallWithOptions(t *testing.T) {
 
 func TestSwitchInActivity(t *testing.T) {
 	input := `activity Foo(x: string) -> (Result):
-    switch (x):
-        case "a":
-            doA()
-        case "b":
-            doB()
+	switch (x):
+		case "a":
+			doA()
+		case "b":
+			doB()
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -1041,10 +1041,10 @@ func TestSwitchInActivity(t *testing.T) {
 
 func TestIfInActivity(t *testing.T) {
 	input := `activity Foo(x: int) -> (Result):
-    if (x > 0):
-        return x
-    else:
-        return 0
+	if (x > 0):
+		return x
+	else:
+		return 0
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -1062,8 +1062,8 @@ func TestIfInActivity(t *testing.T) {
 
 func TestForInActivity(t *testing.T) {
 	input := `activity Foo(items: []string) -> (Result):
-    for (item in items):
-        process(item)
+	for (item in items):
+		process(item)
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -1084,12 +1084,12 @@ func TestForInActivity(t *testing.T) {
 
 func TestOptionsNestedRetryPolicy(t *testing.T) {
 	input := `workflow Foo(x: int) -> (Result):
-    activity Bar(x) -> y
-        options:
-            start_to_close_timeout: 60s
-            retry_policy:
-                maximum_attempts: 3
-                initial_interval: 1s
+	activity Bar(x) -> y
+		options:
+			start_to_close_timeout: 60s
+			retry_policy:
+				maximum_attempts: 3
+				initial_interval: 1s
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -1120,9 +1120,9 @@ func TestOptionsNestedRetryPolicy(t *testing.T) {
 
 func TestOptionsUnrecognizedKey(t *testing.T) {
 	input := `workflow Foo(x: int) -> (Result):
-    activity Bar(x) -> y
-        options:
-            bogus_key: 5s
+	activity Bar(x) -> y
+		options:
+			bogus_key: 5s
 `
 	_, err := ParseFile(input)
 	if err == nil {
@@ -1139,9 +1139,9 @@ func TestOptionsUnrecognizedKey(t *testing.T) {
 
 func TestOptionsWrongValueType(t *testing.T) {
 	input := `workflow Foo(x: int) -> (Result):
-    activity Bar(x) -> y
-        options:
-            start_to_close_timeout: 3
+	activity Bar(x) -> y
+		options:
+			start_to_close_timeout: 3
 `
 	_, err := ParseFile(input)
 	if err == nil {
@@ -1151,9 +1151,9 @@ func TestOptionsWrongValueType(t *testing.T) {
 
 func TestOptionsEnumValidation(t *testing.T) {
 	input := `workflow Foo(x: int) -> (Result):
-    workflow Child(x) -> y
-        options:
-            parent_close_policy: TERMINATE
+	workflow Child(x) -> y
+		options:
+			parent_close_policy: TERMINATE
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -1171,9 +1171,9 @@ func TestOptionsEnumValidation(t *testing.T) {
 
 func TestOptionsInvalidEnum(t *testing.T) {
 	input := `workflow Foo(x: int) -> (Result):
-    workflow Child(x) -> y
-        options:
-            parent_close_policy: INVALID
+	workflow Child(x) -> y
+		options:
+			parent_close_policy: INVALID
 `
 	_, err := ParseFile(input)
 	if err == nil {
@@ -1183,10 +1183,10 @@ func TestOptionsInvalidEnum(t *testing.T) {
 
 func TestOptionsListValue(t *testing.T) {
 	input := `workflow Foo(x: int) -> (Result):
-    activity Bar(x) -> y
-        options:
-            retry_policy:
-                non_retryable_error_types: ["InvalidInput", "NotFound", "Unauthorized"]
+	activity Bar(x) -> y
+		options:
+			retry_policy:
+				non_retryable_error_types: ["InvalidInput", "NotFound", "Unauthorized"]
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -1224,10 +1224,10 @@ func TestOptionsListValue(t *testing.T) {
 
 func TestOptionsEmptyListValue(t *testing.T) {
 	input := `workflow Foo(x: int) -> (Result):
-    activity Bar(x) -> y
-        options:
-            retry_policy:
-                non_retryable_error_types: []
+	activity Bar(x) -> y
+		options:
+			retry_policy:
+				non_retryable_error_types: []
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -1247,10 +1247,10 @@ func TestOptionsEmptyListValue(t *testing.T) {
 func TestOptionsListRejectedOnScalarKey(t *testing.T) {
 	// A list literal supplied for a scalar (number) key is a type error.
 	input := `workflow Foo(x: int) -> (Result):
-    activity Bar(x) -> y
-        options:
-            retry_policy:
-                maximum_attempts: ["3"]
+	activity Bar(x) -> y
+		options:
+			retry_policy:
+				maximum_attempts: ["3"]
 `
 	_, err := ParseFile(input)
 	if err == nil {
@@ -1268,10 +1268,10 @@ func TestOptionsListRejectedOnScalarKey(t *testing.T) {
 func TestOptionsScalarRejectedOnListKey(t *testing.T) {
 	// A bare string supplied for the list-typed key is a type error.
 	input := `workflow Foo(x: int) -> (Result):
-    activity Bar(x) -> y
-        options:
-            retry_policy:
-                non_retryable_error_types: "InvalidInput"
+	activity Bar(x) -> y
+		options:
+			retry_policy:
+				non_retryable_error_types: "InvalidInput"
 `
 	_, err := ParseFile(input)
 	if err == nil {
@@ -1289,10 +1289,10 @@ func TestOptionsScalarRejectedOnListKey(t *testing.T) {
 func TestOptionsListNonStringElement(t *testing.T) {
 	// Non-string elements (here a bare number) inside the brackets are rejected.
 	input := `workflow Foo(x: int) -> (Result):
-    activity Bar(x) -> y
-        options:
-            retry_policy:
-                non_retryable_error_types: ["InvalidInput", 3]
+	activity Bar(x) -> y
+		options:
+			retry_policy:
+				non_retryable_error_types: ["InvalidInput", 3]
 `
 	_, err := ParseFile(input)
 	if err == nil {
@@ -1302,10 +1302,10 @@ func TestOptionsListNonStringElement(t *testing.T) {
 
 func TestOptionsListTrailingComma(t *testing.T) {
 	input := `workflow Foo(x: int) -> (Result):
-    activity Bar(x) -> y
-        options:
-            retry_policy:
-                non_retryable_error_types: ["InvalidInput",]
+	activity Bar(x) -> y
+		options:
+			retry_policy:
+				non_retryable_error_types: ["InvalidInput",]
 `
 	_, err := ParseFile(input)
 	if err == nil {
@@ -1317,8 +1317,8 @@ func TestOptionsEmpty(t *testing.T) {
 	// Empty options: with no indented content is a parse error
 	// (indentation-based syntax requires at least one entry).
 	input := `workflow Foo(x: int) -> (Result):
-    activity Bar(x) -> y
-        options:
+	activity Bar(x) -> y
+		options:
 `
 	_, err := ParseFile(input)
 	if err == nil {
@@ -1332,10 +1332,10 @@ func TestOptionsEmpty(t *testing.T) {
 func TestParseFileAllFirstDefError(t *testing.T) {
 	// First definition has a syntax error; second should still parse.
 	input := `workflow Broken(x: int)
-    return x
+	return x
 
 activity Bar(x: int) -> (int):
-    return x
+	return x
 `
 	file, errs := ParseFileAll(input)
 	if len(errs) == 0 {
@@ -1370,7 +1370,7 @@ func TestParseFileAllTopLevelNexusCallReturns(t *testing.T) {
 	input := `nexus BillingEndpoint BillingService.ChargePayment(payment) -> paymentResult
 
 activity Bar(x: int) -> (int):
-    return x
+	return x
 `
 	done := make(chan struct{})
 	var file *ast.File
@@ -1395,10 +1395,10 @@ activity Bar(x: int) -> (int):
 func TestParseFileAllCleanInput(t *testing.T) {
 	// Clean input should produce zero errors and a complete AST.
 	input := `workflow Foo(x: int) -> (Result):
-    return x
+	return x
 
 activity Bar(y: string) -> (string):
-    return y
+	return y
 `
 	file, errs := ParseFileAll(input)
 	if len(errs) != 0 {
@@ -1414,10 +1414,10 @@ activity Bar(y: string) -> (string):
 // swallow the definitions that follow it.
 func TestBalancedParenInStringNoTruncation(t *testing.T) {
 	input := `workflow Foo(x: int) -> (Result):
-    activity Log("org is required (bootstrap)") -> ok
+	activity Log("org is required (bootstrap)") -> ok
 
 activity Bar(y: string) -> (string):
-    return y
+	return y
 `
 	file, errs := ParseFileAll(input)
 	if len(errs) != 0 {
@@ -1447,10 +1447,10 @@ activity Bar(y: string) -> (string):
 // parse — the runaway-swallow that truncated the file no longer happens.
 func TestUnterminatedStringRecovers(t *testing.T) {
 	input := `workflow Foo(x: int) -> (Result):
-    activity Log("oops) -> ok
+	activity Log("oops) -> ok
 
 activity Bar(y: string) -> (string):
-    return y
+	return y
 `
 	file, errs := ParseFileAll(input)
 	if len(errs) == 0 {
@@ -1507,50 +1507,50 @@ func TestParseAllTestdata(t *testing.T) {
 
 func TestFullWorkflow(t *testing.T) {
 	input := `workflow OrderFulfillment(orderId: string) -> (OrderResult):
-    signal PaymentReceived(transactionId: string, amount: decimal):
-        status = "paid"
-    signal OrderCancelled(reason: string):
-        cancelled = true
-    query GetStatus() -> (OrderStatus):
-        return OrderStatus{phase: currentPhase}
-    update ChangeAddress(addr: Address) -> (UpdateResult):
-        address = addr
-        return UpdateResult{ok: true}
+	signal PaymentReceived(transactionId: string, amount: decimal):
+		status = "paid"
+	signal OrderCancelled(reason: string):
+		cancelled = true
+	query GetStatus() -> (OrderStatus):
+		return OrderStatus{phase: currentPhase}
+	update ChangeAddress(addr: Address) -> (UpdateResult):
+		address = addr
+		return UpdateResult{ok: true}
 
-    activity GetOrder(orderId) -> order
+	activity GetOrder(orderId) -> order
 
-    if (order.priority == "high"):
-        activity ExpediteOrder(order)
-    else:
-        activity StandardProcessing(order)
+	if (order.priority == "high"):
+		activity ExpediteOrder(order)
+	else:
+		activity StandardProcessing(order)
 
-    await all:
-        activity ReserveInventory(order) -> inventory
-        activity ProcessPayment(order) -> payment
+	await all:
+		activity ReserveInventory(order) -> inventory
+		activity ProcessPayment(order) -> payment
 
-    for (item in order.items):
-        activity ProcessItem(item)
+	for (item in order.items):
+		activity ProcessItem(item)
 
-    await one:
-        timer (1h):
-            activity CheckPayment(orderId) -> checkResult
-        timer (24h):
-            activity CancelOrder(orderId)
-            close fail(OrderResult{status: "timeout"})
+	await one:
+		timer (1h):
+			activity CheckPayment(orderId) -> checkResult
+		timer (24h):
+			activity CancelOrder(orderId)
+			close fail(OrderResult{status: "timeout"})
 
-    workflow ShipOrder(order) -> shipResult
-    promise asyncResult <- workflow ProcessAsync(data)
-    detach workflow SendNotification(order.customer)
-    nexus PaymentEndpoint PaymentService.Charge(card) -> chargeResult
+	workflow ShipOrder(order) -> shipResult
+	promise asyncResult <- workflow ProcessAsync(data)
+	detach workflow SendNotification(order.customer)
+	nexus PaymentEndpoint PaymentService.Charge(card) -> chargeResult
 
-    switch (order.type):
-        case "invoice":
-            activity ProcessInvoice(order)
-        else:
-            activity HandleDefault(order)
+	switch (order.type):
+		case "invoice":
+			activity ProcessInvoice(order)
+		else:
+			activity HandleDefault(order)
 
-    close continue_as_new(orderId)
-    return OrderResult{status: "completed"}
+	close continue_as_new(orderId)
+	return OrderResult{status: "completed"}
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -1582,10 +1582,10 @@ func TestFullWorkflow(t *testing.T) {
 
 func TestTimerCaseWithBody(t *testing.T) {
 	input := `workflow Test():
-    await one:
-        timer (5m):
-            activity SendReminder()
-            close complete
+	await one:
+		timer (5m):
+			activity SendReminder()
+			close complete
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -1625,37 +1625,37 @@ func TestCloseStatement(t *testing.T) {
 	}{
 		{
 			name:   "close complete",
-			input:  "workflow Test():\n    close complete\n",
+			input:  "workflow Test():\n\tclose complete\n",
 			reason: ast.CloseComplete,
 			args:   "",
 		},
 		{
 			name:   "close complete with args",
-			input:  "workflow Test():\n    close complete(Result{success: true})\n",
+			input:  "workflow Test():\n\tclose complete(Result{success: true})\n",
 			reason: ast.CloseComplete,
 			args:   "Result{success: true}",
 		},
 		{
 			name:   "close fail",
-			input:  "workflow Test():\n    close fail\n",
+			input:  "workflow Test():\n\tclose fail\n",
 			reason: ast.CloseFailWorkflow,
 			args:   "",
 		},
 		{
 			name:   "close fail with args",
-			input:  "workflow Test():\n    close fail(Error{message: \"timeout\"})\n",
+			input:  "workflow Test():\n\tclose fail(Error{message: \"timeout\"})\n",
 			reason: ast.CloseFailWorkflow,
 			args:   "Error{message: \"timeout\"}",
 		},
 		{
 			name:   "close continue_as_new",
-			input:  "workflow Test():\n    close continue_as_new(newArgs)\n",
+			input:  "workflow Test():\n\tclose continue_as_new(newArgs)\n",
 			reason: ast.CloseContinueAsNew,
 			args:   "newArgs",
 		},
 		{
 			name:   "close continue_as_new no args",
-			input:  "workflow Test():\n    close continue_as_new\n",
+			input:  "workflow Test():\n\tclose continue_as_new\n",
 			reason: ast.CloseContinueAsNew,
 			args:   "",
 		},
@@ -1686,7 +1686,7 @@ func TestCloseStatement(t *testing.T) {
 }
 
 func TestCloseRequiresReason(t *testing.T) {
-	input := "workflow Test():\n    close\n"
+	input := "workflow Test():\n\tclose\n"
 	_, err := ParseFile(input)
 	if err == nil {
 		t.Fatal("expected error for bare 'close' without reason, got nil")
@@ -1698,14 +1698,14 @@ func TestCloseRequiresReason(t *testing.T) {
 
 func TestWorkerDef(t *testing.T) {
 	input := `workflow ProcessOrder(orderId: string) -> (Result):
-    return Result{}
+	return Result{}
 
 activity ChargePayment(orderId: string) -> (Payment):
-    return charge(orderId)
+	return charge(orderId)
 
 worker orderWorker:
-    workflow ProcessOrder
-    activity ChargePayment
+	workflow ProcessOrder
+	activity ChargePayment
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -1737,22 +1737,22 @@ worker orderWorker:
 
 func TestWorkerDefMultipleWorkflows(t *testing.T) {
 	input := `workflow A(x: int) -> (int):
-    return x
+	return x
 
 workflow B(x: int) -> (int):
-    return x
+	return x
 
 activity C(x: int) -> (int):
-    return x
+	return x
 
 activity D(x: int) -> (int):
-    return x
+	return x
 
 worker multiWorker:
-    workflow A
-    workflow B
-    activity C
-    activity D
+	workflow A
+	workflow B
+	activity C
+	activity D
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -1769,7 +1769,7 @@ worker multiWorker:
 
 func TestWorkerDefEmptyBody(t *testing.T) {
 	input := `worker emptyWorker:
-    # just a comment
+	# just a comment
 `
 	// Worker with no workflow/activity refs should parse OK
 	file, err := ParseFile(input)
@@ -1787,13 +1787,13 @@ func TestWorkerDefEmptyBody(t *testing.T) {
 
 func TestNamespaceDef(t *testing.T) {
 	input := `worker orderTypes:
-    workflow ProcessOrder
-    activity ChargePayment
+	workflow ProcessOrder
+	activity ChargePayment
 
 namespace orders:
-    worker orderTypes
-        options:
-            task_queue: "orderProcessing"
+	worker orderTypes
+		options:
+			task_queue: "orderProcessing"
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -1831,18 +1831,18 @@ namespace orders:
 
 func TestNamespaceDefMultipleWorkers(t *testing.T) {
 	input := `worker orderTypes:
-    workflow ProcessOrder
+	workflow ProcessOrder
 
 worker paymentTypes:
-    activity ChargePayment
+	activity ChargePayment
 
 namespace orders:
-    worker orderTypes
-        options:
-            task_queue: "order-queue"
-    worker paymentTypes
-        options:
-            task_queue: "payment-queue"
+	worker orderTypes
+		options:
+			task_queue: "order-queue"
+	worker paymentTypes
+		options:
+			task_queue: "payment-queue"
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -1862,13 +1862,13 @@ namespace orders:
 
 func TestNamespaceDefWorkerWithMultipleOptions(t *testing.T) {
 	input := `worker orderTypes:
-    workflow ProcessOrder
+	workflow ProcessOrder
 
 namespace orders:
-    worker orderTypes
-        options:
-            task_queue: "order-queue"
-            max_concurrent_activity_executions: 50
+	worker orderTypes
+		options:
+			task_queue: "order-queue"
+			max_concurrent_activity_executions: 50
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -1888,7 +1888,7 @@ namespace orders:
 
 func TestNamespaceDefNoEntries(t *testing.T) {
 	input := `namespace empty:
-    # empty namespace
+	# empty namespace
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -1902,10 +1902,10 @@ func TestNamespaceDefNoEntries(t *testing.T) {
 
 func TestNamespaceDefWorkerWithoutOptions(t *testing.T) {
 	input := `worker orderTypes:
-    workflow ProcessOrder
+	workflow ProcessOrder
 
 namespace orders:
-    worker orderTypes
+	worker orderTypes
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -1924,16 +1924,16 @@ namespace orders:
 
 func TestNexusServiceDef(t *testing.T) {
 	input := `nexus service OrderService:
-    async PlaceOrder workflow ProcessOrder
-    sync GetStatus(orderId: string) -> (Status):
-        activity FetchStatus(orderId) -> status
-        close complete(status)
+	async PlaceOrder workflow ProcessOrder
+	sync GetStatus(orderId: string) -> (Status):
+		activity FetchStatus(orderId) -> status
+		close complete(status)
 
 workflow ProcessOrder(order: Order) -> (Result):
-    close complete(Result{})
+	close complete(Result{})
 
 activity FetchStatus(orderId: string) -> (Status):
-    return getStatus(orderId)
+	return getStatus(orderId)
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -1981,7 +1981,7 @@ activity FetchStatus(orderId: string) -> (Status):
 
 func TestNexusServiceDefEmptyBody(t *testing.T) {
 	input := `nexus service EmptyService:
-    # just a comment
+	# just a comment
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -1995,7 +1995,7 @@ func TestNexusServiceDefEmptyBody(t *testing.T) {
 
 func TestNexusCallDetach(t *testing.T) {
 	input := `workflow Foo():
-    detach nexus Endpoint Svc.Op(args)
+	detach nexus Endpoint Svc.Op(args)
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -2025,9 +2025,9 @@ func TestNexusCallDetach(t *testing.T) {
 
 func TestNexusCallWithOptions(t *testing.T) {
 	input := `workflow Foo():
-    nexus Endpoint Svc.Op(args) -> result
-        options:
-            schedule_to_close_timeout: 30s
+	nexus Endpoint Svc.Op(args) -> result
+		options:
+			schedule_to_close_timeout: 30s
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -2048,7 +2048,7 @@ func TestNexusCallWithOptions(t *testing.T) {
 
 func TestNexusCallPromise(t *testing.T) {
 	input := `workflow Foo():
-    promise p <- nexus Endpoint Svc.Op(args)
+	promise p <- nexus Endpoint Svc.Op(args)
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -2082,7 +2082,7 @@ func TestNexusCallPromise(t *testing.T) {
 
 func TestNexusCallAwait(t *testing.T) {
 	input := `workflow Foo():
-    await nexus Endpoint Svc.Op(args) -> result
+	await nexus Endpoint Svc.Op(args) -> result
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -2116,17 +2116,17 @@ func TestNexusCallAwait(t *testing.T) {
 
 func TestNexusCallAwaitOne(t *testing.T) {
 	input := `workflow Foo():
-    await one:
-        nexus Endpoint Svc.Op(args) -> result:
-            activity HandleResult(result)
-        timer(5m):
-            activity HandleTimeout()
+	await one:
+		nexus Endpoint Svc.Op(args) -> result:
+			activity HandleResult(result)
+		timer(5m):
+			activity HandleTimeout()
 
 activity HandleResult(result: Result):
-    handle(result)
+	handle(result)
 
 activity HandleTimeout():
-    handleTimeout()
+	handleTimeout()
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -2167,18 +2167,18 @@ activity HandleTimeout():
 
 func TestWorkerDefWithNexusService(t *testing.T) {
 	input := `worker OrderWorker:
-    workflow ProcessOrder
-    activity ChargePayment
-    nexus service OrderService
+	workflow ProcessOrder
+	activity ChargePayment
+	nexus service OrderService
 
 workflow ProcessOrder(order: Order) -> (Result):
-    close complete(Result{})
+	close complete(Result{})
 
 activity ChargePayment(order: Order) -> (Payment):
-    return charge(order)
+	return charge(order)
 
 nexus service OrderService:
-    async PlaceOrder workflow ProcessOrder
+	async PlaceOrder workflow ProcessOrder
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -2198,18 +2198,18 @@ nexus service OrderService:
 
 func TestNamespaceDefWithEndpoint(t *testing.T) {
 	input := `worker OrderWorker:
-    workflow ProcessOrder
+	workflow ProcessOrder
 
 namespace Orders:
-    worker OrderWorker
-        options:
-            task_queue: "orders"
-    nexus endpoint OrderEndpoint
-        options:
-            task_queue: "orders"
+	worker OrderWorker
+		options:
+			task_queue: "orders"
+	nexus endpoint OrderEndpoint
+		options:
+			task_queue: "orders"
 
 workflow ProcessOrder(order: Order) -> (Result):
-    close complete(Result{})
+	close complete(Result{})
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -2239,8 +2239,8 @@ workflow ProcessOrder(order: Order) -> (Result):
 
 func TestSignalSendStmt(t *testing.T) {
 	input := `workflow OrderSaga(order):
-    promise pay <- workflow ProcessPayment(order)
-    signal pay.OrderShipped(shipmentId)
+	promise pay <- workflow ProcessPayment(order)
+	signal pay.OrderShipped(shipmentId)
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -2264,13 +2264,13 @@ func TestSignalSendStmt(t *testing.T) {
 
 func TestSignalHandlerOptions(t *testing.T) {
 	input := `workflow Foo(x: int) -> (Result):
-    signal Cancel():
-        options:
-            unfinished_policy: abandon
-            description: "cancels the order"
-        cancelled = true
+	signal Cancel():
+		options:
+			unfinished_policy: abandon
+			description: "cancels the order"
+		cancelled = true
 
-    return Result{}
+	return Result{}
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -2295,12 +2295,12 @@ func TestSignalHandlerOptions(t *testing.T) {
 
 func TestUpdateHandlerOptions(t *testing.T) {
 	input := `workflow Foo(x: int) -> (Result):
-    update SubmitJob(job: Job) -> (JobId):
-        options:
-            unfinished_policy: warn_and_abandon
-        return jobId
+	update SubmitJob(job: Job) -> (JobId):
+		options:
+			unfinished_policy: warn_and_abandon
+		return jobId
 
-    return Result{}
+	return Result{}
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -2318,10 +2318,10 @@ func TestUpdateHandlerOptions(t *testing.T) {
 
 func TestQueryHandlerOptions(t *testing.T) {
 	input := `workflow Foo(x: int) -> (Result):
-    query GetStatus() -> (string):
-        options:
-            description: "current status"
-        return status
+	query GetStatus() -> (string):
+		options:
+			description: "current status"
+		return status
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -2339,10 +2339,10 @@ func TestQueryHandlerOptions(t *testing.T) {
 
 func TestQueryHandlerRejectsUnfinishedPolicy(t *testing.T) {
 	input := `workflow Foo(x: int) -> (Result):
-    query GetStatus() -> (string):
-        options:
-            unfinished_policy: abandon
-        return status
+	query GetStatus() -> (string):
+		options:
+			unfinished_policy: abandon
+		return status
 `
 	_, err := ParseFile(input)
 	if err == nil {
@@ -2355,10 +2355,10 @@ func TestQueryHandlerRejectsUnfinishedPolicy(t *testing.T) {
 
 func TestHandlerOptionsInvalidEnum(t *testing.T) {
 	input := `workflow Foo(x: int) -> (Result):
-    signal Cancel():
-        options:
-            unfinished_policy: bogus
-        cancelled = true
+	signal Cancel():
+		options:
+			unfinished_policy: bogus
+		cancelled = true
 `
 	_, err := ParseFile(input)
 	if err == nil {
@@ -2372,11 +2372,11 @@ func TestHandlerOptionsInvalidEnum(t *testing.T) {
 func TestHandlerOptionsOnly(t *testing.T) {
 	// A handler whose body is only an options block (no statements) still parses.
 	input := `workflow Foo(x: int) -> (Result):
-    signal Ping():
-        options:
-            unfinished_policy: abandon
+	signal Ping():
+		options:
+			unfinished_policy: abandon
 
-    return Result{}
+	return Result{}
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -2397,17 +2397,17 @@ func TestSignalSendAsFirstStatement(t *testing.T) {
 	// comment, and after handler declarations; it ends the declaration region.
 	for name, input := range map[string]string{
 		"first": `workflow Foo(x):
-    signal pay.OrderShipped(id)
+	signal pay.OrderShipped(id)
 `,
 		"after comment": `workflow Foo(x):
-    # kick things off
-    signal pay.OrderShipped(id)
+	# kick things off
+	signal pay.OrderShipped(id)
 `,
 		"after handler": `workflow Foo(x):
-    signal Done():
-        done = true
-    signal pay.OrderShipped(id)
-    log(sent)
+	signal Done():
+		done = true
+	signal pay.OrderShipped(id)
+	log(sent)
 `,
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -2425,9 +2425,9 @@ func TestSignalSendAsFirstStatement(t *testing.T) {
 
 func TestSignalHandlerAfterFirstStatement(t *testing.T) {
 	input := `workflow Foo(x):
-    log(starting)
-    signal Done():
-        done = true
+	log(starting)
+	signal Done():
+		done = true
 `
 	_, err := ParseFile(input)
 	if err == nil || !strings.Contains(err.Error(), "declare handlers before it") {
@@ -2438,10 +2438,10 @@ func TestSignalHandlerAfterFirstStatement(t *testing.T) {
 func TestSignalDeclStillParsesWithSend(t *testing.T) {
 	// A real signal declaration must still parse when a send follows in the body.
 	input := `workflow Foo(x):
-    signal Approved():
-        approved = true
-    promise pay <- workflow ProcessPayment(x)
-    signal pay.OrderShipped(id)
+	signal Approved():
+		approved = true
+	promise pay <- workflow ProcessPayment(x)
+	signal pay.OrderShipped(id)
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -2463,8 +2463,8 @@ func TestSignalSendWithoutDotError(t *testing.T) {
 	// A leading statement ends the declaration loop, so `signal pay` reaches
 	// the body parser and is treated as a (malformed) send rather than a decl.
 	input := `workflow Foo(x):
-    promise pay <- workflow ProcessPayment(x)
-    signal pay
+	promise pay <- workflow ProcessPayment(x)
+	signal pay
 `
 	_, err := ParseFile(input)
 	if err == nil {
@@ -2481,7 +2481,7 @@ func TestSignalSendWithoutDotError(t *testing.T) {
 
 func TestSignalSendRejectedInActivityBody(t *testing.T) {
 	input := `activity Foo(x):
-    signal pay.OrderShipped(id)
+	signal pay.OrderShipped(id)
 `
 	_, err := ParseFile(input)
 	if err == nil {
@@ -2502,13 +2502,13 @@ func TestActivityDefaultOptions(t *testing.T) {
 	// A valid default_options: block at the head of an activity body parses
 	// cleanly — no `unexpected token RETURN` mis-parse.
 	input := `activity ChargePayment(order) -> (Payment):
-    default_options:
-        task_queue: "payment-workers"
-        start_to_close_timeout: 60s
-        retry_policy:
-            maximum_attempts: 3
-    payment := charge(order)
-    return payment
+	default_options:
+		task_queue: "payment-workers"
+		start_to_close_timeout: 60s
+		retry_policy:
+			maximum_attempts: 3
+	payment := charge(order)
+	return payment
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -2537,13 +2537,13 @@ func TestWorkflowDefaultOptions(t *testing.T) {
 	// A valid default_options: block as the first workflow body element, before
 	// state:, parses cleanly.
 	input := `workflow ProcessOrder(order) -> (Result):
-    default_options:
-        workflow_execution_timeout: 1h
-        workflow_id_reuse_policy: ALLOW_DUPLICATE
-    state:
-        condition charged
-    activity ChargePayment(order) -> payment
-    set charged
+	default_options:
+		workflow_execution_timeout: 1h
+		workflow_id_reuse_policy: ALLOW_DUPLICATE
+	state:
+		condition charged
+	activity ChargePayment(order) -> payment
+	set charged
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -2575,28 +2575,28 @@ func TestOptionsBlockAcceptsComments(t *testing.T) {
 		want  string // key=value of each entry, in order
 	}{
 		{"leading", `workflow W():
-    default_options:
-        # provenance note
-        workflow_run_timeout: 30m
-    close complete()
+	default_options:
+		# provenance note
+		workflow_run_timeout: 30m
+	close complete()
 `, "workflow_run_timeout=30m"},
 		{"between", `workflow W():
-    default_options:
-        workflow_run_timeout: 30m
-        # between keys
-        workflow_task_timeout: 10s
-    close complete()
+	default_options:
+		workflow_run_timeout: 30m
+		# between keys
+		workflow_task_timeout: 10s
+	close complete()
 `, "workflow_run_timeout=30m workflow_task_timeout=10s"},
 		{"after last entry", `workflow W():
-    default_options:
-        workflow_run_timeout: 30m
-        # trailing
-    close complete()
+	default_options:
+		workflow_run_timeout: 30m
+		# trailing
+	close complete()
 `, "workflow_run_timeout=30m"},
 		{"end of value line", `workflow W():
-    default_options:
-        workflow_run_timeout: 30m  # end-of-line note
-    close complete()
+	default_options:
+		workflow_run_timeout: 30m  # end-of-line note
+	close complete()
 `, "workflow_run_timeout=30m"},
 	}
 	for _, tt := range tests {
@@ -2630,13 +2630,13 @@ func optionEntries(b *ast.OptionsBlock) string {
 
 func TestNestedOptionsBlockAcceptsComments(t *testing.T) {
 	input := `activity A():
-    default_options:
-        start_to_close_timeout: 5s
-        retry_policy:
-            # nested note
-            maximum_attempts: 3
-            # after the last nested key
-    a()
+	default_options:
+		start_to_close_timeout: 5s
+		retry_policy:
+			# nested note
+			maximum_attempts: 3
+			# after the last nested key
+	a()
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -2654,17 +2654,17 @@ func TestNestedOptionsBlockAcceptsComments(t *testing.T) {
 
 func TestCallSiteAndWorkerOptionsAcceptComments(t *testing.T) {
 	input := `workflow W():
-    activity A()
-        options:
-            # call-site note
-            task_queue: "q"
-    close complete()
+	activity A()
+		options:
+			# call-site note
+			task_queue: "q"
+	close complete()
 
 namespace ns:
-    worker wk
-        options:
-            # worker note
-            task_queue: "q"
+	worker wk
+		options:
+			# worker note
+			task_queue: "q"
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -2684,9 +2684,9 @@ func TestWorkflowDefaultOptionsRejectsParentClosePolicy(t *testing.T) {
 	// parent_close_policy is relational (call-site-only): rejected in a workflow
 	// default_options: block with a targeted error, not the generic unknown-key one.
 	input := `workflow ProcessOrder(order) -> (Result):
-    default_options:
-        parent_close_policy: TERMINATE
-    return
+	default_options:
+		parent_close_policy: TERMINATE
+	return
 `
 	_, err := ParseFile(input)
 	if err == nil {
@@ -2708,9 +2708,9 @@ func TestWorkflowDefaultOptionsRejectsCronSchedule(t *testing.T) {
 	// cron_schedule was removed from the workflow schema entirely, so it is
 	// rejected as an unknown key inside a workflow default_options: block.
 	input := `workflow ProcessOrder(order) -> (Result):
-    default_options:
-        cron_schedule: "0 * * * *"
-    return
+	default_options:
+		cron_schedule: "0 * * * *"
+	return
 `
 	_, err := ParseFile(input)
 	if err == nil {
@@ -2728,9 +2728,9 @@ func TestWorkflowDefaultOptionsRejectsCronSchedule(t *testing.T) {
 func TestWorkflowCallRejectsCronSchedule(t *testing.T) {
 	// cron_schedule on a workflow call is now rejected as an unknown option key.
 	input := `workflow Foo(x: int) -> (Result):
-    workflow ShipOrder(order) -> result
-        options:
-            cron_schedule: "0 * * * *"
+	workflow ShipOrder(order) -> result
+		options:
+			cron_schedule: "0 * * * *"
 `
 	_, err := ParseFile(input)
 	if err == nil {
@@ -2750,10 +2750,10 @@ func TestWorkflowCallRejectsCronSchedule(t *testing.T) {
 // is a type error.
 func TestEndpointAllowedCallerNamespaces(t *testing.T) {
 	const tmpl = `namespace payments:
-    nexus endpoint PayEndpoint
-        options:
-            task_queue: "payments"
-            allowed_caller_namespaces: %s
+	nexus endpoint PayEndpoint
+		options:
+			task_queue: "payments"
+			allowed_caller_namespaces: %s
 `
 	for _, list := range []string{`["orders", "tenant-{org}"]`, `[]`} {
 		file, err := ParseFile(fmt.Sprintf(tmpl, list))
@@ -2776,8 +2776,8 @@ func TestEndpointAllowedCallerNamespaces(t *testing.T) {
 // recorded for the resolver to diagnose (#233).
 func TestWorkerServiceThirdSegmentKeepsWorker(t *testing.T) {
 	file, err := ParseFile(`worker wa:
-    nexus service pkg.Svc.OpA
-    nexus service Other
+	nexus service pkg.Svc.OpA
+	nexus service Other
 `)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -2786,7 +2786,7 @@ func TestWorkerServiceThirdSegmentKeepsWorker(t *testing.T) {
 	if len(w.Services) != 2 || w.Services[0].Package != "pkg" || w.Services[0].Name != "Svc" {
 		t.Fatalf("services = %+v", w.Services)
 	}
-	want := []ast.OperationMention{{Pos: ast.Pos{Line: 2, Column: 27}, ServiceIndex: 0, Op: "OpA"}}
+	want := []ast.OperationMention{{Pos: ast.Pos{Line: 2, Column: 24}, ServiceIndex: 0, Op: "OpA"}}
 	if !reflect.DeepEqual(w.OperationMentions, want) {
 		t.Errorf("mentions = %+v, want %+v", w.OperationMentions, want)
 	}
@@ -2796,15 +2796,15 @@ func TestWorkerServiceThirdSegmentKeepsWorker(t *testing.T) {
 // the INDENT that follows it.
 func TestTrailingCommentBeforeBlock(t *testing.T) {
 	input := `workflow Child(x): # header
-    close complete(x)
+	close complete(x)
 
 workflow Parent(x):
-    workflow Child(x) -> y # trailing comment
-        options: # opens the block
-            workflow_execution_timeout: 1h # value
-    if (y): # condition
-        close complete(y) # inside
-    close complete(y)
+	workflow Child(x) -> y # trailing comment
+		options: # opens the block
+			workflow_execution_timeout: 1h # value
+	if (y): # condition
+		close complete(y) # inside
+	close complete(y)
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -2823,9 +2823,9 @@ workflow Parent(x):
 // The parser re-scans a deploy name; a comment after it still trails code.
 func TestTrailingCommentAfterDeployName(t *testing.T) {
 	input := `namespace ns: # note
-    nexus endpoint Ep # note
-        options:
-            task_queue: "q"
+	nexus endpoint Ep # note
+		options:
+			task_queue: "q"
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -2841,8 +2841,8 @@ func TestTrailingCommentAfterDeployName(t *testing.T) {
 // after the line's own statement.
 func TestTrailingCommentKeptAsStatement(t *testing.T) {
 	input := `workflow W(x):
-    activity Foo(x) -> y # local activity
-    close complete(y) # done
+	activity Foo(x) -> y # local activity
+	close complete(y) # done
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -2857,8 +2857,8 @@ func TestTrailingCommentKeptAsStatement(t *testing.T) {
 		}
 	}
 	want := []string{
-		"*ast.ActivityCall", `comment 2:26 " local activity"`,
-		"*ast.CloseStmt", `comment 3:23 " done"`,
+		"*ast.ActivityCall", `comment 2:23 " local activity"`,
+		"*ast.CloseStmt", `comment 3:20 " done"`,
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("body = %q, want %q", got, want)
@@ -2869,10 +2869,10 @@ func TestTrailingCommentKeptAsStatement(t *testing.T) {
 // escaped quote inside call arguments does not end the string.
 func TestStringEscapes(t *testing.T) {
 	input := `workflow W():
-    activity Log("a \" ) b") -> ok
-        options:
-            task_queue: "say \"hi\" \\ bye"
-    close complete()
+	activity Log("a \" ) b") -> ok
+		options:
+			task_queue: "say \"hi\" \\ bye"
+	close complete()
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -2888,10 +2888,10 @@ func TestStringEscapes(t *testing.T) {
 // consumed whole, so the rest of the line parses.
 func TestStringUnknownEscapeIsLoud(t *testing.T) {
 	input := `workflow W():
-    activity Log("a\nb") -> ok
-        options:
-            task_queue: "q\tx"
-    close complete()
+	activity Log("a\nb") -> ok
+		options:
+			task_queue: "q\tx"
+	close complete()
 `
 	file, errs := ParseFileAll(input)
 	var got []string
@@ -2899,8 +2899,8 @@ func TestStringUnknownEscapeIsLoud(t *testing.T) {
 		got = append(got, fmt.Sprintf("%d:%d %s", e.Line, e.Column, e.Msg))
 	}
 	want := []string{
-		`2:20 unknown escape \n in string literal (only \" and \\ are escapes)`,
-		`4:27 unknown escape \t in string literal (only \" and \\ are escapes)`,
+		`2:17 unknown escape \n in string literal (only \" and \\ are escapes)`,
+		`4:18 unknown escape \t in string literal (only \" and \\ are escapes)`,
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("errors = %q, want %q", got, want)

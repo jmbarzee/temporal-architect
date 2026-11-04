@@ -19,14 +19,14 @@ func importDesign(topImports, topBody string) map[string]string {
 		"fabric/v1/f.twf": `package fabric
 
 workflow Setup():
-    close complete("ok")
+	close complete("ok")
 `,
 		"cluster/fabric/v1/c.twf": `package fabric
 
 workflow Provision():
-    close complete("ok")
+	close complete("ok")
 `,
-		"top/top.twf": "package top\n\n" + topImports + "\nworkflow Main():\n" + topBody + "    close complete(\"ok\")\n",
+		"top/top.twf": "package top\n\n" + topImports + "\nworkflow Main():\n" + topBody + "\tclose complete(\"ok\")\n",
 	}
 }
 
@@ -42,22 +42,22 @@ func codesOf(diags []string) []string {
 func TestImportsBindByExactPath(t *testing.T) {
 	// #232: the import names cluster/fabric/v1, and a bare leaf match would
 	// pick the wrong fabric. By path, Provision resolves and Setup does not.
-	root := layout(t, importDesign(`import "example.com/demo/cluster/fabric/v1"`, "    workflow fabric.Provision()\n"))
+	root := layout(t, importDesign(`import "example.com/demo/cluster/fabric/v1"`, "\tworkflow fabric.Provision()\n"))
 	diags, _ := check(t, root)
 	if len(diags) != 0 {
 		t.Errorf("want a clean resolve, got %q", diags)
 	}
 
-	root = layout(t, importDesign(`import "example.com/demo/cluster/fabric/v1"`, "    workflow fabric.Setup()\n"))
+	root = layout(t, importDesign(`import "example.com/demo/cluster/fabric/v1"`, "\tworkflow fabric.Setup()\n"))
 	diags, _ = check(t, root)
-	want := `top/top.twf:5:21 UNDEFINED_WORKFLOW: undefined workflow: fabric.Setup (package example.com/demo/cluster/fabric/v1)`
+	want := `top/top.twf:5:18 UNDEFINED_WORKFLOW: undefined workflow: fabric.Setup (package example.com/demo/cluster/fabric/v1)`
 	if len(diags) != 1 || diags[0] != want {
 		t.Errorf("diagnostics = %q, want [%q]", diags, want)
 	}
 }
 
 func TestBothSameNamedPackagesWithAnAlias(t *testing.T) {
-	root := layout(t, importDesign("import \"example.com/demo/fabric/v1\"\nimport cf \"example.com/demo/cluster/fabric/v1\"\n", "    workflow fabric.Setup()\n    workflow cf.Provision()\n"))
+	root := layout(t, importDesign("import \"example.com/demo/fabric/v1\"\nimport cf \"example.com/demo/cluster/fabric/v1\"\n", "\tworkflow fabric.Setup()\n\tworkflow cf.Provision()\n"))
 	diags, _ := check(t, root)
 	if len(diags) != 0 {
 		t.Errorf("want a clean resolve, got %q", diags)
@@ -75,14 +75,14 @@ func TestImportLineChecks(t *testing.T) {
 		{"self import", `import "example.com/demo/top"`, "", []string{`top/top.twf:3:1 SELF_IMPORT: package example.com/demo/top imports itself`}},
 		{"needs alias", `import "github.com/m/library-temporal-kube"`, "", []string{`top/top.twf:3:1 IMPORT_NEEDS_ALIAS: import "github.com/m/library-temporal-kube" needs an alias: its assumed name library-temporal-kube cannot be a package name`}},
 		{"own name", `import "example.com/other/top"`, "", []string{`top/top.twf:3:1 DUPLICATE_IMPORT_NAME: import name top is this package's own name; alias "example.com/other/top"`}},
-		{"one qualifier, two paths", "import \"example.com/demo/fabric/v1\"\nimport \"example.com/demo/cluster/fabric/v1\"", "    workflow fabric.Setup()\n",
+		{"one qualifier, two paths", "import \"example.com/demo/fabric/v1\"\nimport \"example.com/demo/cluster/fabric/v1\"", "\tworkflow fabric.Setup()\n",
 			[]string{`top/top.twf:4:1 DUPLICATE_IMPORT_NAME: import name fabric is already bound to "example.com/demo/fabric/v1" in package top (top/top.twf:3); alias "example.com/demo/cluster/fabric/v1"`}},
-		{"the same binding twice", "import \"example.com/demo/fabric/v1\"\nimport \"example.com/demo/fabric/v1\"", "    workflow fabric.Setup()\n", nil},
-		{"typo under a known module", `import "example.com/demo/fabirc/v1"`, "    workflow fabirc.Setup()\n",
+		{"the same binding twice", "import \"example.com/demo/fabric/v1\"\nimport \"example.com/demo/fabric/v1\"", "\tworkflow fabric.Setup()\n", nil},
+		{"typo under a known module", `import "example.com/demo/fabirc/v1"`, "\tworkflow fabirc.Setup()\n",
 			[]string{`top/top.twf:3:1 IMPORT_NOT_FOUND: import "example.com/demo/fabirc/v1": module example.com/demo (at .) has no package fabirc/v1`}},
-		{"case typo", `import "example.com/demo/Fabric/v1"`, "    workflow Fabric.Setup()\n",
+		{"case typo", `import "example.com/demo/Fabric/v1"`, "\tworkflow Fabric.Setup()\n",
 			[]string{`top/top.twf:3:1 IMPORT_NOT_FOUND: import "example.com/demo/Fabric/v1": module example.com/demo (at .) has no package Fabric/v1; did you mean "example.com/demo/fabric/v1"?`}},
-		{"outside every module", `import "github.com/elsewhere/pay"`, "    workflow pay.Charge()\n",
+		{"outside every module", `import "github.com/elsewhere/pay"`, "\tworkflow pay.Charge()\n",
 			[]string{`top/top.twf:3:1 UNRESOLVED_IMPORT: import "github.com/elsewhere/pay" is unresolved (no package "pay" in the tree); treated as external`}},
 	}
 	for _, tt := range tests {
@@ -97,7 +97,7 @@ func TestImportLineChecks(t *testing.T) {
 }
 
 func TestImportNotLoadedAndSink(t *testing.T) {
-	files := importDesign(`import "example.com/demo/cluster/fabric/v1"`, "    workflow fabric.Provision()\n")
+	files := importDesign(`import "example.com/demo/cluster/fabric/v1"`, "\tworkflow fabric.Provision()\n")
 	root := layout(t, files)
 	// Only top is passed: the provider exists on disk but is not an input.
 	t.Chdir(root)
@@ -130,18 +130,18 @@ import pay "github.com/ext/payments"
 import payments "github.com/ext/payments"
 
 worker wa:
-    workflow pay.Charge
+	workflow pay.Charge
 
 worker wb:
-    workflow payments.Charge
+	workflow payments.Charge
 
 namespace ns:
-    worker wa
-        options:
-            task_queue: "q"
-    worker wb
-        options:
-            task_queue: "q"
+	worker wa
+		options:
+			task_queue: "q"
+	worker wb
+		options:
+			task_queue: "q"
 `,
 	})
 	t.Chdir(root)
@@ -176,8 +176,8 @@ const sameLeaf = `package fabric
 import cf "example.com/demo/cluster/fabric"
 
 workflow Setup():
-    workflow cf.Setup()
-    close complete("ok")
+	workflow cf.Setup()
+	close complete("ok")
 `
 
 func TestVirtualSourcesNeverBindByName(t *testing.T) {
@@ -194,8 +194,8 @@ func TestVirtualSourcesNeverBindByName(t *testing.T) {
 	}
 
 	// A package named like the import's leaf, at another path: still external.
-	other := "package fabric\n\nworkflow Setup():\n    close complete(\"ok\")\n"
-	top := "package top\n\nimport \"example.com/demo/fabric\"\n\nworkflow Main():\n    workflow fabric.Setup()\n    close complete(\"ok\")\n"
+	other := "package fabric\n\nworkflow Setup():\n\tclose complete(\"ok\")\n"
+	top := "package top\n\nimport \"example.com/demo/fabric\"\n\nworkflow Main():\n\tworkflow fabric.Setup()\n\tclose complete(\"ok\")\n"
 	res, err = pipeline.ParseSources(pipeline.Request{Virtual: []pipeline.Source{
 		{Name: "f.twf", Content: other, Module: "example.com/demo", Dir: "other"},
 		{Name: "t.twf", Content: top, Module: "example.com/demo", Dir: "top"},
@@ -228,8 +228,8 @@ func TestVirtualSourcesNeverBindByName(t *testing.T) {
 // clause is PACKAGE_OUTSIDE_MODULE and drops its file.
 func TestVirtualSourcesOutsideAModuleMatchFiles(t *testing.T) {
 	sources := []pipeline.Source{
-		{Name: "a.twf", Content: "workflow A():\n    activity Ghost()\n"},
-		{Name: "b.twf", Content: "package orders\n\nworkflow B():\n    activity Ghost()\n"},
+		{Name: "a.twf", Content: "workflow A():\n\tactivity Ghost()\n"},
+		{Name: "b.twf", Content: "package orders\n\nworkflow B():\n\tactivity Ghost()\n"},
 		{Name: "c.twf", Content: sameLeaf},
 	}
 	dir := t.TempDir()
@@ -381,7 +381,7 @@ func TestProviderLookup(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			files := map[string]string{
 				"twf.mod":     "module example.com/demo\n",
-				"top/top.twf": "package top\n\nimport q " + strconv.Quote(tt.imp) + "\n\nworkflow Main():\n    workflow q.W()\n    close complete(\"ok\")\n",
+				"top/top.twf": "package top\n\nimport q " + strconv.Quote(tt.imp) + "\n\nworkflow Main():\n\tworkflow q.W()\n\tclose complete(\"ok\")\n",
 			}
 			for k, v := range tt.files {
 				files[k] = v

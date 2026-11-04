@@ -10,17 +10,17 @@ import (
 // so references to it resolve and nothing cascades.
 func TestBadStatementDoesNotCascade(t *testing.T) {
 	src := "workflow Parent(x):\n" +
-		"    workflow Child(x) -> r\n" +
-		"    close complete(r)\n" +
+		"\tworkflow Child(x) -> r\n" +
+		"\tclose complete(r)\n" +
 		"\n" +
 		"workflow Child(x):\n" +
-		"    activity A(x)\n" +
-		"    update Foo\n" +
-		"    break Missing\n" +
-		"    close complete(x)\n" +
+		"\tactivity A(x)\n" +
+		"\tupdate Foo\n" +
+		"\tbreak Missing\n" +
+		"\tclose complete(x)\n" +
 		"\n" +
 		"activity A(x):\n" +
-		"    return x\n"
+		"\treturn x\n"
 
 	_, diags, err := pipeline.ParseSource("t.twf", src)
 	if err != nil {

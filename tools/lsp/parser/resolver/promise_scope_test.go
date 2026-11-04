@@ -8,14 +8,14 @@ import (
 
 const promiseScopeTargets = `
 workflow Q(id: string) -> (string):
-    signal Go():
-        go = true
-    close complete(id)
+	signal Go():
+		go = true
+	close complete(id)
 
 workflow R(id: string) -> (string):
-    signal Go():
-        go = true
-    close complete(id)
+	signal Go():
+		go = true
+	close complete(id)
 `
 
 // TestPromiseScope pins promise scope: a promise is in scope from its binding
@@ -28,95 +28,95 @@ func TestPromiseScope(t *testing.T) {
 		undefined bool
 	}{
 		{"top level of a workflow body", `workflow P(id: string):
-    promise p <- workflow Q(id)
-    await p -> r
-    close complete()
+	promise p <- workflow Q(id)
+	await p -> r
+	close complete()
 `, false},
 		{"nested block in a workflow body", `workflow P(id: string, flag: bool):
-    if (flag):
-        promise p <- workflow Q(id)
-        await p -> r
-    close complete()
+	if (flag):
+		promise p <- workflow Q(id)
+		await p -> r
+	close complete()
 `, false},
 		{"outer promise in a nested block", `workflow P(id: string, flag: bool):
-    promise p <- workflow Q(id)
-    if (flag):
-        await p -> r
-    close complete()
+	promise p <- workflow Q(id)
+	if (flag):
+		await p -> r
+	close complete()
 `, false},
 		{"handler body", `workflow P(id: string):
-    update Go(x: string) -> (string):
-        promise u <- workflow Q(x)
-        await u -> r
-        return r
-    close complete()
+	update Go(x: string) -> (string):
+		promise u <- workflow Q(x)
+		await u -> r
+		return r
+	close complete()
 `, false},
 		{"handler sees a top-level body promise", `workflow P(id: string):
-    signal Stop():
-        await p
-    promise p <- workflow Q(id)
-    close complete()
+	signal Stop():
+		await p
+	promise p <- workflow Q(id)
+	close complete()
 `, false},
 		{"sync nexus operation body", `nexus service Svc:
-    sync Op(id: string) -> (string):
-        promise p <- workflow Q(id)
-        await p -> r
-        close complete(r)
+	sync Op(id: string) -> (string):
+		promise p <- workflow Q(id)
+		await p -> r
+		close complete(r)
 `, false},
 		{"use after the block that binds it", `workflow P(id: string, flag: bool):
-    if (flag):
-        promise p <- workflow Q(id)
-    await p
-    close complete()
+	if (flag):
+		promise p <- workflow Q(id)
+	await p
+	close complete()
 `, true},
 		{"use in a sibling branch", `workflow P(id: string, flag: bool):
-    if (flag):
-        promise p <- workflow Q(id)
-    else:
-        await p
-    close complete()
+	if (flag):
+		promise p <- workflow Q(id)
+	else:
+		await p
+	close complete()
 `, true},
 		{"use before the binding", `workflow P(id: string):
-    await p
-    promise p <- workflow Q(id)
-    close complete()
+	await p
+	promise p <- workflow Q(id)
+	close complete()
 `, true},
 		{"use in a sibling switch case", `workflow P(id: string, kind: string):
-    switch (kind):
-        case "a":
-            promise p <- workflow Q(id)
-        case "b":
-            await p
-    close complete()
+	switch (kind):
+		case "a":
+			promise p <- workflow Q(id)
+		case "b":
+			await p
+	close complete()
 `, true},
 		{"use in a sibling await-one case", `workflow P(id: string):
-    await one:
-        signal Go:
-            promise p <- workflow Q(id)
-        timer(1m):
-            await p
-    close complete()
+	await one:
+		signal Go:
+			promise p <- workflow Q(id)
+		timer(1m):
+			await p
+	close complete()
 `, true},
 		{"use after a for body", `workflow P(ids: Ids):
-    for (id in ids):
-        promise p <- workflow Q(id)
-    await p
-    close complete()
+	for (id in ids):
+		promise p <- workflow Q(id)
+	await p
+	close complete()
 `, true},
 		{"workflow body does not see a handler's promise", `workflow P(id: string):
-    update Go(x: string) -> (string):
-        promise u <- workflow Q(x)
-        await u -> r
-        return r
-    await u
-    close complete()
+	update Go(x: string) -> (string):
+		promise u <- workflow Q(x)
+		await u -> r
+		return r
+	await u
+	close complete()
 `, true},
 		{"handler does not see a nested body promise", `workflow P(id: string, flag: bool):
-    signal Stop():
-        await p
-    if (flag):
-        promise p <- workflow Q(id)
-    close complete()
+	signal Stop():
+		await p
+	if (flag):
+		promise p <- workflow Q(id)
+	close complete()
 `, true},
 	}
 	for _, tt := range tests {
@@ -143,33 +143,33 @@ func TestPromiseHandleResolution(t *testing.T) {
 		wantTarget string // workflow the send's handle starts
 	}{
 		{"same name in sibling branches", `workflow P(id: string, flag: bool):
-    if (flag):
-        promise p <- workflow Q(id)
-        signal p.Go()
-    else:
-        promise p <- workflow R(id)
-    close complete()
+	if (flag):
+		promise p <- workflow Q(id)
+		signal p.Go()
+	else:
+		promise p <- workflow R(id)
+	close complete()
 `, "Q"},
 		{"a later binding shadows an earlier one", `workflow P(id: string):
-    promise p <- workflow Q(id)
-    await p
-    promise p <- workflow R(id)
-    signal p.Go()
-    close complete()
+	promise p <- workflow Q(id)
+	await p
+	promise p <- workflow R(id)
+	signal p.Go()
+	close complete()
 `, "R"},
 		{"an inner shadow does not leak", `workflow P(id: string, flag: bool):
-    promise p <- workflow Q(id)
-    if (flag):
-        promise p <- workflow R(id)
-        await p
-    signal p.Go()
-    close complete()
+	promise p <- workflow Q(id)
+	if (flag):
+		promise p <- workflow R(id)
+		await p
+	signal p.Go()
+	close complete()
 `, "Q"},
 		{"handler send to a body promise", `workflow P(id: string):
-    signal Stop():
-        signal p.Go()
-    promise p <- workflow Q(id)
-    close complete()
+	signal Stop():
+		signal p.Go()
+	promise p <- workflow Q(id)
+	close complete()
 `, "Q"},
 	}
 	for _, tt := range tests {

@@ -75,28 +75,28 @@ func TestQueuedCallComparators(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			opts := ""
 			if tt.callQ != "" {
-				opts = "\n        options:\n            task_queue: " + tt.callQ
+				opts = "\n\t\toptions:\n\t\t\ttask_queue: " + tt.callQ
 			}
 			src := `workflow W(lease: Lease):
-    activity A(lease) -> r` + opts + `
-    close complete(r)
+	activity A(lease) -> r` + opts + `
+	close complete(r)
 
 activity A(lease: Lease) -> (Lease):
-    return lease
+	return lease
 
 worker ww:
-    workflow W
+	workflow W
 
 worker aw:
-    activity A
+	activity A
 
 namespace ns:
-    worker ww
-        options:
-            task_queue: "` + tt.wq + `"
-    worker aw
-        options:
-            task_queue: "` + tt.aq + `"
+	worker ww
+		options:
+			task_queue: "` + tt.wq + `"
+	worker aw
+		options:
+			task_queue: "` + tt.aq + `"
 `
 			checkRouted(t, routed(extractAllowingErrors(t, src), EdgeActivityCall), tt.want)
 		})
@@ -109,29 +109,29 @@ namespace ns:
 // options, so default_options is its only way to name a queue.
 func TestDefaultOptionsTaskQueue(t *testing.T) {
 	src := `workflow W(x: X):
-    activity A(x) -> r
-    promise p <- activity A(x)
-    await p -> s
-    close complete(r)
+	activity A(x) -> r
+	promise p <- activity A(x)
+	await p -> s
+	close complete(r)
 
 activity A(x: X) -> (X):
-    default_options:
-        task_queue: "payments"
-    return x
+	default_options:
+		task_queue: "payments"
+	return x
 
 worker ww:
-    workflow W
+	workflow W
 
 worker aw:
-    activity A
+	activity A
 
 namespace ns:
-    worker ww
-        options:
-            task_queue: "w"
-    worker aw
-        options:
-            task_queue: "payments"
+	worker ww
+		options:
+			task_queue: "w"
+	worker aw
+		options:
+			task_queue: "payments"
 `
 	g := extractAllowingErrors(t, src)
 	edge := "activityCall workflow:W/worker:ww/namespace:ns -> activity:A/worker:aw/namespace:ns"
@@ -162,24 +162,24 @@ func TestAsyncBackingByDeployKey(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			src := `nexus service Svc:
-    async Op workflow Backing
+	async Op workflow Backing
 
 workflow Backing():
-    close complete()
+	close complete()
 
 worker sw:
-    nexus service Svc
+	nexus service Svc
 
 worker bw:
-    workflow Backing
+	workflow Backing
 
 namespace ns:
-    worker sw
-        options:
-            task_queue: "` + tt.svcQ + `"
-    worker bw
-        options:
-            task_queue: "` + tt.wfQ + `"
+	worker sw
+		options:
+			task_queue: "` + tt.svcQ + `"
+	worker bw
+		options:
+			task_queue: "` + tt.wfQ + `"
 `
 			checkRouted(t, routed(extractAllowingErrors(t, src), EdgeAsyncBacking), tt.want)
 		})
@@ -208,29 +208,29 @@ func TestTemplatedEndpointRoutesNowhere(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			src := `nexus service Svc:
-    sync Op(x: X) -> (X):
-        return x
+	sync Op(x: X) -> (X):
+		return x
 
 workflow W(x: X):
-    nexus Ep Svc.Op(x) -> r
-    close complete(r)
+	nexus Ep Svc.Op(x) -> r
+	close complete(r)
 
 worker ww:
-    workflow W
+	workflow W
 
 worker sw:
-    nexus service Svc
+	nexus service Svc
 
 namespace ns:
-    worker ww
-        options:
-            task_queue: "w"
-    worker sw
-        options:
-            task_queue: "` + tt.svcQ + `"
-    nexus endpoint Ep
-        options:
-            task_queue: "` + tt.epQ + `"
+	worker ww
+		options:
+			task_queue: "w"
+	worker sw
+		options:
+			task_queue: "` + tt.svcQ + `"
+	nexus endpoint Ep
+		options:
+			task_queue: "` + tt.epQ + `"
 `
 			checkRouted(t, routed(extractAllowingErrors(t, src), EdgeNexusCall, EdgeNexusRoute), tt.want)
 		})
@@ -242,24 +242,24 @@ namespace ns:
 // node that keeps the first queue and unions the parameters.
 func TestWorkerNodeTemplateParams(t *testing.T) {
 	src := `activity A():
-    return x
+	return x
 
 worker sidecar:
-    activity A
+	activity A
 
 worker control:
-    activity A
+	activity A
 
 namespace tenant-{org}:
-    worker sidecar
-        options:
-            task_queue: "a-{x}"
-    worker sidecar
-        options:
-            task_queue: "b-{y}-{x}"
-    worker control
-        options:
-            task_queue: "control"
+	worker sidecar
+		options:
+			task_queue: "a-{x}"
+	worker sidecar
+		options:
+			task_queue: "b-{y}-{x}"
+	worker control
+		options:
+			task_queue: "control"
 `
 	g := extractAllowingErrors(t, src)
 	tests := []struct {
@@ -289,23 +289,23 @@ namespace tenant-{org}:
 // are emitted once.
 func TestDoubleInstantiationContainment(t *testing.T) {
 	src := `activity A():
-    return x
+	return x
 
 nexus service S:
-    sync Op(x: X) -> (X):
-        return x
+	sync Op(x: X) -> (X):
+		return x
 
 worker fam:
-    activity A
-    nexus service S
+	activity A
+	nexus service S
 
 namespace n:
-    worker fam
-        options:
-            task_queue: "tools"
-    worker fam
-        options:
-            task_queue: "tools-{id}"
+	worker fam
+		options:
+			task_queue: "tools"
+	worker fam
+		options:
+			task_queue: "tools-{id}"
 `
 	checkRouted(t, routed(extractAllowingErrors(t, src), EdgeContainment), []string{
 		"containment activity:A/worker:fam/namespace:n -> worker:fam/namespace:n",
@@ -346,62 +346,62 @@ func dispatched(g *Graph) []string {
 // unresolved call is one entry.
 func TestDoubleInstantiationDispatch(t *testing.T) {
 	src := `workflow W(x: X):
-    activity A(x) -> r
-        options:
-            task_queue: "acts"
-    workflow C(x) -> c
-    nexus Ep S.Sync(x) -> n
-    promise p <- workflow T(x)
-    signal p.Go(x)
-    activity Missing(x)
-    close complete(r)
+	activity A(x) -> r
+		options:
+			task_queue: "acts"
+	workflow C(x) -> c
+	nexus Ep S.Sync(x) -> n
+	promise p <- workflow T(x)
+	signal p.Go(x)
+	activity Missing(x)
+	close complete(r)
 
 activity A(x: X) -> (X):
-    return x
+	return x
 
 workflow C(x: X):
-    close complete(x)
+	close complete(x)
 
 workflow T(x: X):
-    signal Go(y: X):
-        go = true
-    close complete(x)
+	signal Go(y: X):
+		go = true
+	close complete(x)
 
 workflow B():
-    close complete()
+	close complete()
 
 nexus service S:
-    sync Sync(x: X) -> (X):
-        activity A(x) -> r
-            options:
-                task_queue: "acts"
-        close complete(r)
-    async Async workflow B
-    async Lost workflow Nope
+	sync Sync(x: X) -> (X):
+		activity A(x) -> r
+			options:
+				task_queue: "acts"
+		close complete(r)
+	async Async workflow B
+	async Lost workflow Nope
 
 worker fam:
-    workflow W
-    workflow C
-    workflow T
-    workflow B
-    nexus service S
+	workflow W
+	workflow C
+	workflow T
+	workflow B
+	nexus service S
 
 worker aw:
-    activity A
+	activity A
 
 namespace n:
-    worker fam
-        options:
-            task_queue: "tools"
-    worker fam
-        options:
-            task_queue: "tools-{id}"
-    worker aw
-        options:
-            task_queue: "acts"
-    nexus endpoint Ep
-        options:
-            task_queue: "tools"
+	worker fam
+		options:
+			task_queue: "tools"
+	worker fam
+		options:
+			task_queue: "tools-{id}"
+	worker aw
+		options:
+			task_queue: "acts"
+	nexus endpoint Ep
+		options:
+			task_queue: "tools"
 `
 	const (
 		w   = "workflow:W/worker:fam/namespace:n"
@@ -428,22 +428,22 @@ namespace n:
 
 	// Both instantiations on the endpoint's queue: one nexusRoute edge.
 	src = `nexus service S:
-    sync Sync(x: X) -> (X):
-        return x
+	sync Sync(x: X) -> (X):
+		return x
 
 worker fam:
-    nexus service S
+	nexus service S
 
 namespace n:
-    worker fam
-        options:
-            task_queue: "tools"
-    worker fam
-        options:
-            task_queue: "tools"
-    nexus endpoint Ep
-        options:
-            task_queue: "tools"
+	worker fam
+		options:
+			task_queue: "tools"
+	worker fam
+		options:
+			task_queue: "tools"
+	nexus endpoint Ep
+		options:
+			task_queue: "tools"
 `
 	checkRouted(t, dispatched(extractAllowingErrors(t, src)), []string{
 		"nexusRoute " + op + "Sync" + fam + " -> " + ep + " @15",
@@ -456,52 +456,52 @@ namespace n:
 func TestDoubleInstantiationDistinctCallees(t *testing.T) {
 	t.Run("one namespace", func(t *testing.T) {
 		src := `workflow W(x: X):
-    activity A(x) -> r
-    workflow C(x) -> c
-    close complete(r)
+	activity A(x) -> r
+	workflow C(x) -> c
+	close complete(r)
 
 activity A(x: X) -> (X):
-    return x
+	return x
 
 workflow C(x: X):
-    close complete(x)
+	close complete(x)
 
 workflow B():
-    close complete()
+	close complete()
 
 nexus service S:
-    sync Sync(x: X) -> (X):
-        activity A(x) -> r
-        close complete(r)
-    async Async workflow B
+	sync Sync(x: X) -> (X):
+		activity A(x) -> r
+		close complete(r)
+	async Async workflow B
 
 worker fam:
-    workflow W
-    nexus service S
+	workflow W
+	nexus service S
 
 worker callee:
-    activity A
-    workflow C
-    workflow B
+	activity A
+	workflow C
+	workflow B
 
 worker other:
-    activity A
-    workflow C
-    workflow B
+	activity A
+	workflow C
+	workflow B
 
 namespace n:
-    worker fam
-        options:
-            task_queue: "a-{id}"
-    worker fam
-        options:
-            task_queue: "b-{id}"
-    worker callee
-        options:
-            task_queue: "a-{key}"
-    worker other
-        options:
-            task_queue: "b-{key}"
+	worker fam
+		options:
+			task_queue: "a-{id}"
+	worker fam
+		options:
+			task_queue: "b-{id}"
+	worker callee
+		options:
+			task_queue: "a-{key}"
+	worker other
+		options:
+			task_queue: "b-{key}"
 `
 		const (
 			w    = "workflow:W/worker:fam/namespace:n"
@@ -525,38 +525,38 @@ namespace n:
 
 	t.Run("two namespaces", func(t *testing.T) {
 		src := `workflow W(x: X):
-    activity A(x) -> r
-        options:
-            task_queue: "acts"
-    close complete(r)
+	activity A(x) -> r
+		options:
+			task_queue: "acts"
+	close complete(r)
 
 activity A(x: X) -> (X):
-    return x
+	return x
 
 worker fam:
-    workflow W
+	workflow W
 
 worker aw:
-    activity A
+	activity A
 
 namespace n1:
-    worker fam
-        options:
-            task_queue: "tools"
-    worker fam
-        options:
-            task_queue: "tools-{id}"
-    worker aw
-        options:
-            task_queue: "acts"
+	worker fam
+		options:
+			task_queue: "tools"
+	worker fam
+		options:
+			task_queue: "tools-{id}"
+	worker aw
+		options:
+			task_queue: "acts"
 
 namespace n2:
-    worker fam
-        options:
-            task_queue: "tools"
-    worker aw
-        options:
-            task_queue: "acts"
+	worker fam
+		options:
+			task_queue: "tools"
+	worker aw
+		options:
+			task_queue: "acts"
 `
 		var want []string
 		for _, ns := range []string{"n1", "n2"} {
@@ -577,31 +577,31 @@ namespace n2:
 // through it, on every run.
 func TestDuplicateEndpointFirstDeclaration(t *testing.T) {
 	src := `nexus service S:
-    sync Op(x: X) -> (X):
-        return x
+	sync Op(x: X) -> (X):
+		return x
 
 workflow W(x: X):
-    nexus e S.Op(x) -> r
-    close complete(r)
+	nexus e S.Op(x) -> r
+	close complete(r)
 
 worker ww:
-    workflow W
+	workflow W
 
 worker sw:
-    nexus service S
+	nexus service S
 `
 	for _, ns := range []string{"nc", "na", "nb"} {
 		src += `
 namespace ` + ns + `:
-    worker ww
-        options:
-            task_queue: "w"
-    worker sw
-        options:
-            task_queue: "q"
-    nexus endpoint e
-        options:
-            task_queue: "q"
+	worker ww
+		options:
+			task_queue: "w"
+	worker sw
+		options:
+			task_queue: "q"
+	nexus endpoint e
+		options:
+			task_queue: "q"
 `
 	}
 	const (
@@ -649,51 +649,51 @@ func nodesOfKind(g *Graph, kind string) []string {
 // luck.
 func TestDuplicateFirstDeclaration(t *testing.T) {
 	src := `workflow W(x: X):
-    activity A(x) -> r
-    close complete(r)
+	activity A(x) -> r
+	close complete(r)
 
 workflow W(x: X):
-    activity B(x) -> r
-    close complete(r)
+	activity B(x) -> r
+	close complete(r)
 
 activity A(x: X) -> (X):
-    return x
+	return x
 
 activity B(x: X) -> (X):
-    return x
+	return x
 
 nexus service S:
-    sync First() -> ():
-        close complete()
+	sync First() -> ():
+		close complete()
 
 nexus service S:
-    sync Second() -> ():
-        close complete()
+	sync Second() -> ():
+		close complete()
 
 worker w:
-    workflow W
-    activity A
-    activity B
-    nexus service S
+	workflow W
+	activity A
+	activity B
+	nexus service S
 
 worker w:
-    workflow W
+	workflow W
 
 namespace n:
-    worker w
-        options:
-            task_queue: "a"
-    nexus endpoint e1
-        options:
-            task_queue: "a"
+	worker w
+		options:
+			task_queue: "a"
+	nexus endpoint e1
+		options:
+			task_queue: "a"
 
 namespace n:
-    worker w
-        options:
-            task_queue: "b"
-    nexus endpoint e2
-        options:
-            task_queue: "b"
+	worker w
+		options:
+			task_queue: "b"
+	nexus endpoint e2
+		options:
+			task_queue: "b"
 `
 	const at = "/worker:w/namespace:n"
 	want := []string{
@@ -731,44 +731,44 @@ namespace n:
 // with one node and one containment edge, at the first's line.
 func TestDuplicateDeclarationFirst(t *testing.T) {
 	src := `workflow W(x: X):
-    signal Ping():
-        activity A(x)
-    signal Ping(y: Y):
-        activity B(y)
-    update Bump() -> (R):
-        activity A(x) -> r
-        return r
-    update Bump() -> (R):
-        activity B(x) -> r
-        return r
-    close complete()
+	signal Ping():
+		activity A(x)
+	signal Ping(y: Y):
+		activity B(y)
+	update Bump() -> (R):
+		activity A(x) -> r
+		return r
+	update Bump() -> (R):
+		activity B(x) -> r
+		return r
+	close complete()
 
 workflow V():
-    close complete()
+	close complete()
 
 activity A(x: X):
-    return
+	return
 
 activity B(x: X):
-    return
+	return
 
 nexus service S:
-    sync Op(x: X) -> ():
-        activity A(x)
-        close complete()
-    async Op workflow V
+	sync Op(x: X) -> ():
+		activity A(x)
+		close complete()
+	async Op workflow V
 
 worker w:
-    workflow W
-    workflow V
-    activity A
-    activity B
-    nexus service S
+	workflow W
+	workflow V
+	activity A
+	activity B
+	nexus service S
 
 namespace n:
-    worker w
-        options:
-            task_queue: "q"
+	worker w
+		options:
+			task_queue: "q"
 `
 	const at = "/worker:w/namespace:n"
 	want := []string{
@@ -802,16 +802,16 @@ func TestDuplicateEndpointResolverBinding(t *testing.T) {
 		return "package " + pkg + `
 
 namespace n:
-    nexus endpoint e
-        options:
-            task_queue: "` + queue + `"
+	nexus endpoint e
+		options:
+			task_queue: "` + queue + `"
 `
 	}
 	const caller = `package p1
 
 workflow W():
-    nexus e S.Op()
-    close complete()
+	nexus e S.Op()
+	close complete()
 `
 	tests := []struct {
 		name, pkgB, want string
@@ -852,37 +852,37 @@ func TestCalleeLabelLongestService(t *testing.T) {
 	pkgP := `package p
 
 nexus service S:
-    sync Op() -> ():
-        close complete()
+	sync Op() -> ():
+		close complete()
 
 nexus service Svc:
-    sync Op() -> ():
-        close complete()
+	sync Op() -> ():
+		close complete()
 
 workflow W():
-    nexus e S.Op()
-    nexus e Svc.Op()
-    close complete()
+	nexus e S.Op()
+	nexus e Svc.Op()
+	close complete()
 
 worker w:
-    workflow W
+	workflow W
 
 namespace n:
-    worker w
-        options:
-            task_queue: "w"
-    nexus endpoint e
-        options:
-            task_queue: "nobody"
+	worker w
+		options:
+			task_queue: "w"
+	nexus endpoint e
+		options:
+			task_queue: "nobody"
 `
 	defaultP := `nexus service p:
-    sync Run() -> ():
-        close complete()
+	sync Run() -> ():
+		close complete()
 `
 	otherP := `package p
 
 workflow X():
-    close complete()
+	close complete()
 `
 	unreachable := func(op string) string {
 		return fmt.Sprintf(`DISPATCH_NO_REACHABLE_DEPLOYMENT nexusOperation call to %q routes to task_queue "nobody" in namespace n but no deployment polls it there`, op)

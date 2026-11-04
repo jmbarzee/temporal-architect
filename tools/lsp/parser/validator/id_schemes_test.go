@@ -19,24 +19,24 @@ func hasKind(errs []*Error, kind ErrorKind, severity string) bool {
 
 const parentModel = `
 workflow Coordinator(doc: Doc):
-    signal Progress(pct: int):
-        pct = pct
-    workflow Step(doc)
+	signal Progress(pct: int):
+		pct = pct
+	workflow Step(doc)
 
 workflow Auditor(doc: Doc):
-    workflow Step(doc)
+	workflow Step(doc)
 
 workflow Bystander(doc: Doc):
-    signal Progress(pct: int):
-        pct = pct
-    activity Work(doc)
+	signal Progress(pct: int):
+		pct = pct
+	activity Work(doc)
 
 workflow Step(doc: Doc):
-    signal %s.Progress(50)
-        id: parent
+	signal %s.Progress(50)
+		id: parent
 
 activity Work(doc: Doc):
-    work(doc)
+	work(doc)
 `
 
 func TestParentSendDiagnostics(t *testing.T) {
@@ -64,20 +64,20 @@ func TestParentSendDiagnostics(t *testing.T) {
 func TestParentSendKeptDeclarations(t *testing.T) {
 	file, err := parser.ParseFile(`
 workflow Coordinator(doc: Doc):
-    signal Progress(pct: int):
-        pct = pct
-    workflow Step(doc)
+	signal Progress(pct: int):
+		pct = pct
+	workflow Step(doc)
 
 workflow Coordinator(doc: Doc):
-    workflow Step(doc)
+	workflow Step(doc)
 
 workflow Step(doc: Doc):
-    signal Coordinator.Progress(50)
-        id: parent
+	signal Coordinator.Progress(50)
+		id: parent
 
 workflow Step(doc: Doc):
-    signal Coordinator.Progress(50)
-        id: parent
+	signal Coordinator.Progress(50)
+		id: parent
 `)
 	if err != nil {
 		t.Fatal(err)
@@ -95,17 +95,17 @@ workflow Step(doc: Doc):
 func TestParentSendKeptHandlers(t *testing.T) {
 	file, err := parser.ParseFile(`
 workflow Coordinator(doc: Doc):
-    signal Progress(pct: int):
-        pct = pct
-    signal Kick():
-        pct = 0
-    signal Kick():
-        workflow Step(doc)
-    close complete()
+	signal Progress(pct: int):
+		pct = pct
+	signal Kick():
+		pct = 0
+	signal Kick():
+		workflow Step(doc)
+	close complete()
 
 workflow Step(doc: Doc):
-    signal Coordinator.Progress(50)
-        id: parent
+	signal Coordinator.Progress(50)
+		id: parent
 `)
 	if err != nil {
 		t.Fatal(err)
@@ -122,17 +122,17 @@ workflow Step(doc: Doc):
 func TestParentSendKeptHandlerSender(t *testing.T) {
 	file, err := parser.ParseFile(`
 workflow Coordinator(doc: Doc):
-    signal Progress(pct: int):
-        pct = pct
-    close complete()
+	signal Progress(pct: int):
+		pct = pct
+	close complete()
 
 workflow Step(doc: Doc):
-    signal Report():
-        doc = doc
-    signal Report():
-        signal Coordinator.Progress(50)
-            id: parent
-    close complete()
+	signal Report():
+		doc = doc
+	signal Report():
+		signal Coordinator.Progress(50)
+			id: parent
+	close complete()
 `)
 	if err != nil {
 		t.Fatal(err)
@@ -146,30 +146,30 @@ workflow Step(doc: Doc):
 func TestIDSchemeOverlap(t *testing.T) {
 	model := `
 workflow ShipItem(order: Order, item: Item):
-    id_scheme: "ship-{order.id}-{item.id}"
-    activity Work(order)
+	id_scheme: "ship-{order.id}-{item.id}"
+	activity Work(order)
 
 workflow ShipOrder(order: Order):
-    id_scheme: "ship-{order.id}"
-    activity Work(order)
+	id_scheme: "ship-{order.id}"
+	activity Work(order)
 
 workflow Refund(order: Order):
-    id_scheme: "refund-{order.id}"
-    activity Work(order)
+	id_scheme: "refund-{order.id}"
+	activity Work(order)
 
 activity Work(order: Order):
-    work(order)
+	work(order)
 
 worker W:
-    workflow ShipItem
-    workflow ShipOrder
-    workflow Refund
-    activity Work
+	workflow ShipItem
+	workflow ShipOrder
+	workflow Refund
+	activity Work
 
 namespace prod:
-    worker W
-        options:
-            task_queue: "q"
+	worker W
+		options:
+			task_queue: "q"
 `
 	errs := Validate(mustParseAndResolve(t, model))
 	var overlaps []string

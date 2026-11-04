@@ -28,13 +28,13 @@ var crlfFixtures = []string{
 // crlfInline covers what the fixtures may not: multi-line raw text and return
 // values, trailing comments, and a bad line.
 const crlfInline = `workflow P(x):
-    update U(v) -> (R):
-        return f(a,
-            b) # note
-    x = f(a,
-        b) # note
-    break Missing
-    close complete(x)
+	update U(v) -> (R):
+		return f(a,
+			b) # note
+	x = f(a,
+		b) # note
+	break Missing
+	close complete(x)
 `
 
 // A CRLF file parses as its LF twin: the same AST, raw text and return values
@@ -81,7 +81,7 @@ func TestCRLFParsesAsLF(t *testing.T) {
 // A line of only spaces and tabs is a blank line at the top level and in a
 // body, as an empty line is.
 func TestWhitespaceOnlyLinesParse(t *testing.T) {
-	const src = "_workflow P(x):_    activity A(x)_    close complete(x)__activity A(x):_    return x_"
+	const src = "_workflow P(x):_\tactivity A(x)_\tclose complete(x)__activity A(x):_\treturn x_"
 	for _, nl := range []string{"\n\t\n", "\n \n\t\n", "\n\t \t\n", "\n    \t\n", "\r\n\t\r\n"} {
 		file, err := ParseFile(strings.ReplaceAll(src, "_", nl))
 		if err != nil {

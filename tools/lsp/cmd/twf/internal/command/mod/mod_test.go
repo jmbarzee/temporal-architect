@@ -111,7 +111,7 @@ func TestInitRequiresAPathAndSuggests(t *testing.T) {
 		}, []string{"github.com/org/repo"}},
 		{"a placeholder", func(root string) string {
 			dir := filepath.Join(root, "aivearium")
-			write(t, filepath.Join(dir, "a.twf"), "workflow W():\n    close complete(\"ok\")\n")
+			write(t, filepath.Join(dir, "a.twf"), "workflow W():\n\tclose complete(\"ok\")\n")
 			return dir
 		}, []string{"example.com/aivearium"}},
 		{"none that would mismatch a package", func(root string) string {
