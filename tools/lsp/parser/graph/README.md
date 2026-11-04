@@ -150,7 +150,8 @@ edges.
 - `routing` (object, optional) — present **only** on dispatch edges; the
   diagnostic *cause* of the edge:
   - `explicit` (string, optional) — the `task_queue:` literal the user wrote on
-    the call site (activity / workflow only). Absent when the call was implicit.
+    the call site, else on the target's `default_options:` (activity / workflow
+    only). Absent when the call was implicit.
   - `nexusEndpoint` (string, optional) — `nexusCall` only; the endpoint
     deployment node ID. Cross-namespace nexus calls land here naturally, since
     the endpoint node ID encodes its namespace.
@@ -199,7 +200,8 @@ so the resolution logic stays in one place. The walk runs **once per caller
 deployment**, and emits one edge per (caller deployment, matching callee
 deployment) pair.
 
-- **`activityCall` / `workflowCall` with explicit `task_queue:`** — matching
+- **`activityCall` / `workflowCall` with explicit `task_queue:`** (on the call
+  site, else the target's `default_options:`, spec 06) — matching
   callee deployments are those in the **caller's namespace** whose `queue`
   matches the literal (spec 03 § Queue matching): the same spelling, or the same
   shape, so `"sandbox-{lease.sandboxId}"` reaches a `"sandbox-{sandboxId}"`

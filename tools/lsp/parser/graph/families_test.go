@@ -102,6 +102,46 @@ namespace ns:
 	}
 }
 
+// TestDefaultOptionsTaskQueue: a call without its own task_queue routes by its
+// target's default_options task_queue (spec 06 § Definition Default Options),
+// and routing.explicit carries that literal. An async target has no call-site
+// options, so default_options is its only way to name a queue.
+func TestDefaultOptionsTaskQueue(t *testing.T) {
+	src := `workflow W(x: X):
+    activity A(x) -> r
+    promise p <- activity A(x)
+    await p -> s
+    close complete(r)
+
+activity A(x: X) -> (X):
+    default_options:
+        task_queue: "payments"
+    return x
+
+worker ww:
+    workflow W
+
+worker aw:
+    activity A
+
+namespace ns:
+    worker ww
+        options:
+            task_queue: "w"
+    worker aw
+        options:
+            task_queue: "payments"
+`
+	g := extractAllowingErrors(t, src)
+	edge := "activityCall workflow:W/worker:ww/namespace:ns -> activity:A/worker:aw/namespace:ns"
+	checkRouted(t, routed(g, EdgeActivityCall), []string{edge, edge})
+	for _, e := range g.Edges {
+		if e.Kind == EdgeActivityCall && e.Routing.Explicit != "payments" {
+			t.Errorf("line %d: routing.explicit %q, want %q", e.Line, e.Routing.Explicit, "payments")
+		}
+	}
+}
+
 // TestAsyncBackingByDeployKey: an async operation's backing workflow starts on
 // the operation's own queue, so it must share the deploy key. A malformed
 // operation queue hosts nothing and is not re-reported.
@@ -241,4 +281,35 @@ namespace tenant-{org}:
 			t.Errorf("%s: queue %q, templateParams %v; want %q, %v", tt.id, n.Queue, n.TemplateParams, tt.queue, tt.params)
 		}
 	}
+}
+
+// TestDoubleInstantiationContainment: a worker instantiated twice in one
+// namespace is one node, so its containment edges and those of what it hosts
+// are emitted once.
+func TestDoubleInstantiationContainment(t *testing.T) {
+	src := `activity A():
+    return x
+
+nexus service S:
+    sync Op(x: X) -> (X):
+        return x
+
+worker fam:
+    activity A
+    nexus service S
+
+namespace n:
+    worker fam
+        options:
+            task_queue: "tools"
+    worker fam
+        options:
+            task_queue: "tools-{id}"
+`
+	checkRouted(t, routed(extractAllowingErrors(t, src), EdgeContainment), []string{
+		"containment activity:A/worker:fam/namespace:n -> worker:fam/namespace:n",
+		"containment nexusOperation:S.Op/worker:fam/namespace:n -> nexusService:S/worker:fam/namespace:n",
+		"containment nexusService:S/worker:fam/namespace:n -> worker:fam/namespace:n",
+		"containment worker:fam/namespace:n -> namespace:n",
+	})
 }
