@@ -1,8 +1,29 @@
 import type { Definition, WorkflowDef } from '../types/ast'
+import { qualifiedNameOf } from '../types/ast'
 import type { DefinitionContext, HandlerContext } from './WorkflowCanvas'
 
-const keepFirst = <T extends { name: string }>(m: Map<string, T>, def: T) => {
-  if (!m.has(def.name)) m.set(def.name, def)
+// setFirst sets key to value unless key is already set: a name declared twice
+// (a DUPLICATE_* resolve error) is its first declaration's, as the resolver
+// keeps it.
+export function setFirst<K, V>(m: Map<K, V>, key: K, value: V) {
+  if (!m.has(key)) m.set(key, value)
+}
+
+const keepFirst = <T extends { name: string }>(m: Map<string, T>, def: T) => setFirst(m, def.name, def)
+
+// firstByName returns decls without any whose name an earlier one declares.
+export function firstByName<T extends { name: string }>(decls: T[] | undefined): T[] {
+  const m = new Map<string, T>()
+  for (const d of decls ?? []) keepFirst(m, d)
+  return [...m.values()]
+}
+
+// keptDefinitions returns definitions without any whose kind and qualified
+// name an earlier one declares: the declarations the resolver keeps.
+export function keptDefinitions(definitions: Definition[]): Definition[] {
+  const m = new Map<string, Definition>()
+  for (const def of definitions) setFirst(m, `${def.type}:${qualifiedNameOf(def)}`, def)
+  return [...m.values()]
 }
 
 // definitionMaps indexes definitions by name, per kind. A name declared twice
