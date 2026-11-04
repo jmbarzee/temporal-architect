@@ -212,6 +212,17 @@ written. Any other backslash escape
 (`"\n"`, `"\d"`), accepted before, is now a `parse/LEX` error, which
 `twf check --lenient` does not excuse (#106).
 
+### ⚠️ Breaking: keyword-led raw lines in workflow bodies
+
+In a workflow body, a signal, query or update handler, a nexus operation body,
+and every block nested in them, a line led by a keyword that starts no
+statement is a `parse/SYNTAX` error. Raw lines that passed before now fail:
+`options = …`, `all = …` or `state.count = 1` in a workflow body, `complete = 1`
+in a query handler (rename the variable); a bare `timer(d)` or `update Name`
+(write `await timer(d)`, `await update Name`); pseudocode such as
+`fail with X` in a handler or nexus operation. Activity bodies stay free-form
+pseudocode, so `fail with X if …` still parses there (#291).
+
 ### ⚠️ Breaking: routing is namespace-scoped
 
 A task queue belongs to its namespace, so routing and endpoint linkage now
@@ -261,6 +272,18 @@ is now checked against the target's signals.
   `options:`, a definition header, `nexus endpoint Ep`) no longer breaks the
   parse. A trailing comment on a block header is discarded; elsewhere it stays a
   comment statement (#275).
+- Own-line comments may sit between a call and its `options:` block, below the
+  block, or alone under the call, and above a handler's `options:` or a
+  definition's `default_options:` block (#301).
+- In workflow contexts, a keyword-led line that starts no statement, such as
+  `update Missing` or `options:` away from a call, is a `parse/SYNTAX` error in
+  every block. It no longer passes as a raw statement inside `await all:` or
+  below a body's first statement (#291).
+- Raw statements, `return` values and `case` values keep their source text as
+  written: quotes, escapes, parentheses and spacing. A trailing comment stays a
+  comment statement instead of joining the text (#295).
+- An `import` after a definition is a `parse/SYNTAX` error; imports go after
+  the `package` clause and before definitions (#299).
 - An undefined workflow, activity, signal or update used as a `promise` /
   `await` target is reported at its keyword, not at 0:0 (#276).
 - Resolver and validator diagnostics come out sorted by file, position, then
