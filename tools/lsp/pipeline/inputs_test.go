@@ -181,7 +181,7 @@ func caseInsensitive(t *testing.T, dir string) bool {
 
 // TestCaseInsensitiveDiskOneIdentity: on a case-insensitive disk, a file, a
 // package directory and a module root named in another case are one input,
-// one package and one module (§3.7).
+// one package and one module (spec 15, Inputs).
 func TestCaseInsensitiveDiskOneIdentity(t *testing.T) {
 	root := layout(t, map[string]string{
 		"Demo/twf.mod":      "module example.com/demo\n",
@@ -226,12 +226,12 @@ func TestNormalizationInsensitiveDiskOneIdentity(t *testing.T) {
 // TestFirmlinkSpellingOneIdentity: a file named through macOS's
 // /System/Volumes/Data firmlink is the file named without it.
 func TestFirmlinkSpellingOneIdentity(t *testing.T) {
-	root := tree(t, "x/a.twf")
-	abs := filepath.Join(pipeline.Canonicalize(root), "x", "a.twf")
-	firm := "/System/Volumes/Data" + abs
 	if runtime.GOOS != "darwin" {
 		t.Skip("firmlinks are macOS's")
 	}
+	root := tree(t, "x/a.twf")
+	abs := filepath.Join(pipeline.Canonicalize(root), "x", "a.twf")
+	firm := "/System/Volumes/Data" + abs
 	if _, err := os.Stat(firm); err != nil {
 		t.Skipf("no firmlink spelling: %v", err)
 	}

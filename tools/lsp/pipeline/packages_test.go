@@ -132,8 +132,8 @@ func TestDuplicateModuleExcludesTheLaterCopy(t *testing.T) {
 
 // TestDuplicateModuleIgnoresInputOrder: with three or more copies of one
 // module, a losing copy's message names every other copy, so it reads the same
-// whichever copy comes first (§11: two editor buffers once gave one twf.mod two
-// messages). Only which copy wins follows input order.
+// whichever copy comes first, as two editor buffers with different inputs
+// need. Only which copy wins follows input order (spec 15, Ignored Files).
 func TestDuplicateModuleIgnoresInputOrder(t *testing.T) {
 	for _, n := range []int{3, 4} {
 		copies := []string{"c", "a", "d", "b"}[:n]
@@ -203,12 +203,16 @@ func TestDuplicateModuleOldSiblingUnderSymlinks(t *testing.T) {
 }
 
 // TestUpperCaseModuleFileIsNotAModule: only an entry named exactly twf.mod is
-// a module file, so on a case-insensitive disk TWF.MOD is not (§3.7).
+// a module file, so on a case-insensitive disk TWF.MOD is not (spec 15,
+// twf.mod).
 func TestUpperCaseModuleFileIsNotAModule(t *testing.T) {
 	root := layout(t, map[string]string{
 		"TWF.MOD":      "module example.com/demo\n",
 		"fabric/f.twf": wf("fabric", "F"),
 	})
+	if !caseInsensitive(t, root) {
+		t.Skip("disk is case-sensitive")
+	}
 	diags, _ := check(t, root)
 	if len(diags) != 1 || !strings.Contains(diags[0], "PACKAGE_OUTSIDE_MODULE") {
 		t.Errorf("diagnostics = %q, want PACKAGE_OUTSIDE_MODULE", diags)
@@ -222,8 +226,10 @@ func TestCaseSensitiveDiskTwoDirectories(t *testing.T) {
 		"twf.mod":      "module example.com/demo\n",
 		"fabric/f.twf": wf("fabric", "F"),
 	})
-	if err := os.Mkdir(filepath.Join(root, "Fabric"), 0o755); err != nil {
-		t.Skipf("disk is case-insensitive: %v", err)
+	if err := os.Mkdir(filepath.Join(root, "Fabric"), 0o755); os.IsExist(err) {
+		t.Skip("disk is case-insensitive")
+	} else if err != nil {
+		t.Fatal(err)
 	}
 	writeFile(t, filepath.Join(root, "Fabric", "g.twf"), wf("Fabric", "G"))
 	diags, defs := check(t, root)
