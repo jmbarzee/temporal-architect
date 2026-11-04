@@ -31,9 +31,9 @@ func TestWorkerDuplicateTypeName(t *testing.T) {
 		want    []string
 	}{
 		{"one per kind", []string{"nexus service a.Svc", "nexus service b.Svc", "workflow a.Run", "workflow b.Run", "activity a.Do", "activity b.Do"}, []string{
+			at + `10:5 shared topo.twf: worker shared registers nexus service a.Svc and nexus service b.Svc under one name, "Svc"` + tail,
 			at + `12:5 shared topo.twf: worker shared registers workflow a.Run and workflow b.Run under one name, "Run"` + tail,
 			at + `14:5 shared topo.twf: worker shared registers activity a.Do and activity b.Do under one name, "Do"` + tail,
-			at + `10:5 shared topo.twf: worker shared registers nexus service a.Svc and nexus service b.Svc under one name, "Svc"` + tail,
 		}},
 		{"each later entry", []string{"workflow a.Run", "workflow b.Run", "workflow c.Run"}, []string{
 			at + `10:5 shared topo.twf: worker shared registers workflow a.Run and workflow b.Run under one name, "Run"` + tail,

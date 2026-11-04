@@ -105,7 +105,7 @@ func TestWorkerRegistersOperationThreeSegments(t *testing.T) {
 		{
 			name:   "external service",
 			header: "import \"example.com/x/pkg\"\n",
-			want:   []ErrorKind{ErrWorkerRegistersOperation, ErrUnresolvedImport},
+			want:   []ErrorKind{ErrUnresolvedImport, ErrWorkerRegistersOperation},
 			msg:    "a worker registers a whole nexus service; pkg.Svc.OpA names OpA under service pkg.Svc — register `nexus service pkg.Svc`",
 		},
 		{

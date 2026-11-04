@@ -1,8 +1,300 @@
 # TWF Language Changelog
 
 > This changelog resumes at v0.11.0 after a gap: the v0.9.x and v0.10.x releases
-> (published, but never captured here) are not documented. The entry below covers
+> (published, but never captured here) are not documented. The v0.11.0 entry covers
 > everything since v0.10.2.
+
+## v0.16.0 - ID Conflict Policies, Worker Families & Nexus Access
+
+`.twf` moves closer to what Temporal accepts at runtime. A workflow start now
+knows whether it is a child or a client start and takes the matching ID
+policies. A `{param}` in a worker task queue declares a per-instance worker
+family. Nexus endpoints gain a caller allowlist. Routing and coherence checks
+are scoped to the namespace. Several changes reject designs that used to check
+clean; each is marked below.
+
+### ⚠️ Breaking: `TERMINATE_IF_RUNNING` removed; `workflow_id_conflict_policy` and start kinds
+
+```twf
+workflow Cart(id: string):
+    id_scheme: "cart-{id}"
+    default_options:
+        workflow_id_reuse_policy: ALLOW_DUPLICATE
+        workflow_id_conflict_policy: TERMINATE_EXISTING  # was TERMINATE_IF_RUNNING
+    close complete(id)
+
+nexus service Carts:
+    async Open workflow Cart                    # client start: uses the defaults
+    sync Touch(id: string) -> (string):
+        workflow Cart(id)
+            options:
+                workflow_id_conflict_policy: USE_EXISTING  # client start: may override
+        close complete(id)
+
+workflow Shop(id: string):
+    workflow Cart(id)
+        options:
+            parent_close_policy: ABANDON        # child start: takes no conflict policy
+    close complete(id)
+```
+
+- `workflow_id_reuse_policy: TERMINATE_IF_RUNNING` (deprecated in Temporal) is
+  no longer a value. Write `ALLOW_DUPLICATE` with
+  `workflow_id_conflict_policy: TERMINATE_EXISTING`.
+- New `workflow_id_conflict_policy` (`FAIL`, `USE_EXISTING`,
+  `TERMINATE_EXISTING`), valid in a workflow's `default_options:` and at a
+  client start.
+- **Start kinds.** A start in a workflow body or signal/update handler is a
+  **child start** and takes `parent_close_policy`. A start in a sync Nexus body,
+  or an `async Op workflow Name` run operation, is a **client start** and takes
+  `workflow_id_conflict_policy` (a run operation from the workflow's
+  `default_options:`). A key the start cannot carry is `OPTION_MISPLACED`. That
+  newly rejects `parent_close_policy` in a sync Nexus body; in
+  `default_options:` it is now `OPTION_MISPLACED` instead of `SYNTAX`, and
+  `workflow_id:` there is now `ID_AT_START`.
+- New diagnostics: `ID_POLICY_INCOMPATIBLE` (error: a client start would send
+  `TERMINATE_EXISTING` with `REJECT_DUPLICATE`, which Temporal server 1.27+
+  rejects), `ID_POLICY_WITHOUT_ID_SCHEME` (hint), `CHILD_START_CONFLICT_MISMATCH`
+  (hint), and `NEXUS_RUN_WITHOUT_ID_SCHEME` (warning: an `async` Nexus
+  operation's backing workflow has no `id_scheme:`, but a retried run operation
+  needs a deterministic ID).
+
+### ⚠️ Breaking (wire): workflow start `mode` and `start`
+
+`workflowCall` statements and workflow async targets gain
+`start: "child" | "client"`. `mode` now says only whether the caller holds the
+start: `"attached" | "detach"` (was `"child" | "detach"`). Wire types add
+`WorkflowStartKind`; the visualizer badges client starts.
+
+### ⚠️ Breaking: per-instance worker families; name parameters leave task queues
+
+```twf
+workflow RunTask(task: Task, lease: Lease) -> (Output):
+    activity RunTool(task.call) -> output
+        options:
+            task_queue: "sandbox-{lease.sandboxId}"   # matches the family by shape
+            schedule_to_start_timeout: 30s
+    close complete(output)
+
+namespace aivearium:
+    worker sidecar
+        options:
+            task_queue: "sandbox-{sandboxId}"         # one worker per sandbox
+```
+
+- A `{param}` in a worker instantiation's `task_queue` is an **instance
+  parameter**: one worker per value, each polling its own queue. It is local to
+  that instantiation and never bound. Two queues match on identical spelling,
+  or on the same fixed text with parameters in the same positions; names are
+  ignored, and a call-site parameter is a path into the caller's data. A
+  call-site queue that is a single parameter (`"{lease.queue}"`) matches any
+  family.
+- Name parameters (`{org}` in `tenant-{org}`) no longer reach option strings,
+  and `UNBOUND_TEMPLATE_PARAM` is removed. A `"q-{org}"` queue under
+  `tenant-{org}` still checks, but is now a family; drop the parameter for the
+  static queue you meant. `worker_identity` is free text.
+- An endpoint `task_queue` must be static (`ENDPOINT_TASK_QUEUE_TEMPLATED`).
+  The v0.11 pattern of a templated worker *and* endpoint queue under a
+  templated namespace no longer checks; make both static (`"bootstrap"`).
+- A malformed family queue is `QUEUE_TEMPLATE_MALFORMED`: a brace group that is
+  not a name, touching parameters (`"q-{a}{b}"`), a stray brace, a reserved
+  prefix, or over 1000 bytes.
+- Hazard hints: `TASK_QUEUE_OVERLAP`, `INSTANCE_QUEUE_NO_START_TIMEOUT`,
+  `INSTANCE_FAMILY_HOSTS_WORKFLOW`, `INSTANCE_FAMILY_VERSIONED`; and the warning
+  `INSTANCE_FAMILY_HOSTS_NEXUS_SERVICE` (no endpoint can reach a family).
+- Wire: namespace worker instantiations and worker graph nodes carry
+  `templateParams`.
+
+### ⚠️ Breaking: Nexus service coherence; caller allowlists
+
+```twf
+namespace payments:
+    nexus endpoint PaymentsEndpoint
+        options:
+            task_queue: "payments"
+            allowed_caller_namespaces: ["shop", "tenant-{org}"]
+```
+
+- **Breaking:** task-queue coherence also compares Nexus service sets, among
+  the workers on a queue that register any; a difference is
+  `TASK_QUEUE_MISMATCH`.
+- **New, opt-in:** `allowed_caller_namespaces` models Temporal Cloud's endpoint
+  access policy. A call originating in an unlisted namespace is
+  `NEXUS_CALLER_NOT_ALLOWED`; the endpoint's own namespace is not implicit.
+  Absent means no policy; `[]` allows no caller. Entries are `.twf` namespace
+  names, matched by spelling.
+- A worker registers whole services: `nexus service Svc.Op` in a worker is
+  `WORKER_REGISTERS_OPERATION` (was `QUALIFIED_REF_WITHOUT_IMPORT`, or a syntax
+  error that dropped the worker).
+
+### ⚠️ Breaking: duplicate option keys and worker type names
+
+- `DUPLICATE_OPTION_KEY`: a key repeated in one options block, nested blocks
+  included, reported at the second occurrence.
+- `WORKER_DUPLICATE_TYPE_NAME`: a worker registers one name twice for a kind,
+  either by repeating an entry or with same-named types from different packages
+  (`workflow a.Run` + `workflow b.Run`). Temporal registers by name, and the Go
+  SDK panics on the second registration.
+
+### ⚠️ Breaking: routing is namespace-scoped
+
+A task queue belongs to its namespace, so routing and endpoint linkage now
+match on (namespace, task queue). A queue name shared by two namespaces no
+longer makes an unreachable target look reachable.
+
+- Namespace identity is the deploy name: coherence groups by it, so two
+  packages declaring `namespace prod` share its queues.
+- A call is routing-checked against its target's `default_options:`
+  `task_queue` when the call site sets none (graph dispatch edges do not use
+  it yet, #245).
+- `promise`/`await`/`await one` targets are routing-checked; external and
+  undefined targets, and callers hosted nowhere, are not.
+- Routing diagnostics, including the graph's
+  `DISPATCH_NO_REACHABLE_DEPLOYMENT`, name the namespace.
+
+### ⚠️ Breaking: lexical promise scope
+
+A promise is in scope from its binding to the end of its block, nested blocks
+included, in a workflow body, handler or sync Nexus body. A later binding
+shadows it; same-named promises in sibling blocks are distinct; a handler sees
+its workflow body's top-level promises. Before, only promises bound at the top
+level of a workflow body resolved, but anywhere in it. A use before the binding
+is now `UNDEFINED_PROMISE_OR_CONDITION`, and a handler's send to a body promise
+is now checked against the target's signals.
+
+### Other language & tooling changes
+
+- **Wire:** workflow, activity and nexus-service definitions gain an optional
+  `qualifiedName` (`pkg.Name`), the name in their graph node ID; join graph
+  nodes to definitions on it. Omitted for unpackaged definitions. Go API:
+  `graph.QualifiedName` moved to `ast.QualifiedName`.
+- **Diagnostics:** in multi-file checks, validator errors name the reference
+  site's file rather than the callee's; `TASK_QUEUE_IDENTICAL` and
+  `TASK_QUEUE_MISMATCH` now carry a position; option value errors point at the
+  value; validator output order is deterministic.
+- **Parser fix:** `twf check` no longer hangs on a top-level `nexus` call; it
+  reports one `parse/SYNTAX` error.
+- **Visualizer:** worker families get a cardinality badge; packaged definitions
+  get file chips; "Show in Tree" / "Show in Graph" resolve a node to its owning
+  definition by qualified name, including nexus operation and endpoint nodes.
+
+## v0.15.0 - Workflow ID Schemes & Addressed Signal Sends
+
+A workflow type can declare how its ID is built, and a signal can reach a
+workflow the sender did not start by naming its type and an address. Comments
+are now allowed inside options blocks, and the visualizer's graph view moves to
+a new force-directed engine.
+
+### New: `id_scheme:`
+
+```twf
+workflow ShipItem(order: Order, item: Item) -> (Shipment):
+    id_scheme: "ship-{order.id}-{item.id}"
+    ...
+```
+
+`id_scheme:` is the first line of a workflow body. Each hole is a path rooted
+in one of the workflow's params; a scheme with no holes is a singleton. Starts
+never write an ID: it derives from their args, so `id:` under a start or
+`workflow_id:` in its options is `ID_AT_START`.
+
+### New: type-headed signal sends
+
+A send's head is now a workflow type or a handle. A type head takes an
+indented address; a handle takes none.
+
+```twf
+workflow RelayCarrierEvent(event: CarrierEvent):
+    signal ShipItem.Shipped(event.tracking)
+        id: "ship-{event.orderId}-{event.sku}"   # constructed: mirrors the scheme
+    signal ShipItem.Shipped(event.tracking)
+        id: wid                                  # learned: one name holding the ID
+        run_id: rid                              # optional
+    ...
+
+workflow Packer(order: Order):
+    signal Fulfillment.PackDone(order.id)
+        id: parent                               # the parent execution
+    ...
+```
+
+A type head may be package-qualified (`signal orders.ShipItem.Shipped(t)`) and
+maps to `SignalExternalWorkflow`. A send may now be the first statement of a
+workflow body. Fourteen new diagnostics (`ID_SCHEME_*`, `ID_MIRROR_MISMATCH`,
+`TYPE_NEEDS_ID`, `NOT_A_PARENT`, …) are tabled in spec §11, and every resolved
+type-head send draws a `signalSend` edge.
+
+### ⚠️ Breaking: `id_scheme` keyword and reserved `parent`
+
+`id_scheme` is a hard keyword. `parent` is reserved: a param, binding, promise
+or condition named `parent` is `RESERVED_NAME`.
+
+### ⚠️ Breaking (wire): signal-send `head`
+
+`SignalSendStmt.handle` becomes
+`head {kind, type, package, handle, address, external}`. `WorkflowDef` gains
+`idScheme`, `Unresolved` gains `reason: "external"` for a target behind an
+import of a package outside the tree, and diagnostics gain a `hint` severity.
+
+### Other language & tooling changes
+
+- **Parser fix:** a comment anywhere in an options block (between keys, after a
+  value, in a nested block) no longer fails with
+  `expected option key, got COMMENT`.
+- **Visualizer:** the graph view is rebuilt on a force-directed engine
+  (`tools/graph-view`, bundled into `@temporal-architect/visualizer`); signal
+  sends draw as their own edge style.
+
+## v0.14.0 - Visualizer Host Shell & Served Decomposition
+
+No language, CLI or wire changes. Library additions for hosts that embed the
+visualizer:
+
+- **`@temporal-architect/visualizer`:** exports a reusable `<VisualizerHost>`
+  shell with `PayloadSource` / `HostActions` seams and a framework-free message
+  protocol (`HostMessage`, `OutboundMessageType`). A new outbound
+  `requestDecomposition(params)` action lets the Groups panel ask the host to
+  recompute chunks.
+- **Go `tools/lsp/pipeline`:** `BuildDecompose(paths, opts)` returns the graph
+  and its decomposition overlay together in a `Payload`.
+
+## v0.13.0 - Versioned Imports, Diagnostic Attribution & `go install`
+
+Versioned imports resolve, diagnostics land on the referencing file, and `twf`
+installs with `go install`.
+
+### ⚠️ Breaking: versioned import paths resolve
+
+```twf
+import "github.com/acme/shop/orders/v1"              # referenced as orders.X
+import billingv2 "github.com/acme/shop/billing/v2"   # alias renames locally only
+```
+
+An import's leaf name drops a trailing `/vN` segment (Go's rule), so
+`.../orders/v1` targets package `orders` rather than a nonexistent `v1`.
+Aliased versioned imports were silently treated as external, which skipped
+checking, and bare ones failed with `QUALIFIED_REF_WITHOUT_IMPORT`. References
+through them now resolve, and typos behind them now error. The
+`UNRESOLVED_IMPORT` message names both the path and the derived leaf.
+
+### Other language & tooling changes
+
+- **Diagnostics:** resolve errors are attributed to the referencing file in
+  both `twf check` and the LSP, not to a file that defines the referenced name;
+  import warnings gain their filename.
+- **CLI:** `go install github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf@vX.Y.Z`
+  works, and `twf version` reports the module version. Each release also tags
+  `tools/spec/vX.Y.Z` and `tools/lsp/vX.Y.Z`.
+- **Go API:** the parse → graph pipeline is importable as
+  `tools/lsp/pipeline` (`Build`, `ParseFiles`, the diagnostic model). JSON
+  output is unchanged.
+
+## v0.12.0 - Canonical Subagent Definitions
+
+No language, CLI or wire changes. The design skill's project-discovery and
+slice-mapper subagents move to canonical files under
+`skills/temporal-architect-design/subagents/`, which the distribution's Claude
+Code plugin compiles verbatim.
 
 ## v0.11.0 - Packages, Imports & Parameterized Namespaces
 

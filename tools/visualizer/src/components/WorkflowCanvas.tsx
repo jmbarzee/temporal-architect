@@ -399,19 +399,22 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
 
   // "Show in Tree" on a node focuses the top-level definition that owns it,
   // found by its copyKey: itself, or for a nexus operation / endpoint the
-  // service / namespace it is nested in (#243). The focus carries that
-  // definition's own type, so the reconcile widens the chip the Tree actually
-  // filters it by. A node with no owner — every node in history mode, whose AST
-  // is empty — is offered no button.
+  // service / namespace it is nested in (#243), with the nested row named so
+  // the Tree reveals that row (#249). The focus carries the definition's own
+  // type, so the reconcile widens the chip the Tree actually filters it by. A
+  // node with no owner — every node in history mode, whose AST is empty — is
+  // offered no button.
   const showInTreeAction = React.useCallback((node: GraphNode): NodeAction | null => {
-    const def = node.copyKey === undefined ? undefined : model.ownerOf.get(node.copyKey)
-    if (!def) return null
+    const owner = node.copyKey === undefined ? undefined : model.ownerOf.get(node.copyKey)
+    if (!owner) return null
+    const { def, child } = owner
     return {
       label: 'Show in Tree',
       onSelect: () => switchView('tree', {
         kind: 'focus',
         target: {
           name: qualifiedNameOf(def),
+          child,
           values: { [DEF_TYPE_DIMENSION]: def.type, [SOURCE_FILE_DIMENSION]: def.sourceFile },
         },
       }),

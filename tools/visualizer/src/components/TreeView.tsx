@@ -29,8 +29,10 @@ function valuesOf(def: Definition): AxisValues {
  * Where a focus into the tree lands: the library's target, plus the name this
  * view finds a definition by — its qualified name (`qualifiedNameOf`), which is
  * also its graph node's `name`. Bare when the definition is unpackaged.
+ * `child` names a row nested in it (a nexus operation or endpoint) to reveal
+ * instead of the definition itself.
  */
-export type TreeFocus = FocusTarget & { name: string }
+export type TreeFocus = FocusTarget & { name: string; child?: string }
 
 // The filter, locks, axes (and the locks a focus overrode) and the shared
 // search are the shell's `linked.of('tree')`: the bar takes them as they come.
@@ -68,7 +70,8 @@ export function TreeView({
 
   // Track per-definition expand state for keyboard toggle (keyed by def identity)
   const [expandedDefs, setExpandedDefs] = React.useState<Set<string>>(new Set())
-  const [flashKey, setFlashKey] = React.useState<string | null>(null)
+  // The revealed definition, and the nested row it names when that row is the target.
+  const [flash, setFlash] = React.useState<{ key: string; child?: string } | null>(null)
 
   // Transition indicator: flash header when AST updates. A counter the bar
   // flashes on once per change and puts out itself — a flag the host switched
@@ -339,8 +342,9 @@ export function TreeView({
     })
   }, [])
 
-  // Reveal the visible definition at `index`: expand, scroll, flash
-  const revealAt = React.useCallback((index: number) => {
+  // Reveal the visible definition at `index`: expand, scroll, flash. With a
+  // `child`, the nested row of that name scrolls and flashes instead.
+  const revealAt = React.useCallback((index: number, child?: string) => {
     if (index === -1) return
 
     const key = defKey(visibleDefinitions[index])
@@ -348,12 +352,12 @@ export function TreeView({
     setFocusedIndex(index)
 
     setTimeout(() => {
-      treeItemRefs.current[index]?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-      treeItemRefs.current[index]?.focus()
+      if (!child) treeItemRefs.current[index]?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+      treeItemRefs.current[index]?.focus({ preventScroll: !!child })
     }, 50)
 
-    setFlashKey(key)
-    setTimeout(() => setFlashKey(null), 1000)
+    setFlash({ key, child })
+    setTimeout(() => setFlash(null), 1000)
   }, [visibleDefinitions])
 
   // Navigate to a definition by bare name+type — the names statements and
@@ -374,12 +378,12 @@ export function TreeView({
   React.useEffect(() => {
     if (!pendingFocus) return
     // This view locks a qualified name with the kind axis it knows.
-    const { name } = pendingFocus
+    const { name, child } = pendingFocus
     const defType = pendingFocus.values[DEF_TYPE_DIMENSION] ?? ''
     // Defer to let visibleDefinitions reflect any filter change that
     // arrived in the same tick.
     const timer = setTimeout(() => {
-      revealAt(visibleDefinitions.findIndex(d => qualifiedNameOf(d) === name && d.type === defType))
+      revealAt(visibleDefinitions.findIndex(d => qualifiedNameOf(d) === name && d.type === defType), child)
       onFocusConsumed()
     }, 50)
     return () => clearTimeout(timer)
@@ -525,8 +529,9 @@ export function TreeView({
                 const key = defKey(def)
                 const isExpanded = expandedDefs.has(key)
                 const isDimmed = matchSet !== null && !matchSet.has(key)
+                const revealed = flash?.key === key ? flash : undefined
                 const wrapClass = [
-                  flashKey === key ? 'flash-target' : '',
+                  revealed && !revealed.child ? 'flash-target' : '',
                   isDimmed ? 'search-dimmed' : '',
                 ].filter(Boolean).join(' ')
                 return (
@@ -540,7 +545,7 @@ export function TreeView({
                     onFocus={() => setFocusedIndex(i)}
                     className={wrapClass || undefined}
                   >
-                    <DefinitionBlock definition={def} expanded={isExpanded} onToggle={() => toggleDefExpand(key)} />
+                    <DefinitionBlock definition={def} expanded={isExpanded} onToggle={() => toggleDefExpand(key)} revealChild={revealed?.child} />
                   </div>
                 )
               })}

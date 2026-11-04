@@ -78,7 +78,7 @@ func TestServiceCoherenceAmongNexusPollers(t *testing.T) {
 		{"service anchor is first nexus poller", [][]string{{"A"}, {"A", "SvcA"}, {"A", "SvcB"}}, []string{fmt.Sprintf(svcs, 2, 3)}},
 		{"identical to an earlier worker", [][]string{{"A"}, {"A", "SvcA"}, {"A", "SvcA"}}, []string{fmt.Sprintf(same, 2, 3)}},
 		{"type sets unchanged", [][]string{{"A"}, {"B"}}, []string{fmt.Sprintf(types, 1, 2)}},
-		{"type mismatches and a redundant pair", [][]string{{"A"}, {"B"}, {"B"}}, []string{fmt.Sprintf(types, 1, 2), fmt.Sprintf(types, 1, 3), fmt.Sprintf(same, 2, 3)}},
+		{"type mismatches and a redundant pair", [][]string{{"A"}, {"B"}, {"B"}}, []string{fmt.Sprintf(types, 1, 2), fmt.Sprintf(same, 2, 3), fmt.Sprintf(types, 1, 3)}},
 		{"type and service mismatch on one pair", [][]string{{"A", "SvcA"}, {"B", "SvcB"}}, []string{fmt.Sprintf(types, 1, 2), fmt.Sprintf(svcs, 1, 2)}},
 	}
 	for _, tt := range tests {
@@ -376,9 +376,8 @@ func TestNexusCallerUnhostedNotChecked(t *testing.T) {
 	}
 }
 
-// TestNexusAccessDiagnosticsOrdered: diagnostics follow definition order —
-// call sites by their workflow's position, coherence groups by their queue's
-// first instantiation — on every run.
+// TestNexusAccessDiagnosticsOrdered: diagnostics follow source position on
+// every run.
 func TestNexusAccessDiagnosticsOrdered(t *testing.T) {
 	var b strings.Builder
 	b.WriteString(`nexus service PayService:
@@ -424,10 +423,8 @@ namespace payments:
             allowed_caller_namespaces: []
 `)
 	input := b.String()
-	// Coherence runs before the body walk; within each, source order holds,
-	// so every diagnostic's line is greater than the previous one's within its
-	// kind: the z-queue group (instantiated first) before the a-queue group,
-	// then the callers as declared (Zeta, Alpha, Mid, Beta).
+	// The callers as declared (Zeta, Alpha, Mid, Beta), then the z-queue group
+	// (instantiated first) before the a-queue group.
 	for run := 0; run < 20; run++ {
 		var kinds []ErrorKind
 		var lines []int
@@ -437,8 +434,8 @@ namespace payments:
 				lines = append(lines, e.Line)
 			}
 		}
-		wantKinds := []ErrorKind{ErrTaskQueueMismatch, ErrTaskQueueMismatch, ErrNexusCallerNotAllowed, ErrNexusCallerNotAllowed, ErrNexusCallerNotAllowed, ErrNexusCallerNotAllowed}
-		if !slices.Equal(kinds, wantKinds) || !slices.IsSorted(lines[:2]) || !slices.IsSorted(lines[2:]) {
+		wantKinds := []ErrorKind{ErrNexusCallerNotAllowed, ErrNexusCallerNotAllowed, ErrNexusCallerNotAllowed, ErrNexusCallerNotAllowed, ErrTaskQueueMismatch, ErrTaskQueueMismatch}
+		if !slices.Equal(kinds, wantKinds) || !slices.IsSorted(lines) {
 			t.Fatalf("run %d: kinds %v lines %v", run, kinds, lines)
 		}
 	}
