@@ -5,7 +5,6 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-	"strings"
 
 	"github.com/jmbarzee/glsp"
 	protocol "github.com/jmbarzee/glsp/protocol_3_16"
@@ -106,10 +105,7 @@ func (s *DocumentStore) publications() []protocol.PublishDiagnosticsParams {
 			b, _ := os.ReadFile(filepath.FromSlash(file))
 			text = string(b)
 		}
-		lines := strings.Split(text, "\n")
-		for i, l := range lines {
-			lines[i] = strings.TrimSuffix(l, "\r")
-		}
+		lines := splitLines(text)
 		texts[file] = lines
 		return lines
 	}

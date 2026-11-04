@@ -52,7 +52,7 @@ func semanticTokensHandler(store *DocumentStore) protocol.TextDocumentSemanticTo
 // buildSemanticTokens lexes the content and returns delta-encoded semantic token data.
 func buildSemanticTokens(content string) []uint32 {
 	tokens := lexer.New(content).AllTokens()
-	lines := strings.Split(content, "\n")
+	lines := splitLines(content)
 
 	var data []uint32
 	var prevLine, prevCol uint32

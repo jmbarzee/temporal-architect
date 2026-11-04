@@ -92,6 +92,7 @@ func addMissingDefinitionActions(doc *Document, params *protocol.CodeActionParam
 			}
 
 			def = strings.ReplaceAll(def, "\n\t", "\n"+indentUnit(lines))
+			def = strings.ReplaceAll(def, "\n", lineEnding(doc.Content))
 
 			// Insert at end of file
 			end := position(lines, len(lines), len(lines[len(lines)-1])+1)
@@ -129,16 +130,20 @@ func convertReturnToCloseActions(doc *Document, params *protocol.CodeActionParam
 			continue
 		}
 		for _, ret := range findReturnStatements(wf.Body) {
-			span := statementRange(doc.Content, lines, ret.Pos)
+			start, end := statementSpan(doc.Content, ret.Pos)
+			span := protocol.Range{Start: offsetPosition(doc.Content, lines, start), End: offsetPosition(doc.Content, lines, end)}
 			if !rangesOverlap(params.Range, span) {
 				continue
 			}
+			// The value as the buffer spells it, so one over several lines
+			// keeps the buffer's line endings.
+			value := strings.TrimLeft(strings.TrimPrefix(doc.Content[start:end], "return"), " \t")
 			actions = append(actions, protocol.CodeAction{
 				Title: "Convert 'return' to 'close complete'",
 				Kind:  ptrTo(protocol.CodeActionKindRefactor),
 				Edit: &protocol.WorkspaceEdit{
 					Changes: map[string][]protocol.TextEdit{
-						doc.URI: {{Range: span, NewText: closeComplete(ret.Value)}},
+						doc.URI: {{Range: span, NewText: closeComplete(value)}},
 					},
 				},
 			})
@@ -160,21 +165,17 @@ func closeComplete(value string) string {
 	}
 }
 
-// statementRange is the range of the statement at pos in content,
-// whose lines are lines: from its keyword to its last token, before any
-// comment. An argument list may carry it onto later lines.
-func statementRange(content string, lines []string, pos ast.Pos) protocol.Range {
-	start := 0
-	for _, l := range lines[:min(max(pos.Line-1, 0), len(lines))] {
-		start += len(l) + 1
-	}
-	start = min(start+max(pos.Column-1, 0), len(content))
-	end := start
+// statementSpan is the byte span of the statement at pos in content: from
+// its keyword to its last token, before any comment. An argument list may
+// carry it onto later lines.
+func statementSpan(content string, pos ast.Pos) (start, end int) {
+	start = min(lineOffset(content, pos.Line)+max(pos.Column-1, 0), len(content))
+	end = start
 	for l := lexer.New(content[start:]); ; {
 		tok := l.NextToken()
 		switch tok.Type {
 		case token.NEWLINE, token.COMMENT, token.TRAILING_COMMENT, token.INDENT, token.DEDENT, token.EOF:
-			return protocol.Range{Start: offsetPosition(content, lines, start), End: offsetPosition(content, lines, end)}
+			return start, end
 		}
 		end = start + tok.End
 	}
