@@ -62,7 +62,9 @@ func TestCheckMultiPackageTree(t *testing.T) {
 func TestCheckReportsIndentationErrorsFirst(t *testing.T) {
 	for _, tc := range []struct{ name, src, want string }{
 		{"mixed", "workflow W(x):\n\tif (x):\n\t  close complete(x)\n",
-			"[parse/LEX] at bad.twf:3:2: indentation mixes tabs and spaces; this file indents with tabs (set by line 2)"},
+			"[parse/LEX] at bad.twf:3:2: indentation mixes tabs and spaces; .twf indents with tabs, one per level"},
+		{"spaces", "workflow W(x):\n    close complete(x)\n",
+			"[parse/LEX] at bad.twf:2:1: indented with spaces; .twf indents with tabs, one per level"},
 		{"dedent to no open block", "activity A(d) -> (string):\n\t\t# c\n\twork(d)\n",
 			"[parse/LEX] at bad.twf:3:2: inconsistent indentation"},
 	} {

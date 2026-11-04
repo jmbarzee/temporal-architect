@@ -8,18 +8,8 @@ import (
 	protocol "github.com/jmbarzee/glsp/protocol_3_16"
 )
 
-// tabbed re-indents src, indented with four spaces per level, with one tab per level.
-func tabbed(src string) string {
-	lines := strings.Split(src, "\n")
-	for i, line := range lines {
-		body := strings.TrimLeft(line, " ")
-		lines[i] = strings.Repeat("\t", (len(line)-len(body))/4) + body
-	}
-	return strings.Join(lines, "\n")
-}
-
 // A tab is one UTF-16 column: on a tab-indented file, diagnostics start at
-// their token, and mixed indentation is a LEX diagnostic at the offending tab.
+// their token, and a space in indentation is a LEX diagnostic at that space.
 func TestDiagnosticsOnTabs(t *testing.T) {
 	tests := []struct {
 		name, src, code, msg string
@@ -27,7 +17,8 @@ func TestDiagnosticsOnTabs(t *testing.T) {
 	}{
 		{"parse error", "workflow W():\n\tif (\"é\") junk:\n\t\tclose complete\n", "SYNTAX", "junk", protocol.Position{Line: 1, Character: 10}},
 		{"resolve error", "workflow W():\n\tif (x):\n\t\tactivity Missing(note: \"é😀\")\n\tclose complete\n", "UNDEFINED_ACTIVITY", "undefined activity", protocol.Position{Line: 2, Character: 11}},
-		{"tab after spaces", "workflow W():\n    activity Do(x)\n    \tclose complete\n\nactivity Do(x):\n    do(x)\n", "LEX", "mixes tabs and spaces", protocol.Position{Line: 2, Character: 4}},
+		{"space after a tab", "workflow W():\n\tactivity Do(x)\n\t close complete\n\nactivity Do(x):\n\tdo(x)\n", "LEX", "indentation mixes tabs and spaces; .twf indents with tabs, one per level", protocol.Position{Line: 2, Character: 1}},
+		{"spaces", "workflow W():\n\tactivity Do(x)\n    close complete\n\nactivity Do(x):\n\tdo(x)\n", "LEX", "indented with spaces; .twf indents with tabs, one per level", protocol.Position{Line: 2, Character: 0}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -70,7 +61,7 @@ func TestSemanticTokensOnTabs(t *testing.T) {
 // On a tab-indented file, rename, references and definition land on the name,
 // and every document symbol selects its name.
 func TestNavigationOnTabs(t *testing.T) {
-	src := tabbed(everyKindSource)
+	src := everyKindSource
 	store := NewDocumentStore()
 	store.Open(renameURI, src)
 	for _, s := range []spot{{9, "Child", 1}, {12, "Place", 0}, {13, "ready", 0}, {14, "Do", 0}} {

@@ -86,7 +86,6 @@ func addMissingDefinitionActions(doc *Document, params *protocol.CodeActionParam
 				}
 			}
 
-			def = strings.ReplaceAll(def, "\n\t", "\n"+indentUnit(lines))
 			def = strings.ReplaceAll(def, "\n", lineEnding(doc.Content))
 
 			// Insert at end of file
@@ -265,25 +264,4 @@ func findReturnStatements(stmts []ast.Statement) []*ast.ReturnStmt {
 		return true
 	})
 	return returns
-}
-
-// indentUnit is the file's own indentation step: the leading whitespace of
-// its first indented statement line, or a tab, the canonical style, when no
-// statement is indented. Lines are read through the lexer, so a header's
-// argument list continuing onto the next line, and comment lines, never count.
-func indentUnit(lines []string) string {
-	lineStart := true
-	for _, tok := range lexer.New(strings.Join(lines, "\n")).AllTokens() {
-		switch tok.Type {
-		case token.NEWLINE, token.INDENT, token.DEDENT, token.ILLEGAL:
-			lineStart = lineStart || tok.Type == token.NEWLINE
-			continue
-		}
-		if lineStart && tok.Type != token.COMMENT && tok.Type != token.EOF && tok.Column > 1 {
-			line := lines[tok.Line-1]
-			return line[:len(line)-len(strings.TrimLeft(line, " \t"))]
-		}
-		lineStart = false
-	}
-	return "\t"
 }

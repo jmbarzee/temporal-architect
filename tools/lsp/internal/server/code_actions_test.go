@@ -1,7 +1,6 @@
 package server
 
 import (
-	"fmt"
 	"strings"
 	"testing"
 
@@ -113,47 +112,6 @@ func TestAddMissingDefinitionParses(t *testing.T) {
 	}
 }
 
-// TestAddMissingDefinitionUsesFileIndent: the stub is indented the way the
-// file is, not with a fixed four spaces.
-func TestAddMissingDefinitionUsesFileIndent(t *testing.T) {
-	src := "workflow W():\n  workflow Missing(x)\n  close complete\n"
-	at := protocol.Position{Line: 1, Character: 2}
-	actions := codeActions(t, src, protocol.Range{Start: at, End: at}, "Add missing workflow 'Missing'")
-	if len(actions) != 1 {
-		t.Fatalf("want one action, got %+v", actions)
-	}
-	got := applyEdits(t, src, actions[0].Edit.Changes[renameURI])
-	if !strings.HasSuffix(got, ":\n  # TODO: implement\n  close complete\n") {
-		t.Errorf("stub not indented with the file's two spaces:\n%s", got)
-	}
-	if doc := NewDocumentStore().Open(renameURI, got); len(doc.ParseErrs) > 0 {
-		t.Errorf("result does not parse: %v\n%s", doc.ParseErrs, got)
-	}
-}
-
-func TestIndentUnit(t *testing.T) {
-	tests := []struct {
-		name  string
-		lines []string
-		want  string
-	}{
-		{"four spaces", []string{"workflow W():", "    close complete"}, "    "},
-		{"two spaces", []string{"# c", "workflow W():", "  close complete"}, "  "},
-		{"tab", []string{"workflow W():", "\tclose complete"}, "\t"},
-		{"skips indented comments and blank lines", []string{"workflow W():", "", "\t\t# c", "\tclose complete"}, "\t"},
-		{"none indented", []string{"workflow W():"}, "\t"},
-		{"skips a header's continuation", []string{"workflow W(a: int,", "           b: int):", "\tclose complete"}, "\t"},
-		{"skips a continuation in a spaces file", []string{"workflow W(a: int,", "\t\tb: int):", "    close complete"}, "    "},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := indentUnit(tt.lines); got != tt.want {
-				t.Errorf("indentUnit = %q, want %q", got, tt.want)
-			}
-		})
-	}
-}
-
 // TestAddMissingDefinitionSignature: the stub takes the arguments and result
 // of the call the diagnostic is on, whatever shape the call has and wherever
 // it stands, in the file's own indentation; a reference that is no call gets
@@ -171,28 +129,26 @@ func TestAddMissingDefinitionSignature(t *testing.T) {
 		{"in a switch", "switch (k):\n|case a:\n||activity Missing(a) -> r", "Add missing activity 'Missing'", "activity Missing(a) -> (Result):"},
 		{"in await all", "await all:\n|workflow Missing(x) -> r\n|activity Do(x)", "Add missing workflow 'Missing'", "workflow Missing(x) -> (Result):"},
 	}
-	for _, unit := range []string{"\t", "    "} {
-		for _, tt := range tests {
-			t.Run(fmt.Sprintf("%q/%s", unit, tt.name), func(t *testing.T) {
-				body := "|" + strings.ReplaceAll(tt.body, "\n", "\n|")
-				src := "workflow W(a, b, x, y, k):\n" + body + "\n|close complete\n\nactivity Do(x):\n|return x\n"
-				src = strings.ReplaceAll(src, "|", unit)
-				line := uint32(strings.Count(src[:strings.Index(src, "Missing")], "\n"))
-				at := protocol.Position{Line: line, Character: 0}
-				actions := codeActions(t, src, protocol.Range{Start: at, End: protocol.Position{Line: line, Character: 200}}, tt.title)
-				if len(actions) != 1 {
-					t.Fatalf("want one action, got %+v", actions)
-				}
-				got := applyEdits(t, src, actions[0].Edit.Changes[renameURI])
-				if want := "\n" + tt.header + "\n" + unit + "# TODO: implement\n"; !strings.Contains(got, want) {
-					t.Errorf("stub does not hold %q:\n%s", want, got)
-				}
-				doc := NewDocumentStore().Open(renameURI, got)
-				if len(doc.ParseErrs)+len(doc.ResolveErrs) > 0 {
-					t.Errorf("result does not resolve: parse=%v resolve=%v\n%s", doc.ParseErrs, doc.ResolveErrs, got)
-				}
-			})
-		}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			body := "|" + strings.ReplaceAll(tt.body, "\n", "\n|")
+			src := "workflow W(a, b, x, y, k):\n" + body + "\n|close complete\n\nactivity Do(x):\n|return x\n"
+			src = strings.ReplaceAll(src, "|", "\t")
+			line := uint32(strings.Count(src[:strings.Index(src, "Missing")], "\n"))
+			at := protocol.Position{Line: line, Character: 0}
+			actions := codeActions(t, src, protocol.Range{Start: at, End: protocol.Position{Line: line, Character: 200}}, tt.title)
+			if len(actions) != 1 {
+				t.Fatalf("want one action, got %+v", actions)
+			}
+			got := applyEdits(t, src, actions[0].Edit.Changes[renameURI])
+			if want := "\n" + tt.header + "\n\t# TODO: implement\n"; !strings.Contains(got, want) {
+				t.Errorf("stub does not hold %q:\n%s", want, got)
+			}
+			doc := NewDocumentStore().Open(renameURI, got)
+			if len(doc.ParseErrs)+len(doc.ResolveErrs) > 0 {
+				t.Errorf("result does not resolve: parse=%v resolve=%v\n%s", doc.ParseErrs, doc.ResolveErrs, got)
+			}
+		})
 	}
 }
 

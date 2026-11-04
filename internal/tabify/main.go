@@ -1,10 +1,6 @@
 // Command tabify re-indents the repository's TWF with tabs, one per indent
 // level: every tracked .twf file, and every ```twf block in tracked Markdown.
-// CHANGELOG.md is left as written, and so is a .twf file holding the line
-//
-//	# tabify: keep spaces
-//
-// (a fixture that proves space indentation still parses).
+// CHANGELOG.md is left as written.
 //
 // Run it from the repository root:
 //
@@ -22,12 +18,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"slices"
 	"strings"
 )
-
-// keepSpaces marks a .twf file tabify leaves alone.
-const keepSpaces = "# tabify: keep spaces"
 
 func main() {
 	check := flag.Bool("check", false, "rewrite nothing; fail if any file would change")
@@ -60,9 +52,6 @@ func run(check bool, paths []string) error {
 		data, err := os.ReadFile(path)
 		if err != nil {
 			return err
-		}
-		if slices.Contains(strings.Split(string(data), "\n"), keepSpaces) {
-			continue
 		}
 		got, err := convert(string(data))
 		if err != nil {
