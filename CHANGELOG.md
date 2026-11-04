@@ -300,6 +300,9 @@ is now checked against the target's signals.
   or spaces, and indentation that mixes the two, within a line or across
   lines, is a `parse/LEX` error naming that style. A tab after a line's
   leading spaces no longer turns the statement into a silent raw line.
+- A bad-indentation `parse/LEX` error is reported ahead of the `parse/SYNTAX`
+  error it causes: first in `twf check` at a shared position, and in place of
+  it where parsing stops at the first error.
 - **LSP:** a bad statement line drops only itself from the editor's outline,
   hover and references; the definition around it and its other statements stay.
 - An undefined workflow, activity, signal or update used as a `promise` /
