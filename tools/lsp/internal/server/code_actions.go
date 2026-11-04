@@ -91,6 +91,8 @@ func addMissingDefinitionActions(doc *Document, params *protocol.CodeActionParam
 				}
 			}
 
+			def = strings.ReplaceAll(def, "\n    ", "\n"+indentUnit(lines))
+
 			// Insert at end of file
 			end := position(lines, len(lines), len(lines[len(lines)-1])+1)
 
@@ -223,4 +225,17 @@ func findReturnStatements(stmts []ast.Statement) []*ast.ReturnStmt {
 		return true
 	})
 	return returns
+}
+
+// indentUnit is the file's own indentation step: the leading whitespace of
+// its first indented line, or four spaces when no line is indented.
+func indentUnit(lines []string) string {
+	for _, l := range lines {
+		body := strings.TrimLeft(l, " \t")
+		if body == "" || body == l || strings.HasPrefix(body, "#") {
+			continue
+		}
+		return l[:len(l)-len(body)]
+	}
+	return "    "
 }
