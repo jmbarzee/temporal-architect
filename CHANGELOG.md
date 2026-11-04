@@ -218,7 +218,9 @@ In a workflow body, a signal, query or update handler, a nexus operation body,
 and every block nested in them, a line led by a keyword that starts no
 statement is a `parse/SYNTAX` error. Raw lines that passed before now fail:
 `options = …`, `all = …` or `state.count = 1` in a workflow body, `complete = 1`
-in a query handler. Rename the variable. Activity bodies stay free-form
+in a query handler (rename the variable); a bare `timer(d)` or `update Name`
+(write `await timer(d)`, `await update Name`); pseudocode such as
+`fail with X` in a handler or nexus operation. Activity bodies stay free-form
 pseudocode, so `fail with X if …` still parses there (#291).
 
 ### ⚠️ Breaking: routing is namespace-scoped
