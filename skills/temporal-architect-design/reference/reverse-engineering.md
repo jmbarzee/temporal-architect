@@ -75,7 +75,7 @@ Reverse engineering names no SDK; each language author supplies the signals to r
 | `## Concurrency` | Which forms are `await all`, `await one`, `promise`, a synchronous call |
 | `## Codegen` | How generated code is recognized, and what it maps back to |
 
-**Read backward through the chunk's language author**: its discovery file, then its forward (DSL → code) references for each call site. The language is the one whose `## Project roots` match the slice's root ([`@lang`](https://github.com/jmbarzee/temporal-architect/issues/23) will declare it). A slice in a language no author covers is an open question for the user, not a guess.
+**Read backward through the slice's language author**: its discovery file, then its forward (DSL → code) references for each call site. The language is the one whose `## Project roots` match the slice's root ([`@lang`](https://github.com/jmbarzee/temporal-architect/issues/23) will declare it). A slice in a language no author covers is an open question for the user, not a guess.
 
 ## Fidelity first, then Design Review
 
