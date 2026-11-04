@@ -202,6 +202,14 @@ namespace payments:
   (`workflow a.Run` + `workflow b.Run`). Temporal registers by name, and the Go
   SDK panics on the second registration.
 
+### ⚠️ Breaking: string escapes
+
+A string literal accepts `\"` and `\\`, inside call arguments too. A string
+literal's value is unescaped (`"a\\b"` is `a\b`); argument text stays as
+written. Any other backslash escape
+(`"\n"`, `"\d"`), accepted before, is now a `parse/LEX` error, which
+`twf check --lenient` does not excuse (#106).
+
 ### ⚠️ Breaking: routing is namespace-scoped
 
 A task queue belongs to its namespace, so routing and endpoint linkage now
@@ -211,8 +219,7 @@ longer makes an unreachable target look reachable.
 - Namespace identity is the deploy name: coherence groups by it, so two
   packages declaring `namespace prod` share its queues.
 - A call is routing-checked against its target's `default_options:`
-  `task_queue` when the call site sets none (graph dispatch edges do not use
-  it yet, #245).
+  `task_queue` when the call site sets none.
 - `promise`/`await`/`await one` targets are routing-checked; external and
   undefined targets, and callers hosted nowhere, are not.
 - Routing diagnostics, including the graph's
@@ -237,12 +244,42 @@ is now checked against the target's signals.
 - **Diagnostics:** in multi-file checks, validator errors name the reference
   site's file rather than the callee's; `TASK_QUEUE_IDENTICAL` and
   `TASK_QUEUE_MISMATCH` now carry a position; option value errors point at the
-  value; validator output order is deterministic.
-- **Parser fix:** `twf check` no longer hangs on a top-level `nexus` call; it
-  reports one `parse/SYNTAX` error.
+  value.
 - **Visualizer:** worker families get a cardinality badge; packaged definitions
   get file chips; "Show in Tree" / "Show in Graph" resolve a node to its owning
   definition by qualified name, including nexus operation and endpoint nodes.
+
+### Fixes
+
+- `twf check` no longer hangs on a top-level `nexus` call; it reports one
+  `parse/SYNTAX` error (#263).
+- A trailing `# comment` on a line that opens a block (a call followed by
+  `options:`, a definition header, `nexus endpoint Ep`) no longer breaks the
+  parse. A trailing comment on a block header is discarded; elsewhere it stays a
+  comment statement (#275).
+- An undefined workflow, activity, signal or update used as a `promise` /
+  `await` target is reported at its keyword, not at 0:0 (#276).
+- Resolver and validator diagnostics come out sorted by file, position, then
+  code, so the same input gives the same output on every run (#237).
+- Graph dispatch uses the target's `default_options:` `task_queue` when the
+  call site sets none, as routing checks already did. `routing.explicit` carries
+  that queue. This removes a spurious `DISPATCH_NO_REACHABLE_DEPLOYMENT` and
+  draws the missing dispatch edge (#245).
+- A worker instantiated twice in one namespace emits each of its containment
+  edges once (#264).
+- **LSP:** rename, references and go-to-definition ranges cover the name, not
+  the statement keyword, so a rename no longer overwrites `workflow` or
+  `signal`, and renaming a Nexus endpoint edits the endpoint on a `nexus` call.
+  Go-to-definition and hover work on a signal send's type head (#225).
+- **Visualizer:** "Show in Tree" on a nexus operation or endpoint scrolls to and
+  flashes that row, not just the service or namespace that owns it (#249).
+- **Visualizer graph view:** wheel zoom no longer logs a passive-listener
+  warning per event, and the page behind the canvas no longer scrolls (#212).
+  When the pane resizes, for example when a host opens a side panel, the camera
+  keeps the point at the pane's centre in place (#210).
+- **Design skill:** `common-errors.md` covers the lexer's `LEX` errors
+  (unterminated string, unterminated argument list, inconsistent indentation,
+  unknown escape) (#105).
 
 ## v0.15.0 - Workflow ID Schemes & Addressed Signal Sends
 
