@@ -37,27 +37,27 @@ func TestRoutingIsNamespaceScoped(t *testing.T) {
 			src: `package demo
 
 workflow Parent():
-    workflow Child()
-    close complete()
+	workflow Child()
+	close complete()
 
 workflow Child():
-    close complete()
+	close complete()
 
 worker parentWorker:
-    workflow Parent
+	workflow Parent
 
 worker childWorker:
-    workflow Child
+	workflow Child
 
 namespace alpha:
-    worker parentWorker
-        options:
-            task_queue: "shared"
+	worker parentWorker
+		options:
+			task_queue: "shared"
 
 namespace beta:
-    worker childWorker
-        options:
-            task_queue: "shared"
+	worker childWorker
+		options:
+			task_queue: "shared"
 `,
 			want: []string{
 				`workflow Child is not on any worker polling task queue "shared" in namespace alpha (inherited from workflow Parent)`,
@@ -66,28 +66,28 @@ namespace beta:
 		{
 			name: "implicit: caller in two namespaces, target in one",
 			src: `workflow Parent():
-    workflow Child()
-    close complete()
+	workflow Child()
+	close complete()
 
 workflow Child():
-    close complete()
+	close complete()
 
 worker parentWorker:
-    workflow Parent
+	workflow Parent
 
 worker fullWorker:
-    workflow Parent
-    workflow Child
+	workflow Parent
+	workflow Child
 
 namespace alpha:
-    worker parentWorker
-        options:
-            task_queue: "shared"
+	worker parentWorker
+		options:
+			task_queue: "shared"
 
 namespace beta:
-    worker fullWorker
-        options:
-            task_queue: "shared"
+	worker fullWorker
+		options:
+			task_queue: "shared"
 `,
 			want: []string{
 				`workflow Child is not on any worker polling task queue "shared" in namespace alpha (inherited from workflow Parent)`,
@@ -96,25 +96,25 @@ namespace beta:
 		{
 			name: "implicit: two caller workers on one placement report once",
 			src: `workflow Parent():
-    workflow Child()
-    close complete()
+	workflow Child()
+	close complete()
 
 workflow Child():
-    close complete()
+	close complete()
 
 worker parentWorker:
-    workflow Parent
+	workflow Parent
 
 worker parentReplica:
-    workflow Parent
+	workflow Parent
 
 namespace alpha:
-    worker parentWorker
-        options:
-            task_queue: "shared"
-    worker parentReplica
-        options:
-            task_queue: "shared"
+	worker parentWorker
+		options:
+			task_queue: "shared"
+	worker parentReplica
+		options:
+			task_queue: "shared"
 `,
 			want: []string{
 				`workflow Child is not on any worker polling task queue "shared" in namespace alpha (inherited from workflow Parent)`,
@@ -123,53 +123,53 @@ namespace alpha:
 		{
 			name: "implicit: caller in two namespaces, target in both",
 			src: `workflow Parent():
-    workflow Child()
-    close complete()
+	workflow Child()
+	close complete()
 
 workflow Child():
-    close complete()
+	close complete()
 
 worker fullWorker:
-    workflow Parent
-    workflow Child
+	workflow Parent
+	workflow Child
 
 namespace alpha:
-    worker fullWorker
-        options:
-            task_queue: "shared"
+	worker fullWorker
+		options:
+			task_queue: "shared"
 
 namespace beta:
-    worker fullWorker
-        options:
-            task_queue: "shared"
+	worker fullWorker
+		options:
+			task_queue: "shared"
 `,
 		},
 		{
 			name: "explicit: target's queue polled only outside the caller's namespace",
 			src: `workflow Parent():
-    workflow Child()
-        options:
-            task_queue: "child-q"
-    close complete()
+	workflow Child()
+		options:
+			task_queue: "child-q"
+	close complete()
 
 workflow Child():
-    close complete()
+	close complete()
 
 worker parentWorker:
-    workflow Parent
+	workflow Parent
 
 worker childWorker:
-    workflow Child
+	workflow Child
 
 namespace alpha:
-    worker parentWorker
-        options:
-            task_queue: "parent-q"
+	worker parentWorker
+		options:
+			task_queue: "parent-q"
 
 namespace beta:
-    worker childWorker
-        options:
-            task_queue: "child-q"
+	worker childWorker
+		options:
+			task_queue: "child-q"
 `,
 			want: []string{
 				`workflow Child has task_queue "child-q", but no worker on that queue in namespace alpha registers it`,
@@ -178,43 +178,43 @@ namespace beta:
 		{
 			name: "explicit: one error per caller namespace missing the target",
 			src: `workflow Parent():
-    workflow Child()
-        options:
-            task_queue: "child-q"
-    close complete()
+	workflow Child()
+		options:
+			task_queue: "child-q"
+	close complete()
 
 workflow Child():
-    close complete()
+	close complete()
 
 worker parentWorker:
-    workflow Parent
+	workflow Parent
 
 worker parentBatchWorker:
-    workflow Parent
+	workflow Parent
 
 worker childWorker:
-    workflow Child
+	workflow Child
 
 namespace gamma:
-    worker parentWorker
-        options:
-            task_queue: "parent-q"
+	worker parentWorker
+		options:
+			task_queue: "parent-q"
 
 namespace beta:
-    worker parentWorker
-        options:
-            task_queue: "parent-q"
-    worker childWorker
-        options:
-            task_queue: "child-q"
+	worker parentWorker
+		options:
+			task_queue: "parent-q"
+	worker childWorker
+		options:
+			task_queue: "child-q"
 
 namespace alpha:
-    worker parentWorker
-        options:
-            task_queue: "parent-q"
-    worker parentBatchWorker
-        options:
-            task_queue: "parent-batch-q"
+	worker parentWorker
+		options:
+			task_queue: "parent-q"
+	worker parentBatchWorker
+		options:
+			task_queue: "parent-batch-q"
 `,
 			want: []string{
 				`workflow Child has task_queue "child-q", but no worker on that queue in namespace alpha registers it`,
@@ -224,56 +224,56 @@ namespace alpha:
 		{
 			name: "explicit: target's queue polled in the caller's namespace",
 			src: `workflow Parent():
-    workflow Child()
-        options:
-            task_queue: "child-q"
-    close complete()
+	workflow Child()
+		options:
+			task_queue: "child-q"
+	close complete()
 
 workflow Child():
-    close complete()
+	close complete()
 
 worker parentWorker:
-    workflow Parent
+	workflow Parent
 
 worker childWorker:
-    workflow Child
+	workflow Child
 
 namespace alpha:
-    worker parentWorker
-        options:
-            task_queue: "parent-q"
-    worker childWorker
-        options:
-            task_queue: "child-q"
+	worker parentWorker
+		options:
+			task_queue: "parent-q"
+	worker childWorker
+		options:
+			task_queue: "child-q"
 `,
 		},
 		{
 			name: "explicit from a sync nexus operation: target outside the service's namespace",
 			src: `nexus service Svc:
-    sync Op(x: int) -> (int):
-        activity Act(x) -> y
-            options:
-                task_queue: "act-q"
-        close complete(y)
+	sync Op(x: int) -> (int):
+		activity Act(x) -> y
+			options:
+				task_queue: "act-q"
+		close complete(y)
 
 activity Act(x: int) -> (int):
-    return x
+	return x
 
 worker svcWorker:
-    nexus service Svc
+	nexus service Svc
 
 worker actWorker:
-    activity Act
+	activity Act
 
 namespace alpha:
-    worker svcWorker
-        options:
-            task_queue: "svc-q"
+	worker svcWorker
+		options:
+			task_queue: "svc-q"
 
 namespace beta:
-    worker actWorker
-        options:
-            task_queue: "act-q"
+	worker actWorker
+		options:
+			task_queue: "act-q"
 `,
 			want: []string{
 				`activity Act has task_queue "act-q", but no worker on that queue in namespace alpha registers it`,
@@ -282,60 +282,60 @@ namespace beta:
 		{
 			name: "explicit from a sync nexus operation: target in the service's namespace",
 			src: `nexus service Svc:
-    sync Op(x: int) -> (int):
-        activity Act(x) -> y
-            options:
-                task_queue: "act-q"
-        close complete(y)
+	sync Op(x: int) -> (int):
+		activity Act(x) -> y
+			options:
+				task_queue: "act-q"
+		close complete(y)
 
 activity Act(x: int) -> (int):
-    return x
+	return x
 
 worker svcWorker:
-    nexus service Svc
+	nexus service Svc
 
 worker actWorker:
-    activity Act
+	activity Act
 
 namespace alpha:
-    worker svcWorker
-        options:
-            task_queue: "svc-q"
-    worker actWorker
-        options:
-            task_queue: "act-q"
+	worker svcWorker
+		options:
+			task_queue: "svc-q"
+	worker actWorker
+		options:
+			task_queue: "act-q"
 `,
 		},
 		{
 			name: "async: promise and await calls inherit the caller's namespace",
 			src: `workflow Parent():
-    promise p <- workflow Child()
-    await activity Act()
-    await p
-    close complete()
+	promise p <- workflow Child()
+	await activity Act()
+	await p
+	close complete()
 
 workflow Child():
-    close complete()
+	close complete()
 
 activity Act():
-    return 0
+	return 0
 
 worker parentWorker:
-    workflow Parent
+	workflow Parent
 
 worker childWorker:
-    workflow Child
-    activity Act
+	workflow Child
+	activity Act
 
 namespace alpha:
-    worker parentWorker
-        options:
-            task_queue: "shared"
+	worker parentWorker
+		options:
+			task_queue: "shared"
 
 namespace beta:
-    worker childWorker
-        options:
-            task_queue: "shared"
+	worker childWorker
+		options:
+			task_queue: "shared"
 `,
 			want: []string{
 				`workflow Child is not on any worker polling task queue "shared" in namespace alpha (inherited from workflow Parent)`,
@@ -345,26 +345,26 @@ namespace beta:
 		{
 			name: "caller's instantiation lacks task_queue: explicit checked in its namespace, implicit skipped",
 			src: `workflow Parent():
-    workflow Child()
-        options:
-            task_queue: "nowhere"
-    workflow Child()
-    close complete()
+	workflow Child()
+		options:
+			task_queue: "nowhere"
+	workflow Child()
+	close complete()
 
 workflow Child():
-    close complete()
+	close complete()
 
 worker parentWorker:
-    workflow Parent
+	workflow Parent
 
 worker childWorker:
-    workflow Child
+	workflow Child
 
 namespace alpha:
-    worker parentWorker
-    worker childWorker
-        options:
-            task_queue: "child-q"
+	worker parentWorker
+	worker childWorker
+		options:
+			task_queue: "child-q"
 `,
 			want: []string{
 				`workflow Child has task_queue "nowhere", but no worker on that queue in namespace alpha registers it`,
@@ -373,27 +373,27 @@ namespace alpha:
 		{
 			name: "implicit: templated namespace is matched by its full spelling; its q-{org} is a family",
 			src: `workflow Parent():
-    workflow Child()
-    close complete()
+	workflow Child()
+	close complete()
 
 workflow Child():
-    close complete()
+	close complete()
 
 worker parentWorker:
-    workflow Parent
+	workflow Parent
 
 worker childWorker:
-    workflow Child
+	workflow Child
 
 namespace shard-{org}:
-    worker parentWorker
-        options:
-            task_queue: "q-{org}"
+	worker parentWorker
+		options:
+			task_queue: "q-{org}"
 
 namespace tenant-{org}:
-    worker childWorker
-        options:
-            task_queue: "q-{org}"
+	worker childWorker
+		options:
+			task_queue: "q-{org}"
 `,
 			want: []string{
 				`workflow Child is not on any worker polling a queue of the shape of "q-{org}" in namespace shard-{org} (inherited from workflow Parent)`,
@@ -402,59 +402,59 @@ namespace tenant-{org}:
 		{
 			name: "default_options: sync and async calls route to the target's default queue",
 			src: `workflow Order(x: int):
-    activity Charge(x) -> y
-    promise p <- activity Charge(x)
-    await p
-    close complete(y)
+	activity Charge(x) -> y
+	promise p <- activity Charge(x)
+	await p
+	close complete(y)
 
 activity Charge(x: int) -> (int):
-    default_options:
-        task_queue: "payment-workers"
-    return x
+	default_options:
+		task_queue: "payment-workers"
+	return x
 
 worker orderWorker:
-    workflow Order
+	workflow Order
 
 worker paymentWorker:
-    activity Charge
+	activity Charge
 
 namespace prod:
-    worker orderWorker
-        options:
-            task_queue: "orders"
-    worker paymentWorker
-        options:
-            task_queue: "payment-workers"
+	worker orderWorker
+		options:
+			task_queue: "orders"
+	worker paymentWorker
+		options:
+			task_queue: "payment-workers"
 `,
 		},
 		{
 			name: "default_options: target's default queue polled only in another namespace",
 			src: `workflow Order(x: int):
-    activity Charge(x) -> y
-    promise p <- activity Charge(x)
-    await p
-    close complete(y)
+	activity Charge(x) -> y
+	promise p <- activity Charge(x)
+	await p
+	close complete(y)
 
 activity Charge(x: int) -> (int):
-    default_options:
-        task_queue: "payment-workers"
-    return x
+	default_options:
+		task_queue: "payment-workers"
+	return x
 
 worker orderWorker:
-    workflow Order
+	workflow Order
 
 worker paymentWorker:
-    activity Charge
+	activity Charge
 
 namespace prod:
-    worker orderWorker
-        options:
-            task_queue: "orders"
+	worker orderWorker
+		options:
+			task_queue: "orders"
 
 namespace payments:
-    worker paymentWorker
-        options:
-            task_queue: "payment-workers"
+	worker paymentWorker
+		options:
+			task_queue: "payment-workers"
 `,
 			want: []string{
 				`activity Charge has task_queue "payment-workers" (from its default_options), but no worker on that queue in namespace prod registers it`,
@@ -464,30 +464,30 @@ namespace payments:
 		{
 			name: "default_options: a call-site task_queue overrides a workflow's default",
 			src: `workflow Parent():
-    workflow Child()
-        options:
-            task_queue: "child-q"
-    workflow Child()
-    close complete()
+	workflow Child()
+		options:
+			task_queue: "child-q"
+	workflow Child()
+	close complete()
 
 workflow Child():
-    default_options:
-        task_queue: "nowhere"
-    close complete()
+	default_options:
+		task_queue: "nowhere"
+	close complete()
 
 worker parentWorker:
-    workflow Parent
+	workflow Parent
 
 worker childWorker:
-    workflow Child
+	workflow Child
 
 namespace alpha:
-    worker parentWorker
-        options:
-            task_queue: "parent-q"
-    worker childWorker
-        options:
-            task_queue: "child-q"
+	worker parentWorker
+		options:
+			task_queue: "parent-q"
+	worker childWorker
+		options:
+			task_queue: "child-q"
 `,
 			want: []string{
 				`workflow Child has task_queue "nowhere" (from its default_options), but no worker on that queue in namespace alpha registers it`,
@@ -500,62 +500,62 @@ namespace alpha:
 import "acme/other"
 
 workflow Parent():
-    activity other.Act()
-    activity other.Act()
-        options:
-            task_queue: "elsewhere"
-    await activity other.Act()
-    promise p <- workflow other.Child()
-    await p
-    close complete()
+	activity other.Act()
+	activity other.Act()
+		options:
+			task_queue: "elsewhere"
+	await activity other.Act()
+	promise p <- workflow other.Child()
+	await p
+	close complete()
 
 workflow Child():
-    close complete()
+	close complete()
 
 activity Act():
-    return 0
+	return 0
 
 worker parentWorker:
-    workflow Parent
+	workflow Parent
 
 worker localWorker:
-    workflow Child
-    activity Act
+	workflow Child
+	activity Act
 
 namespace alpha:
-    worker parentWorker
-        options:
-            task_queue: "shared"
-    worker localWorker
-        options:
-            task_queue: "local-q"
+	worker parentWorker
+		options:
+			task_queue: "shared"
+	worker localWorker
+		options:
+			task_queue: "local-q"
 `,
 		},
 		{
 			name: "implicit: call in a signal handler body inherits the workflow's placement",
 			src: `workflow Parent():
-    signal Kick():
-        activity Act()
-    close complete()
+	signal Kick():
+		activity Act()
+	close complete()
 
 activity Act():
-    return 0
+	return 0
 
 worker parentWorker:
-    workflow Parent
+	workflow Parent
 
 worker actWorker:
-    activity Act
+	activity Act
 
 namespace alpha:
-    worker parentWorker
-        options:
-            task_queue: "shared"
+	worker parentWorker
+		options:
+			task_queue: "shared"
 
 namespace beta:
-    worker actWorker
-        options:
-            task_queue: "shared"
+	worker actWorker
+		options:
+			task_queue: "shared"
 `,
 			want: []string{
 				`activity Act is not on any worker polling task queue "shared" in namespace alpha (inherited from workflow Parent)`,
@@ -564,34 +564,34 @@ namespace beta:
 		{
 			name: "endpoint: service only on the endpoint's queue in another namespace",
 			src: `nexus service Svc:
-    async Op workflow Backing
+	async Op workflow Backing
 
 workflow Backing():
-    close complete()
+	close complete()
 
 workflow W():
-    nexus Ep Svc.Op() -> result
-    close complete(result)
+	nexus Ep Svc.Op() -> result
+	close complete(result)
 
 worker callerWorker:
-    workflow W
+	workflow W
 
 worker svcWorker:
-    nexus service Svc
-    workflow Backing
+	nexus service Svc
+	workflow Backing
 
 namespace a:
-    worker callerWorker
-        options:
-            task_queue: "wq"
-    nexus endpoint Ep
-        options:
-            task_queue: "q"
+	worker callerWorker
+		options:
+			task_queue: "wq"
+	nexus endpoint Ep
+		options:
+			task_queue: "q"
 
 namespace b:
-    worker svcWorker
-        options:
-            task_queue: "q"
+	worker svcWorker
+		options:
+			task_queue: "q"
 `,
 			want: []string{
 				`nexus endpoint Ep routes to task queue "q" in namespace a, but no worker on that queue has service Svc`,
@@ -600,32 +600,32 @@ namespace b:
 		{
 			name: "endpoint: service on the endpoint's queue in its namespace",
 			src: `nexus service Svc:
-    async Op workflow Backing
+	async Op workflow Backing
 
 workflow Backing():
-    close complete()
+	close complete()
 
 workflow W():
-    nexus Ep Svc.Op() -> result
-    close complete(result)
+	nexus Ep Svc.Op() -> result
+	close complete(result)
 
 worker callerWorker:
-    workflow W
+	workflow W
 
 worker svcWorker:
-    nexus service Svc
-    workflow Backing
+	nexus service Svc
+	workflow Backing
 
 namespace a:
-    worker callerWorker
-        options:
-            task_queue: "wq"
-    worker svcWorker
-        options:
-            task_queue: "q"
-    nexus endpoint Ep
-        options:
-            task_queue: "q"
+	worker callerWorker
+		options:
+			task_queue: "wq"
+	worker svcWorker
+		options:
+			task_queue: "q"
+	nexus endpoint Ep
+		options:
+			task_queue: "q"
 `,
 		},
 	}
@@ -644,21 +644,21 @@ namespace a:
 // worker polls draws no routing error — only the UNCOVERED_WORKFLOW warning.
 func TestUnhostedCallerNotRoutingChecked(t *testing.T) {
 	src := `workflow Parent():
-    workflow Child()
-        options:
-            task_queue: "nowhere-q"
-    close complete()
+	workflow Child()
+		options:
+			task_queue: "nowhere-q"
+	close complete()
 
 workflow Child():
-    close complete()
+	close complete()
 
 worker childWorker:
-    workflow Child
+	workflow Child
 
 namespace alpha:
-    worker childWorker
-        options:
-            task_queue: "child-q"
+	worker childWorker
+		options:
+			task_queue: "child-q"
 `
 	errs := Validate(mustParseAndResolve(t, src))
 	if got := routingMsgs(errs); len(got) != 0 {
@@ -674,16 +674,16 @@ namespace alpha:
 // namespaces are two queues and coherent; in one namespace they mismatch.
 func TestCoherenceIsNamespaceScoped(t *testing.T) {
 	const types = `workflow A():
-    close complete()
+	close complete()
 
 workflow B():
-    close complete()
+	close complete()
 
 worker aw:
-    workflow A
+	workflow A
 
 worker bw:
-    workflow B
+	workflow B
 `
 	tests := []struct {
 		name       string
@@ -694,14 +694,14 @@ worker bw:
 			name: "two namespaces",
 			namespaces: `
 namespace alpha:
-    worker aw
-        options:
-            task_queue: "shared"
+	worker aw
+		options:
+			task_queue: "shared"
 
 namespace beta:
-    worker bw
-        options:
-            task_queue: "shared"
+	worker bw
+		options:
+			task_queue: "shared"
 `,
 			want: 0,
 		},
@@ -709,12 +709,12 @@ namespace beta:
 			name: "one namespace",
 			namespaces: `
 namespace alpha:
-    worker aw
-        options:
-            task_queue: "shared"
-    worker bw
-        options:
-            task_queue: "shared"
+	worker aw
+		options:
+			task_queue: "shared"
+	worker bw
+		options:
+			task_queue: "shared"
 `,
 			want: 1,
 		},
@@ -734,18 +734,18 @@ namespace alpha:
 // its first declaration, as the resolver keeps it, not the later one.
 func TestDuplicateRoutesFirstDeclaration(t *testing.T) {
 	const misrouted = `
-    activity A(x) -> r
-        options:
-            task_queue: "nowhere"
-    close complete(r)
+	activity A(x) -> r
+		options:
+			task_queue: "nowhere"
+	close complete(r)
 `
 	const routed = `
-    activity A(x) -> r
-    close complete(r)
+	activity A(x) -> r
+	close complete(r)
 `
 	workflow := func(body string) string { return "workflow W(x: X):" + body }
 	service := func(body string) string {
-		return "nexus service S:\n    sync Op(x: X) -> (X):" + strings.ReplaceAll(body, "\n    ", "\n        ")
+		return "nexus service S:\n\tsync Op(x: X) -> (X):" + strings.ReplaceAll(body, "\n    ", "\n        ")
 	}
 	tests := []struct {
 		name string
@@ -759,17 +759,17 @@ func TestDuplicateRoutesFirstDeclaration(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			src := tt.decl(misrouted) + "\n" + tt.decl(routed) + "\n" + tt.rest + `
 activity A(x: X) -> (X):
-    return x
+	return x
 
 worker w:
-    workflow W
-    activity A
-    nexus service S
+	workflow W
+	activity A
+	nexus service S
 
 namespace n:
-    worker w
-        options:
-            task_queue: "q"
+	worker w
+		options:
+			task_queue: "q"
 `
 			file, err := parser.ParseFile(src)
 			if err != nil {
@@ -793,13 +793,13 @@ namespace n:
 func TestDuplicateNamespacePlacementsFirstDeclaration(t *testing.T) {
 	const ns = `
 namespace n:
-    worker wa
-        options:
-            task_queue: "sandbox-pool"
+	worker wa
+		options:
+			task_queue: "sandbox-pool"
 `
-	const overlap = `    worker wb
-        options:
-            task_queue: "sandbox-{id}"
+	const overlap = `	worker wb
+		options:
+			task_queue: "sandbox-{id}"
 `
 	tests := []struct {
 		name         string
@@ -812,16 +812,16 @@ namespace n:
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			src := `workflow A():
-    close complete()
+	close complete()
 
 workflow B():
-    close complete()
+	close complete()
 
 worker wa:
-    workflow A
+	workflow A
 
 worker wb:
-    workflow B
+	workflow B
 ` + tt.first + tt.later
 			file, err := parser.ParseFile(src)
 			if err != nil {
@@ -847,17 +847,17 @@ worker wb:
 // when the two differ in signature.
 func TestDuplicateDeclarationRoutesFirst(t *testing.T) {
 	const misrouted = `
-        activity A(x)
-            options:
-                task_queue: "nowhere"
+		activity A(x)
+			options:
+				task_queue: "nowhere"
 `
 	const routed = `
-        activity A(x)
+	activity A(x)
 `
-	const async = "\n    async Op workflow V\n"
-	signal := func(body string) string { return "\n    signal Ping(x: X):" + body }
-	update := func(body string) string { return "\n    update Bump(x: X) -> (R):" + body }
-	sync := func(body string) string { return "\n    sync Op(x: X) -> ():" + body }
+	const async = "\n\tasync Op workflow V\n"
+	signal := func(body string) string { return "\n\tsignal Ping(x: X):" + body }
+	update := func(body string) string { return "\n\tupdate Bump(x: X) -> (R):" + body }
+	sync := func(body string) string { return "\n\tsync Op(x: X) -> ():" + body }
 	const misroutedErr = `activity A has task_queue "nowhere", but no worker on that queue in namespace n registers it`
 	tests := []struct {
 		name                string
@@ -874,25 +874,25 @@ func TestDuplicateDeclarationRoutesFirst(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			src := "workflow W(x: X):" + tt.handlers + `
-    close complete()
+	close complete()
 
 workflow V():
-    close complete()
+	close complete()
 
 nexus service S:` + tt.ops + `
 activity A(x: X):
-    return
+	return
 
 worker w:
-    workflow W
-    workflow V
-    activity A
-    nexus service S
+	workflow W
+	workflow V
+	activity A
+	nexus service S
 
 namespace n:
-    worker w
-        options:
-            task_queue: "q"
+	worker w
+		options:
+			task_queue: "q"
 `
 			file, err := parser.ParseFile(src)
 			if err != nil {

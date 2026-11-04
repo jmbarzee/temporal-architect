@@ -20,15 +20,15 @@ var overIndentContexts = []struct {
 		before: workflowNoBlock, over: []string{"log(r)", "close complete(r)"}, after: "activity A(x)",
 	},
 	{
-		name: "update handler", head: "workflow P(x):\n    update U(v) -> (R):\n", indent: "        ", tail: "    close complete(x)\n",
+		name: "update handler", head: "workflow P(x):\n\tupdate U(v) -> (R):\n", indent: "        ", tail: "\tclose complete(x)\n",
 		before: workflowNoBlock, over: []string{"log(r)", "close complete(r)"}, after: "activity A(x)",
 	},
 	{
-		name: "await all", head: "workflow P(x):\n    await all:\n", indent: "        ", tail: "    close complete(x)\n",
+		name: "await all", head: "workflow P(x):\n\tawait all:\n", indent: "        ", tail: "\tclose complete(x)\n",
 		before: workflowNoBlock, over: []string{"log(r)", "close complete(r)"}, after: "activity A(x)",
 	},
 	{
-		name: "if", head: "workflow P(x):\n    if (x):\n", indent: "        ", tail: "    close complete(x)\n",
+		name: "if", head: "workflow P(x):\n\tif (x):\n", indent: "        ", tail: "\tclose complete(x)\n",
 		before: workflowNoBlock, over: []string{"log(r)", "close complete(r)"}, after: "activity A(x)",
 	},
 	{
@@ -74,23 +74,23 @@ func TestUnexpectedIndent(t *testing.T) {
 // the handler early, so strict mode reported an unrelated top-level error.
 func TestUnexpectedIndentInHandler(t *testing.T) {
 	src := `workflow W(x: int) -> (int):
-    update U(v: int) -> (int):
-        activity A(v) -> r
-            log(r)
-        return r
-    activity A(x) -> y
-    close complete(y)
+	update U(v: int) -> (int):
+		activity A(v) -> r
+			log(r)
+		return r
+	activity A(x) -> y
+	close complete(y)
 `
 	checkUnexpectedIndent(t, src, 4, 13, []int{2, 3, 5, 6, 7})
 	src = `workflow W(x):
-    signal S(v):
-        activity A(v) -> r
-            log(r)
-        if (r):
-            activity A(v)
-        else:
-            activity A(v)
-    close complete(x)
+	signal S(v):
+		activity A(v) -> r
+			log(r)
+		if (r):
+			activity A(v)
+		else:
+			activity A(v)
+	close complete(x)
 `
 	checkUnexpectedIndent(t, src, 4, 13, []int{2, 3, 5, 6, 8, 9})
 }
@@ -98,12 +98,12 @@ func TestUnexpectedIndentInHandler(t *testing.T) {
 // A whole over-indented block, however deep, is one error and is skipped.
 func TestUnexpectedIndentSkipsTheBlock(t *testing.T) {
 	src := `workflow P(x):
-    activity A(x) -> r
-        log(r)
-        close complete(r)
-            if (r):
-                break
-    activity A(x)
+	activity A(x) -> r
+		log(r)
+		close complete(r)
+			if (r):
+				break
+	activity A(x)
 `
 	checkUnexpectedIndent(t, src, 3, 9, []int{2, 7})
 }
@@ -111,11 +111,11 @@ func TestUnexpectedIndentSkipsTheBlock(t *testing.T) {
 // A line indented under a state: condition is an error too.
 func TestUnexpectedIndentInState(t *testing.T) {
 	src := `workflow P(x):
-    state:
-        condition Ready
-            junk
-        condition Done
-    set Ready
+	state:
+		condition Ready
+			junk
+		condition Done
+	set Ready
 `
 	checkUnexpectedIndent(t, src, 4, 13, []int{3, 5, 6})
 }
@@ -148,7 +148,7 @@ func checkIndentError(t *testing.T, src string, line, col int, msg string, want 
 
 // Comment lines alone may sit indented under any statement; they are kept.
 func TestIndentedCommentsUnderAStatement(t *testing.T) {
-	file, err := ParseFile("workflow P(x):\n    set Ready\n        # why\n            # deeper\n    activity A(x)\n")
+	file, err := ParseFile("workflow P(x):\n\tset Ready\n\t\t# why\n\t\t\t# deeper\n\tactivity A(x)\n")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -168,24 +168,24 @@ func TestIndentedCommentsUnderAStatement(t *testing.T) {
 // block are not over-indented.
 func TestIndentedContinuationsParse(t *testing.T) {
 	src := `workflow P(x):
-    activity A(
-        x,
-            x,
-    ) -> r
-        options:
-            start_to_close_timeout: 1m
-    notify(
-        r
-    )
-    close complete(
-        r
-    )
+	activity A(
+		x,
+			x,
+	) -> r
+		options:
+			start_to_close_timeout: 1m
+	notify(
+		r
+	)
+	close complete(
+		r
+	)
 
 activity A(x):
-    notify(
-        x
-    )
-    return x
+	notify(
+		x
+	)
+	return x
 `
 	if _, errs := ParseFileAll(src); len(errs) != 0 {
 		t.Errorf("unexpected errors: %v", errs)
@@ -199,16 +199,16 @@ func TestIndentUnderIDScheme(t *testing.T) {
 		name, src string
 		kept      func(*ast.WorkflowDef) bool
 	}{
-		{"default_options", "    default_options:\n        task_queue: \"q\"\n",
+		{"default_options", "\tdefault_options:\n\t\ttask_queue: \"q\"\n",
 			func(w *ast.WorkflowDef) bool { return w.DefaultOptions != nil }},
-		{"state", "    state:\n        condition Ready\n",
+		{"state", "\tstate:\n\t\tcondition Ready\n",
 			func(w *ast.WorkflowDef) bool { return w.State != nil && len(w.State.Conditions) == 1 }},
-		{"handler", "    signal S(v):\n        set Ready\n",
+		{"handler", "\tsignal S(v):\n\t\tset Ready\n",
 			func(w *ast.WorkflowDef) bool { return len(w.Signals) == 1 }},
 	}
 	for _, sec := range sections {
 		for _, under := range []string{"junk", "# why"} {
-			src := "workflow W(x):\n    id_scheme: \"w-{x}\"\n        " + under + "\n" + sec.src + "    close complete(x)\n"
+			src := "workflow W(x):\n\tid_scheme: \"w-{x}\"\n        " + under + "\n" + sec.src + "    close complete(x)\n"
 			t.Run(sec.name+"/"+under, func(t *testing.T) {
 				file, errs := ParseFileAll(src)
 				_, err := ParseFile(src)
@@ -235,10 +235,10 @@ func TestIndentUnderIDScheme(t *testing.T) {
 // unexpected indent, and the call or send is kept.
 func TestIndentUnderCallOrSend(t *testing.T) {
 	valid := map[string]string{
-		"nested comments under a call":  "workflow P(x):\n    activity A(x) -> r\n        # c\n            # d\n    close complete(r)\n",
-		"nested comments after options": "workflow P(x):\n    activity A(x) -> r\n        options:\n            start_to_close_timeout: 1m\n        # c\n            # d\n    close complete(r)\n",
-		"nested comments under a send":  "workflow P(x):\n    signal W.S(x)\n        # c\n            # d\n        id: \"w\"\n    close complete(x)\n",
-		"a comment under an id: line":   "workflow P(x):\n    signal W.S(x)\n        id: \"w\"\n            # c\n    close complete(x)\n",
+		"nested comments under a call":  "workflow P(x):\n\tactivity A(x) -> r\n\t\t# c\n\t\t\t# d\n\tclose complete(r)\n",
+		"nested comments after options": "workflow P(x):\n\tactivity A(x) -> r\n\t\toptions:\n\t\t\tstart_to_close_timeout: 1m\n\t\t# c\n\t\t\t# d\n\tclose complete(r)\n",
+		"nested comments under a send":  "workflow P(x):\n\tsignal W.S(x)\n\t\t# c\n\t\t\t# d\n\t\tid: \"w\"\n\tclose complete(x)\n",
+		"a comment under an id: line":   "workflow P(x):\n\tsignal W.S(x)\n\t\tid: \"w\"\n\t\t\t# c\n\tclose complete(x)\n",
 	}
 	for name, src := range valid {
 		t.Run(name, func(t *testing.T) {
@@ -251,11 +251,11 @@ func TestIndentUnderCallOrSend(t *testing.T) {
 		name, src string
 		line, col int
 	}{
-		{"a line after comments under a call", "workflow P(x):\n    activity A(x) -> r\n        # c\n        close complete(r)\n    close complete(r)\n", 4, 9},
-		{"a line under a call's options", "workflow P(x):\n    activity A(x) -> r\n        options:\n            start_to_close_timeout: 1m\n        close complete(r)\n    close complete(r)\n", 5, 9},
-		{"a line after comments under a start", "workflow P(x):\n    workflow C(x) -> r\n        # c\n        close complete(r)\n    close complete(r)\n", 4, 9},
-		{"a line after comments under a send", "workflow P(x):\n    signal W.S(x)\n        # c\n        junk\n    close complete(x)\n", 4, 9},
-		{"a line under a send's id: line", "workflow P(x):\n    signal W.S(x)\n        id: \"w\"\n            junk\n    close complete(x)\n", 4, 13},
+		{"a line after comments under a call", "workflow P(x):\n\tactivity A(x) -> r\n\t\t# c\n\t\tclose complete(r)\n\tclose complete(r)\n", 4, 9},
+		{"a line under a call's options", "workflow P(x):\n\tactivity A(x) -> r\n\t\toptions:\n\t\t\tstart_to_close_timeout: 1m\n\t\tclose complete(r)\n\tclose complete(r)\n", 5, 9},
+		{"a line after comments under a start", "workflow P(x):\n\tworkflow C(x) -> r\n\t\t# c\n\t\tclose complete(r)\n\tclose complete(r)\n", 4, 9},
+		{"a line after comments under a send", "workflow P(x):\n\tsignal W.S(x)\n\t\t# c\n\t\tjunk\n\tclose complete(x)\n", 4, 9},
+		{"a line under a send's id: line", "workflow P(x):\n\tsignal W.S(x)\n\t\tid: \"w\"\n\t\t\tjunk\n\tclose complete(x)\n", 4, 13},
 	}
 	for _, tc := range bad {
 		t.Run(tc.name, func(t *testing.T) {
@@ -269,7 +269,7 @@ func TestIndentUnderCallOrSend(t *testing.T) {
 // is an unexpected indent; the operations around it survive.
 func TestIndentUnderAsyncOperation(t *testing.T) {
 	for under, wantErrs := range map[string]int{"# c": 0, "junk": 1} {
-		src := "nexus service Svc:\n    async Op workflow W\n        " + under + "\n    async Op2 workflow W\n"
+		src := "nexus service Svc:\n\tasync Op workflow W\n        " + under + "\n\tasync Op2 workflow W\n"
 		file, errs := ParseFileAll(src)
 		if len(errs) != wantErrs || (wantErrs == 1 && (errs[0].Line != 3 || errs[0].Msg != unexpectedIndent)) {
 			t.Errorf("%s: errors %v, want %d unexpected indent", under, errs, wantErrs)
@@ -282,11 +282,11 @@ func TestIndentUnderAsyncOperation(t *testing.T) {
 
 // options: under a promise or an await, which take none, says so.
 func TestOptionsUnderPromiseOrAwait(t *testing.T) {
-	opts := "        options:\n            task_queue: \"q\"\n"
-	checkIndentError(t, "workflow P(x):\n    promise p <- workflow C(x)\n"+opts+"    await p\n",
+	opts := "\t\toptions:\n\t\t\ttask_queue: \"q\"\n"
+	checkIndentError(t, "workflow P(x):\n\tpromise p <- workflow C(x)\n"+opts+"    await p\n",
 		3, 9, "a promise takes no options:", []int{2, 5})
-	checkIndentError(t, "workflow P(x):\n    await workflow C(x) -> r\n"+opts+"    close complete(r)\n",
+	checkIndentError(t, "workflow P(x):\n\tawait workflow C(x) -> r\n"+opts+"    close complete(r)\n",
 		3, 9, "an await takes no options:", []int{2, 5})
-	checkIndentError(t, "workflow P(x):\n    await timer(1m)\n        # c\n"+opts+"    close complete(x)\n",
+	checkIndentError(t, "workflow P(x):\n\tawait timer(1m)\n\t\t# c\n"+opts+"    close complete(x)\n",
 		4, 9, "an await takes no options:", []int{2, 6})
 }

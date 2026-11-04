@@ -186,27 +186,27 @@ func TestAsyncBackingTargetIsRoot(t *testing.T) {
 func TestHandlerBearingIsRoot(t *testing.T) {
 	src := `
 workflow Parent():
-    workflow Child()
-    close complete
+	workflow Child()
+	close complete
 
 workflow Child():
-    signal Ping():
-        return
-    activity Work()
-    close complete
+	signal Ping():
+		return
+	activity Work()
+	close complete
 
 activity Work():
-    return
+	return
 
 worker w:
-    workflow Parent
-    workflow Child
-    activity Work
+	workflow Parent
+	workflow Child
+	activity Work
 
 namespace ns:
-    worker w
-        options:
-            task_queue: "q"
+	worker w
+		options:
+			task_queue: "q"
 `
 	res := decomposeTWF(t, src, Options{})
 
@@ -368,32 +368,32 @@ func TestFloorMergeIntoDispatchingChunk(t *testing.T) {
 func TestCeilingDivisionTree(t *testing.T) {
 	src := `
 workflow Big():
-    activity A()
-    activity B()
-    activity C()
-    activity D()
-    close complete
+	activity A()
+	activity B()
+	activity C()
+	activity D()
+	close complete
 
 activity A():
-    return
+	return
 activity B():
-    return
+	return
 activity C():
-    return
+	return
 activity D():
-    return
+	return
 
 worker w:
-    workflow Big
-    activity A
-    activity B
-    activity C
-    activity D
+	workflow Big
+	activity A
+	activity B
+	activity C
+	activity D
 
 namespace ns:
-    worker w
-        options:
-            task_queue: "q"
+	worker w
+		options:
+			task_queue: "q"
 `
 	// Disable the floor so the trivial leaf sections aren't gated out, and set
 	// a low ceiling so the single fat chunk triggers the explore phase.
@@ -476,34 +476,34 @@ func TestLoopChunkExemptFromCutting(t *testing.T) {
 func TestComplexityIncreasesWithBody(t *testing.T) {
 	src := `
 workflow Fat():
-    activity A()
-    if (x):
-        activity B()
-    else:
-        activity C()
-    close complete
+	activity A()
+	if (x):
+		activity B()
+	else:
+		activity C()
+	close complete
 
 workflow Thin():
-    close complete
+	close complete
 
 activity A():
-    return
+	return
 activity B():
-    return
+	return
 activity C():
-    return
+	return
 
 worker w:
-    workflow Fat
-    workflow Thin
-    activity A
-    activity B
-    activity C
+	workflow Fat
+	workflow Thin
+	activity A
+	activity B
+	activity C
 
 namespace ns:
-    worker w
-        options:
-            task_queue: "q"
+	worker w
+		options:
+			task_queue: "q"
 `
 	res := decomposeTWF(t, src, Options{})
 
@@ -531,51 +531,51 @@ namespace ns:
 func TestDuplicateMeasuresFirstDeclaration(t *testing.T) {
 	const first = `
 workflow Parent():
-    workflow Child()
-    close complete
+	workflow Child()
+	close complete
 
 workflow Child():
-    close complete
+	close complete
 
 activity Work():
-    step()
+	step()
 
 nexus service S:
-    sync Op() -> ():
-        close complete()
+	sync Op() -> ():
+		close complete()
 `
 	const later = `
 workflow Child():
-    signal Ping():
-        return
-    activity Work()
-    if (x):
-        activity Work()
-    close complete
+	signal Ping():
+		return
+	activity Work()
+	if (x):
+		activity Work()
+	close complete
 
 activity Work():
-    if (x):
-        step()
-    step()
+	if (x):
+		step()
+	step()
 
 nexus service S:
-    sync Op() -> ():
-        activity Work()
-        if (x):
-            activity Work()
-        close complete()
+	sync Op() -> ():
+		activity Work()
+		if (x):
+			activity Work()
+		close complete()
 `
 	const rest = `
 worker w:
-    workflow Parent
-    workflow Child
-    activity Work
-    nexus service S
+	workflow Parent
+	workflow Child
+	activity Work
+	nexus service S
 
 namespace ns:
-    worker w
-        options:
-            task_queue: "q"
+	worker w
+		options:
+			task_queue: "q"
 `
 	keys := []string{
 		graph.DefKey(graph.KindWorkflow, "Child"),
@@ -616,33 +616,33 @@ namespace ns:
 // first declaration, as the resolver keeps it: the later one's body and count
 // add nothing to complexity.
 func TestDuplicateDeclarationMeasuresFirst(t *testing.T) {
-	const later = `        activity Work()
-        if (x):
-            activity Work()
+	const later = `		activity Work()
+		if (x):
+			activity Work()
 `
 	src := func(laterHandler, laterOp string) string {
 		return `
 workflow W():
-    signal Ping():
-        step()
+	signal Ping():
+		step()
 ` + laterHandler + `    close complete
 
 activity Work():
-    step()
+	step()
 
 nexus service S:
-    sync Op() -> ():
-        close complete()
+	sync Op() -> ():
+		close complete()
 ` + laterOp + `
 worker w:
-    workflow W
-    activity Work
-    nexus service S
+	workflow W
+	activity Work
+	nexus service S
 
 namespace ns:
-    worker w
-        options:
-            task_queue: "q"
+	worker w
+		options:
+			task_queue: "q"
 `
 	}
 	complexity := func(src string) map[string]int {
@@ -658,7 +658,7 @@ namespace ns:
 		return out
 	}
 	want := complexity(src("", ""))
-	got := complexity(src("    signal Ping():\n"+later, "    sync Op() -> ():\n"+later+"        close complete()\n"))
+	got := complexity(src("\tsignal Ping():\n"+later, "\tsync Op() -> ():\n"+later+"        close complete()\n"))
 	for _, k := range []string{graph.DefKey(graph.KindWorkflow, "W"), graph.DefKey(graph.KindNexusOperation, "S.Op")} {
 		if _, ok := want[k]; !ok {
 			t.Fatalf("no node %s", k)
@@ -681,38 +681,38 @@ func TestServiceStrategyExtractsClosure(t *testing.T) {
 	// separates the two callers — articulated by Shared — into components.
 	src := `
 workflow R1():
-    workflow Shared()
-    close complete
+	workflow Shared()
+	close complete
 
 workflow R2():
-    workflow Shared()
-    close complete
+	workflow Shared()
+	close complete
 
 workflow Shared():
-    activity S1()
-    activity S2()
-    activity S3()
-    close complete
+	activity S1()
+	activity S2()
+	activity S3()
+	close complete
 
 activity S1():
-    return
+	return
 activity S2():
-    return
+	return
 activity S3():
-    return
+	return
 
 worker w:
-    workflow R1
-    workflow R2
-    workflow Shared
-    activity S1
-    activity S2
-    activity S3
+	workflow R1
+	workflow R2
+	workflow Shared
+	activity S1
+	activity S2
+	activity S3
 
 namespace ns:
-    worker w
-        options:
-            task_queue: "q"
+	worker w
+		options:
+			task_queue: "q"
 `
 	res := decomposeTWF(t, src, Options{Ceiling: 8, Floor: -1})
 	shared := graph.DefKey(graph.KindWorkflow, "Shared")
@@ -778,59 +778,59 @@ func TestSubtreeStrategyPeelsHeavySubtrees(t *testing.T) {
 	// leaving the light branch inline.
 	src := `
 workflow Orchestrator():
-    workflow HeavyA()
-    workflow HeavyB()
-    workflow Light()
-    close complete
+	workflow HeavyA()
+	workflow HeavyB()
+	workflow Light()
+	close complete
 
 workflow HeavyA():
-    activity A1()
-    activity A2()
-    activity A3()
-    close complete
+	activity A1()
+	activity A2()
+	activity A3()
+	close complete
 
 workflow HeavyB():
-    activity B1()
-    activity B2()
-    activity B3()
-    close complete
+	activity B1()
+	activity B2()
+	activity B3()
+	close complete
 
 workflow Light():
-    activity L1()
-    close complete
+	activity L1()
+	close complete
 
 activity A1():
-    return
+	return
 activity A2():
-    return
+	return
 activity A3():
-    return
+	return
 activity B1():
-    return
+	return
 activity B2():
-    return
+	return
 activity B3():
-    return
+	return
 activity L1():
-    return
+	return
 
 worker w:
-    workflow Orchestrator
-    workflow HeavyA
-    workflow HeavyB
-    workflow Light
-    activity A1
-    activity A2
-    activity A3
-    activity B1
-    activity B2
-    activity B3
-    activity L1
+	workflow Orchestrator
+	workflow HeavyA
+	workflow HeavyB
+	workflow Light
+	activity A1
+	activity A2
+	activity A3
+	activity B1
+	activity B2
+	activity B3
+	activity L1
 
 namespace ns:
-    worker w
-        options:
-            task_queue: "q"
+	worker w
+		options:
+			task_queue: "q"
 `
 	// Ceiling 30: the whole chunk (≈65) triggers the explore phase; peeling the
 	// two heavy subtrees (Ec ≈ 20 each) leaves a trunk of Orchestrator+Light+L1
@@ -884,37 +884,37 @@ func TestContractAdvisoryForSharedService(t *testing.T) {
 	// suggestContract advisory must fire for it.
 	src := `
 workflow R1():
-    workflow Shared()
-    close complete
+	workflow Shared()
+	close complete
 workflow R2():
-    workflow Shared()
-    close complete
+	workflow Shared()
+	close complete
 workflow R3():
-    workflow Shared()
-    close complete
+	workflow Shared()
+	close complete
 
 workflow Shared():
-    activity S1()
-    activity S2()
-    close complete
+	activity S1()
+	activity S2()
+	close complete
 
 activity S1():
-    return
+	return
 activity S2():
-    return
+	return
 
 worker w:
-    workflow R1
-    workflow R2
-    workflow R3
-    workflow Shared
-    activity S1
-    activity S2
+	workflow R1
+	workflow R2
+	workflow R3
+	workflow Shared
+	activity S1
+	activity S2
 
 namespace ns:
-    worker w
-        options:
-            task_queue: "q"
+	worker w
+		options:
+			task_queue: "q"
 `
 	res := decomposeTWF(t, src, Options{})
 	shared := graph.DefKey(graph.KindWorkflow, "Shared")
@@ -940,42 +940,42 @@ namespace ns:
 // Mid2 subtree is under it and must be left flat.
 const recursionSrc = `
 workflow Top():
-    workflow Mid1()
-    workflow Mid2()
-    close complete
+	workflow Mid1()
+	workflow Mid2()
+	close complete
 
 workflow Mid1():
-    activity A1()
-    activity A2()
-    activity A3()
-    close complete
+	activity A1()
+	activity A2()
+	activity A3()
+	close complete
 
 workflow Mid2():
-    activity B1()
-    close complete
+	activity B1()
+	close complete
 
 activity A1():
-    return
+	return
 activity A2():
-    return
+	return
 activity A3():
-    return
+	return
 activity B1():
-    return
+	return
 
 worker w:
-    workflow Top
-    workflow Mid1
-    workflow Mid2
-    activity A1
-    activity A2
-    activity A3
-    activity B1
+	workflow Top
+	workflow Mid1
+	workflow Mid2
+	activity A1
+	activity A2
+	activity A3
+	activity B1
 
 namespace ns:
-    worker w
-        options:
-            task_queue: "q"
+	worker w
+		options:
+			task_queue: "q"
 `
 
 // ---------------------------------------------------------------------------

@@ -9,16 +9,16 @@ import (
 
 func TestIDSchemeParses(t *testing.T) {
 	input := `workflow ShipItem(order: Order, item: Item) -> (Shipment):
-    id_scheme: "ship-{order.id}-{item.id}"
-    default_options:
-        task_queue: "ship"
-    signal Shipped(trackingId: string):
-        shipped = true
-    activity Ship(order, item)
+	id_scheme: "ship-{order.id}-{item.id}"
+	default_options:
+		task_queue: "ship"
+	signal Shipped(trackingId: string):
+		shipped = true
+	activity Ship(order, item)
 
 workflow RateLimiter():
-    id_scheme: "rate-limiter"  # constant: no holes
-    activity Tick()
+	id_scheme: "rate-limiter"  # constant: no holes
+	activity Tick()
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -42,16 +42,16 @@ workflow RateLimiter():
 
 func TestAddressedSendParses(t *testing.T) {
 	input := `workflow Sender(event: Event):
-    signal ShipItem.Shipped(event.tracking)
-        id: "ship-{event.orderId}-{event.sku}"
-    signal ShipItem.Shipped("recovered")
-        id: wid  # learned
-        run_id: rid
-    signal Coordinator.Progress(doc.id)
-        id: parent
-    signal orders.ShipItem.Shipped(t)
-        id: "ship-{o}-{i}"
-    signal ship.Shipped(t)
+	signal ShipItem.Shipped(event.tracking)
+		id: "ship-{event.orderId}-{event.sku}"
+	signal ShipItem.Shipped("recovered")
+		id: wid  # learned
+		run_id: rid
+	signal Coordinator.Progress(doc.id)
+		id: parent
+	signal orders.ShipItem.Shipped(t)
+		id: "ship-{o}-{i}"
+	signal ship.Shipped(t)
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -84,10 +84,10 @@ func TestAddressedSendParses(t *testing.T) {
 // TestIDParseDiagnostics covers every parse-level code from the ID-scheme spec.
 func TestCommentAboveAddress(t *testing.T) {
 	input := `workflow W(a: A):
-    signal Child.Go()
-        # the child
-        id: "c-{a}"
-    close complete
+	signal Child.Go()
+		# the child
+		id: "c-{a}"
+	close complete
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -109,122 +109,122 @@ func TestIDParseDiagnostics(t *testing.T) {
 		code  string
 	}{
 		{"id_scheme after default_options", `workflow W(a: A):
-    default_options:
-        task_queue: "q"
-    id_scheme: "w-{a}"
+	default_options:
+		task_queue: "q"
+	id_scheme: "w-{a}"
 `, CodeIDSchemeMisplaced},
 		{"id_scheme repeated", `workflow W(a: A):
-    id_scheme: "w-{a}"
-    id_scheme: "x-{a}"
+	id_scheme: "w-{a}"
+	id_scheme: "x-{a}"
 `, CodeIDSchemeMisplaced},
 		{"id_scheme in body", `workflow W(a: A):
-    activity Do(a)
-    id_scheme: "w-{a}"
+	activity Do(a)
+	id_scheme: "w-{a}"
 `, CodeIDSchemeMisplaced},
 		{"id_scheme in activity", `activity Do(a: A):
-    id_scheme: "w-{a}"
+	id_scheme: "w-{a}"
 `, CodeIDSchemeMisplaced},
 		{"hole root not a param", `workflow W(a: A):
-    id_scheme: "w-{b.id}"
+	id_scheme: "w-{b.id}"
 `, CodeIDSchemeMalformed},
 		{"touching holes", `workflow W(a: A, b: B):
-    id_scheme: "w-{a}{b}"
+	id_scheme: "w-{a}{b}"
 `, CodeIDSchemeMalformed},
 		{"no fixed text", `workflow W(a: A):
-    id_scheme: "{a}"
+	id_scheme: "{a}"
 `, CodeIDSchemeMalformed},
 		{"stray brace", `workflow W(a: A):
-    id_scheme: "w-{a}}"
+	id_scheme: "w-{a}}"
 `, CodeIDSchemeMalformed},
 		{"id is an expression", `workflow W(a: A):
-    signal T.S()
-        id: prefix + a
+	signal T.S()
+		id: prefix + a
 `, CodeIDValueMalformed},
 		{"id is a call", `workflow W(a: A):
-    signal T.S()
-        id: makeID(a)
+	signal T.S()
+		id: makeID(a)
 `, CodeIDValueMalformed},
 		{"id is a number", `workflow W(a: A):
-    signal T.S()
-        id: 42
+	signal T.S()
+		id: 42
 `, CodeIDValueMalformed},
 		{"id is a path under parent", `workflow W(a: A):
-    signal T.S()
-        id: parent.x
+	signal T.S()
+		id: parent.x
 `, CodeIDValueMalformed},
 		{"id literal stray brace", `workflow W(a: A):
-    signal T.S()
-        id: "t-{a"
+	signal T.S()
+		id: "t-{a"
 `, CodeIDValueMalformed},
 		{"id under a workflow call", `workflow W(a: A):
-    workflow T(a)
-        id: "t-{a}"
+	workflow T(a)
+		id: "t-{a}"
 `, CodeIDAtStart},
 		{"run_id under a detach", `workflow W(a: A):
-    detach workflow T(a)
-        run_id: r
+	detach workflow T(a)
+		run_id: r
 `, CodeIDAtStart},
 		{"id under a promise-bound start", `workflow W(a: A):
-    promise t <- workflow T(a)
-        id: "t-{a}"
+	promise t <- workflow T(a)
+		id: "t-{a}"
 `, CodeIDAtStart},
 		{"id under an awaited start", `workflow W(a: A):
-    await workflow T(a)
-        id: "t-{a}"
+	await workflow T(a)
+		id: "t-{a}"
 `, CodeIDAtStart},
 		{"id after a start's options", `workflow W(a: A):
-    workflow T(a)
-        options:
-            task_queue: "q"
-        id: "t-{a}"
+	workflow T(a)
+		options:
+			task_queue: "q"
+		id: "t-{a}"
 `, CodeIDAtStart},
 		{"workflow_id option", `workflow W(a: A):
-    workflow T(a)
-        options:
-            workflow_id: "t"
+	workflow T(a)
+		options:
+			workflow_id: "t"
 `, CodeIDAtStart},
 		{"address under an activity", `workflow W(a: A):
-    activity Do(a)
-        id: "t-{a}"
+	activity Do(a)
+		id: "t-{a}"
 `, CodeAddressMisplaced},
 		{"options under a send", `workflow W(a: A):
-    signal T.S()
-        options:
-            task_queue: "q"
+	signal T.S()
+		options:
+			task_queue: "q"
 `, CodeAddressMisplaced},
 		{"options after a send's address", `workflow W(a: A):
-    signal T.S()
-        id: w
-        options:
-            task_queue: "q"
+	signal T.S()
+		id: w
+		options:
+			task_queue: "q"
 `, CodeAddressMisplaced},
 		{"run_id without id", `workflow W(a: A):
-    signal T.S()
-        run_id: r
+	signal T.S()
+		run_id: r
 `, CodeAddressMisplaced},
 		{"run_id before id", `workflow W(a: A):
-    log(x)
-    signal T.S()
-        run_id: r
-        id: w
+	log(x)
+	signal T.S()
+		run_id: r
+		id: w
 `, CodeAddressMisplaced},
 		{"run_id under parent", `workflow W(a: A):
-    signal T.S()
-        id: parent
-        run_id: r
+	signal T.S()
+		id: parent
+		run_id: r
 `, CodeAddressMisplaced},
 		{"quoted run_id", `workflow W(a: A):
-    signal T.S()
-        id: w
-        run_id: "r-1"
+	signal T.S()
+		id: w
+		run_id: "r-1"
 `, CodeAddressMisplaced},
 		{"address on the send's line", `workflow W(a: A):
-    signal T.S() id: w
+	signal T.S() id: w
 `, CodeAddressMisplaced},
 		{"id: parent in a sync nexus body", `nexus service Svc:
-    sync Op(a: A) -> (R):
-        signal T.S()
-            id: parent
+	sync Op(a: A) -> (R):
+		signal T.S()
+			id: parent
 `, CodeAddressMisplaced},
 	}
 	for _, tt := range tests {

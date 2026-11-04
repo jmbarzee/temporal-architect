@@ -14,22 +14,22 @@ const renameURI = "file:///rename.twf"
 // renameSource references Child as a call, a send head, a definition, and a
 // worker entry — each a line where the name follows a keyword.
 const renameSource = `workflow Parent(wid: string):
-    workflow Child(wid)
-    signal Child.Go()
-        id: wid
+	workflow Child(wid)
+	signal Child.Go()
+		id: wid
 
 workflow Child(wid: string):
-    signal Go():
-        done = true
-    activity Do(wid)
+	signal Go():
+		done = true
+	activity Do(wid)
 
 activity Do(wid: string):
-    do(wid)
+	do(wid)
 
 worker W:
-    workflow Parent
-    workflow Child
-    activity Do
+	workflow Parent
+	workflow Child
+	activity Do
 `
 
 // applyEdits applies text edits to content, last edit first.

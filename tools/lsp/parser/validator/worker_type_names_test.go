@@ -10,13 +10,13 @@ func dupNamesPkg(pkg string) namedSource {
 	return namedSource{pkg + ".twf", "# path: x/" + pkg + "\npackage " + pkg + `
 
 workflow Run(id):
-    close complete(id)
+	close complete(id)
 
 activity Do(id):
-    return id
+	return id
 
 nexus service Svc:
-    async Start workflow Run
+	async Start workflow Run
 `}
 }
 
@@ -64,12 +64,12 @@ worker shared:
     ` + strings.Join(tt.entries, "\n    ") + `
 
 workflow Run(id):
-    close complete(id)
+	close complete(id)
 
 namespace prod:
-    worker shared
-        options:
-            task_queue: "q"
+	worker shared
+		options:
+			task_queue: "q"
 `
 			file := mustMergeNamedAndResolve(t, dupNamesPkg("a"), dupNamesPkg("b"), dupNamesPkg("c"), namedSource{"topo.twf", topo})
 			checkRendered(t, render(Validate(file), ErrWorkerDuplicateTypeName), tt.want)
@@ -86,22 +86,22 @@ import "x/a"
 import "x/b"
 
 worker left:
-    nexus service a.Svc
-    workflow a.Run
-    activity a.Do
+	nexus service a.Svc
+	workflow a.Run
+	activity a.Do
 
 worker right:
-    nexus service b.Svc
-    workflow b.Run
-    activity b.Do
+	nexus service b.Svc
+	workflow b.Run
+	activity b.Do
 
 namespace prod:
-    worker left
-        options:
-            task_queue: "left"
-    worker right
-        options:
-            task_queue: "right"
+	worker left
+		options:
+			task_queue: "left"
+	worker right
+		options:
+			task_queue: "right"
 `}
 	errs := Validate(mustMergeNamedAndResolve(t, dupNamesPkg("a"), dupNamesPkg("b"), topo))
 	checkRendered(t, render(errs, ErrWorkerDuplicateTypeName), nil)

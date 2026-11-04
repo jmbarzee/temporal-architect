@@ -228,14 +228,14 @@ func TestTaskQueuesFixture(t *testing.T) {
 func TestOrphanDefinitions(t *testing.T) {
 	src := `
 workflow OrphanWf(input: string) -> (string):
-    activity StillCalled(input) -> result
-    close complete(result)
+	activity StillCalled(input) -> result
+	close complete(result)
 
 activity StillCalled(input: string) -> (string):
-    return input
+	return input
 
 worker someWorker:
-    activity StillCalled
+	activity StillCalled
 
 # Worker exists but is uninstantiated → orphan worker, plus the
 # StillCalled registration becomes orphan-via-uninstantiated.
@@ -277,22 +277,22 @@ worker someWorker:
 func TestNoReachableDeploymentDiagnostic(t *testing.T) {
 	src := `
 workflow Bad(input: string) -> (string):
-    activity Phantom(input) -> r
-        options:
-            task_queue: "nonexistent"
-    close complete(r)
+	activity Phantom(input) -> r
+		options:
+			task_queue: "nonexistent"
+	close complete(r)
 
 activity Phantom(input: string) -> (string):
-    return input
+	return input
 
 worker badWorker:
-    workflow Bad
-    activity Phantom
+	workflow Bad
+	activity Phantom
 
 namespace bad:
-    worker badWorker
-        options:
-            task_queue: "real-queue"
+	worker badWorker
+		options:
+			task_queue: "real-queue"
 `
 	file, parseErrs := parser.ParseFileAll(src)
 	if len(parseErrs) > 0 {
@@ -319,34 +319,34 @@ namespace bad:
 func TestNoReachableNexusDeploymentNamesEndpointNamespace(t *testing.T) {
 	src := `
 nexus service Svc:
-    async Op workflow Backing
+	async Op workflow Backing
 
 workflow Backing():
-    close complete()
+	close complete()
 
 workflow Caller():
-    nexus Ep Svc.Op() -> r
-    close complete(r)
+	nexus Ep Svc.Op() -> r
+	close complete(r)
 
 worker callerWorker:
-    workflow Caller
+	workflow Caller
 
 worker svcWorker:
-    nexus service Svc
-    workflow Backing
+	nexus service Svc
+	workflow Backing
 
 namespace callers:
-    worker callerWorker
-        options:
-            task_queue: "q"
+	worker callerWorker
+		options:
+			task_queue: "q"
 
 namespace services:
-    worker svcWorker
-        options:
-            task_queue: "svc-q"
-    nexus endpoint Ep
-        options:
-            task_queue: "q"
+	worker svcWorker
+		options:
+			task_queue: "svc-q"
+	nexus endpoint Ep
+		options:
+			task_queue: "q"
 `
 	file, parseErrs := parser.ParseFileAll(src)
 	if len(parseErrs) > 0 {
@@ -374,23 +374,23 @@ namespace services:
 func TestSignalSendEdge(t *testing.T) {
 	src := `
 workflow OrderSaga(order: string) -> (string):
-    promise pay <- workflow ProcessPayment(order)
-    signal pay.OrderShipped(order)
-    close complete(order)
+	promise pay <- workflow ProcessPayment(order)
+	signal pay.OrderShipped(order)
+	close complete(order)
 
 workflow ProcessPayment(order: string) -> (string):
-    signal OrderShipped(id: string):
-        shipped = true
-    return order
+	signal OrderShipped(id: string):
+		shipped = true
+	return order
 
 worker sagaWorker:
-    workflow OrderSaga
-    workflow ProcessPayment
+	workflow OrderSaga
+	workflow ProcessPayment
 
 namespace ecommerce:
-    worker sagaWorker
-        options:
-            task_queue: "orders"
+	worker sagaWorker
+		options:
+			task_queue: "orders"
 `
 	file, parseErrs := parser.ParseFileAll(src)
 	if len(parseErrs) > 0 {
@@ -426,21 +426,21 @@ namespace ecommerce:
 func TestSignalSendUnresolved(t *testing.T) {
 	src := `
 workflow OrderSaga(order: string) -> (string):
-    promise pay <- workflow ProcessPayment(order)
-    signal pay.NopeSignal(order)
-    close complete(order)
+	promise pay <- workflow ProcessPayment(order)
+	signal pay.NopeSignal(order)
+	close complete(order)
 
 workflow ProcessPayment(order: string) -> (string):
-    return order
+	return order
 
 worker sagaWorker:
-    workflow OrderSaga
-    workflow ProcessPayment
+	workflow OrderSaga
+	workflow ProcessPayment
 
 namespace ecommerce:
-    worker sagaWorker
-        options:
-            task_queue: "orders"
+	worker sagaWorker
+		options:
+			task_queue: "orders"
 `
 	file, parseErrs := parser.ParseFileAll(src)
 	if len(parseErrs) > 0 {
@@ -536,23 +536,23 @@ func namespaceNameFromID(id string) string {
 func TestTypeHeadSignalSendEdge(t *testing.T) {
 	src := `
 workflow Notifier(orderId: string):
-    signal ProcessPayment.OrderShipped(orderId)
-        id: "pay-{orderId}"
+	signal ProcessPayment.OrderShipped(orderId)
+		id: "pay-{orderId}"
 
 workflow ProcessPayment(order: string) -> (string):
-    id_scheme: "pay-{order}"
-    signal OrderShipped(id: string):
-        shipped = true
-    return order
+	id_scheme: "pay-{order}"
+	signal OrderShipped(id: string):
+		shipped = true
+	return order
 
 worker sagaWorker:
-    workflow Notifier
-    workflow ProcessPayment
+	workflow Notifier
+	workflow ProcessPayment
 
 namespace ecommerce:
-    worker sagaWorker
-        options:
-            task_queue: "orders"
+	worker sagaWorker
+		options:
+			task_queue: "orders"
 `
 	file, parseErrs := parser.ParseFileAll(src)
 	if len(parseErrs) > 0 {
@@ -574,20 +574,20 @@ namespace ecommerce:
 func TestTypeHeadUndeclaredSignalUnresolved(t *testing.T) {
 	src := `
 workflow Notifier(orderId: string):
-    signal ProcessPayment.Nope(orderId)
-        id: orderId
+	signal ProcessPayment.Nope(orderId)
+		id: orderId
 
 workflow ProcessPayment(order: string) -> (string):
-    return order
+	return order
 
 worker sagaWorker:
-    workflow Notifier
-    workflow ProcessPayment
+	workflow Notifier
+	workflow ProcessPayment
 
 namespace ecommerce:
-    worker sagaWorker
-        options:
-            task_queue: "orders"
+	worker sagaWorker
+		options:
+			task_queue: "orders"
 `
 	file, parseErrs := parser.ParseFileAll(src)
 	if len(parseErrs) > 0 {
@@ -613,16 +613,16 @@ func TestExternalTypeHeadUnresolvedReason(t *testing.T) {
 import "acme/shipping"
 
 workflow Notifier(wid: string):
-    signal shipping.ShipItem.Shipped(wid)
-        id: wid
+	signal shipping.ShipItem.Shipped(wid)
+		id: wid
 
 worker w:
-    workflow Notifier
+	workflow Notifier
 
 namespace ns:
-    worker w
-        options:
-            task_queue: "q"
+	worker w
+		options:
+			task_queue: "q"
 `
 	file, parseErrs := parser.ParseFileAll(src)
 	if len(parseErrs) > 0 {

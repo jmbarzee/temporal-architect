@@ -20,131 +20,131 @@ func TestIDPolicyDiagnostics(t *testing.T) {
 	}{
 		{"defaults pair TERMINATE_EXISTING with REJECT_DUPLICATE", `
 workflow Q(a: A):
-    id_scheme: "q-{a.id}"
-    default_options:
-        workflow_id_reuse_policy: REJECT_DUPLICATE
-        workflow_id_conflict_policy: TERMINATE_EXISTING
-    close complete()
+	id_scheme: "q-{a.id}"
+	default_options:
+		workflow_id_reuse_policy: REJECT_DUPLICATE
+		workflow_id_conflict_policy: TERMINATE_EXISTING
+	close complete()
 `, ErrIDPolicyIncompatible, "", true},
 		{"client start overrides reuse into the pair", `
 workflow Q(a: A):
-    id_scheme: "q-{a.id}"
-    default_options:
-        workflow_id_conflict_policy: TERMINATE_EXISTING
-    close complete()
+	id_scheme: "q-{a.id}"
+	default_options:
+		workflow_id_conflict_policy: TERMINATE_EXISTING
+	close complete()
 
 nexus service Svc:
-    sync Op(a: A) -> (R):
-        workflow Q(a) -> r
-            options:
-                workflow_id_reuse_policy: REJECT_DUPLICATE
-        close complete(r)
+	sync Op(a: A) -> (R):
+		workflow Q(a) -> r
+			options:
+				workflow_id_reuse_policy: REJECT_DUPLICATE
+		close complete(r)
 `, ErrIDPolicyIncompatible, "", true},
 		{"client start overrides conflict into the pair", `
 workflow Q(a: A):
-    id_scheme: "q-{a.id}"
-    default_options:
-        workflow_id_reuse_policy: REJECT_DUPLICATE
-    close complete()
+	id_scheme: "q-{a.id}"
+	default_options:
+		workflow_id_reuse_policy: REJECT_DUPLICATE
+	close complete()
 
 nexus service Svc:
-    sync Op(a: A) -> (R):
-        workflow Q(a) -> r
-            options:
-                workflow_id_conflict_policy: TERMINATE_EXISTING
-        close complete(r)
+	sync Op(a: A) -> (R):
+		workflow Q(a) -> r
+			options:
+				workflow_id_conflict_policy: TERMINATE_EXISTING
+		close complete(r)
 `, ErrIDPolicyIncompatible, "", true},
 		{"child start overriding reuse never makes the pair", `
 workflow Q(a: A):
-    id_scheme: "q-{a.id}"
-    default_options:
-        workflow_id_conflict_policy: TERMINATE_EXISTING
-    close complete()
+	id_scheme: "q-{a.id}"
+	default_options:
+		workflow_id_conflict_policy: TERMINATE_EXISTING
+	close complete()
 
 workflow P(a: A):
-    workflow Q(a)
-        options:
-            workflow_id_reuse_policy: REJECT_DUPLICATE
-    close complete()
+	workflow Q(a)
+		options:
+			workflow_id_reuse_policy: REJECT_DUPLICATE
+	close complete()
 `, ErrIDPolicyIncompatible, "", false},
 		{"conflict policy without a scheme", `
 workflow Q(a: A):
-    default_options:
-        workflow_id_conflict_policy: USE_EXISTING
-    close complete()
+	default_options:
+		workflow_id_conflict_policy: USE_EXISTING
+	close complete()
 `, ErrIDPolicyWithoutIDScheme, "hint", true},
 		{"reuse policy at a child start without a scheme", `
 workflow Q(a: A):
-    close complete()
+	close complete()
 
 workflow P(a: A):
-    workflow Q(a)
-        options:
-            workflow_id_reuse_policy: REJECT_DUPLICATE
-    close complete()
+	workflow Q(a)
+		options:
+			workflow_id_reuse_policy: REJECT_DUPLICATE
+	close complete()
 `, ErrIDPolicyWithoutIDScheme, "hint", true},
 		{"policy with a scheme", `
 workflow Q(a: A):
-    id_scheme: "q-{a.id}"
-    default_options:
-        workflow_id_reuse_policy: REJECT_DUPLICATE
-    close complete()
+	id_scheme: "q-{a.id}"
+	default_options:
+		workflow_id_reuse_policy: REJECT_DUPLICATE
+	close complete()
 `, ErrIDPolicyWithoutIDScheme, "hint", false},
 		{"child start of a joining type", `
 workflow Q(a: A):
-    id_scheme: "q-{a.id}"
-    default_options:
-        workflow_id_conflict_policy: USE_EXISTING
-    close complete()
+	id_scheme: "q-{a.id}"
+	default_options:
+		workflow_id_conflict_policy: USE_EXISTING
+	close complete()
 
 workflow P(a: A):
-    workflow Q(a)
-    close complete()
+	workflow Q(a)
+	close complete()
 `, ErrChildStartConflictMismatch, "hint", true},
 		{"promise child start of a replacing type", `
 workflow Q(a: A):
-    id_scheme: "q-{a.id}"
-    default_options:
-        workflow_id_conflict_policy: TERMINATE_EXISTING
-    close complete()
+	id_scheme: "q-{a.id}"
+	default_options:
+		workflow_id_conflict_policy: TERMINATE_EXISTING
+	close complete()
 
 workflow P(a: A):
-    promise q <- workflow Q(a)
-    await q
-    close complete()
+	promise q <- workflow Q(a)
+	await q
+	close complete()
 `, ErrChildStartConflictMismatch, "hint", true},
 		{"child start of a FAIL type", `
 workflow Q(a: A):
-    id_scheme: "q-{a.id}"
-    default_options:
-        workflow_id_conflict_policy: FAIL
-    close complete()
+	id_scheme: "q-{a.id}"
+	default_options:
+		workflow_id_conflict_policy: FAIL
+	close complete()
 
 workflow P(a: A):
-    workflow Q(a)
-    close complete()
+	workflow Q(a)
+	close complete()
 `, ErrChildStartConflictMismatch, "hint", false},
 		{"child start of an unschemed joining type", `
 workflow Q(a: A):
-    default_options:
-        workflow_id_conflict_policy: USE_EXISTING
-    close complete()
+	default_options:
+		workflow_id_conflict_policy: USE_EXISTING
+	close complete()
 
 workflow P(a: A):
-    workflow Q(a)
-    close complete()
+	workflow Q(a)
+	close complete()
 `, ErrChildStartConflictMismatch, "hint", false},
 		{"client start of a joining type", `
 workflow Q(a: A):
-    id_scheme: "q-{a.id}"
-    default_options:
-        workflow_id_conflict_policy: USE_EXISTING
-    close complete()
+	id_scheme: "q-{a.id}"
+	default_options:
+		workflow_id_conflict_policy: USE_EXISTING
+	close complete()
 
 nexus service Svc:
-    sync Op(a: A) -> (R):
-        workflow Q(a) -> r
-        close complete(r)
+	sync Op(a: A) -> (R):
+		workflow Q(a) -> r
+		close complete(r)
 `, ErrChildStartConflictMismatch, "hint", false},
 	}
 	for _, tt := range tests {
@@ -162,17 +162,17 @@ nexus service Svc:
 func TestIDPolicyDroppedHandler(t *testing.T) {
 	file, err := parser.ParseFile(`
 workflow Q(a: A):
-    id_scheme: "q-{a.id}"
-    default_options:
-        workflow_id_conflict_policy: USE_EXISTING
-    close complete()
+	id_scheme: "q-{a.id}"
+	default_options:
+		workflow_id_conflict_policy: USE_EXISTING
+	close complete()
 
 workflow P(a: A):
-    signal Go():
-        a = a
-    signal Go():
-        workflow Q(a)
-    close complete()
+	signal Go():
+		a = a
+	signal Go():
+		workflow Q(a)
+	close complete()
 `)
 	if err != nil {
 		t.Fatal(err)
@@ -188,15 +188,15 @@ workflow P(a: A):
 func TestChildStartConflictMismatchPosition(t *testing.T) {
 	errs := Validate(mustParseAndResolve(t, `
 workflow Q(a: A):
-    id_scheme: "q-{a.id}"
-    default_options:
-        workflow_id_conflict_policy: USE_EXISTING
-    close complete()
+	id_scheme: "q-{a.id}"
+	default_options:
+		workflow_id_conflict_policy: USE_EXISTING
+	close complete()
 
 workflow P(a: A):
-    promise q <- workflow Q(a)
-    await q
-    close complete()
+	promise q <- workflow Q(a)
+	await q
+	close complete()
 `))
 	for _, e := range errs {
 		if e.Kind == ErrChildStartConflictMismatch {
@@ -214,18 +214,18 @@ workflow P(a: A):
 func TestIDPolicyIncompatibleReport(t *testing.T) {
 	const target = `
 workflow Q(a: A):
-    id_scheme: "q-{a.id}"
-    default_options:
-        %s
-    close complete()
+	id_scheme: "q-{a.id}"
+	default_options:
+		%s
+	close complete()
 
 nexus service Svc:
-    sync Op(a: A) -> (R):
-        workflow %s(a) -> r
-            options:
-                %s
-                %s
-        close complete(r)
+	sync Op(a: A) -> (R):
+		workflow %s(a) -> r
+			options:
+				%s
+				%s
+		close complete(r)
 `
 	tests := []struct {
 		name             string
@@ -280,24 +280,24 @@ func TestNexusRunWithoutIDScheme(t *testing.T) {
 	}{
 		{"backing workflow without a scheme", `
 workflow Q(a: A):
-    close complete()
+	close complete()
 
 nexus service Svc:
-    async Run workflow Q
+	async Run workflow Q
 `, true},
 		{"backing workflow with a scheme", `
 workflow Q(a: A):
-    id_scheme: "q-{a.id}"
-    close complete()
+	id_scheme: "q-{a.id}"
+	close complete()
 
 nexus service Svc:
-    async Run workflow Q
+	async Run workflow Q
 `, false},
 		{"external backing workflow", `
 import "github.com/ext/lib"
 
 nexus service Svc:
-    async Run workflow lib.Remote
+	async Run workflow lib.Remote
 `, false},
 	}
 	for _, tt := range tests {
@@ -315,30 +315,30 @@ nexus service Svc:
 func TestIDPolicyAttribution(t *testing.T) {
 	file := mustParseAndResolve(t, `
 workflow Q(a: A):
-    id_scheme: "q-{a.id}"
-    default_options:
-        workflow_id_conflict_policy: TERMINATE_EXISTING
-    close complete()
+	id_scheme: "q-{a.id}"
+	default_options:
+		workflow_id_conflict_policy: TERMINATE_EXISTING
+	close complete()
 
 workflow U(a: A):
-    default_options:
-        workflow_id_reuse_policy: ALLOW_DUPLICATE
-    close complete()
+	default_options:
+		workflow_id_reuse_policy: ALLOW_DUPLICATE
+	close complete()
 
 workflow P(a: A):
-    workflow Q(a)
-    workflow U(a)
-        options:
-            workflow_id_reuse_policy: REJECT_DUPLICATE
-    close complete()
+	workflow Q(a)
+	workflow U(a)
+		options:
+			workflow_id_reuse_policy: REJECT_DUPLICATE
+	close complete()
 
 nexus service Svc:
-    async Run workflow U
-    sync Op(a: A) -> (R):
-        workflow Q(a) -> r
-            options:
-                workflow_id_reuse_policy: REJECT_DUPLICATE
-        close complete(r)
+	async Run workflow U
+	sync Op(a: A) -> (R):
+		workflow Q(a) -> r
+			options:
+				workflow_id_reuse_policy: REJECT_DUPLICATE
+		close complete(r)
 `)
 	files := map[string]string{"Q": "q.twf", "U": "u.twf", "P": "p.twf", "Svc": "svc.twf"}
 	for _, def := range file.Definitions {

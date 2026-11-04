@@ -14,9 +14,9 @@ func crlf(src string) string { return strings.ReplaceAll(src, "\n", "\r\n") }
 // buffer's last line does, and the result parses and resolves the call.
 func TestAddMissingDefinitionKeepsLineEnding(t *testing.T) {
 	tests := []struct{ name, src, eol string }{
-		{"CRLF", crlf("workflow W():\n    workflow Missing(x)\n    close complete\n"), "\r\n"},
-		{"LF, then CRLF last", "workflow W():\n    workflow Missing(x)\r\n    close complete\r\n", "\r\n"},
-		{"CRLF, then LF last", "workflow W():\r\n    workflow Missing(x)\r\n    close complete\n", "\n"},
+		{"CRLF", crlf("workflow W():\n\tworkflow Missing(x)\n\tclose complete\n"), "\r\n"},
+		{"LF, then CRLF last", "workflow W():\n\tworkflow Missing(x)\r\n\tclose complete\r\n", "\r\n"},
+		{"CRLF, then LF last", "workflow W():\r\n\tworkflow Missing(x)\r\n\tclose complete\n", "\n"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -41,12 +41,12 @@ func TestAddMissingDefinitionKeepsLineEnding(t *testing.T) {
 // statement and keeps its `\r\n`, inside a value over several lines too.
 func TestConvertReturnToCloseKeepsCRLF(t *testing.T) {
 	tests := []struct{ name, stmt, want string }{
-		{"one line", "    return x  # done", "    close complete(x)  # done"},
-		{"parenthesized value over two lines", "    return (a,\n        b)", "    close complete(a,\n        b)"},
-		{"call over two lines", "    return Pack(a,\n        b)  # done", "    close complete(Pack(a,\n        b))  # done"},
+		{"one line", "\treturn x  # done", "\tclose complete(x)  # done"},
+		{"parenthesized value over two lines", "\treturn (a,\n\t\tb)", "\tclose complete(a,\n\t\tb)"},
+		{"call over two lines", "\treturn Pack(a,\n\t\tb)  # done", "\tclose complete(Pack(a,\n\t\tb))  # done"},
 	}
-	const head = "workflow W() -> (Result):\n    activity Do(x)\n"
-	const tail = "\n\nactivity Do(x: string):\n    do(x)\n"
+	const head = "workflow W() -> (Result):\n\tactivity Do(x)\n"
+	const tail = "\n\nactivity Do(x: string):\n\tdo(x)\n"
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			src := crlf(head + tt.stmt + tail)
@@ -66,15 +66,15 @@ func TestConvertReturnToCloseKeepsCRLF(t *testing.T) {
 // crlfSource names Child as a call, a definition and a worker entry, each on a
 // CRLF line.
 var crlfSource = crlf(`workflow Parent(wid: string):
-    workflow Child(wid)
-    close complete()
+	workflow Child(wid)
+	close complete()
 
 workflow Child(wid: string):
-    close complete()
+	close complete()
 
 worker W:
-    workflow Parent
-    workflow Child
+	workflow Parent
+	workflow Child
 `)
 
 // TestNameRangesOnCRLF: rename, references and definition cover exactly the
@@ -123,8 +123,8 @@ func TestDiagnosticsOnCRLF(t *testing.T) {
 		name, src, msg string
 		want           protocol.Range
 	}{
-		{"parse error", crlf("workflow W():\n    if (x) junk:\n        close complete\n"), "junk", lineSpan(1, 11, 16)},
-		{"resolve error", crlf("workflow W():\n    activity Missing(x)\n    close complete\n"), "undefined activity", lineSpan(1, 13, 23)},
+		{"parse error", crlf("workflow W():\n\tif (x) junk:\n\t\tclose complete\n"), "junk", lineSpan(1, 11, 16)},
+		{"resolve error", crlf("workflow W():\n\tactivity Missing(x)\n\tclose complete\n"), "undefined activity", lineSpan(1, 13, 23)},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

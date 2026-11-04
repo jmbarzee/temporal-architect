@@ -16,93 +16,93 @@ func TestStartOptionsByKind(t *testing.T) {
 		code  string // "" means the input parses cleanly
 	}{
 		{"conflict policy in workflow defaults", `workflow W(a: A):
-    default_options:
-        workflow_id_conflict_policy: USE_EXISTING
-    close complete()
+	default_options:
+		workflow_id_conflict_policy: USE_EXISTING
+	close complete()
 `, ""},
 		{"conflict policy at a client start", `nexus service Svc:
-    sync Op(a: A) -> (R):
-        workflow T(a) -> r
-            options:
-                workflow_id_conflict_policy: TERMINATE_EXISTING
-        close complete(r)
+	sync Op(a: A) -> (R):
+		workflow T(a) -> r
+			options:
+				workflow_id_conflict_policy: TERMINATE_EXISTING
+		close complete(r)
 `, ""},
 		{"conflict policy at a detached client start", `nexus service Svc:
-    sync Op(a: A) -> (R):
-        detach workflow T(a)
-            options:
-                workflow_id_conflict_policy: FAIL
-        close complete(a)
+	sync Op(a: A) -> (R):
+		detach workflow T(a)
+			options:
+				workflow_id_conflict_policy: FAIL
+		close complete(a)
 `, ""},
 		{"parent_close_policy at a child start", `workflow W(a: A):
-    workflow T(a)
-        options:
-            parent_close_policy: ABANDON
+	workflow T(a)
+		options:
+			parent_close_policy: ABANDON
 `, ""},
 		{"conflict policy at a child start", `workflow W(a: A):
-    workflow T(a)
-        options:
-            workflow_id_conflict_policy: USE_EXISTING
+	workflow T(a)
+		options:
+			workflow_id_conflict_policy: USE_EXISTING
 `, CodeOptionMisplaced},
 		{"conflict policy at a detached child start", `workflow W(a: A):
-    detach workflow T(a)
-        options:
-            workflow_id_conflict_policy: USE_EXISTING
+	detach workflow T(a)
+		options:
+			workflow_id_conflict_policy: USE_EXISTING
 `, CodeOptionMisplaced},
 		{"conflict policy at a child start in a handler", `workflow W(a: A):
-    signal Go():
-        workflow T(a)
-            options:
-                workflow_id_conflict_policy: USE_EXISTING
-    close complete()
+	signal Go():
+		workflow T(a)
+			options:
+				workflow_id_conflict_policy: USE_EXISTING
+	close complete()
 `, CodeOptionMisplaced},
 		{"parent_close_policy at a client start", `nexus service Svc:
-    sync Op(a: A) -> (R):
-        workflow T(a) -> r
-            options:
-                parent_close_policy: ABANDON
-        close complete(r)
+	sync Op(a: A) -> (R):
+		workflow T(a) -> r
+			options:
+				parent_close_policy: ABANDON
+		close complete(r)
 `, CodeOptionMisplaced},
 		{"parent_close_policy in workflow defaults", `workflow W(a: A):
-    default_options:
-        parent_close_policy: TERMINATE
-    close complete()
+	default_options:
+		parent_close_policy: TERMINATE
+	close complete()
 `, CodeOptionMisplaced},
 		{"workflow_id at a client start", `nexus service Svc:
-    sync Op(a: A) -> (R):
-        workflow T(a) -> r
-            options:
-                workflow_id: "t"
-        close complete(r)
+	sync Op(a: A) -> (R):
+		workflow T(a) -> r
+			options:
+				workflow_id: "t"
+		close complete(r)
 `, CodeIDAtStart},
 		{"workflow_id in workflow defaults", `workflow W(a: A):
-    default_options:
-        workflow_id: "t"
-    close complete()
+	default_options:
+		workflow_id: "t"
+	close complete()
 `, CodeIDAtStart},
 		{"conflict policy in activity defaults", `activity Do(a: A):
-    default_options:
-        workflow_id_conflict_policy: FAIL
-    return a
+	default_options:
+		workflow_id_conflict_policy: FAIL
+	return a
 `, CodeSyntax},
 		{"child start after a sync body", `nexus service Svc:
-    sync Op(a: A) -> (R):
-        close complete(a)
+	sync Op(a: A) -> (R):
+		close complete(a)
 
 workflow W(a: A):
-    workflow T(a)
-        options:
-            workflow_id_conflict_policy: USE_EXISTING
+	workflow T(a)
+		options:
+			workflow_id_conflict_policy: USE_EXISTING
 `, CodeOptionMisplaced},
 		{"TERMINATE_IF_RUNNING at a child start", `workflow W(a: A):
-    workflow T(a)
-        options:
-            workflow_id_reuse_policy: TERMINATE_IF_RUNNING
+	workflow T(a)
+		options:
+			workflow_id_reuse_policy: TERMINATE_IF_RUNNING
 `, CodeSyntax},
 		{"TERMINATE_IF_RUNNING in workflow defaults", `workflow W(a: A):
-    default_options:
-        workflow_id_reuse_policy: TERMINATE_IF_RUNNING
-    close complete()
+	default_options:
+		workflow_id_reuse_policy: TERMINATE_IF_RUNNING
+	close complete()
 `, CodeSyntax},
 	}
 	for _, tt := range tests {
@@ -133,29 +133,29 @@ func TestOptionValueErrorPosition(t *testing.T) {
 		col   int
 	}{
 		{"invalid enum value", `workflow W(a: A):
-    default_options:
-        workflow_id_reuse_policy: TERMINATE_IF_RUNNING
-    close complete()
+	default_options:
+		workflow_id_reuse_policy: TERMINATE_IF_RUNNING
+	close complete()
 `, 35},
 		{"string for a duration", `workflow W(a: A):
-    default_options:
-        workflow_run_timeout: "1h"
-    close complete()
+	default_options:
+		workflow_run_timeout: "1h"
+	close complete()
 `, 31},
 		{"number for an enum", `workflow W(a: A):
-    default_options:
-        workflow_id_conflict_policy: 3
-    close complete()
+	default_options:
+		workflow_id_conflict_policy: 3
+	close complete()
 `, 38},
 		{"bool for a string", `workflow W(a: A):
-    default_options:
-        task_queue: true
-    close complete()
+	default_options:
+		task_queue: true
+	close complete()
 `, 21},
 		{"list for a duration", `workflow W(a: A):
-    default_options:
-        workflow_run_timeout: ["1h"]
-    close complete()
+	default_options:
+		workflow_run_timeout: ["1h"]
+	close complete()
 `, 31},
 	}
 	for _, tt := range tests {
@@ -175,26 +175,26 @@ func TestOptionValueErrorPosition(t *testing.T) {
 // in a sync nexus operation body, a child start anywhere else.
 func TestWorkflowStartKind(t *testing.T) {
 	file, errs := ParseFileAll(`workflow W(a: A):
-    signal Go():
-        detach workflow T(a)
-    update Up() -> (R):
-        workflow T(a) -> r
-        return r
-    workflow T(a)
-    promise p <- workflow T(a)
-    close complete()
+	signal Go():
+		detach workflow T(a)
+	update Up() -> (R):
+		workflow T(a) -> r
+		return r
+	workflow T(a)
+	promise p <- workflow T(a)
+	close complete()
 
 nexus service Svc:
-    sync Op(a: A) -> (R):
-        workflow T(a) -> r
-        detach workflow T(a)
-        await workflow T(a)
-        await one:
-            workflow T(a):
-                close complete(r)
-            timer(1m):
-                close complete(r)
-        close complete(r)
+	sync Op(a: A) -> (R):
+		workflow T(a) -> r
+		detach workflow T(a)
+		await workflow T(a)
+		await one:
+			workflow T(a):
+				close complete(r)
+			timer(1m):
+				close complete(r)
+		close complete(r)
 `)
 	if len(errs) > 0 {
 		t.Fatalf("parse: %v", errs)

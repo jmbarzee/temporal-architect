@@ -21,7 +21,7 @@ func TestCreateModuleFileAction(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, ".git", "config"), []byte("[remote \"origin\"]\n\turl = git@github.com:org/repo.git\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	buf := "package fabric\n\nworkflow W():\n    activity Ghost()\n"
+	buf := "package fabric\n\nworkflow W():\n\tactivity Ghost()\n"
 	_, uri := writeTWF(t, dir, "fabric/f.twf", buf)
 
 	store := NewDocumentStore()
@@ -114,7 +114,7 @@ func TestCreateModuleFileActionReadsOpenBuffers(t *testing.T) {
 func TestWatchModuleFilesOutsideFolders(t *testing.T) {
 	dir := t.TempDir()
 	writeModule(t, dir, "example.com/m")
-	buf := "workflow W():\n    close complete(\"ok\")\n"
+	buf := "workflow W():\n\tclose complete(\"ok\")\n"
 	_, uri := writeTWF(t, dir, "peer/p.twf", buf)
 
 	type call struct {

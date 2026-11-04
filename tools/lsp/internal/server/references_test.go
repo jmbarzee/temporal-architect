@@ -40,68 +40,68 @@ type spot struct {
 // workflow named Child, a send head and signal named Child, and an endpoint and
 // service named Orders.
 const everyKindSource = `workflow Parent(wid: string):
-    state:
-        condition ready
-    signal Go():
-        set ready
-    update Set():
-        unset ready
-    query Status() -> (string):
-        return "ok"
-    promise Child <- workflow Child(wid)
-    signal Child.Go()
-    await Child
-    nexus Orders Orders.Place(wid)
-    await ready
-    activity Do(wid)
-    close complete()
+	state:
+		condition ready
+	signal Go():
+		set ready
+	update Set():
+		unset ready
+	query Status() -> (string):
+		return "ok"
+	promise Child <- workflow Child(wid)
+	signal Child.Go()
+	await Child
+	nexus Orders Orders.Place(wid)
+	await ready
+	activity Do(wid)
+	close complete()
 
 workflow Sender(wid: string):
-    signal Child.Child()
-        id: wid
-    workflow Child(wid)
-    close complete()
+	signal Child.Child()
+		id: wid
+	workflow Child(wid)
+	close complete()
 
 workflow Child(wid: string):
-    id_scheme: "child-{wid}"
-    state:
-        condition ready
-    signal Go():
-        set ready
-    signal Child():
-        set ready
-    update Set():
-        unset ready
-    query Status() -> (string):
-        return "ok"
-    await one:
-        signal Go:
-            close complete()
-        update Set:
-            close complete()
-        ready:
-            close complete()
+	id_scheme: "child-{wid}"
+	state:
+		condition ready
+	signal Go():
+		set ready
+	signal Child():
+		set ready
+	update Set():
+		unset ready
+	query Status() -> (string):
+		return "ok"
+	await one:
+		signal Go:
+			close complete()
+		update Set:
+			close complete()
+		ready:
+			close complete()
 
 activity Do(wid: string):
-    do(wid)
+	do(wid)
 
 nexus service Orders:
-    async Place workflow Child
+	async Place workflow Child
 
 worker W:
-    workflow Parent
-    workflow Sender
-    workflow Child
-    activity Do
-    nexus service Orders
+	workflow Parent
+	workflow Sender
+	workflow Child
+	activity Do
+	nexus service Orders
 
 namespace Prod:
-    worker W
-        options:
-            task_queue: "q"
-    nexus endpoint Orders
-        options:
-            task_queue: "q"
+	worker W
+		options:
+			task_queue: "q"
+	nexus endpoint Orders
+		options:
+			task_queue: "q"
 `
 
 // TestRenameEveryKind renames each declared name from one of its spellings and
@@ -189,40 +189,40 @@ func TestRenameEveryKind(t *testing.T) {
 // differing in signature: condition Ready, signal Ping, update Bump, and
 // operation Op (sync, then async).
 const duplicateDeclSource = `workflow W(wid: string):
-    id_scheme: "w-{wid}"
-    state:
-        condition Ready
-        condition Ready
-    signal Ping(a: string):
-        set Ready
-    signal Ping(b: int):
-        set Ready
-    update Bump() -> (string):
-        return "a"
-    update Bump(n: int) -> (int):
-        return 1
-    await signal Ping
-    await update Bump
-    await Ready
-    nexus e S.Op()
-    close complete()
+	id_scheme: "w-{wid}"
+	state:
+		condition Ready
+		condition Ready
+	signal Ping(a: string):
+		set Ready
+	signal Ping(b: int):
+		set Ready
+	update Bump() -> (string):
+		return "a"
+	update Bump(n: int) -> (int):
+		return 1
+	await signal Ping
+	await update Bump
+	await Ready
+	nexus e S.Op()
+	close complete()
 
 workflow Sender(wid: string):
-    signal W.Ping("x")
-        id: wid
-    promise h <- workflow W(wid)
-    signal h.Ping("y")
-    close complete()
+	signal W.Ping("x")
+		id: wid
+	promise h <- workflow W(wid)
+	signal h.Ping("y")
+	close complete()
 
 nexus service S:
-    sync Op() -> ():
-        close complete()
-    async Op workflow W
+	sync Op() -> ():
+		close complete()
+	async Op workflow W
 
 namespace n:
-    nexus endpoint e
-        options:
-            task_queue: "q"
+	nexus endpoint e
+		options:
+			task_queue: "q"
 `
 
 // TestDefinitionOfDuplicateIsFirst: a name declared twice in one definition
@@ -292,30 +292,30 @@ var packageSources = map[string]string{
 const billingSource = `package billing
 
 workflow Child(wid: string):
-    id_scheme: "child-{wid}"
-    signal Go():
-        done = true
-    activity Charge(wid)
-    close complete()
+	id_scheme: "child-{wid}"
+	signal Go():
+		done = true
+	activity Charge(wid)
+	close complete()
 
 activity Charge(wid: string):
-    charge(wid)
+	charge(wid)
 
 nexus service Orders:
-    async Place workflow Child
+	async Place workflow Child
 
 worker W:
-    workflow Child
-    activity Charge
-    nexus service Orders
+	workflow Child
+	activity Charge
+	nexus service Orders
 
 namespace Billing:
-    worker W
-        options:
-            task_queue: "billing"
-    nexus endpoint Pay
-        options:
-            task_queue: "billing"
+	worker W
+		options:
+			task_queue: "billing"
+	nexus endpoint Pay
+		options:
+			task_queue: "billing"
 `
 
 // appSource imports billingv2 as Child, beside its own workflow Child.
@@ -325,61 +325,61 @@ import "acme/billing"
 import Child "acme/billingv2"
 
 workflow Parent(wid: string):
-    activity Charge(wid)
-    activity billing.Charge(wid)
-        options:
-            task_queue: "b"
-    activity Child.Charge(wid)
-        options:
-            task_queue: "b2"
-    signal billing.Child.Go()
-        id: wid
-    signal Child.Child.Go()
-        id: wid
-    signal Child.Go()
-        id: wid
-    nexus Pay billing.Orders.Place(wid)
-    nexus Pay2 Child.Orders.Place(wid)
-    nexus Local Orders.Place(wid)
-    close complete()
+	activity Charge(wid)
+	activity billing.Charge(wid)
+		options:
+			task_queue: "b"
+	activity Child.Charge(wid)
+		options:
+			task_queue: "b2"
+	signal billing.Child.Go()
+		id: wid
+	signal Child.Child.Go()
+		id: wid
+	signal Child.Go()
+		id: wid
+	nexus Pay billing.Orders.Place(wid)
+	nexus Pay2 Child.Orders.Place(wid)
+	nexus Local Orders.Place(wid)
+	close complete()
 
 workflow Child(wid: string):
-    id_scheme: "app-{wid}"
-    signal Go():
-        done = true
-    close complete()
+	id_scheme: "app-{wid}"
+	signal Go():
+		done = true
+	close complete()
 
 activity Charge(wid: string):
-    charge(wid)
+	charge(wid)
 
 nexus service Orders:
-    async Place workflow Child
+	async Place workflow Child
 
 worker W:
-    workflow Parent
-    workflow Child
-    activity Charge
-    nexus service Orders
+	workflow Parent
+	workflow Child
+	activity Charge
+	nexus service Orders
 
 worker B:
-    activity billing.Charge
+	activity billing.Charge
 
 worker B2:
-    activity Child.Charge
+	activity Child.Charge
 
 namespace App:
-    worker W
-        options:
-            task_queue: "app"
-    worker B
-        options:
-            task_queue: "b"
-    worker B2
-        options:
-            task_queue: "b2"
-    nexus endpoint Local
-        options:
-            task_queue: "app"
+	worker W
+		options:
+			task_queue: "app"
+	worker B
+		options:
+			task_queue: "b"
+	worker B2
+		options:
+			task_queue: "b2"
+	nexus endpoint Local
+		options:
+			task_queue: "app"
 `
 
 // TestRenameAcrossPackages renames, from the open app buffer, names that two

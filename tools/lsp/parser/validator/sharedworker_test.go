@@ -23,23 +23,23 @@ const swPaymentsDomain = `# path: acme/payments
 package payments
 
 workflow Charge(id):
-    close complete(id)
+	close complete(id)
 
 activity Settle(id):
-    return id
+	return id
 `
 
 const swShippingDomain = `# path: acme/shipping
 package shipping
 
 workflow Ship(id):
-    close complete(id)
+	close complete(id)
 
 activity Pack(id):
-    return id
+	return id
 
 nexus service Fulfillment:
-    async Book workflow Ship
+	async Book workflow Ship
 `
 
 // Topology owner: one shared worker joint-owning all four domain types across
@@ -50,16 +50,16 @@ import "acme/payments"
 import "acme/shipping"
 
 worker fleet:
-    workflow payments.Charge
-    activity payments.Settle
-    workflow shipping.Ship
-    activity shipping.Pack
-    nexus service shipping.Fulfillment
+	workflow payments.Charge
+	activity payments.Settle
+	workflow shipping.Ship
+	activity shipping.Pack
+	nexus service shipping.Fulfillment
 
 namespace prod:
-    worker fleet
-        options:
-            task_queue: "fleet-q"
+	worker fleet
+		options:
+			task_queue: "fleet-q"
 `
 
 // Property 1: a shared-worker topology-owner file over >=2 domain packages
@@ -123,15 +123,15 @@ import "acme/payments"
 import "acme/shipping"
 
 worker fleet:
-    workflow payments.Charge
-    activity payments.Settle
-    workflow shipping.Ship
-    nexus service shipping.Fulfillment
+	workflow payments.Charge
+	activity payments.Settle
+	workflow shipping.Ship
+	nexus service shipping.Fulfillment
 
 namespace prod:
-    worker fleet
-        options:
-            task_queue: "fleet-q"
+	worker fleet
+		options:
+			task_queue: "fleet-q"
 `
 	errs := Validate(mustMergeAndResolve(t, swPaymentsDomain, swShippingDomain, topologyMissingPack))
 

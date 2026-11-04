@@ -54,7 +54,7 @@ func TestIdentifier(t *testing.T) {
 }
 
 func TestSingleLevelIndent(t *testing.T) {
-	input := "workflow:\n    body\n"
+	input := "workflow:\n\tbody\n"
 	expected := []token.TokenType{
 		token.WORKFLOW, token.COLON, token.NEWLINE,
 		token.INDENT, token.IDENT, token.NEWLINE,
@@ -252,7 +252,7 @@ func TestEOFDedentEmission(t *testing.T) {
 
 func TestWorkflowHeaderTokenStream(t *testing.T) {
 	input := `workflow OrderFulfillment(orderId: string) -> (OrderResult):
-    activity GetOrder(orderId) -> order
+	activity GetOrder(orderId) -> order
 `
 	expected := []struct {
 		typ token.TokenType
@@ -559,7 +559,7 @@ func TestMultiLineArgs(t *testing.T) {
 }
 
 func TestOptionsBlockTokenStream(t *testing.T) {
-	input := "activity Foo(x) -> y\n    options:\n        task_queue: \"workers\"\n        start_to_close: 60s\n"
+	input := "activity Foo(x) -> y\n\toptions:\n\t\ttask_queue: \"workers\"\n\t\tstart_to_close: 60s\n"
 	expected := []struct {
 		typ token.TokenType
 		lit string

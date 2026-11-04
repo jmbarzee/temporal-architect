@@ -21,20 +21,20 @@ func mustParse(t *testing.T, input string) *ast.File {
 
 func TestSuccessfulResolution(t *testing.T) {
 	input := `workflow OrderWorkflow(orderId: string) -> (OrderResult):
-    signal PaymentReceived(txId: string):
-        status = "paid"
-    update ChangeAddress(addr: Address) -> (Result):
-        address = addr
-        return Result{ok: true}
+	signal PaymentReceived(txId: string):
+		status = "paid"
+	update ChangeAddress(addr: Address) -> (Result):
+		address = addr
+		return Result{ok: true}
 
-    activity GetOrder(orderId) -> order
-    workflow ShipOrder(order) -> shipResult
+	activity GetOrder(orderId) -> order
+	workflow ShipOrder(order) -> shipResult
 
 activity GetOrder(orderId: string) -> (Order):
-    return db.get(orderId)
+	return db.get(orderId)
 
 workflow ShipOrder(order: Order) -> (ShipResult):
-    return ship(order)
+	return ship(order)
 `
 	file := mustParse(t, input)
 	errs := Resolve(file)
@@ -64,7 +64,7 @@ workflow ShipOrder(order: Order) -> (ShipResult):
 
 func TestUndefinedActivity(t *testing.T) {
 	input := `workflow Foo(x: int) -> (Result):
-    activity NonExistent(x) -> y
+	activity NonExistent(x) -> y
 `
 	file := mustParse(t, input)
 	errs := Resolve(file)
@@ -78,7 +78,7 @@ func TestUndefinedActivity(t *testing.T) {
 
 func TestUndefinedWorkflow(t *testing.T) {
 	input := `workflow Foo(x: int) -> (Result):
-    workflow Missing(x) -> y
+	workflow Missing(x) -> y
 `
 	file := mustParse(t, input)
 	errs := Resolve(file)
@@ -95,10 +95,10 @@ func TestUndefinedWorkflow(t *testing.T) {
 
 func TestDuplicateWorkflow(t *testing.T) {
 	input := `workflow Foo(x: int) -> (Result):
-    return x
+	return x
 
 workflow Foo(y: int) -> (Result):
-    return y
+	return y
 `
 	file := mustParse(t, input)
 	errs := Resolve(file)
@@ -112,10 +112,10 @@ workflow Foo(y: int) -> (Result):
 
 func TestDuplicateActivity(t *testing.T) {
 	input := `activity Foo(x: int) -> (Result):
-    return x
+	return x
 
 activity Foo(y: int) -> (Result):
-    return y
+	return y
 `
 	file := mustParse(t, input)
 	errs := Resolve(file)
@@ -129,16 +129,16 @@ activity Foo(y: int) -> (Result):
 
 func TestNestedResolution(t *testing.T) {
 	input := `workflow Foo(x: int) -> (Result):
-    if (x > 0):
-        await all:
-            activity Bar(x)
-            workflow Baz(x) -> y
+	if (x > 0):
+		await all:
+			activity Bar(x)
+			workflow Baz(x) -> y
 
 activity Bar(x: int) -> (int):
-    return x
+	return x
 
 workflow Baz(x: int) -> (int):
-    return x
+	return x
 `
 	file := mustParse(t, input)
 	errs := Resolve(file)
@@ -157,11 +157,11 @@ workflow Baz(x: int) -> (int):
 
 func TestResolutionInsideForLoop(t *testing.T) {
 	input := `workflow Foo(items: []string) -> (Result):
-    for (item in items):
-        activity Process(item) -> result
+	for (item in items):
+		activity Process(item) -> result
 
 activity Process(item: string) -> (Result):
-    return item
+	return item
 `
 	file := mustParse(t, input)
 	errs := Resolve(file)
@@ -174,17 +174,17 @@ activity Process(item: string) -> (Result):
 
 func TestResolutionInsideSwitchCase(t *testing.T) {
 	input := `workflow Foo(x: string) -> (Result):
-    switch (x):
-        case "a":
-            activity DoA(x)
-        else:
-            activity DoB(x)
+	switch (x):
+		case "a":
+			activity DoA(x)
+		else:
+			activity DoB(x)
 
 activity DoA(x: string) -> (string):
-    return x
+	return x
 
 activity DoB(x: string) -> (string):
-    return x
+	return x
 `
 	file := mustParse(t, input)
 	errs := Resolve(file)
@@ -197,9 +197,9 @@ activity DoB(x: string) -> (string):
 
 func TestMultipleUndefinedErrors(t *testing.T) {
 	input := `workflow Foo(x: int) -> (Result):
-    activity Missing1(x)
-    activity Missing2(x)
-    workflow Missing3(x)
+	activity Missing1(x)
+	activity Missing2(x)
+	workflow Missing3(x)
 `
 	file := mustParse(t, input)
 	errs := Resolve(file)
@@ -213,24 +213,24 @@ func TestMultipleUndefinedErrors(t *testing.T) {
 
 func TestStructuredOptionsResolution(t *testing.T) {
 	input := `workflow Foo(x: int) -> (Result):
-    activity Bar(x) -> y
-        options:
-            start_to_close_timeout: 30s
-            retry_policy:
-                maximum_attempts: 3
-                initial_interval: 1s
+	activity Bar(x) -> y
+		options:
+			start_to_close_timeout: 30s
+			retry_policy:
+				maximum_attempts: 3
+				initial_interval: 1s
 
-    workflow Child(y) -> z
-        options:
-            workflow_run_timeout: 1h
+	workflow Child(y) -> z
+		options:
+			workflow_run_timeout: 1h
 
-    return z
+	return z
 
 activity Bar(x: int) -> (int):
-    return x
+	return x
 
 workflow Child(y: int) -> (int):
-    return y
+	return y
 `
 	file := mustParse(t, input)
 	errs := Resolve(file)
@@ -257,20 +257,20 @@ workflow Child(y: int) -> (int):
 
 func TestWorkerResolution(t *testing.T) {
 	input := `workflow ProcessOrder(orderId: string) -> (Result):
-    activity ChargePayment(orderId) -> payment
-    return Result{payment: payment}
+	activity ChargePayment(orderId) -> payment
+	return Result{payment: payment}
 
 activity ChargePayment(orderId: string) -> (Payment):
-    return charge(orderId)
+	return charge(orderId)
 
 worker orderWorker:
-    workflow ProcessOrder
-    activity ChargePayment
+	workflow ProcessOrder
+	activity ChargePayment
 
 namespace orders:
-    worker orderWorker
-        options:
-            task_queue: "orderProcessing"
+	worker orderWorker
+		options:
+			task_queue: "orderProcessing"
 `
 	file := mustParse(t, input)
 	errs := Resolve(file)
@@ -283,11 +283,11 @@ namespace orders:
 
 func TestWorkerUndefinedWorkflow(t *testing.T) {
 	input := `activity ChargePayment(orderId: string) -> (Payment):
-    return charge(orderId)
+	return charge(orderId)
 
 worker badWorker:
-    workflow NonExistent
-    activity ChargePayment
+	workflow NonExistent
+	activity ChargePayment
 `
 	file := mustParse(t, input)
 	errs := Resolve(file)
@@ -304,11 +304,11 @@ worker badWorker:
 
 func TestWorkerUndefinedActivity(t *testing.T) {
 	input := `workflow ProcessOrder(orderId: string) -> (Result):
-    return Result{}
+	return Result{}
 
 worker badWorker:
-    workflow ProcessOrder
-    activity NonExistent
+	workflow ProcessOrder
+	activity NonExistent
 `
 	file := mustParse(t, input)
 	errs := Resolve(file)
@@ -325,13 +325,13 @@ worker badWorker:
 
 func TestDuplicateWorker(t *testing.T) {
 	input := `workflow Foo(x: int) -> (Result):
-    return x
+	return x
 
 worker myWorker:
-    workflow Foo
+	workflow Foo
 
 worker myWorker:
-    workflow Foo
+	workflow Foo
 `
 	file := mustParse(t, input)
 	errs := Resolve(file)
@@ -348,20 +348,20 @@ worker myWorker:
 
 func TestDuplicateNamespace(t *testing.T) {
 	input := `worker w:
-    workflow Foo
+	workflow Foo
 
 workflow Foo(x: int) -> (int):
-    return x
+	return x
 
 namespace myNs:
-    worker w
-        options:
-            task_queue: "q"
+	worker w
+		options:
+			task_queue: "q"
 
 namespace myNs:
-    worker w
-        options:
-            task_queue: "q"
+	worker w
+		options:
+			task_queue: "q"
 `
 	file := mustParse(t, input)
 	errs := Resolve(file)
@@ -378,9 +378,9 @@ namespace myNs:
 
 func TestNamespaceUndefinedWorker(t *testing.T) {
 	input := `namespace orders:
-    worker nonExistent
-        options:
-            task_queue: "q"
+	worker nonExistent
+		options:
+			task_queue: "q"
 `
 	file := mustParse(t, input)
 	errs := Resolve(file)
@@ -397,20 +397,20 @@ func TestNamespaceUndefinedWorker(t *testing.T) {
 
 func TestNamespaceResolution(t *testing.T) {
 	input := `workflow ProcessOrder(orderId: string) -> (Result):
-    activity ChargePayment(orderId) -> payment
-    return Result{payment: payment}
+	activity ChargePayment(orderId) -> payment
+	return Result{payment: payment}
 
 activity ChargePayment(orderId: string) -> (Payment):
-    return charge(orderId)
+	return charge(orderId)
 
 worker orderWorker:
-    workflow ProcessOrder
-    activity ChargePayment
+	workflow ProcessOrder
+	activity ChargePayment
 
 namespace orders:
-    worker orderWorker
-        options:
-            task_queue: "orderProcessing"
+	worker orderWorker
+		options:
+			task_queue: "orderProcessing"
 `
 	file := mustParse(t, input)
 	errs := Resolve(file)
@@ -423,19 +423,19 @@ namespace orders:
 
 func TestHandlerBodyResolution(t *testing.T) {
 	input := `workflow Foo(x: int) -> (Result):
-    signal Cancel(reason: string):
-        activity LogCancel(reason)
-    update ChangeAddr(addr: Addr) -> (Result):
-        activity ValidateAddr(addr) -> valid
-        return Result{ok: valid}
+	signal Cancel(reason: string):
+		activity LogCancel(reason)
+	update ChangeAddr(addr: Addr) -> (Result):
+		activity ValidateAddr(addr) -> valid
+		return Result{ok: valid}
 
-    return Result{}
+	return Result{}
 
 activity LogCancel(reason: string) -> (int):
-    return 0
+	return 0
 
 activity ValidateAddr(addr: string) -> (bool):
-    return true
+	return true
 `
 	file := mustParse(t, input)
 	errs := Resolve(file)
@@ -469,31 +469,31 @@ activity ValidateAddr(addr: string) -> (bool):
 
 func TestNexusResolutionSuccess(t *testing.T) {
 	input := `nexus service OrderService:
-    async PlaceOrder workflow ProcessOrder
+	async PlaceOrder workflow ProcessOrder
 
 workflow ProcessOrder(order: Order) -> (Result):
-    close complete(Result{})
+	close complete(Result{})
 
 workflow Caller():
-    nexus OrderEndpoint OrderService.PlaceOrder(order) -> result
-    close complete(result)
+	nexus OrderEndpoint OrderService.PlaceOrder(order) -> result
+	close complete(result)
 
 activity Dummy():
-    pass()
+	pass()
 
 worker w:
-    workflow ProcessOrder
-    workflow Caller
-    activity Dummy
-    nexus service OrderService
+	workflow ProcessOrder
+	workflow Caller
+	activity Dummy
+	nexus service OrderService
 
 namespace ns:
-    worker w
-        options:
-            task_queue: "q"
-    nexus endpoint OrderEndpoint
-        options:
-            task_queue: "q"
+	worker w
+		options:
+			task_queue: "q"
+	nexus endpoint OrderEndpoint
+		options:
+			task_queue: "q"
 `
 	file := mustParse(t, input)
 	errs := Resolve(file)
@@ -536,22 +536,22 @@ func findNamespace(file *ast.File) *ast.NamespaceDef {
 
 func TestEndpointTaskQueuePopulated(t *testing.T) {
 	input := `nexus service OrderService:
-    async PlaceOrder workflow ProcessOrder
+	async PlaceOrder workflow ProcessOrder
 
 workflow ProcessOrder(order: Order) -> (Result):
-    close complete(Result{})
+	close complete(Result{})
 
 worker w:
-    workflow ProcessOrder
-    nexus service OrderService
+	workflow ProcessOrder
+	nexus service OrderService
 
 namespace ns:
-    worker w
-        options:
-            task_queue: "q"
-    nexus endpoint OrderEndpoint
-        options:
-            task_queue: "endpointQueue"
+	worker w
+		options:
+			task_queue: "q"
+	nexus endpoint OrderEndpoint
+		options:
+			task_queue: "endpointQueue"
 `
 	file := mustParse(t, input)
 	errs := Resolve(file)
@@ -573,20 +573,20 @@ namespace ns:
 
 func TestEndpointTaskQueueAbsent(t *testing.T) {
 	input := `nexus service OrderService:
-    async PlaceOrder workflow ProcessOrder
+	async PlaceOrder workflow ProcessOrder
 
 workflow ProcessOrder(order: Order) -> (Result):
-    close complete(Result{})
+	close complete(Result{})
 
 worker w:
-    workflow ProcessOrder
-    nexus service OrderService
+	workflow ProcessOrder
+	nexus service OrderService
 
 namespace ns:
-    worker w
-        options:
-            task_queue: "q"
-    nexus endpoint OrderEndpoint
+	worker w
+		options:
+			task_queue: "q"
+	nexus endpoint OrderEndpoint
 `
 	file := mustParse(t, input)
 	errs := Resolve(file)
@@ -608,13 +608,13 @@ namespace ns:
 
 func TestNexusDuplicateService(t *testing.T) {
 	input := `nexus service Svc:
-    async Op workflow W
+	async Op workflow W
 
 nexus service Svc:
-    async Op workflow W
+	async Op workflow W
 
 workflow W():
-    close complete(Result{})
+	close complete(Result{})
 `
 	file := mustParse(t, input)
 	errs := Resolve(file)
@@ -625,26 +625,26 @@ workflow W():
 
 func TestNexusDuplicateEndpoint(t *testing.T) {
 	input := `worker w:
-    workflow W
+	workflow W
 
 workflow W():
-    close complete(Result{})
+	close complete(Result{})
 
 namespace ns1:
-    worker w
-        options:
-            task_queue: "q1"
-    nexus endpoint Ep
-        options:
-            task_queue: "q1"
+	worker w
+		options:
+			task_queue: "q1"
+	nexus endpoint Ep
+		options:
+			task_queue: "q1"
 
 namespace ns2:
-    worker w
-        options:
-            task_queue: "q2"
-    nexus endpoint Ep
-        options:
-            task_queue: "q2"
+	worker w
+		options:
+			task_queue: "q2"
+	nexus endpoint Ep
+		options:
+			task_queue: "q2"
 `
 	file := mustParse(t, input)
 	errs := Resolve(file)
@@ -655,23 +655,23 @@ namespace ns2:
 
 func TestNexusUndefinedEndpoint(t *testing.T) {
 	input := `nexus service Svc:
-    async Op workflow W
+	async Op workflow W
 
 workflow W():
-    nexus MissingEndpoint Svc.Op(x) -> result
-    close complete(result)
+	nexus MissingEndpoint Svc.Op(x) -> result
+	close complete(result)
 
 worker w:
-    workflow W
-    nexus service Svc
+	workflow W
+	nexus service Svc
 
 namespace ns:
-    worker w
-        options:
-            task_queue: "q"
-    nexus endpoint RealEndpoint
-        options:
-            task_queue: "q"
+	worker w
+		options:
+			task_queue: "q"
+	nexus endpoint RealEndpoint
+		options:
+			task_queue: "q"
 `
 	file := mustParse(t, input)
 	errs := Resolve(file)
@@ -682,23 +682,23 @@ namespace ns:
 
 func TestNexusUndefinedService(t *testing.T) {
 	input := `nexus service RealService:
-    async Op workflow W
+	async Op workflow W
 
 workflow W():
-    nexus Ep MissingService.Op(x) -> result
-    close complete(result)
+	nexus Ep MissingService.Op(x) -> result
+	close complete(result)
 
 worker w:
-    workflow W
-    nexus service RealService
+	workflow W
+	nexus service RealService
 
 namespace ns:
-    worker w
-        options:
-            task_queue: "q"
-    nexus endpoint Ep
-        options:
-            task_queue: "q"
+	worker w
+		options:
+			task_queue: "q"
+	nexus endpoint Ep
+		options:
+			task_queue: "q"
 `
 	file := mustParse(t, input)
 	errs := Resolve(file)
@@ -709,23 +709,23 @@ namespace ns:
 
 func TestNexusUndefinedOperation(t *testing.T) {
 	input := `nexus service Svc:
-    async RealOp workflow W
+	async RealOp workflow W
 
 workflow W():
-    nexus Ep Svc.MissingOp(x) -> result
-    close complete(result)
+	nexus Ep Svc.MissingOp(x) -> result
+	close complete(result)
 
 worker w:
-    workflow W
-    nexus service Svc
+	workflow W
+	nexus service Svc
 
 namespace ns:
-    worker w
-        options:
-            task_queue: "q"
-    nexus endpoint Ep
-        options:
-            task_queue: "q"
+	worker w
+		options:
+			task_queue: "q"
+	nexus endpoint Ep
+		options:
+			task_queue: "q"
 `
 	file := mustParse(t, input)
 	errs := Resolve(file)
@@ -737,7 +737,7 @@ namespace ns:
 func TestNexusDetachWithResult(t *testing.T) {
 	// The parser itself rejects detach nexus with a result binding.
 	input := `workflow W():
-    detach nexus Ep Svc.Op(x) -> result
+	detach nexus Ep Svc.Op(x) -> result
 `
 	_, err := parser.ParseFile(input)
 	if err == nil {
@@ -750,10 +750,10 @@ func TestNexusDetachWithResult(t *testing.T) {
 
 func TestNexusAsyncUndefinedWorkflow(t *testing.T) {
 	input := `nexus service Svc:
-    async Op workflow MissingWorkflow
+	async Op workflow MissingWorkflow
 
 workflow W():
-    close complete(Result{})
+	close complete(Result{})
 `
 	file := mustParse(t, input)
 	errs := Resolve(file)
@@ -764,11 +764,11 @@ workflow W():
 
 func TestNexusWorkerUndefinedService(t *testing.T) {
 	input := `workflow W():
-    close complete(Result{})
+	close complete(Result{})
 
 worker w:
-    workflow W
-    nexus service MissingService
+	workflow W
+	nexus service MissingService
 `
 	file := mustParse(t, input)
 	errs := Resolve(file)
@@ -783,8 +783,8 @@ worker w:
 // import, not inferred from an empty endpoint set.
 func TestNexusCallNoEndpointsDefined(t *testing.T) {
 	input := `workflow W():
-    nexus Ep Svc.Op(x) -> result
-    close complete(result)
+	nexus Ep Svc.Op(x) -> result
+	close complete(result)
 `
 	file := mustParse(t, input)
 	errs := Resolve(file)
@@ -798,8 +798,8 @@ func TestNexusCallNoEndpointsDefined(t *testing.T) {
 // undefined-service error, not a warning.
 func TestNexusCallNoServicesDefined(t *testing.T) {
 	input := `workflow W():
-    nexus Ep Svc.Op(x) -> result
-    close complete(result)
+	nexus Ep Svc.Op(x) -> result
+	close complete(result)
 `
 	file := mustParse(t, input)
 	errs := Resolve(file)
@@ -812,16 +812,16 @@ func TestNexusCallNoServicesDefined(t *testing.T) {
 
 func TestPriorityNestedSchema(t *testing.T) {
 	input := `workflow Foo(x: int) -> (int):
-    activity Bar(x) -> y
-        options:
-            priority:
-                priority_key: 1
-                fairness_key: "high"
-                fairness_weight: 9.0
-    return y
+	activity Bar(x) -> y
+		options:
+			priority:
+				priority_key: 1
+				fairness_key: "high"
+				fairness_weight: 9.0
+	return y
 
 activity Bar(x: int) -> (int):
-    return x
+	return x
 `
 	file := mustParse(t, input)
 	errs := Resolve(file)
@@ -834,32 +834,32 @@ activity Bar(x: int) -> (int):
 
 func TestNexusEndpointResolutionOnAwaitAndPromise(t *testing.T) {
 	input := `nexus service Svc:
-    async Op workflow W
+	async Op workflow W
 
 workflow W():
-    close complete(Result{})
+	close complete(Result{})
 
 workflow Caller():
-    await nexus Ep Svc.Op(x) -> result
-    promise p <- nexus Ep Svc.Op(x)
-    close complete(result)
+	await nexus Ep Svc.Op(x) -> result
+	promise p <- nexus Ep Svc.Op(x)
+	close complete(result)
 
 activity Dummy():
-    pass()
+	pass()
 
 worker w:
-    workflow W
-    workflow Caller
-    activity Dummy
-    nexus service Svc
+	workflow W
+	workflow Caller
+	activity Dummy
+	nexus service Svc
 
 namespace ns:
-    worker w
-        options:
-            task_queue: "q"
-    nexus endpoint Ep
-        options:
-            task_queue: "q"
+	worker w
+		options:
+			task_queue: "q"
+	nexus endpoint Ep
+		options:
+			task_queue: "q"
 `
 	file := mustParse(t, input)
 	errs := Resolve(file)
@@ -911,27 +911,27 @@ namespace ns:
 
 func TestWorkerRefResolution(t *testing.T) {
 	input := `workflow ProcessOrder(orderId: string) -> (Result):
-    activity ChargePayment(orderId) -> payment
-    return Result{payment: payment}
+	activity ChargePayment(orderId) -> payment
+	return Result{payment: payment}
 
 activity ChargePayment(orderId: string) -> (Payment):
-    return charge(orderId)
+	return charge(orderId)
 
 nexus service OrderService:
-    async PlaceOrder workflow ProcessOrder
+	async PlaceOrder workflow ProcessOrder
 
 worker orderWorker:
-    workflow ProcessOrder
-    activity ChargePayment
-    nexus service OrderService
+	workflow ProcessOrder
+	activity ChargePayment
+	nexus service OrderService
 
 namespace orders:
-    worker orderWorker
-        options:
-            task_queue: "orderProcessing"
-    nexus endpoint OrderEndpoint
-        options:
-            task_queue: "orderProcessing"
+	worker orderWorker
+		options:
+			task_queue: "orderProcessing"
+	nexus endpoint OrderEndpoint
+		options:
+			task_queue: "orderProcessing"
 `
 	file := mustParse(t, input)
 	errs := Resolve(file)
@@ -983,15 +983,15 @@ namespace orders:
 
 func TestNamespaceWorkerResolution(t *testing.T) {
 	input := `workflow Foo(x: int) -> (int):
-    return x
+	return x
 
 worker myWorker:
-    workflow Foo
+	workflow Foo
 
 namespace myNs:
-    worker myWorker
-        options:
-            task_queue: "q"
+	worker myWorker
+		options:
+			task_queue: "q"
 `
 	file := mustParse(t, input)
 	errs := Resolve(file)
@@ -1020,12 +1020,12 @@ namespace myNs:
 
 func TestSignalSendResolution(t *testing.T) {
 	input := `workflow OrderSaga(order):
-    promise pay <- workflow ProcessPayment(order)
-    signal pay.OrderShipped(shipmentId)
+	promise pay <- workflow ProcessPayment(order)
+	signal pay.OrderShipped(shipmentId)
 
 workflow ProcessPayment(order):
-    signal OrderShipped(id):
-        shipped = true
+	signal OrderShipped(id):
+		shipped = true
 `
 	file := mustParse(t, input)
 	errs := Resolve(file)
@@ -1047,8 +1047,8 @@ workflow ProcessPayment(order):
 
 func TestSignalSendHandleNotWorkflow(t *testing.T) {
 	input := `workflow Foo(x):
-    promise t <- timer(5m)
-    signal t.Something(x)
+	promise t <- timer(5m)
+	signal t.Something(x)
 `
 	file := mustParse(t, input)
 	errs := Resolve(file)
@@ -1065,11 +1065,11 @@ func TestSignalSendHandleNotWorkflow(t *testing.T) {
 
 func TestSignalSendUndefinedSignal(t *testing.T) {
 	input := `workflow OrderSaga(order):
-    promise pay <- workflow ProcessPayment(order)
-    signal pay.NopeSignal(x)
+	promise pay <- workflow ProcessPayment(order)
+	signal pay.NopeSignal(x)
 
 workflow ProcessPayment(order):
-    return done
+	return done
 `
 	file := mustParse(t, input)
 	errs := Resolve(file)
@@ -1086,8 +1086,8 @@ workflow ProcessPayment(order):
 
 func TestSignalSendUndefinedHandle(t *testing.T) {
 	input := `workflow Foo(x):
-    log(start)
-    signal ghost.Something(x)
+	log(start)
+	signal ghost.Something(x)
 `
 	file := mustParse(t, input)
 	errs := Resolve(file)
@@ -1104,8 +1104,8 @@ func TestSignalSendTargetWorkflowUndefined(t *testing.T) {
 	// resolution reports it; signal-send resolution must degrade gracefully
 	// (no duplicate, no panic) and leave the handle unresolved.
 	input := `workflow Foo(order):
-    promise pay <- workflow Missing(order)
-    signal pay.OrderShipped(x)
+	promise pay <- workflow Missing(order)
+	signal pay.OrderShipped(x)
 `
 	file := mustParse(t, input)
 	errs := Resolve(file)
@@ -1149,10 +1149,10 @@ func TestDiagnosticOrder(t *testing.T) {
 	const n = 8
 	var b strings.Builder
 	for i := range n {
-		fmt.Fprintf(&b, "worker w%d:\n    workflow Missing%d\n\n", i, i)
+		fmt.Fprintf(&b, "worker w%d:\n\tworkflow Missing%d\n\n", i, i)
 	}
 	for i := range n {
-		fmt.Fprintf(&b, "namespace ns%d:\n    worker ghost%d\n\n", i, i)
+		fmt.Fprintf(&b, "namespace ns%d:\n\tworker ghost%d\n\n", i, i)
 	}
 	for run := range 20 {
 		var got []string
@@ -1174,38 +1174,38 @@ func TestDiagnosticOrder(t *testing.T) {
 // DUPLICATE_WORKFLOW does. Repeated so map order cannot pass by luck.
 func TestDuplicateEndpointDefinitionOrder(t *testing.T) {
 	b := `namespace nc:
-    nexus endpoint e
-        options:
-            task_queue: "q"
+	nexus endpoint e
+		options:
+			task_queue: "q"
 
 namespace na:
-    nexus endpoint e
-        options:
-            task_queue: "q"
+	nexus endpoint e
+		options:
+			task_queue: "q"
 
 workflow Dup():
-    close complete()
+	close complete()
 `
 	a := `nexus service S:
-    sync Op() -> ():
-        close complete()
+	sync Op() -> ():
+		close complete()
 
 workflow W():
-    nexus e S.Op()
-    close complete()
+	nexus e S.Op()
+	close complete()
 
 namespace nd:
-    nexus endpoint e
-        options:
-            task_queue: "q"
+	nexus endpoint e
+		options:
+			task_queue: "q"
 
 namespace nb:
-    nexus endpoint e
-        options:
-            task_queue: "q"
+	nexus endpoint e
+		options:
+			task_queue: "q"
 
 workflow Dup():
-    close complete()
+	close complete()
 `
 	want := []string{
 		`a.twf:10:5 duplicate nexus endpoint name "e": defined in namespace nc and namespace nd`,
@@ -1261,32 +1261,32 @@ func TestDuplicateKeepsFirst(t *testing.T) {
 	}{
 		{
 			kind: "workflow", errKind: ErrDuplicateWorkflow,
-			decl: "workflow X():\n    close complete()\n",
-			use:  "workflow Caller():\n    workflow X()\n    close complete()\n",
+			decl: "workflow X():\n\tclose complete()\n",
+			use:  "workflow Caller():\n\tworkflow X()\n\tclose complete()\n",
 			resolved: func(f *ast.File) ast.Node {
 				return caller(f).Body[0].(*ast.WorkflowCall).Workflow.Resolved
 			},
 		},
 		{
 			kind: "activity", errKind: ErrDuplicateActivity,
-			decl: "activity X(x: X) -> (X):\n    return x\n",
-			use:  "workflow Caller(x: X):\n    activity X(x) -> r\n    close complete(r)\n",
+			decl: "activity X(x: X) -> (X):\n\treturn x\n",
+			use:  "workflow Caller(x: X):\n\tactivity X(x) -> r\n\tclose complete(r)\n",
 			resolved: func(f *ast.File) ast.Node {
 				return caller(f).Body[0].(*ast.ActivityCall).Activity.Resolved
 			},
 		},
 		{
 			kind: "worker", errKind: ErrDuplicateWorker,
-			decl: "worker X:\n    workflow W\n",
-			use:  "workflow W():\n    close complete()\n\nnamespace n:\n    worker X\n        options:\n            task_queue: \"q\"\n",
+			decl: "worker X:\n\tworkflow W\n",
+			use:  "workflow W():\n\tclose complete()\n\nnamespace n:\n\tworker X\n\t\toptions:\n\t\t\ttask_queue: \"q\"\n",
 			resolved: func(f *ast.File) ast.Node {
 				return findNamespace(f).Workers[0].Worker.Resolved
 			},
 		},
 		{
 			kind: "nexus service", errKind: ErrDuplicateNexusService,
-			decl: "nexus service X:\n    sync Op() -> ():\n        close complete()\n",
-			use:  "workflow Caller():\n    nexus e X.Op()\n    close complete()\n\nnamespace n:\n    nexus endpoint e\n        options:\n            task_queue: \"q\"\n",
+			decl: "nexus service X:\n\tsync Op() -> ():\n\t\tclose complete()\n",
+			use:  "workflow Caller():\n\tnexus e X.Op()\n\tclose complete()\n\nnamespace n:\n\tnexus endpoint e\n\t\toptions:\n\t\t\ttask_queue: \"q\"\n",
 			resolved: func(f *ast.File) ast.Node {
 				return caller(f).Body[0].(*ast.NexusCall).Service.Resolved
 			},
@@ -1294,8 +1294,8 @@ func TestDuplicateKeepsFirst(t *testing.T) {
 		{
 			// A namespace is referenced through its endpoints.
 			kind: "namespace", errKind: ErrDuplicateNamespace,
-			decl: "namespace X:\n    nexus endpoint e\n        options:\n            task_queue: \"q\"\n",
-			use:  "nexus service S:\n    sync Op() -> ():\n        close complete()\n\nworkflow Caller():\n    nexus e S.Op()\n    close complete()\n",
+			decl: "namespace X:\n\tnexus endpoint e\n\t\toptions:\n\t\t\ttask_queue: \"q\"\n",
+			use:  "nexus service S:\n\tsync Op() -> ():\n\t\tclose complete()\n\nworkflow Caller():\n\tnexus e S.Op()\n\tclose complete()\n",
 			resolved: func(f *ast.File) ast.Node {
 				return caller(f).Body[0].(*ast.NexusCall).Endpoint.Resolved
 			},
@@ -1361,20 +1361,20 @@ func TestDuplicateKeepsFirst(t *testing.T) {
 // line, in DUPLICATE_*'s format, rather than the namespace twice.
 func TestDuplicateEndpointInOneNamespace(t *testing.T) {
 	src := `workflow W():
-    nexus e S.Op()
-    close complete()
+	nexus e S.Op()
+	close complete()
 
 nexus service S:
-    sync Op() -> ():
-        close complete()
+	sync Op() -> ():
+		close complete()
 
 namespace n:
-    nexus endpoint e
-        options:
-            task_queue: "a"
-    nexus endpoint e
-        options:
-            task_queue: "b"
+	nexus endpoint e
+		options:
+			task_queue: "a"
+	nexus endpoint e
+		options:
+			task_queue: "b"
 `
 	file := mustParse(t, src)
 	var got []string
@@ -1396,25 +1396,25 @@ namespace n:
 // shares with m are both the first's.
 func TestDuplicateNamespaceChecksFirst(t *testing.T) {
 	src := `namespace m:
-    nexus endpoint e
-        options:
-            task_queue: "q"
+	nexus endpoint e
+		options:
+			task_queue: "q"
 
 namespace n:
-    worker ghost
-        options:
-            task_queue: "q"
-    nexus endpoint e
-        options:
-            task_queue: "q"
+	worker ghost
+		options:
+			task_queue: "q"
+	nexus endpoint e
+		options:
+			task_queue: "q"
 
 namespace n:
-    worker spook
-        options:
-            task_queue: "q"
-    nexus endpoint f
-        options:
-            task_queue: "q"
+	worker spook
+		options:
+			task_queue: "q"
+	nexus endpoint f
+		options:
+			task_queue: "q"
 `
 	want := []string{
 		`7:12 NAMESPACE_UNDEFINED_WORKER namespace n references undefined worker: ghost`,
@@ -1440,36 +1440,36 @@ namespace n:
 // signature differs from the later one's.
 func TestDuplicateDeclarationKeepsFirst(t *testing.T) {
 	src := `workflow W(x: X):
-    state:
-        condition Ready
-        condition Ready
-    signal Ping(a: A):
-        set Ready
-    signal Ping(b: B):
-        set Ready
-    query Status() -> (S):
-        return s
-    query Status(v: V) -> (T):
-        return t
-    update Bump(n: N) -> (R):
-        return r
-    update Bump() -> (Q):
-        return q
-    await signal Ping
-    await update Bump
-    await Ready
-    nexus e S.Op()
-    close complete()
+	state:
+		condition Ready
+		condition Ready
+	signal Ping(a: A):
+		set Ready
+	signal Ping(b: B):
+		set Ready
+	query Status() -> (S):
+		return s
+	query Status(v: V) -> (T):
+		return t
+	update Bump(n: N) -> (R):
+		return r
+	update Bump() -> (Q):
+		return q
+	await signal Ping
+	await update Bump
+	await Ready
+	nexus e S.Op()
+	close complete()
 
 nexus service S:
-    sync Op(a: A) -> (R):
-        return r
-    async Op workflow W
+	sync Op(a: A) -> (R):
+		return r
+	async Op workflow W
 
 namespace n:
-    nexus endpoint e
-        options:
-            task_queue: "q"
+	nexus endpoint e
+		options:
+			task_queue: "q"
 `
 	file := mustParse(t, src)
 	var got []string

@@ -22,7 +22,7 @@ func TestCallersSkipChangedLine(t *testing.T) {
 		want int
 	}{
 		{"current", `            allowed_caller_namespaces: ["Shop"]`, 1},
-		{"changed on disk", `            task_queue: "Shop"`, 0},
+		{"changed on disk", `	task_queue: "Shop"`, 0},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			var x indexer

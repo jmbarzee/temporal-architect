@@ -11,7 +11,7 @@ import (
 
 func TestParseTemplatedNamespaceName(t *testing.T) {
 	input := `namespace fabric-shard-{org}:
-    nexus endpoint fabric-shard-{org}-BootstrapShard
+	nexus endpoint fabric-shard-{org}-BootstrapShard
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -38,7 +38,7 @@ func TestParseTemplatedNamespaceName(t *testing.T) {
 
 func TestParsePlainHyphenNamespaceName(t *testing.T) {
 	input := `namespace fabric-shard:
-    nexus endpoint fabric-shard-BootstrapShard
+	nexus endpoint fabric-shard-BootstrapShard
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -58,7 +58,7 @@ func TestParsePlainHyphenNamespaceName(t *testing.T) {
 
 func TestParseMultipleAndRepeatedParams(t *testing.T) {
 	input := `namespace region-{region}-{org}-{region}:
-    nexus endpoint region-{region}-{org}-{region}-Ep
+	nexus endpoint region-{region}-{org}-{region}-Ep
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -72,7 +72,7 @@ func TestParseMultipleAndRepeatedParams(t *testing.T) {
 
 func TestParseTemplatedNexusCallEndpointRef(t *testing.T) {
 	input := `workflow Foo(x: int) -> (Result):
-    nexus fabric-shard-{org}-BootstrapShard Svc.Op(card) -> r
+	nexus fabric-shard-{org}-BootstrapShard Svc.Op(card) -> r
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -90,7 +90,7 @@ func TestParseTemplatedNexusCallEndpointRef(t *testing.T) {
 
 func TestParseTemplatedAwaitNexusTargetRef(t *testing.T) {
 	input := `workflow Foo(x: int) -> (Result):
-    await nexus fabric-shard-{org}-BootstrapShard Svc.Op(card) -> r
+	await nexus fabric-shard-{org}-BootstrapShard Svc.Op(card) -> r
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -109,7 +109,7 @@ func TestParseTemplatedAwaitNexusTargetRef(t *testing.T) {
 
 func TestParseNamespaceNameRejectsDot(t *testing.T) {
 	input := `namespace fabric.shard:
-    nexus endpoint Ep
+	nexus endpoint Ep
 `
 	_, err := ParseFile(input)
 	if err == nil {
@@ -122,18 +122,18 @@ func TestParseNamespaceNameRejectsDot(t *testing.T) {
 // change.
 func TestStaticNamespaceJSONByteIdentical(t *testing.T) {
 	input := `worker w:
-    workflow W
+	workflow W
 
 workflow W():
-    return x
+	return x
 
 namespace orders:
-    worker w
-        options:
-            task_queue: "q"
-    nexus endpoint OrderEndpoint
-        options:
-            task_queue: "q"
+	worker w
+		options:
+			task_queue: "q"
+	nexus endpoint OrderEndpoint
+		options:
+			task_queue: "q"
 `
 	file, err := ParseFile(input)
 	if err != nil {
@@ -150,7 +150,7 @@ namespace orders:
 
 func TestTemplatedNamespaceJSONEmitsParams(t *testing.T) {
 	input := `namespace fabric-shard-{org}:
-    nexus endpoint fabric-shard-{org}-BootstrapShard
+	nexus endpoint fabric-shard-{org}-BootstrapShard
 `
 	file, err := ParseFile(input)
 	if err != nil {

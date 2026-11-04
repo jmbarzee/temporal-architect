@@ -12,11 +12,11 @@ import (
 
 const (
 	callerTWF = `workflow Caller():
-    workflow Callee() -> r
-    close complete(r)
+	workflow Callee() -> r
+	close complete(r)
 `
 	calleeTWF = `workflow Callee():
-    close complete("ok")
+	close complete("ok")
 `
 )
 
@@ -51,7 +51,7 @@ func TestParseSourcesOverlayReplacesDisk(t *testing.T) {
 	dir := t.TempDir()
 	writeFile(t, filepath.Join(dir, "callee.twf"), calleeTWF)
 	caller := filepath.Join(dir, "caller.twf")
-	writeFile(t, caller, "workflow Caller():\n    close complete(\"stale\")\n")
+	writeFile(t, caller, "workflow Caller():\n\tclose complete(\"stale\")\n")
 
 	res, err := pipeline.ParseSources(pipeline.Request{
 		Inputs:   []pipeline.Input{{Path: dir, Kind: pipeline.Tree}},
@@ -124,7 +124,7 @@ func TestParseSourcesFileReachedTwiceParsesOnce(t *testing.T) {
 
 func TestParseSourcesTypedErrorsCarryAttributedFile(t *testing.T) {
 	res, err := pipeline.ParseSources(pipeline.Request{
-		Virtual: []pipeline.Source{{Name: "solo.twf", Content: "workflow W():\n    activity Ghost()\n"}},
+		Virtual: []pipeline.Source{{Name: "solo.twf", Content: "workflow W():\n\tactivity Ghost()\n"}},
 	})
 	if err != nil {
 		t.Fatalf("ParseSources: %v", err)
@@ -172,22 +172,22 @@ func TestParseSourcesRejectsBadRequests(t *testing.T) {
 func TestGraphDiagnosticNamesTheCallingFile(t *testing.T) {
 	dir := t.TempDir()
 	writeFile(t, filepath.Join(dir, "a_flow.twf"), `workflow Bad(input: string) -> (string):
-    activity Phantom(input) -> r
-        options:
-            task_queue: "nonexistent"
-    close complete(r)
+	activity Phantom(input) -> r
+		options:
+			task_queue: "nonexistent"
+	close complete(r)
 `)
 	writeFile(t, filepath.Join(dir, "b_deploy.twf"), `activity Phantom(input: string) -> (string):
-    return input
+	return input
 
 worker badWorker:
-    workflow Bad
-    activity Phantom
+	workflow Bad
+	activity Phantom
 
 namespace bad:
-    worker badWorker
-        options:
-            task_queue: "real-queue"
+	worker badWorker
+		options:
+			task_queue: "real-queue"
 `)
 	payload, err := pipeline.Build([]string{dir})
 	if err != nil {

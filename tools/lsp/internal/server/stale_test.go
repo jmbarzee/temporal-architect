@@ -12,8 +12,8 @@ import (
 // positions: rename fails, references drop its spellings, and definition
 // finds nothing there. Once the change is reported, rename reaches it again.
 func TestRenameRefusesStaleClosedFile(t *testing.T) {
-	const closed = "activity Do(x: string):\n    do(x)\n"
-	const open = "workflow W(x: string):\n    activity Do(x)\n    close complete()\n"
+	const closed = "activity Do(x: string):\n\tdo(x)\n"
+	const open = "workflow W(x: string):\n\tactivity Do(x)\n\tclose complete()\n"
 	for _, tt := range []struct {
 		name   string
 		change func(path string) error

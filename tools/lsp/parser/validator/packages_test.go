@@ -87,31 +87,31 @@ func TestCrossPackageCoverageIndependent(t *testing.T) {
 package alpha
 
 workflow Process(id):
-    close complete(id)
+	close complete(id)
 
 worker aw:
-    workflow Process
+	workflow Process
 
 namespace ans:
-    worker aw
-        options:
-            task_queue: "aq"
+	worker aw
+		options:
+			task_queue: "aq"
 `
 	beta := `package beta
 
 workflow Process(id):
-    close complete(id)
+	close complete(id)
 
 activity Helper(id):
-    return id
+	return id
 
 worker bw:
-    activity Helper
+	activity Helper
 
 namespace bns:
-    worker bw
-        options:
-            task_queue: "bq"
+	worker bw
+		options:
+			task_queue: "bq"
 `
 	errs := Validate(mustMergeAndResolve(t, alpha, beta))
 	if got := countKind(errs, ErrUncoveredWorkflow); got != 1 {
@@ -130,28 +130,28 @@ func TestCrossPackageWorkerNameCollision(t *testing.T) {
 package alpha
 
 workflow Alpha(id):
-    close complete(id)
+	close complete(id)
 
 worker w:
-    workflow Alpha
+	workflow Alpha
 
 namespace ans:
-    worker w
-        options:
-            task_queue: "aq"
+	worker w
+		options:
+			task_queue: "aq"
 `
 	beta := `package beta
 
 workflow Beta(id):
-    close complete(id)
+	close complete(id)
 
 worker w:
-    workflow Beta
+	workflow Beta
 
 namespace bns:
-    worker w
-        options:
-            task_queue: "bq"
+	worker w
+		options:
+			task_queue: "bq"
 `
 	errs := Validate(mustMergeAndResolve(t, alpha, beta))
 	if got := countKind(errs, ErrUncoveredWorkflow); got != 0 {
@@ -173,27 +173,27 @@ func TestCrossPackageRoutingIndependent(t *testing.T) {
 package alpha
 
 workflow Caller(x):
-    activity Charge(x) -> y
-    close complete(y)
+	activity Charge(x) -> y
+	close complete(y)
 
 activity Charge(x):
-    return x
+	return x
 `
 	beta := `package beta
 
 import "acme/alpha"
 
 activity Charge(x):
-    return x
+	return x
 
 worker shared:
-    workflow alpha.Caller
-    activity Charge
+	workflow alpha.Caller
+	activity Charge
 
 namespace prod:
-    worker shared
-        options:
-            task_queue: "shared"
+	worker shared
+		options:
+			task_queue: "shared"
 `
 	errs := Validate(mustMergeAndResolve(t, alpha, beta))
 	if !hasError(errs, `activity Charge is not on any worker polling task queue "shared" in namespace prod (inherited from workflow Caller)`) {
@@ -211,34 +211,34 @@ func TestCrossPackageEndpointServiceLinkage(t *testing.T) {
 package alpha
 
 nexus service Svc:
-    async Op workflow W
+	async Op workflow W
 
 workflow W():
-    nexus Ep Svc.Op(x) -> result
-    close complete(result)
+	nexus Ep Svc.Op(x) -> result
+	close complete(result)
 `
 	beta := `package beta
 
 import "acme/alpha"
 
 nexus service Svc:
-    async Op workflow BW
+	async Op workflow BW
 
 workflow BW():
-    close complete(0)
+	close complete(0)
 
 worker shared:
-    workflow alpha.W
-    nexus service Svc
-    workflow BW
+	workflow alpha.W
+	nexus service Svc
+	workflow BW
 
 namespace prod:
-    worker shared
-        options:
-            task_queue: "q"
-    nexus endpoint Ep
-        options:
-            task_queue: "q"
+	worker shared
+		options:
+			task_queue: "q"
+	nexus endpoint Ep
+		options:
+			task_queue: "q"
 `
 	errs := Validate(mustMergeAndResolve(t, alpha, beta))
 	if !hasError(errs, `nexus endpoint Ep routes to task queue "q" in namespace prod, but no worker on that queue has service Svc`) {
@@ -255,28 +255,28 @@ func TestCrossPackageNamespaceSharesQueues(t *testing.T) {
 package alpha
 
 workflow A():
-    close complete()
+	close complete()
 
 worker aw:
-    workflow A
+	workflow A
 
 namespace prod:
-    worker aw
-        options:
-            task_queue: "shared"
+	worker aw
+		options:
+			task_queue: "shared"
 `
 	beta := `package beta
 
 workflow B():
-    close complete()
+	close complete()
 
 worker bw:
-    workflow B
+	workflow B
 
 namespace prod:
-    worker bw
-        options:
-            task_queue: "shared"
+	worker bw
+		options:
+			task_queue: "shared"
 `
 	errs := Validate(mustMergeAndResolve(t, alpha, beta))
 	if got := countKind(errs, ErrTaskQueueMismatch); got != 1 {
@@ -291,15 +291,15 @@ func TestSinglePackageClauseUnchanged(t *testing.T) {
 	src := `package solo
 
 workflow Only(id):
-    close complete(id)
+	close complete(id)
 
 worker w:
-    workflow Only
+	workflow Only
 
 namespace ns:
-    worker w
-        options:
-            task_queue: "q"
+	worker w
+		options:
+			task_queue: "q"
 `
 	errs := Validate(mustMergeAndResolve(t, src))
 	if got := countKind(errs, ErrUncoveredWorkflow); got != 0 {

@@ -10,72 +10,72 @@ import (
 // pairSource declares two of each kind in one scope, so each can be renamed
 // to its sibling's name.
 const pairSource = `workflow Parent(wid: string):
-    state:
-        condition ready
-        condition idle
-    signal Go():
-        set ready
-    signal Stop():
-        unset ready
-    query Status() -> (string):
-        return "ok"
-    query Size() -> (string):
-        return "ok"
-    update Set():
-        set idle
-    update Reset():
-        unset idle
-    promise done <- activity Do(wid)
-    await done
-    await ready
-    activity Undo(wid)
-    nexus Orders Orders.Place(wid)
-    nexus Refunds Orders.Cancel(wid)
-    close complete()
+	state:
+		condition ready
+		condition idle
+	signal Go():
+		set ready
+	signal Stop():
+		unset ready
+	query Status() -> (string):
+		return "ok"
+	query Size() -> (string):
+		return "ok"
+	update Set():
+		set idle
+	update Reset():
+		unset idle
+	promise done <- activity Do(wid)
+	await done
+	await ready
+	activity Undo(wid)
+	nexus Orders Orders.Place(wid)
+	nexus Refunds Orders.Cancel(wid)
+	close complete()
 
 workflow Child(wid: string):
-    id_scheme: "child-{wid}"
-    close complete()
+	id_scheme: "child-{wid}"
+	close complete()
 
 activity Do(wid: string):
-    do(wid)
+	do(wid)
 
 activity Undo(wid: string):
-    undo(wid)
+	undo(wid)
 
 nexus service Orders:
-    async Place workflow Child
-    async Cancel workflow Child
+	async Place workflow Child
+	async Cancel workflow Child
 
 nexus service Billing:
-    async Pay workflow Child
+	async Pay workflow Child
 
 worker W:
-    workflow Parent
-    workflow Child
-    activity Do
-    activity Undo
-    nexus service Orders
-    nexus service Billing
+	workflow Parent
+	workflow Child
+	activity Do
+	activity Undo
+	nexus service Orders
+	nexus service Billing
 
 worker V:
-    activity Do
+	activity Do
 
 namespace Prod:
-    worker W
-        options:
-            task_queue: "q"
-    nexus endpoint Orders
-        options:
-            task_queue: "q"
-    nexus endpoint Refunds
-        options:
-            task_queue: "q"
+	worker W
+		options:
+			task_queue: "q"
+	nexus endpoint Orders
+		options:
+			task_queue: "q"
+	nexus endpoint Refunds
+		options:
+			task_queue: "q"
 
 namespace Stage:
-    worker V
-        options:
-            task_queue: "v"
+	worker V
+		options:
+			task_queue: "v"
 `
 
 // spotIn is the position of word's first whole-word occurrence on the first
@@ -196,16 +196,16 @@ func TestRenameRejectsBadNames(t *testing.T) {
 const extraBillingSource = `package billing
 
 workflow Extra(wid: string):
-    close complete()
+	close complete()
 
 activity Refund(wid: string):
-    refund(wid)
+	refund(wid)
 
 nexus service Ledger:
-    async Post workflow Extra
+	async Post workflow Extra
 
 worker X:
-    workflow Extra
+	workflow Extra
 `
 
 // TestRenameChecksTheWholeRun: a name is taken by a declaration in another
@@ -213,8 +213,8 @@ worker X:
 // the renamed one already registers; a name declared only in another package
 // is free.
 func TestRenameChecksTheWholeRun(t *testing.T) {
-	appWithSettle := strings.Replace(appSource, "worker B:\n    activity billing.Charge\n", "worker B:\n    activity billing.Charge\n    activity Settle\n", 1) +
-		"\nactivity Settle(wid: string):\n    settle(wid)\n"
+	appWithSettle := strings.Replace(appSource, "worker B:\n\tactivity billing.Charge\n", "worker B:\n\tactivity billing.Charge\n\tactivity Settle\n", 1) +
+		"\nactivity Settle(wid: string):\n\tsettle(wid)\n"
 	tests := []struct {
 		name, file, needle, word, newName, err string
 	}{
@@ -261,28 +261,28 @@ func TestRenameChecksTheWholeRun(t *testing.T) {
 // familySource holds a namespace family and an endpoint family, the endpoint
 // called by its templated name.
 const familySource = `workflow Caller(wid: string):
-    nexus orders-{org} Orders.Place(wid)
-    close complete()
+	nexus orders-{org} Orders.Place(wid)
+	close complete()
 
 workflow Child(wid: string):
-    id_scheme: "child-{wid}"
-    close complete()
+	id_scheme: "child-{wid}"
+	close complete()
 
 nexus service Orders:
-    async Place workflow Child
+	async Place workflow Child
 
 worker W:
-    workflow Caller
-    workflow Child
-    nexus service Orders
+	workflow Caller
+	workflow Child
+	nexus service Orders
 
 namespace prod-{org}:
-    worker W
-        options:
-            task_queue: "q"
-    nexus endpoint orders-{org}
-        options:
-            task_queue: "q"
+	worker W
+		options:
+			task_queue: "q"
+	nexus endpoint orders-{org}
+		options:
+			task_queue: "q"
 `
 
 // TestRenameKeepsTemplateParams: a deployment name's template params make it
@@ -351,41 +351,41 @@ func TestRenameKeepsTemplateParams(t *testing.T) {
 // callerSource lists two of its namespaces, one static and one a family, in an
 // endpoint's allowed_caller_namespaces, beside one outside the design.
 const callerSource = `workflow Caller(wid: string):
-    nexus orders Orders.Place(wid)
-    close complete()
+	nexus orders Orders.Place(wid)
+	close complete()
 
 workflow Child(wid: string):
-    id_scheme: "child-{wid}"
-    close complete()
+	id_scheme: "child-{wid}"
+	close complete()
 
 nexus service Orders:
-    async Place workflow Child
+	async Place workflow Child
 
 worker C:
-    workflow Caller
+	workflow Caller
 
 worker S:
-    workflow Child
-    nexus service Orders
+	workflow Child
+	nexus service Orders
 
 namespace Shop:
-    worker C
-        options:
-            task_queue: "c"
+	worker C
+		options:
+			task_queue: "c"
 
 namespace tenant-{org}:
-    worker C
-        options:
-            task_queue: "t"
+	worker C
+		options:
+			task_queue: "t"
 
 namespace Billing:
-    worker S
-        options:
-            task_queue: "s"
-    nexus endpoint orders
-        options:
-            task_queue: "s"
-            allowed_caller_namespaces: ["Shop", "tenant-{org}", "Outside"]
+	worker S
+		options:
+			task_queue: "s"
+	nexus endpoint orders
+		options:
+			task_queue: "s"
+			allowed_caller_namespaces: ["Shop", "tenant-{org}", "Outside"]
 `
 
 // TestRenameRewritesAllowedCallers: renaming a namespace rewrites the

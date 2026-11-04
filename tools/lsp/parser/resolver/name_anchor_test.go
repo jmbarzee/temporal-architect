@@ -18,25 +18,25 @@ func TestReferenceDiagnosticsAnchorAtName(t *testing.T) {
 		word string
 		nth  int
 	}{
-		{"undefined signal on a type send", []string{"workflow P(wid: string):\n    signal C.Nope()\n        id: wid\n    close complete()\n\nworkflow C(wid: string):\n    close complete()\n"},
+		{"undefined signal on a type send", []string{"workflow P(wid: string):\n\tsignal C.Nope()\n\t\tid: wid\n\tclose complete()\n\nworkflow C(wid: string):\n\tclose complete()\n"},
 			ErrUndefinedSignal, 2, "Nope", 0},
-		{"undefined signal on a handle send", []string{"workflow P(wid: string):\n    promise h <- workflow C(wid)\n    signal h.Nope()\n    close complete()\n\nworkflow C(wid: string):\n    close complete()\n"},
+		{"undefined signal on a handle send", []string{"workflow P(wid: string):\n\tpromise h <- workflow C(wid)\n\tsignal h.Nope()\n\tclose complete()\n\nworkflow C(wid: string):\n\tclose complete()\n"},
 			ErrSignalSendUndefinedSignal, 3, "Nope", 0},
-		{"undefined ident target", []string{"workflow P():\n    await missing\n    close complete()\n"},
+		{"undefined ident target", []string{"workflow P():\n\tawait missing\n\tclose complete()\n"},
 			ErrUndefinedPromiseOrCondition, 2, "missing", 0},
-		{"async operation's undefined workflow", []string{"nexus service S:\n    async Op workflow Missing\n"},
+		{"async operation's undefined workflow", []string{"nexus service S:\n\tasync Op workflow Missing\n"},
 			ErrNexusAsyncUndefinedWorkflow, 2, "Missing", 0},
-		{"namespace's undefined worker", []string{"namespace N:\n    worker Missing\n        options:\n            task_queue: \"q\"\n"},
+		{"namespace's undefined worker", []string{"namespace N:\n\tworker Missing\n\t\toptions:\n\t\t\ttask_queue: \"q\"\n"},
 			ErrNamespaceUndefinedWorker, 2, "Missing", 0},
-		{"nexus call's service qualifier", []string{"workflow P():\n    nexus Ep q.S.Op()\n    close complete()\n"},
+		{"nexus call's service qualifier", []string{"workflow P():\n\tnexus Ep q.S.Op()\n\tclose complete()\n"},
 			ErrQualifiedRefWithoutImport, 2, "q", 0},
-		{"async operation's workflow qualifier", []string{"nexus service S:\n    async Op workflow q.W\n"},
+		{"async operation's workflow qualifier", []string{"nexus service S:\n\tasync Op workflow q.W\n"},
 			ErrQualifiedRefWithoutImport, 2, "q", 0},
-		{"send head's qualifier", []string{"workflow P(wid: string):\n    signal q.C.Go()\n        id: wid\n    close complete()\n"},
+		{"send head's qualifier", []string{"workflow P(wid: string):\n\tsignal q.C.Go()\n\t\tid: wid\n\tclose complete()\n"},
 			ErrQualifiedRefWithoutImport, 2, "q", 0},
 		{"qualified send head's undefined workflow", []string{
-			"# path: acme/o\npackage o\n\nworkflow X():\n    close complete()\n",
-			"package p\n\nimport \"acme/o\"\n\nworkflow P(wid: string):\n    signal o.Missing.Go()\n        id: wid\n    close complete()\n",
+			"# path: acme/o\npackage o\n\nworkflow X():\n\tclose complete()\n",
+			"package p\n\nimport \"acme/o\"\n\nworkflow P(wid: string):\n\tsignal o.Missing.Go()\n\t\tid: wid\n\tclose complete()\n",
 		}, ErrUndefinedWorkflow, 6, "Missing", 0},
 	}
 	for _, tt := range tests {

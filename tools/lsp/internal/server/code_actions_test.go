@@ -36,17 +36,17 @@ func TestConvertReturnToClose(t *testing.T) {
 	tests := []struct {
 		name, stmt, want string
 	}{
-		{"value", "    return Result{ok: true}", "    close complete(Result{ok: true})"},
-		{"no value", "    return", "    close complete"},
-		{"parenthesized value", "    return (a, b)", "    close complete(a, b)"},
-		{"nested, deeper indentation", "    if (x):\n        return x", "    if (x):\n        close complete(x)"},
-		{"tab before the value", "    return\tx", "    close complete(x)"},
-		{"trailing comment", "    return x  # done", "    close complete(x)  # done"},
-		{"non-ASCII value and comment", "    return \"é😀\"  # ü😀", "    close complete(\"é😀\")  # ü😀"},
-		{"argument list over two lines", "    return Pack(a,\n        \"é😀\")  # ü", "    close complete(Pack(a,\n        \"é😀\"))  # ü"},
+		{"value", "\treturn Result{ok: true}", "\tclose complete(Result{ok: true})"},
+		{"no value", "\treturn", "\tclose complete"},
+		{"parenthesized value", "\treturn (a, b)", "\tclose complete(a, b)"},
+		{"nested, deeper indentation", "\tif (x):\n\t\treturn x", "\tif (x):\n\t\tclose complete(x)"},
+		{"tab before the value", "\treturn\tx", "\tclose complete(x)"},
+		{"trailing comment", "\treturn x  # done", "\tclose complete(x)  # done"},
+		{"non-ASCII value and comment", "\treturn \"é😀\"  # ü😀", "\tclose complete(\"é😀\")  # ü😀"},
+		{"argument list over two lines", "\treturn Pack(a,\n\t\t\"é😀\")  # ü", "\tclose complete(Pack(a,\n\t\t\"é😀\"))  # ü"},
 	}
 	const head = "workflow W() -> (Result):\n"
-	const tail = "\n    activity Do(x)\n\nactivity Do(x: string):\n    do(x)\n"
+	const tail = "\n\tactivity Do(x)\n\nactivity Do(x: string):\n\tdo(x)\n"
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			src := head + tt.stmt + tail
@@ -91,13 +91,13 @@ func TestConvertReturnToCloseSkipsHandlers(t *testing.T) {
 // inserts parses, a workflow's closing with `close complete`.
 func TestAddMissingDefinitionParses(t *testing.T) {
 	tests := []struct{ name, call, title string }{
-		{"workflow", "    workflow Missing(x)", "Add missing workflow 'Missing'"},
-		{"activity with a result", "    activity Missing(x) -> r", "Add missing activity 'Missing'"},
-		{"activity", "    activity Missing(x)", "Add missing activity 'Missing'"},
+		{"workflow", "\tworkflow Missing(x)", "Add missing workflow 'Missing'"},
+		{"activity with a result", "\tactivity Missing(x) -> r", "Add missing activity 'Missing'"},
+		{"activity", "\tactivity Missing(x)", "Add missing activity 'Missing'"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			src := "workflow W():\n" + tt.call + "\n    close complete\n"
+			src := "workflow W():\n" + tt.call + "\n\tclose complete\n"
 			at := protocol.Position{Line: 1, Character: 4}
 			actions := codeActions(t, src, protocol.Range{Start: at, End: at}, tt.title)
 			if len(actions) != 1 {
@@ -115,14 +115,14 @@ func TestAddMissingDefinitionParses(t *testing.T) {
 // TestAddMissingDefinitionUsesFileIndent: the stub is indented the way the
 // file is, not with a fixed four spaces.
 func TestAddMissingDefinitionUsesFileIndent(t *testing.T) {
-	src := "workflow W():\n  workflow Missing(x)\n  close complete\n"
+	src := "workflow W():\n\tworkflow Missing(x)\n\tclose complete\n"
 	at := protocol.Position{Line: 1, Character: 2}
 	actions := codeActions(t, src, protocol.Range{Start: at, End: at}, "Add missing workflow 'Missing'")
 	if len(actions) != 1 {
 		t.Fatalf("want one action, got %+v", actions)
 	}
 	got := applyEdits(t, src, actions[0].Edit.Changes[renameURI])
-	if !strings.HasSuffix(got, ":\n  # TODO: implement\n  close complete\n") {
+	if !strings.HasSuffix(got, ":\n\t# TODO: implement\n\tclose complete\n") {
 		t.Errorf("stub not indented with the file's two spaces:\n%s", got)
 	}
 	if doc := NewDocumentStore().Open(renameURI, got); len(doc.ParseErrs) > 0 {
@@ -136,13 +136,13 @@ func TestIndentUnit(t *testing.T) {
 		lines []string
 		want  string
 	}{
-		{"four spaces", []string{"workflow W():", "    close complete"}, "    "},
-		{"two spaces", []string{"# c", "workflow W():", "  close complete"}, "  "},
+		{"four spaces", []string{"workflow W():", "\tclose complete"}, "    "},
+		{"two spaces", []string{"# c", "workflow W():", "\tclose complete"}, "  "},
 		{"tab", []string{"workflow W():", "\tclose complete"}, "\t"},
 		{"skips indented comments and blank lines", []string{"workflow W():", "", "\t\t# c", "\tclose complete"}, "\t"},
 		{"none indented", []string{"workflow W():"}, "\t"},
 		{"skips a header's continuation", []string{"workflow W(a: int,", "           b: int):", "\tclose complete"}, "\t"},
-		{"skips a continuation in a spaces file", []string{"workflow W(a: int,", "\t\tb: int):", "    close complete"}, "    "},
+		{"skips a continuation in a spaces file", []string{"workflow W(a: int,", "\t\tb: int):", "\tclose complete"}, "    "},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

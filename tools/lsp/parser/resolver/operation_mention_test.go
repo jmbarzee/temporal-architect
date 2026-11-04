@@ -20,14 +20,14 @@ func kindsOf(errs []*ResolveError) []ErrorKind {
 const opMentionServices = `package demo
 
 nexus service Svc:
-    async OpA workflow A
-    async OpB workflow B
+	async OpA workflow A
+	async OpB workflow B
 
 workflow A():
-    close complete()
+	close complete()
 
 workflow B():
-    close complete()
+	close complete()
 `
 
 // TestWorkerRegistersOperationTwoSegments: `Svc.OpA` on a worker, where Svc is a
@@ -37,7 +37,7 @@ workflow B():
 func TestWorkerRegistersOperationTwoSegments(t *testing.T) {
 	file := mustParse(t, opMentionServices+`
 worker wa:
-    nexus service Svc.OpA
+	nexus service Svc.OpA
 `)
 	errs := Resolve(file)
 	if got := kindsOf(errs); !slices.Equal(got, []ErrorKind{ErrWorkerRegistersOperation}) {
@@ -61,7 +61,7 @@ worker wa:
 func TestWorkerQualifierStillPackageWhenNotAnOperation(t *testing.T) {
 	file := mustParse(t, opMentionServices+`
 worker wa:
-    nexus service Svc.Nope
+	nexus service Svc.Nope
 `)
 	errs := Resolve(file)
 	if got := kindsOf(errs); !slices.Equal(got, []ErrorKind{ErrQualifiedRefWithoutImport}) {
@@ -77,13 +77,13 @@ func TestWorkerQualifierImportWins(t *testing.T) {
 import Svc "example.com/x/other"
 
 nexus service Svc:
-    async OpA workflow A
+	async OpA workflow A
 
 workflow A():
-    close complete()
+	close complete()
 
 worker wa:
-    nexus service Svc.OpA
+	nexus service Svc.OpA
 `)
 	errs := Resolve(file)
 	if hasErrorKind(errs, ErrWorkerRegistersOperation) || hasErrorKind(errs, ErrQualifiedRefWithoutImport) {
@@ -118,12 +118,12 @@ func TestWorkerRegistersOperationThreeSegments(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			file := mustParse(t, "package demo\n\n"+tt.header+`
 worker wa:
-    nexus service pkg.Svc.OpA
+	nexus service pkg.Svc.OpA
 
 namespace ns:
-    worker wa
-        options:
-            task_queue: "q"
+	worker wa
+		options:
+			task_queue: "q"
 `)
 			errs := Resolve(file)
 			if got := kindsOf(errs); !slices.Equal(got, tt.want) {
@@ -145,16 +145,16 @@ func TestWorkerRegistersOperationThreeSegmentsConfirmed(t *testing.T) {
 package orders
 
 nexus service Svc:
-    async OpA workflow A
+	async OpA workflow A
 
 workflow A():
-    close complete()
+	close complete()
 `, `package deploy
 
 import "example.com/orders"
 
 worker wa:
-    nexus service orders.Svc.OpA
+	nexus service orders.Svc.OpA
 `)
 	errs := Resolve(file)
 	if got := kindsOf(errs); !slices.Equal(got, []ErrorKind{ErrWorkerRegistersOperation}) {
@@ -173,14 +173,14 @@ func TestWorkerQualifierNotReadAsOperationOutsideOwnPackage(t *testing.T) {
 		file := mustMerge(t, `package other
 
 nexus service Svc:
-    async OpA workflow A
+	async OpA workflow A
 
 workflow A():
-    close complete()
+	close complete()
 `, `package demo
 
 worker wa:
-    nexus service Svc.OpA
+	nexus service Svc.OpA
 `)
 		errs := Resolve(file)
 		if got := kindsOf(errs); !slices.Equal(got, []ErrorKind{ErrQualifiedRefWithoutImport}) {
@@ -193,16 +193,16 @@ worker wa:
 		file := mustParse(t, `package demo
 
 nexus service demo:
-    async Svc workflow A
+	async Svc workflow A
 
 nexus service Svc:
-    async OpA workflow A
+	async OpA workflow A
 
 workflow A():
-    close complete()
+	close complete()
 
 worker wa:
-    nexus service demo.Svc
+	nexus service demo.Svc
 `)
 		errs := Resolve(file)
 		if len(errs) != 0 {

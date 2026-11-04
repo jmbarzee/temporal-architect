@@ -9,100 +9,100 @@ import (
 // symbol defined in a file other than the one holding the error's position.
 var deployTree = []namedSource{
 	{"caller.twf", `workflow Caller(x: int) -> (int):
-    activity Implicit(x) -> a
-    activity Explicit(x) -> b
-        options:
-            task_queue: "nowhere"
-    nexus Ep Svc.Op(x) -> c
-    return c
+	activity Implicit(x) -> a
+	activity Explicit(x) -> b
+		options:
+			task_queue: "nowhere"
+	nexus Ep Svc.Op(x) -> c
+	return c
 `},
 	{"targets.twf", `activity Implicit(x: int) -> (int):
-    return x
+	return x
 
 activity Explicit(x: int) -> (int):
-    return x
+	return x
 
 activity Orphan(x: int) -> (int):
-    return x
+	return x
 
 activity Hollow():
-    # nothing here
+	# nothing here
 
 workflow Empty():
-    # nothing here
+	# nothing here
 `},
 	{"services.twf", `nexus service Svc:
-    async Op workflow Caller
+	async Op workflow Caller
 `},
 	{"workers.twf", `worker callerWorker:
-    workflow Caller
+	workflow Caller
 
 worker targetWorker:
-    activity Implicit
-    activity Explicit
+	activity Implicit
+	activity Explicit
 
 worker idle:
-    # no registrations
+	# no registrations
 `},
 	{"deploy.twf", `namespace ns:
-    worker callerWorker
-        options:
-            task_queue: "main"
-    worker targetWorker
-        options:
-            task_queue: "other"
-    nexus endpoint Ep
-        options:
-            task_queue: "main"
-    nexus endpoint Bare
+	worker callerWorker
+		options:
+			task_queue: "main"
+	worker targetWorker
+		options:
+			task_queue: "other"
+	nexus endpoint Ep
+		options:
+			task_queue: "main"
+	nexus endpoint Bare
 
 namespace staging:
-    worker targetWorker
+	worker targetWorker
 
 namespace idleNs:
-    # no workers
+	# no workers
 `},
 }
 
 // signalTree spreads id: parent sends and id_schemes over files.
 var signalTree = []namedSource{
 	{"parents.twf", `workflow Coordinator(doc: Doc):
-    signal Progress(pct: int):
-        pct = pct
-    workflow Step(doc)
+	signal Progress(pct: int):
+		pct = pct
+	workflow Step(doc)
 
 workflow Auditor(doc: Doc):
-    workflow Step(doc)
+	workflow Step(doc)
 
 workflow Bystander(doc: Doc):
-    signal Progress(pct: int):
-        pct = pct
-    activity Work(doc)
+	signal Progress(pct: int):
+		pct = pct
+	activity Work(doc)
 
 workflow ShipItem(order: Order, item: Item):
-    id_scheme: "ship-{order.id}-{item.id}"
-    activity Work(order)
+	id_scheme: "ship-{order.id}-{item.id}"
+	activity Work(order)
 `},
 	{"step.twf", `workflow Step(doc: Doc):
-    signal Bystander.Progress(50)
-        id: parent
+	signal Bystander.Progress(50)
+		id: parent
 
 workflow ShipOrder(order: Order):
-    id_scheme: "ship-{order.id}"
-    activity Work(order)
+	id_scheme: "ship-{order.id}"
+	activity Work(order)
 
 activity Work(doc: Doc):
-    work(doc)
+	work(doc)
 `},
 	{"deploy.twf", `worker W:
-    workflow ShipItem
-    workflow ShipOrder
-    activity Work
+	workflow ShipItem
+	workflow ShipOrder
+	activity Work
 
 namespace prod:
-    worker W
-        options:
-            task_queue: "q"
+	worker W
+		options:
+			task_queue: "q"
 `},
 }
 
@@ -154,41 +154,41 @@ func TestErrorFileIsReferenceSite(t *testing.T) {
 func TestCallerFileFromHandlerAndSyncOp(t *testing.T) {
 	errs := Validate(mustMergeNamedAndResolve(t,
 		namedSource{"handlers.twf", `workflow Parent():
-    signal Kick():
-        activity Act(1)
-    close complete()
+	signal Kick():
+		activity Act(1)
+	close complete()
 `},
 		namedSource{"svc.twf", `nexus service Svc:
-    sync Op(x: int) -> (int):
-        activity Act(x) -> y
-            options:
-                task_queue: "act-q"
-        close complete(y)
+	sync Op(x: int) -> (int):
+		activity Act(x) -> y
+			options:
+				task_queue: "act-q"
+		close complete(y)
 `},
 		namedSource{"targets.twf", `activity Act(x: int) -> (int):
-    return x
+	return x
 `},
 		namedSource{"deploy.twf", `worker parentWorker:
-    workflow Parent
+	workflow Parent
 
 worker svcWorker:
-    nexus service Svc
+	nexus service Svc
 
 worker actWorker:
-    activity Act
+	activity Act
 
 namespace alpha:
-    worker parentWorker
-        options:
-            task_queue: "shared"
-    worker svcWorker
-        options:
-            task_queue: "svc-q"
+	worker parentWorker
+		options:
+			task_queue: "shared"
+	worker svcWorker
+		options:
+			task_queue: "svc-q"
 
 namespace beta:
-    worker actWorker
-        options:
-            task_queue: "shared"
+	worker actWorker
+		options:
+			task_queue: "shared"
 `},
 	))
 	for kind, file := range map[ErrorKind]string{
@@ -213,35 +213,35 @@ namespace beta:
 func TestTaskQueueCoherenceAtLaterInstantiation(t *testing.T) {
 	errs := Validate(mustMergeNamedAndResolve(t,
 		namedSource{"defs.twf", `workflow shared(x: int) -> (int):
-    return x
+	return x
 
 workflow A(x: int) -> (int):
-    return x
+	return x
 
 workflow B(x: int) -> (int):
-    return x
+	return x
 `},
 		namedSource{"deploy.twf", `worker first:
-    workflow A
-    workflow shared
+	workflow A
+	workflow shared
 
 worker second:
-    workflow B
+	workflow B
 
 worker third:
-    workflow A
-    workflow shared
+	workflow A
+	workflow shared
 
 namespace ns:
-    worker first
-        options:
-            task_queue: "shared"
-    worker second
-        options:
-            task_queue: "shared"
-    worker third
-        options:
-            task_queue: "shared"
+	worker first
+		options:
+			task_queue: "shared"
+	worker second
+		options:
+			task_queue: "shared"
+	worker third
+		options:
+			task_queue: "shared"
 `},
 	))
 	tests := []struct {
@@ -275,28 +275,28 @@ func TestTaskQueueCoherenceAcrossPackages(t *testing.T) {
 		namedSource{"zeta.twf", `package a
 
 workflow A(x: int) -> (int):
-    return x
+	return x
 
 worker wa:
-    workflow A
+	workflow A
 
 namespace prod:
-    worker wa
-        options:
-            task_queue: "q"
+	worker wa
+		options:
+			task_queue: "q"
 `},
 		namedSource{"alpha.twf", `package b
 
 workflow B(x: int) -> (int):
-    return x
+	return x
 
 worker wb:
-    workflow B
+	workflow B
 
 namespace prod:
-    worker wb
-        options:
-            task_queue: "q"
+	worker wb
+		options:
+			task_queue: "q"
 `},
 	))
 	if countKind(errs, ErrTaskQueueMismatch) != 1 {

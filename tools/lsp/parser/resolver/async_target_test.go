@@ -22,7 +22,7 @@ func TestAsyncTargetUndefinedPosition(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			file := mustParse(t, "workflow P(x: string):\n    "+tt.line+"\n    close complete()\n")
+			file := mustParse(t, "workflow P(x: string):\n    "+tt.line+"\n\tclose complete()\n")
 			errs := Resolve(file)
 			if got := kindsOf(errs); !slices.Equal(got, []ErrorKind{tt.kind}) {
 				t.Fatalf("kinds = %v, want only %v: %v", got, tt.kind, errs)

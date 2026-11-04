@@ -11,9 +11,9 @@ import (
 // namespace, so its flat-global name would collide across the family.
 func TestEndpointParamNotSuperset(t *testing.T) {
 	input := `namespace fabric-shard-{org}:
-    nexus endpoint BootstrapShard
-        options:
-            task_queue: "q"
+	nexus endpoint BootstrapShard
+		options:
+			task_queue: "q"
 `
 	file := mustParse(t, input)
 	errs := Resolve(file)
@@ -25,9 +25,9 @@ func TestEndpointParamNotSuperset(t *testing.T) {
 // An endpoint whose params are a superset of the namespace's is fine.
 func TestEndpointParamSupersetOK(t *testing.T) {
 	input := `namespace fabric-shard-{org}:
-    nexus endpoint fabric-shard-{org}-BootstrapShard
-        options:
-            task_queue: "q"
+	nexus endpoint fabric-shard-{org}-BootstrapShard
+		options:
+			task_queue: "q"
 `
 	file := mustParse(t, input)
 	errs := Resolve(file)
@@ -43,15 +43,15 @@ func TestEndpointParamSupersetOK(t *testing.T) {
 // parameter to bind: the instantiation is a per-instance family.
 func TestWorkerQueueParamIsInstanceParam(t *testing.T) {
 	input := `worker w:
-    workflow W
+	workflow W
 
 workflow W():
-    return x
+	return x
 
 namespace fabric-shard-{org}:
-    worker w
-        options:
-            task_queue: "q-{region}-bootstrap"
+	worker w
+		options:
+			task_queue: "q-{region}-bootstrap"
 `
 	file := mustParse(t, input)
 	if errs := Resolve(file); len(errs) != 0 {
@@ -66,15 +66,15 @@ namespace fabric-shard-{org}:
 // parameter: the namespace no longer binds it.
 func TestNamespaceSpelledQueueParamIsInstanceParam(t *testing.T) {
 	input := `worker w:
-    workflow W
+	workflow W
 
 workflow W():
-    return x
+	return x
 
 namespace fabric-shard-{org}:
-    worker w
-        options:
-            task_queue: "q-{org}-{org}-bootstrap"
+	worker w
+		options:
+			task_queue: "q-{org}-{org}-bootstrap"
 `
 	file := mustParse(t, input)
 	if errs := Resolve(file); len(errs) != 0 {
@@ -88,16 +88,16 @@ namespace fabric-shard-{org}:
 // worker_identity is free text: its parameters bind, match and declare nothing.
 func TestWorkerIdentityParamsAreFreeText(t *testing.T) {
 	input := `worker w:
-    workflow W
+	workflow W
 
 workflow W():
-    return x
+	return x
 
 namespace ns:
-    worker w
-        options:
-            task_queue: "static"
-            worker_identity: "sidecar-{podName}-{a.b}{}"
+	worker w
+		options:
+			task_queue: "static"
+			worker_identity: "sidecar-{podName}-{a.b}{}"
 `
 	file := mustParse(t, input)
 	if errs := Resolve(file); len(errs) != 0 {
@@ -125,15 +125,15 @@ func TestQueueTemplateMalformed(t *testing.T) {
 	}
 	for _, tt := range tests {
 		file := mustParse(t, `worker w:
-    workflow W
+	workflow W
 
 workflow W():
-    return x
+	return x
 
 namespace ns:
-    worker w
-        options:
-            task_queue: "`+tt.queue+`"
+	worker w
+		options:
+			task_queue: "`+tt.queue+`"
 `)
 		file.Definitions[2].(*ast.NamespaceDef).SourceFile = "ns.twf"
 		var want []*ResolveError
@@ -160,9 +160,9 @@ namespace ns:
 // error, reported once at its first parameter, whatever the names bind.
 func TestEndpointTaskQueueTemplated(t *testing.T) {
 	input := `namespace fabric-shard-{org}:
-    nexus endpoint fabric-shard-{org}-BootstrapShard
-        options:
-            task_queue: "q-{org}-{shard}"
+	nexus endpoint fabric-shard-{org}-BootstrapShard
+		options:
+			task_queue: "q-{org}-{shard}"
 `
 	file := mustParse(t, input)
 	file.Definitions[0].(*ast.NamespaceDef).SourceFile = "ns.twf"
@@ -182,9 +182,9 @@ func TestEndpointTaskQueueTemplated(t *testing.T) {
 // An endpoint queue with no IDENT parameter is opaque and legal.
 func TestEndpointOpaqueQueueOK(t *testing.T) {
 	input := `namespace ns:
-    nexus endpoint Ep
-        options:
-            task_queue: "q-{a.b}-{}"
+	nexus endpoint Ep
+		options:
+			task_queue: "q-{a.b}-{}"
 `
 	if errs := Resolve(mustParse(t, input)); len(errs) != 0 {
 		t.Errorf("expected no resolve errors, got %v", errs)
@@ -195,23 +195,23 @@ func TestEndpointOpaqueQueueOK(t *testing.T) {
 // flat-global registry by exact templated-name string.
 func TestTemplatedEndpointReferenceResolves(t *testing.T) {
 	input := `nexus service Svc:
-    async Op workflow W
+	async Op workflow W
 
 workflow W():
-    nexus fabric-shard-{org}-BootstrapShard Svc.Op(x) -> result
-    close complete(result)
+	nexus fabric-shard-{org}-BootstrapShard Svc.Op(x) -> result
+	close complete(result)
 
 worker w:
-    workflow W
-    nexus service Svc
+	workflow W
+	nexus service Svc
 
 namespace fabric-shard-{org}:
-    worker w
-        options:
-            task_queue: "q"
-    nexus endpoint fabric-shard-{org}-BootstrapShard
-        options:
-            task_queue: "q"
+	worker w
+		options:
+			task_queue: "q"
+	nexus endpoint fabric-shard-{org}-BootstrapShard
+		options:
+			task_queue: "q"
 `
 	file := mustParse(t, input)
 	errs := Resolve(file)
@@ -228,23 +228,23 @@ namespace fabric-shard-{org}:
 // A static reference to a templated endpoint (spelling mismatch) does not resolve.
 func TestStaticReferenceToTemplatedEndpointUnresolved(t *testing.T) {
 	input := `nexus service Svc:
-    async Op workflow W
+	async Op workflow W
 
 workflow W():
-    nexus BootstrapShard Svc.Op(x) -> result
-    close complete(result)
+	nexus BootstrapShard Svc.Op(x) -> result
+	close complete(result)
 
 worker w:
-    workflow W
-    nexus service Svc
+	workflow W
+	nexus service Svc
 
 namespace fabric-shard-{org}:
-    worker w
-        options:
-            task_queue: "q"
-    nexus endpoint fabric-shard-{org}-BootstrapShard
-        options:
-            task_queue: "q"
+	worker w
+		options:
+			task_queue: "q"
+	nexus endpoint fabric-shard-{org}-BootstrapShard
+		options:
+			task_queue: "q"
 `
 	file := mustParse(t, input)
 	errs := Resolve(file)

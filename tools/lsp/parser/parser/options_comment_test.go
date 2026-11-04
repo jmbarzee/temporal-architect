@@ -15,33 +15,33 @@ var optionsForms = []struct {
 	name, src, entry string
 	options          func(*ast.File) *ast.OptionsBlock
 }{
-	{"activity call", "workflow P(x):\n    activity A(x) -> y%s\n    close complete(y)\n", "start_to_close_timeout: 1m",
+	{"activity call", "workflow P(x):\n\tactivity A(x) -> y%s\n\tclose complete(y)\n", "start_to_close_timeout: 1m",
 		func(f *ast.File) *ast.OptionsBlock {
 			return f.Definitions[0].(*ast.WorkflowDef).Body[0].(*ast.ActivityCall).Options
 		}},
-	{"workflow call", "workflow P(x):\n    workflow Child(x) -> y%s\n    close complete(y)\n", "workflow_execution_timeout: 1h",
+	{"workflow call", "workflow P(x):\n\tworkflow Child(x) -> y%s\n\tclose complete(y)\n", "workflow_execution_timeout: 1h",
 		func(f *ast.File) *ast.OptionsBlock {
 			return f.Definitions[0].(*ast.WorkflowDef).Body[0].(*ast.WorkflowCall).Options
 		}},
-	{"detach workflow call", "workflow P(x):\n    detach workflow Child(x)%s\n    close complete(x)\n", "workflow_execution_timeout: 1h",
+	{"detach workflow call", "workflow P(x):\n\tdetach workflow Child(x)%s\n\tclose complete(x)\n", "workflow_execution_timeout: 1h",
 		func(f *ast.File) *ast.OptionsBlock {
 			return f.Definitions[0].(*ast.WorkflowDef).Body[0].(*ast.WorkflowCall).Options
 		}},
-	{"nexus call", "workflow P(x):\n    nexus Ep Svc.Op(x) -> y%s\n    close complete(y)\n", "schedule_to_close_timeout: 1m",
+	{"nexus call", "workflow P(x):\n\tnexus Ep Svc.Op(x) -> y%s\n\tclose complete(y)\n", "schedule_to_close_timeout: 1m",
 		func(f *ast.File) *ast.OptionsBlock {
 			return f.Definitions[0].(*ast.WorkflowDef).Body[0].(*ast.NexusCall).Options
 		}},
-	{"detach nexus call", "workflow P(x):\n    detach nexus Ep Svc.Op(x)%s\n    close complete(x)\n", "schedule_to_close_timeout: 1m",
+	{"detach nexus call", "workflow P(x):\n\tdetach nexus Ep Svc.Op(x)%s\n\tclose complete(x)\n", "schedule_to_close_timeout: 1m",
 		func(f *ast.File) *ast.OptionsBlock {
 			return f.Definitions[0].(*ast.WorkflowDef).Body[0].(*ast.NexusCall).Options
 		}},
-	{"client start", "nexus service Svc:\n    sync Op(x) -> (R):\n        workflow Child(x) -> y%s\n        return y\n", "workflow_id_conflict_policy: FAIL",
+	{"client start", "nexus service Svc:\n\tsync Op(x) -> (R):\n\t\tworkflow Child(x) -> y%s\n\t\treturn y\n", "workflow_id_conflict_policy: FAIL",
 		func(f *ast.File) *ast.OptionsBlock {
 			return f.Definitions[0].(*ast.NexusServiceDef).Operations[0].Body[0].(*ast.WorkflowCall).Options
 		}},
-	{"namespace worker", "namespace ns:\n    worker w%s\n    worker v\n", `task_queue: "q"`,
+	{"namespace worker", "namespace ns:\n\tworker w%s\n\tworker v\n", `task_queue: "q"`,
 		func(f *ast.File) *ast.OptionsBlock { return f.Definitions[0].(*ast.NamespaceDef).Workers[0].Options }},
-	{"namespace endpoint", "namespace ns:\n    nexus endpoint Ep%s\n    worker v\n", `task_queue: "q"`,
+	{"namespace endpoint", "namespace ns:\n\tnexus endpoint Ep%s\n\tworker v\n", `task_queue: "q"`,
 		func(f *ast.File) *ast.OptionsBlock { return f.Definitions[0].(*ast.NamespaceDef).Endpoints[0].Options }},
 }
 
@@ -92,27 +92,27 @@ func TestCommentsAboveHeadOptions(t *testing.T) {
 		name, src, head, entry string
 		parts                  func(*ast.File) (*ast.OptionsBlock, []ast.Statement)
 	}{
-		{"signal handler", "workflow P(x):\n    signal S(v):\n%s        return\n    close complete(x)\n", "        options", `description: "d"`,
+		{"signal handler", "workflow P(x):\n\tsignal S(v):\n%s        return\n\tclose complete(x)\n", "\toptions", `description: "d"`,
 			func(f *ast.File) (*ast.OptionsBlock, []ast.Statement) {
 				s := f.Definitions[0].(*ast.WorkflowDef).Signals[0]
 				return s.Options, s.Body
 			}},
-		{"update handler", "workflow P(x):\n    update U(v) -> (R):\n%s        return v\n    close complete(x)\n", "        options", `description: "d"`,
+		{"update handler", "workflow P(x):\n\tupdate U(v) -> (R):\n%s        return v\n\tclose complete(x)\n", "\toptions", `description: "d"`,
 			func(f *ast.File) (*ast.OptionsBlock, []ast.Statement) {
 				u := f.Definitions[0].(*ast.WorkflowDef).Updates[0]
 				return u.Options, u.Body
 			}},
-		{"query handler", "workflow P(x):\n    query Q() -> (R):\n%s        return x\n    close complete(x)\n", "        options", `description: "d"`,
+		{"query handler", "workflow P(x):\n\tquery Q() -> (R):\n%s        return x\n\tclose complete(x)\n", "\toptions", `description: "d"`,
 			func(f *ast.File) (*ast.OptionsBlock, []ast.Statement) {
 				q := f.Definitions[0].(*ast.WorkflowDef).Queries[0]
 				return q.Options, q.Body
 			}},
-		{"activity default_options", "activity A(x):\n%s    return x\n", "    default_options", "start_to_close_timeout: 1m",
+		{"activity default_options", "activity A(x):\n%s    return x\n", "\tdefault_options", "start_to_close_timeout: 1m",
 			func(f *ast.File) (*ast.OptionsBlock, []ast.Statement) {
 				a := f.Definitions[0].(*ast.ActivityDef)
 				return a.DefaultOptions, a.Body
 			}},
-		{"workflow default_options", "workflow W(x):\n%s    close complete(x)\n", "    default_options", "workflow_run_timeout: 1m",
+		{"workflow default_options", "workflow W(x):\n%s    close complete(x)\n", "\tdefault_options", "workflow_run_timeout: 1m",
 			func(f *ast.File) (*ast.OptionsBlock, []ast.Statement) {
 				w := f.Definitions[0].(*ast.WorkflowDef)
 				return w.DefaultOptions, w.Body
@@ -166,11 +166,11 @@ func TestCommentsAboveHeadOptions(t *testing.T) {
 // indent.
 func TestCommentUnderCallThenOtherLine(t *testing.T) {
 	tests := []struct{ name, src, want string }{
-		{"statement", "workflow P(x):\n    activity A(x)\n        # note\n        activity B(x)\n",
+		{"statement", "workflow P(x):\n\tactivity A(x)\n\t\t# note\n\t\tactivity B(x)\n",
 			"4:9 unexpected indent: only comments and one options: block sit under a call"},
-		{"after the block", "workflow P(x):\n    activity A(x)\n        options:\n            start_to_close_timeout: 1m\n        # note\n        activity B(x)\n",
+		{"after the block", "workflow P(x):\n\tactivity A(x)\n\t\toptions:\n\t\t\tstart_to_close_timeout: 1m\n\t\t# note\n\t\tactivity B(x)\n",
 			"6:9 unexpected indent: only comments and one options: block sit under a call"},
-		{"address under a start", "workflow P(x):\n    workflow C(x)\n        # note\n        id: \"x\"\n",
+		{"address under a start", "workflow P(x):\n\tworkflow C(x)\n\t\t# note\n\t\tid: \"x\"\n",
 			"4:9 a workflow start takes no id:; the ID derives from the started type's id_scheme"},
 	}
 	for _, tt := range tests {

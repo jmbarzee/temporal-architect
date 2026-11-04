@@ -183,7 +183,7 @@ func TestParseToolMatchesBuilder(t *testing.T) {
 func TestInlineSource(t *testing.T) {
 	cs := connect(t)
 
-	const src = "activity Charge(amt: Money) -> (Receipt):\n  return ok\n\nworkflow Pay(amt: Money) -> (Receipt):\n  activity Charge(amt) -> r\n  return r\n"
+	const src = "activity Charge(amt: Money) -> (Receipt):\n\treturn ok\n\nworkflow Pay(amt: Money) -> (Receipt):\n\tactivity Charge(amt) -> r\n\treturn r\n"
 
 	res := callTool(t, cs, "twf_symbols", map[string]any{"source": src})
 	var env struct {
@@ -327,8 +327,8 @@ func TestSpecResources(t *testing.T) {
 // what it returns for the same text saved to a file outside any module (#308),
 // and twf_check's diagnostics and counts are those `twf check` computes.
 func TestInlineSourceMatchesTheCLI(t *testing.T) {
-	const wf = "workflow W(x):\n    close complete(x)\n"
-	const imp = "import cf \"example.com/demo/cluster/fabric\"\n\nworkflow Setup():\n    workflow cf.Setup()\n    close complete(\"ok\")\n"
+	const wf = "workflow W(x):\n\tclose complete(x)\n"
+	const imp = "import cf \"example.com/demo/cluster/fabric\"\n\nworkflow Setup():\n\tworkflow cf.Setup()\n\tclose complete(\"ok\")\n"
 	cases := []struct {
 		name, src string
 		codes     string // twf_check's diagnostic codes
@@ -338,7 +338,7 @@ func TestInlineSourceMatchesTheCLI(t *testing.T) {
 		{"no package clause", wf, ""},
 		{"package clause", "package orders\n\n" + wf, "PACKAGE_OUTSIDE_MODULE"},
 		{"package clause with an import", "package fabric\n\n" + imp, "PACKAGE_OUTSIDE_MODULE"},
-		{"package clause with an undefined call", "package orders\n\nworkflow W():\n    activity Ghost()\n", "PACKAGE_OUTSIDE_MODULE"},
+		{"package clause with an undefined call", "package orders\n\nworkflow W():\n\tactivity Ghost()\n", "PACKAGE_OUTSIDE_MODULE"},
 		{"package clause with a parse error", "package orders\n\nworkflow W(:\n", "LEX,SYNTAX,PACKAGE_OUTSIDE_MODULE"},
 		{"tab-indented", "workflow W(x):\n\tif (x):\n\t\tclose complete(x)\n", ""},
 		{"tab after spaces", "workflow W(x):\n    activity A(x)\n    \tclose complete(x)\n\nactivity A(x):\n    return x\n", "LEX"},

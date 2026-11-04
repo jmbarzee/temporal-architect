@@ -28,13 +28,13 @@ var crlfFixtures = []string{
 // crlfInline covers what the fixtures may not: multi-line raw text and return
 // values, trailing comments, and a bad line.
 const crlfInline = `workflow P(x):
-    update U(v) -> (R):
-        return f(a,
-            b) # note
-    x = f(a,
-        b) # note
-    break Missing
-    close complete(x)
+	update U(v) -> (R):
+		return f(a,
+			b) # note
+	x = f(a,
+		b) # note
+	break Missing
+	close complete(x)
 `
 
 // A CRLF file parses as its LF twin: the same AST, raw text and return values

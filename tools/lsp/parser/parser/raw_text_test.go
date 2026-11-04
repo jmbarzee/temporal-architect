@@ -30,7 +30,7 @@ func TestRawTextIsSourceSpan(t *testing.T) {
 				if trail != "" {
 					wantComment = " note"
 				}
-				src := fmt.Sprintf("workflow P(x):\n    update U(v) -> (R):\n        return %s%s\n    %s%s\n    close complete(x)\n", tc.src, trail, tc.src, trail)
+				src := fmt.Sprintf("workflow P(x):\n\tupdate U(v) -> (R):\n\t\treturn %s%s\n\t%s%s\n\tclose complete(x)\n", tc.src, trail, tc.src, trail)
 				file, err := ParseFile(src)
 				if err != nil {
 					t.Fatalf("unexpected error: %v", err)
@@ -76,18 +76,18 @@ func checkTextAndComment(t *testing.T, body []ast.Statement, want ast.Statement,
 // activity body and a state: block, and switch case values.
 func TestRawTextOtherPositions(t *testing.T) {
 	file, err := ParseFile(`workflow P(x):
-    state:
-        count = "a\"b" + f(x) # init
-    switch (x):
-        case "a\"b": # quoted
-            return # nothing
-        case (y + 1):
-            return
-    close complete(x)
+	state:
+		count = "a\"b" + f(x) # init
+	switch (x):
+		case "a\"b": # quoted
+			return # nothing
+		case (y + 1):
+			return
+	close complete(x)
 
 activity A(x):
-    do(x)  # call
-    return  f(x,  "y") # result
+	do(x)  # call
+	return  f(x,  "y") # result
 `)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -109,7 +109,7 @@ activity A(x):
 // A string with an unknown escape is an error, yet its raw line keeps the
 // source as written.
 func TestRawTextKeepsUnknownEscape(t *testing.T) {
-	file, errs := ParseFileAll("workflow P(x):\n    x = \"a\\qb\" + y # note\n    close complete(x)\n")
+	file, errs := ParseFileAll("workflow P(x):\n\tx = \"a\\qb\" + y # note\n\tclose complete(x)\n")
 	if len(errs) != 1 {
 		t.Fatalf("errors = %v, want the unknown escape", errs)
 	}

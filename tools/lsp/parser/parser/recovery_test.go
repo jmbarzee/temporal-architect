@@ -20,190 +20,190 @@ var recoveryCases = []struct {
 	{
 		name: "one bad line in a workflow body",
 		src: `workflow P(x):
-    signal S(v):
-        activity A(v)
-    activity A(x)
-    update Foo # BAD
-    activity A(x)
-    close complete(x)
+	signal S(v):
+		activity A(v)
+	activity A(x)
+	update Foo # BAD
+	activity A(x)
+	close complete(x)
 `,
 		keep: []int{2, 3, 4, 6, 7},
 	},
 	{
 		name: "several bad lines in a workflow body",
 		src: `workflow P(x):
-    activity A(x)
-    timer(1m) # BAD
-    activity A(x) -> r
-    for (i in x):
-        break Missing # BAD
-    set Ready Missing # BAD
-    query Q() -> (R): # BAD
-        return x
-    close complete(x)
+	activity A(x)
+	timer(1m) # BAD
+	activity A(x) -> r
+	for (i in x):
+		break Missing # BAD
+	set Ready Missing # BAD
+	query Q() -> (R): # BAD
+		return x
+	close complete(x)
 `,
 		keep: []int{2, 4, 5, 6, 7, 10}, // break and set are complete: kept
 	},
 	{
 		name: "bad lines in handlers",
 		src: `workflow P(x):
-    signal S(v):
-        activity A(v)
-        update Foo # BAD
-        activity A(v)
-    update U(v) -> (R):
-        timer(1m) # BAD
-        return v
-    query Q() -> (R):
-        await timer(1m) # BAD
-        return x
-    close complete(x)
+	signal S(v):
+		activity A(v)
+		update Foo # BAD
+		activity A(v)
+	update U(v) -> (R):
+		timer(1m) # BAD
+		return v
+	query Q() -> (R):
+		await timer(1m) # BAD
+		return x
+	close complete(x)
 `,
 		keep: []int{2, 3, 5, 6, 8, 9, 11, 12},
 	},
 	{
 		name: "bad lines in await blocks",
 		src: `workflow P(x):
-    await all:
-        activity A(x)
-        signal Bad # BAD
-        activity A(x)
-    await one:
-        timer(1m):
-            close later # BAD
-            activity A(x)
-        signal S:
-            activity A(x)
-    close complete(x)
+	await all:
+		activity A(x)
+		signal Bad # BAD
+		activity A(x)
+	await one:
+		timer(1m):
+			close later # BAD
+			activity A(x)
+		signal S:
+			activity A(x)
+	close complete(x)
 `,
 		keep: []int{2, 3, 5, 6, 7, 9, 10, 11, 12},
 	},
 	{
 		name: "bad lines in nested if and for",
 		src: `workflow P(x):
-    for (i in x):
-        if (i):
-            unset # BAD
-            activity A(i)
-        else:
-            close fail Missing # BAD
-        activity A(i)
-    close complete(x)
+	for (i in x):
+		if (i):
+			unset # BAD
+			activity A(i)
+		else:
+			close fail Missing # BAD
+		activity A(i)
+	close complete(x)
 `,
 		keep: []int{2, 3, 5, 7, 8, 9},
 	},
 	{
 		name: "a bad line's indented block is skipped with it",
 		src: `workflow P(x):
-    if junk: # BAD
-        update Foo
-        activity A(x)
-    activity A x # BAD
-        options:
-            start_to_close_timeout: 1m
-    activity A(x)
-    close complete(x)
+	if junk: # BAD
+		update Foo
+		activity A(x)
+	activity A x # BAD
+		options:
+			start_to_close_timeout: 1m
+	activity A(x)
+	close complete(x)
 `,
 		keep: []int{8, 9},
 	},
 	{
 		name: "a bad if line's else clause is skipped with it",
 		src: `workflow P(x):
-    if (x) junk: # BAD
-        activity A(x)
-    else:
-        activity A(x)
-    activity A(x)
-    close complete(x)
+	if (x) junk: # BAD
+		activity A(x)
+	else:
+		activity A(x)
+	activity A(x)
+	close complete(x)
 `,
 		keep: []int{6, 7},
 	},
 	{
 		name: "a second else after a bad if line is reported",
 		src: `workflow P(x):
-    if (x) junk: # BAD
-        activity A(x)
-    else:
-        activity A(x)
-    else: # BAD
-        activity A(x)
-    activity A(x)
-    close complete(x)
+	if (x) junk: # BAD
+		activity A(x)
+	else:
+		activity A(x)
+	else: # BAD
+		activity A(x)
+	activity A(x)
+	close complete(x)
 `,
 		keep: []int{8, 9},
 	},
 	{
 		name: "a second else after a bad else line is reported",
 		src: `workflow P(x):
-    if (x):
-        activity A(x)
-    else junk: # BAD
-        activity A(x)
-    else: # BAD
-        activity A(x)
-    activity A(x)
-    close complete(x)
+	if (x):
+		activity A(x)
+	else junk: # BAD
+		activity A(x)
+	else: # BAD
+		activity A(x)
+	activity A(x)
+	close complete(x)
 `,
 		keep: []int{8, 9},
 	},
 	{
 		name: "an else after a bad line that is not an if is reported",
 		src: `workflow P(x):
-    for junk: # BAD
-        activity A(x)
-    else: # BAD
-        activity A(x)
-    activity A(x)
-    close complete(x)
+	for junk: # BAD
+		activity A(x)
+	else: # BAD
+		activity A(x)
+	activity A(x)
+	close complete(x)
 `,
 		keep: []int{6, 7},
 	},
 	{
 		name: "bad lines at the head of a workflow body",
 		src: `workflow P(x):
-    state:
-        condition Ready Missing # BAD
-        condition Done
-    update Foo # BAD
-    signal S(v):
-        activity A(v)
-    signal W.S(x) junk # BAD
-    activity A(x)
-    close complete(x)
+	state:
+		condition Ready Missing # BAD
+		condition Done
+	update Foo # BAD
+	signal S(v):
+		activity A(v)
+	signal W.S(x) junk # BAD
+	activity A(x)
+	close complete(x)
 `,
 		keep: []int{3, 4, 6, 7, 8, 9, 10},
 	},
 	{
 		name: "a trailing token on the body's last line",
 		src: `workflow P(x):
-    activity A(x)
-    close complete(x) Missing # BAD
+	activity A(x)
+	close complete(x) Missing # BAD
 
 activity A(x):
-    return x
+	return x
 `,
 		keep: []int{2, 3},
 	},
 	{
 		name: "trailing tokens keep their statements",
 		src: `workflow P(x):
-    promise p <- activity A(x) -> r # BAD
-    activity A(x) -> r junk # BAD
-        options:
-            start_to_close_timeout: 1m
-    await p junk # BAD
-    close complete(r)
+	promise p <- activity A(x) -> r # BAD
+	activity A(x) -> r junk # BAD
+		options:
+			start_to_close_timeout: 1m
+	await p junk # BAD
+	close complete(r)
 `,
 		keep: []int{2, 3, 6, 7},
 	},
 	{
 		name: "a bad line in a sync nexus operation",
 		src: `nexus service Svc:
-    sync Op(x) -> (R):
-        activity A(x)
-        update Foo # BAD
-        return x
-    async Other workflow P
+	sync Op(x) -> (R):
+		activity A(x)
+		update Foo # BAD
+		return x
+	async Other workflow P
 `,
 		keep: []int{3, 5},
 	},
@@ -238,7 +238,7 @@ func TestStatementErrorRecovery(t *testing.T) {
 
 // A call kept despite trailing tokens keeps its result and options block.
 func TestTrailingTokenKeepsCall(t *testing.T) {
-	file, errs := ParseFileAll("workflow P(x):\n    activity A(x) -> r junk\n        options:\n            start_to_close_timeout: 1m\n    close complete(r)\n")
+	file, errs := ParseFileAll("workflow P(x):\n\tactivity A(x) -> r junk\n\t\toptions:\n\t\t\tstart_to_close_timeout: 1m\n\tclose complete(r)\n")
 	if len(errs) != 1 {
 		t.Fatalf("got errors %v, want one", errs)
 	}

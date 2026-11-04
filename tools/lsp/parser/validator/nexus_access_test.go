@@ -13,16 +13,16 @@ import (
 // coherenceDefs declares workflows A and B and services SvcA and SvcB, the
 // types the coherence cases register.
 const coherenceDefs = `nexus service SvcA:
-    async OpA workflow A
+	async OpA workflow A
 
 nexus service SvcB:
-    async OpB workflow A
+	async OpB workflow A
 
 workflow A():
-    close complete()
+	close complete()
 
 workflow B():
-    close complete()
+	close complete()
 `
 
 // coherenceFile builds a file whose workers all poll queue "q" in namespace ns.
@@ -35,15 +35,15 @@ func coherenceFile(workers ...[]string) string {
 		fmt.Fprintf(&b, "\nworker w%d:\n", i+1)
 		for _, r := range regs {
 			if strings.HasPrefix(r, "Svc") {
-				fmt.Fprintf(&b, "    nexus service %s\n", r)
+				fmt.Fprintf(&b, "\tnexus service %s\n", r)
 			} else {
-				fmt.Fprintf(&b, "    workflow %s\n", r)
+				fmt.Fprintf(&b, "\tworkflow %s\n", r)
 			}
 		}
 	}
 	b.WriteString("\nnamespace ns:\n")
 	for i := range workers {
-		fmt.Fprintf(&b, "    worker w%d\n        options:\n            task_queue: \"q\"\n", i+1)
+		fmt.Fprintf(&b, "\tworker w%d\n\t\toptions:\n\t\t\ttask_queue: \"q\"\n", i+1)
 	}
 	return b.String()
 }
@@ -97,33 +97,33 @@ func TestServiceCoherenceAmongNexusPollers(t *testing.T) {
 func accessFile(endpointOption string, callerNamespaces ...string) string {
 	var b strings.Builder
 	b.WriteString(`nexus service PayService:
-    async Charge workflow ChargeCard
+	async Charge workflow ChargeCard
 
 workflow ChargeCard():
-    close complete()
+	close complete()
 
 workflow Checkout():
-    nexus PayEndpoint PayService.Charge()
-    close complete()
+	nexus PayEndpoint PayService.Charge()
+	close complete()
 
 worker payTypes:
-    workflow ChargeCard
-    nexus service PayService
+	workflow ChargeCard
+	nexus service PayService
 
 worker shopTypes:
-    workflow Checkout
+	workflow Checkout
 `)
 	for _, ns := range callerNamespaces {
 		if ns == "payments" {
 			continue
 		}
-		fmt.Fprintf(&b, "\nnamespace %s:\n    worker shopTypes\n        options:\n            task_queue: \"shop\"\n", ns)
+		fmt.Fprintf(&b, "\nnamespace %s:\n\tworker shopTypes\n\t\toptions:\n\t\t\ttask_queue: \"shop\"\n", ns)
 	}
-	b.WriteString("\nnamespace payments:\n    worker payTypes\n        options:\n            task_queue: \"payments\"\n")
+	b.WriteString("\nnamespace payments:\n\tworker payTypes\n\t\toptions:\n\t\t\ttask_queue: \"payments\"\n")
 	if slices.Contains(callerNamespaces, "payments") {
-		b.WriteString("    worker shopTypes\n        options:\n            task_queue: \"shop\"\n")
+		b.WriteString("\tworker shopTypes\n\t\toptions:\n\t\t\ttask_queue: \"shop\"\n")
 	}
-	b.WriteString("    nexus endpoint PayEndpoint\n        options:\n            task_queue: \"payments\"\n")
+	b.WriteString("\tnexus endpoint PayEndpoint\n\t\toptions:\n\t\t\ttask_queue: \"payments\"\n")
 	if endpointOption != "" {
 		b.WriteString("            " + endpointOption + "\n")
 	}
@@ -194,35 +194,35 @@ func TestNexusCallerNotAllowedAttribution(t *testing.T) {
 func TestNexusCallerFamilies(t *testing.T) {
 	file := func(endpointNS, endpoint, list, callerNS string) string {
 		return fmt.Sprintf(`nexus service Svc:
-    async Op workflow Impl
+	async Op workflow Impl
 
 workflow Impl():
-    close complete()
+	close complete()
 
 workflow Caller():
-    nexus %s Svc.Op()
-    close complete()
+	nexus %s Svc.Op()
+	close complete()
 
 worker svcTypes:
-    workflow Impl
-    nexus service Svc
+	workflow Impl
+	nexus service Svc
 
 worker callerTypes:
-    workflow Caller
+	workflow Caller
 
 namespace %s:
-    worker callerTypes
-        options:
-            task_queue: "c"
+	worker callerTypes
+		options:
+			task_queue: "c"
 
 namespace %s:
-    worker svcTypes
-        options:
-            task_queue: "q"
-    nexus endpoint %s
-        options:
-            task_queue: "q"
-            allowed_caller_namespaces: [%q]
+	worker svcTypes
+		options:
+			task_queue: "q"
+	nexus endpoint %s
+		options:
+			task_queue: "q"
+			allowed_caller_namespaces: [%q]
 `, endpoint, callerNS, endpointNS, endpoint, list)
 	}
 	tests := []struct {
@@ -254,20 +254,20 @@ func TestNexusCallerCheckedForExternalService(t *testing.T) {
 import "example.com/pay"
 
 workflow Checkout():
-    nexus PayEndpoint pay.PayService.Charge()
-    close complete()
+	nexus PayEndpoint pay.PayService.Charge()
+	close complete()
 
 worker shopTypes:
-    workflow Checkout
+	workflow Checkout
 
 namespace shop:
-    worker shopTypes
-        options:
-            task_queue: "shop"
-    nexus endpoint PayEndpoint
-        options:
-            task_queue: "payments"
-            allowed_caller_namespaces: ["orders"]
+	worker shopTypes
+		options:
+			task_queue: "shop"
+	nexus endpoint PayEndpoint
+		options:
+			task_queue: "payments"
+			allowed_caller_namespaces: ["orders"]
 `
 	errs := Validate(mustParseAndResolve(t, input))
 	if len(callerErrs(errs)) != 1 {
@@ -279,8 +279,8 @@ namespace shop:
 // checked like a bare call.
 func TestNexusCallerCheckedFromAwaitTarget(t *testing.T) {
 	input := strings.Replace(accessFile(`allowed_caller_namespaces: ["orders"]`, "shop"),
-		"    nexus PayEndpoint PayService.Charge()\n",
-		"    promise p <- nexus PayEndpoint PayService.Charge()\n    await p\n", 1)
+		"\tnexus PayEndpoint PayService.Charge()\n",
+		"\tpromise p <- nexus PayEndpoint PayService.Charge()\n\tawait p\n", 1)
 	errs := Validate(mustParseAndResolve(t, input))
 	if len(callerErrs(errs)) != 1 {
 		t.Errorf("expected one NEXUS_CALLER_NOT_ALLOWED, got %v", errs)
@@ -291,19 +291,19 @@ func TestNexusCallerCheckedFromAwaitTarget(t *testing.T) {
 // `Svc.OpA` to the whole service, the validator sees Svc as registered.
 func TestWorkerRegistersOperationNoCoverageCascade(t *testing.T) {
 	file, err := parser.ParseFile(`nexus service Svc:
-    async OpA workflow A
+	async OpA workflow A
 
 workflow A():
-    close complete()
+	close complete()
 
 worker wa:
-    nexus service Svc.OpA
-    workflow A
+	nexus service Svc.OpA
+	workflow A
 
 namespace ns:
-    worker wa
-        options:
-            task_queue: "q"
+	worker wa
+		options:
+			task_queue: "q"
 `)
 	if err != nil {
 		t.Fatal(err)
@@ -318,36 +318,36 @@ namespace ns:
 // originates in the namespaces hosting the enclosing service.
 func TestNexusCallerFromSyncOperation(t *testing.T) {
 	input := `nexus service Front:
-    sync Ask() -> (string):
-        nexus PayEndpoint PayService.Charge()
-        close complete("ok")
+	sync Ask() -> (string):
+		nexus PayEndpoint PayService.Charge()
+		close complete("ok")
 
 nexus service PayService:
-    async Charge workflow ChargeCard
+	async Charge workflow ChargeCard
 
 workflow ChargeCard():
-    close complete()
+	close complete()
 
 worker frontTypes:
-    nexus service Front
+	nexus service Front
 
 worker payTypes:
-    workflow ChargeCard
-    nexus service PayService
+	workflow ChargeCard
+	nexus service PayService
 
 namespace front:
-    worker frontTypes
-        options:
-            task_queue: "front"
+	worker frontTypes
+		options:
+			task_queue: "front"
 
 namespace payments:
-    worker payTypes
-        options:
-            task_queue: "payments"
-    nexus endpoint PayEndpoint
-        options:
-            task_queue: "payments"
-            allowed_caller_namespaces: ["orders"]
+	worker payTypes
+		options:
+			task_queue: "payments"
+	nexus endpoint PayEndpoint
+		options:
+			task_queue: "payments"
+			allowed_caller_namespaces: ["orders"]
 `
 	var found bool
 	for _, e := range Validate(mustParseAndResolve(t, input)) {
@@ -367,7 +367,7 @@ namespace payments:
 // no origin namespace, so its call is not checked (it already warns as
 // uncovered).
 func TestNexusCallerUnhostedNotChecked(t *testing.T) {
-	input := strings.Replace(accessFile(`allowed_caller_namespaces: []`), "worker shopTypes:\n    workflow Checkout\n", "", 1)
+	input := strings.Replace(accessFile(`allowed_caller_namespaces: []`), "worker shopTypes:\n\tworkflow Checkout\n", "", 1)
 	if got := callerErrs(Validate(mustParseAndResolve(t, input))); len(got) != 0 {
 		t.Errorf("unhosted caller checked: %q", got)
 	}
@@ -378,46 +378,46 @@ func TestNexusCallerUnhostedNotChecked(t *testing.T) {
 func TestNexusAccessDiagnosticsOrdered(t *testing.T) {
 	var b strings.Builder
 	b.WriteString(`nexus service PayService:
-    async Charge workflow ChargeCard
+	async Charge workflow ChargeCard
 
 workflow ChargeCard():
-    close complete()
+	close complete()
 `)
 	callers := []string{"Zeta", "Alpha", "Mid", "Beta"}
 	for _, c := range callers {
-		fmt.Fprintf(&b, "\nworkflow %s():\n    nexus PayEndpoint PayService.Charge()\n    close complete()\n", c)
+		fmt.Fprintf(&b, "\nworkflow %s():\n\tnexus PayEndpoint PayService.Charge()\n\tclose complete()\n", c)
 	}
-	b.WriteString("\nworker payTypes:\n    workflow ChargeCard\n    nexus service PayService\n\nworker shopTypes:\n")
+	b.WriteString("\nworker payTypes:\n\tworkflow ChargeCard\n\tnexus service PayService\n\nworker shopTypes:\n")
 	for _, c := range callers {
-		fmt.Fprintf(&b, "    workflow %s\n", c)
+		fmt.Fprintf(&b, "\tworkflow %s\n", c)
 	}
-	b.WriteString("\nworker a1:\n    workflow ChargeCard\n\nworker a2:\n    workflow Zeta\n")
+	b.WriteString("\nworker a1:\n\tworkflow ChargeCard\n\nworker a2:\n\tworkflow Zeta\n")
 	b.WriteString(`
 namespace shop:
-    worker shopTypes
-        options:
-            task_queue: "shop"
-    worker a1
-        options:
-            task_queue: "z-queue"
-    worker a2
-        options:
-            task_queue: "z-queue"
-    worker a1
-        options:
-            task_queue: "a-queue"
-    worker a2
-        options:
-            task_queue: "a-queue"
+	worker shopTypes
+		options:
+			task_queue: "shop"
+	worker a1
+		options:
+			task_queue: "z-queue"
+	worker a2
+		options:
+			task_queue: "z-queue"
+	worker a1
+		options:
+			task_queue: "a-queue"
+	worker a2
+		options:
+			task_queue: "a-queue"
 
 namespace payments:
-    worker payTypes
-        options:
-            task_queue: "payments"
-    nexus endpoint PayEndpoint
-        options:
-            task_queue: "payments"
-            allowed_caller_namespaces: []
+	worker payTypes
+		options:
+			task_queue: "payments"
+	nexus endpoint PayEndpoint
+		options:
+			task_queue: "payments"
+			allowed_caller_namespaces: []
 `)
 	input := b.String()
 	// The callers as declared (Zeta, Alpha, Mid, Beta), then the z-queue group
@@ -456,8 +456,8 @@ func TestServiceCoherenceAcrossFamilySpellings(t *testing.T) {
 // allowlist never reads the queue, so the caller check still runs.
 func TestNexusCallerCheckedOnTemplatedEndpointQueue(t *testing.T) {
 	input := strings.Replace(accessFile(`allowed_caller_namespaces: ["orders"]`, "shop"),
-		"    nexus endpoint PayEndpoint\n        options:\n            task_queue: \"payments\"\n",
-		"    nexus endpoint PayEndpoint\n        options:\n            task_queue: \"payments-{x}\"\n", 1)
+		"\tnexus endpoint PayEndpoint\n\t\toptions:\n\t\t\ttask_queue: \"payments\"\n",
+		"\tnexus endpoint PayEndpoint\n\t\toptions:\n\t\t\ttask_queue: \"payments-{x}\"\n", 1)
 	file, err := parser.ParseFile(input)
 	if err != nil {
 		t.Fatal(err)
@@ -475,10 +475,10 @@ func TestNexusCallerCheckedOnTemplatedEndpointQueue(t *testing.T) {
 func TestDuplicateEndpointChecksResolvedDeclaration(t *testing.T) {
 	file, err := parser.ParseFile(accessFile(`allowed_caller_namespaces: ["shop"]`, "shop") + `
 namespace later:
-    nexus endpoint PayEndpoint
-        options:
-            task_queue: "elsewhere"
-            allowed_caller_namespaces: []
+	nexus endpoint PayEndpoint
+		options:
+			task_queue: "elsewhere"
+			allowed_caller_namespaces: []
 `)
 	if err != nil {
 		t.Fatal(err)

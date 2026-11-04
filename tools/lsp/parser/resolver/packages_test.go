@@ -42,15 +42,15 @@ func TestCrossPackageSameNameResolves(t *testing.T) {
 package orderer
 
 workflow ChannelJoin(id):
-    close complete(id)
+	close complete(id)
 `
 	peer := `package peer
 
 import "acme/orderer"
 
 workflow ChannelJoin(id):
-    workflow orderer.ChannelJoin(id) -> res
-    close complete(res)
+	workflow orderer.ChannelJoin(id) -> res
+	close complete(res)
 `
 	file := mustMerge(t, orderer, peer)
 	errs := Resolve(file)
@@ -76,10 +76,10 @@ func TestDuplicateWithinOnePackageStillErrors(t *testing.T) {
 	src := `package billing
 
 workflow Charge(id):
-    close complete(id)
+	close complete(id)
 
 workflow Charge(id):
-    close complete(id)
+	close complete(id)
 `
 	errs := Resolve(mustParse(t, src))
 	var found bool
@@ -100,16 +100,16 @@ func TestGlobalEndpointDuplicateAcrossPackages(t *testing.T) {
 	a := `package a
 
 namespace nsA:
-    nexus endpoint Shared
-        options:
-            task_queue: "q"
+	nexus endpoint Shared
+		options:
+			task_queue: "q"
 `
 	b := `package b
 
 namespace nsB:
-    nexus endpoint Shared
-        options:
-            task_queue: "q"
+	nexus endpoint Shared
+		options:
+			task_queue: "q"
 `
 	errs := Resolve(mustMerge(t, a, b))
 	var found bool
@@ -131,7 +131,7 @@ func TestAliasResolvesLeafClash(t *testing.T) {
 package orderer
 
 workflow Run(id):
-    close complete(id)
+	close complete(id)
 `
 	// app imports two "orderer" paths: the bare one binds "orderer" and is
 	// external, the aliased one binds "ord" to the package at beta/orderer.
@@ -141,8 +141,8 @@ import "acme/orderer"
 import ord "beta/orderer"
 
 workflow Caller(id):
-    workflow ord.Run(id) -> r
-    close complete(r)
+	workflow ord.Run(id) -> r
+	close complete(r)
 `
 	file := mustMerge(t, orderer, app)
 	errs := Resolve(file)
@@ -168,28 +168,28 @@ func TestNexusExternalServiceCoexistsWithLocal(t *testing.T) {
 import remote "acme/remote"
 
 nexus service LocalSvc:
-    async DoLocal workflow Runner
+	async DoLocal workflow Runner
 
 workflow Runner(id):
-    close complete(id)
+	close complete(id)
 
 workflow Coordinator(id):
-    nexus Gateway LocalSvc.DoLocal(id) -> a
-    nexus Gateway remote.RemoteSvc.DoRemote(id) -> b
-    close complete(a)
+	nexus Gateway LocalSvc.DoLocal(id) -> a
+	nexus Gateway remote.RemoteSvc.DoRemote(id) -> b
+	close complete(a)
 
 worker w:
-    workflow Runner
-    workflow Coordinator
-    nexus service LocalSvc
+	workflow Runner
+	workflow Coordinator
+	nexus service LocalSvc
 
 namespace ns:
-    worker w
-        options:
-            task_queue: "q"
-    nexus endpoint Gateway
-        options:
-            task_queue: "q"
+	worker w
+		options:
+			task_queue: "q"
+	nexus endpoint Gateway
+		options:
+			task_queue: "q"
 `
 	file := mustParse(t, src)
 	errs := Resolve(file)
@@ -230,10 +230,10 @@ func TestOwnPackageQualifierResolves(t *testing.T) {
 	input := `package billing
 
 activity Charge(amt) -> (ok):
-    return ok
+	return ok
 
 workflow Order(id):
-    activity billing.Charge(id) -> done
+	activity billing.Charge(id) -> done
 `
 	file := mustParse(t, input)
 	errs := Resolve(file)
@@ -257,7 +257,7 @@ func TestImportedPackageQualifierResolvesAsExternal(t *testing.T) {
 import "acme/shared"
 
 workflow Order(id):
-    activity shared.Charge(id) -> done
+	activity shared.Charge(id) -> done
 `
 	file := mustParse(t, input)
 	errs := Resolve(file)
@@ -295,7 +295,7 @@ func TestQualifiedRefWithoutImport(t *testing.T) {
 	input := `package billing
 
 workflow Order(id):
-    activity shared.Charge(id) -> done
+	activity shared.Charge(id) -> done
 `
 	file := mustParse(t, input)
 	errs := Resolve(file)
@@ -319,15 +319,15 @@ func TestVersionedImportAliasedResolves(t *testing.T) {
 package orders
 
 workflow ProcessOrder(id):
-    close complete(id)
+	close complete(id)
 `
 	app := `package app
 
 import orders "example.com/acme/orders/v1"
 
 workflow Caller(id):
-    workflow orders.ProcessOrder(id) -> r
-    close complete(r)
+	workflow orders.ProcessOrder(id) -> r
+	close complete(r)
 `
 	file := mustMerge(t, orders, app)
 	errs := Resolve(file)
@@ -351,15 +351,15 @@ func TestVersionedImportBareResolves(t *testing.T) {
 package orders
 
 workflow ProcessOrder(id):
-    close complete(id)
+	close complete(id)
 `
 	app := `package app
 
 import "example.com/acme/orders/v1"
 
 workflow Caller(id):
-    workflow orders.ProcessOrder(id) -> r
-    close complete(r)
+	workflow orders.ProcessOrder(id) -> r
+	close complete(r)
 `
 	file := mustMerge(t, orders, app)
 	errs := Resolve(file)
@@ -383,15 +383,15 @@ func TestVersionedImportAliasDistinctNameResolves(t *testing.T) {
 package orders
 
 workflow ProcessOrder(id):
-    close complete(id)
+	close complete(id)
 `
 	app := `package app
 
 import o "example.com/acme/orders/v1"
 
 workflow Caller(id):
-    workflow o.ProcessOrder(id) -> r
-    close complete(r)
+	workflow o.ProcessOrder(id) -> r
+	close complete(r)
 `
 	file := mustMerge(t, orders, app)
 	errs := Resolve(file)
@@ -416,15 +416,15 @@ func TestVersionedImportTypoRaisesUndefined(t *testing.T) {
 package orders
 
 workflow ProcessOrder(id):
-    close complete(id)
+	close complete(id)
 `
 	app := `package app
 
 import "example.com/acme/orders/v1"
 
 workflow Caller(id):
-    workflow orders.PorcessOrder(id) -> r
-    close complete(r)
+	workflow orders.PorcessOrder(id) -> r
+	close complete(r)
 `
 	file := mustMerge(t, orders, app)
 	errs := Resolve(file)
@@ -449,8 +449,8 @@ func TestVersionedImportAbsentStaysExternal(t *testing.T) {
 import "example.com/acme/missing/v1"
 
 workflow Caller(id):
-    workflow missing.DoThing(id) -> r
-    close complete(r)
+	workflow missing.DoThing(id) -> r
+	close complete(r)
 `
 	file := mustParse(t, input)
 	errs := Resolve(file)
@@ -481,8 +481,8 @@ workflow Caller(id):
 // TestImportsNeverBindByName: packages with no import path are reached by no
 // import, even one whose assumed name is their declared name.
 func TestImportsNeverBindByName(t *testing.T) {
-	file := mustMerge(t, "package orderer\n\nworkflow Run(id):\n    close complete(id)\n",
-		"package app\n\nimport \"acme/orderer\"\n\nworkflow Caller(id):\n    workflow orderer.Run(id) -> r\n    close complete(r)\n")
+	file := mustMerge(t, "package orderer\n\nworkflow Run(id):\n\tclose complete(id)\n",
+		"package app\n\nimport \"acme/orderer\"\n\nworkflow Caller(id):\n\tworkflow orderer.Run(id) -> r\n\tclose complete(r)\n")
 	errs := Resolve(file)
 	if len(errs) != 1 || errs[0].Kind != ErrUnresolvedImport {
 		t.Fatalf("want one UNRESOLVED_IMPORT, got %v", errs)

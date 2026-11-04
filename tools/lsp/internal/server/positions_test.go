@@ -39,10 +39,10 @@ func TestDiagnosticsCountUTF16(t *testing.T) {
 		name, src, msg string
 		want           protocol.Range
 	}{
-		{"parse error after é", "workflow W():\n    if (\"é\") junk:\n        close complete\n", "junk", lineSpan(1, 13, 18)},
-		{"parse error after a surrogate pair", "workflow W():\n    if (\"😀\") junk:\n        close complete\n", "junk", lineSpan(1, 14, 19)},
-		{"parse error at the end of a line after é", "workflow W(x: \"é\")\n    close complete\n", "requires ':'", lineSpan(0, 18, 18)},
-		{"resolve error on a line with é and a surrogate pair", "workflow W():\n    activity Missing(note: \"é😀\")\n    close complete\n", "undefined activity", lineSpan(1, 13, 33)},
+		{"parse error after é", "workflow W():\n\tif (\"é\") junk:\n\t\tclose complete\n", "junk", lineSpan(1, 13, 18)},
+		{"parse error after a surrogate pair", "workflow W():\n\tif (\"😀\") junk:\n\t\tclose complete\n", "junk", lineSpan(1, 14, 19)},
+		{"parse error at the end of a line after é", "workflow W(x: \"é\")\n\tclose complete\n", "requires ':'", lineSpan(0, 18, 18)},
+		{"resolve error on a line with é and a surrogate pair", "workflow W():\n\tactivity Missing(note: \"é😀\")\n\tclose complete\n", "undefined activity", lineSpan(1, 13, 33)},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -69,7 +69,7 @@ func lineSpan(line, start, end uint32) protocol.Range {
 // diagnostic, on a line wider in bytes than in UTF-16, finds its fix. Matching
 // is by line, so this pins the line, not the columns.
 func TestCodeActionMatchesUTF16DiagnosticLine(t *testing.T) {
-	src := "workflow W():\n    activity Missing(note: \"é😀\")\n    close complete\n"
+	src := "workflow W():\n\tactivity Missing(note: \"é😀\")\n\tclose complete\n"
 	store := NewDocumentStore()
 	doc := store.Open(renameURI, src)
 	for _, d := range diagnostics(doc) {
@@ -116,10 +116,10 @@ func decodeSemanticTokens(data []uint32) []semToken {
 // the end of its line: an argument list over two lines is two tokens.
 func TestSemanticTokensCountUTF16(t *testing.T) {
 	src := "workflow W():\n" +
-		"    x = \"é😀\" + y  # ü😀 note\n" +
-		"    activity Do(a, \"é\",\n" +
-		"        \"😀\")\n" +
-		"    close complete\n"
+		"\tx = \"é😀\" + y  # ü😀 note\n" +
+		"\tactivity Do(a, \"é\",\n" +
+		"\t\t\"😀\")\n" +
+		"\tclose complete\n"
 	toks := decodeSemanticTokens(buildSemanticTokens(src))
 	lines := strings.Split(src, "\n")
 	for _, tok := range toks {
