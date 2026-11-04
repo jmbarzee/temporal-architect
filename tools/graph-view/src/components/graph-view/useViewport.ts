@@ -5,7 +5,8 @@
 // physics loop reads: the one-shot `initialFitDone` guard and the cross-view
 // `pendingCenterRef` request. `fit()` frames a set of nodes; the
 // loop/keyboard/double-click handlers consume the returned
-// `setViewport`/`containerRef` directly until the loop is extracted.
+// `setViewport`/`containerRef` directly until the loop is extracted, and frame
+// against the size `measure()` returns.
 
 import React from 'react'
 import { DEFAULT_VIEWPORT, fitToView, followResize } from '../../graph/viewport'
@@ -20,6 +21,8 @@ export interface ViewportController {
   initialFitDone: React.MutableRefObject<boolean>
   // Cross-view "center on this node after warmup" request, consumed by the loop.
   pendingCenterRef: React.MutableRefObject<{ nodeId: string } | null>
+  // The container's size, for a viewport computed against it.
+  measure: () => { width: number; height: number } | null
   // Frame the viewport to the given nodes (measures the container first).
   fit: (nodes: SimNode[], padding?: number) => void
 }
@@ -30,30 +33,39 @@ export function useViewport(): ViewportController {
   const initialFitDone = React.useRef(false)
   const pendingCenterRef = React.useRef<{ nodeId: string } | null>(null)
 
-  // A resize keeps the world point at the pane's centre fixed. The first
-  // measurement only records the size, and a zero-sized pane (hidden by its
-  // host) neither shifts the camera nor is shifted from.
-  const sizeRef = React.useRef<{ w: number; h: number } | null>(null)
+  // A resize keeps the world point at the pane's centre fixed. The shift is
+  // the change since the size the viewport was last computed for: `measure()`
+  // records that size, so a viewport framed after the host resized the pane,
+  // but before the observer ran, is not shifted again. The first measurement
+  // only records the size, and a zero-sized pane (hidden by its host) neither
+  // shifts the camera nor is shifted from.
+  const sizeRef = React.useRef<{ width: number; height: number } | null>(null)
+  const measure = React.useCallback(() => {
+    const container = containerRef.current
+    if (!container) return null
+    const { width, height } = container.getBoundingClientRect()
+    sizeRef.current = { width, height }
+    return { width, height }
+  }, [])
   React.useEffect(() => {
     const container = containerRef.current
     if (!container || typeof ResizeObserver === 'undefined') return
-    const ro = new ResizeObserver(entries => {
-      const { width: w, height: h } = entries[0].contentRect
+    const ro = new ResizeObserver(() => {
       const prev = sizeRef.current
-      sizeRef.current = { w, h }
-      if (!prev || !prev.w || !prev.h || !w || !h) return
-      if (w !== prev.w || h !== prev.h) setViewport(vp => followResize(vp, w - prev.w, h - prev.h))
+      const size = measure()
+      if (!prev?.width || !prev.height || !size?.width || !size.height) return
+      const dw = size.width - prev.width, dh = size.height - prev.height
+      if (dw || dh) setViewport(vp => followResize(vp, dw, dh))
     })
     ro.observe(container)
     return () => ro.disconnect()
-  }, [])
+  }, [measure])
 
   const fit = React.useCallback((nodes: SimNode[], padding?: number) => {
-    const container = containerRef.current
-    if (!container) return
-    const { width, height } = container.getBoundingClientRect()
-    setViewport(fitToView(nodes, width, height, padding))
-  }, [])
+    const size = measure()
+    if (!size) return
+    setViewport(fitToView(nodes, size.width, size.height, padding))
+  }, [measure])
 
-  return { viewport, setViewport, containerRef, initialFitDone, pendingCenterRef, fit }
+  return { viewport, setViewport, containerRef, initialFitDone, pendingCenterRef, measure, fit }
 }

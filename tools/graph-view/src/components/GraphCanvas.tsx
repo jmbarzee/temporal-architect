@@ -13,6 +13,7 @@ import { fitToView, screenToWorld, worldToScreen, zoomAt } from '../graph/viewpo
 import { nodeSizeMul, type NodeScaleParams } from '../graph/node-scale'
 import type { Taxonomy } from '../graph/taxonomy'
 import { useTaxonomy } from './graph-view/useTaxonomy'
+import { useLatest } from './graph-view/useControllable'
 import type { EdgeStroke, Theme } from '../graph/scheme'
 import { NEUTRAL_STROKE } from '../graph/shapes'
 import { withAlpha } from '../graph/scheme'
@@ -333,6 +334,9 @@ export function GraphCanvas({
   // Mouse handlers
   // Wheel zoom listens natively and non-passive: React's root wheel listener
   // is passive, so its preventDefault cannot keep the page from scrolling.
+  // Registered once; the camera and its setter are read through refs.
+  const viewportRef = useLatest(viewport)
+  const onViewportChangeRef = useLatest(onViewportChange)
   React.useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
@@ -342,11 +346,11 @@ export function GraphCanvas({
       const sx = e.clientX - rect.left
       const sy = e.clientY - rect.top
       const factor = e.deltaY < 0 ? 1.15 : 0.85
-      onViewportChange(zoomAt(viewport, sx, sy, factor))
+      onViewportChangeRef.current(zoomAt(viewportRef.current, sx, sy, factor))
     }
     canvas.addEventListener('wheel', handleWheel, { passive: false })
     return () => canvas.removeEventListener('wheel', handleWheel)
-  }, [viewport, onViewportChange])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handlePointerDown = React.useCallback((e: React.PointerEvent) => {
     const rect = e.currentTarget.getBoundingClientRect()

@@ -28,7 +28,8 @@ export interface SimulationLoopParams {
   axes: readonly ResolvedAxisDescriptor[]
   hoveredNodeId: string | null
   selectedNodeId: string | null
-  containerRef: React.RefObject<HTMLDivElement>
+  /** The container's size, recorded as the one the viewport is computed for. */
+  measure: () => { width: number; height: number } | null
   initialFitDone: React.MutableRefObject<boolean>
   pendingCenterRef: React.MutableRefObject<{ nodeId: string } | null>
   setViewport: React.Dispatch<React.SetStateAction<Viewport>>
@@ -42,7 +43,7 @@ export function useSimulationLoop({
   visibleIds, visibleNodes, downstreamScores,
   filter, axes,
   hoveredNodeId, selectedNodeId,
-  containerRef, initialFitDone, pendingCenterRef, setViewport, setSelectedNodeId, taxonomy,
+  measure, initialFitDone, pendingCenterRef, setViewport, setSelectedNodeId, taxonomy,
 }: SimulationLoopParams): { fps: number } {
   // Frame-rate indicator. Updated ~2×/sec from the loop.
   const [fps, setFps] = React.useState(0)
@@ -65,13 +66,10 @@ export function useSimulationLoop({
 
       // Initial fit — once per sim instance, after warmup.
       if (!initialFitDone.current && sim.alpha < 0.3) {
-        const container = containerRef.current
-        if (container) {
-          const { width, height } = container.getBoundingClientRect()
-          if (width > 0 && height > 0) {
-            setViewport(fitToView(visibleNodes, width, height))
-            initialFitDone.current = true
-          }
+        const size = measure()
+        if (size && size.width > 0 && size.height > 0) {
+          setViewport(fitToView(visibleNodes, size.width, size.height))
+          initialFitDone.current = true
         }
       }
 
@@ -79,9 +77,9 @@ export function useSimulationLoop({
       if (initialFitDone.current && pendingCenterRef.current) {
         const targetNode = sim.getNode(pendingCenterRef.current.nodeId)
         if (targetNode) {
-          const container = containerRef.current
-          if (container) {
-            const { width, height } = container.getBoundingClientRect()
+          const size = measure()
+          if (size) {
+            const { width, height } = size
             setViewport(prev => ({
               scale: Math.max(prev.scale, 1.2),
               x: width / 2 - targetNode.x * Math.max(prev.scale, 1.2),
