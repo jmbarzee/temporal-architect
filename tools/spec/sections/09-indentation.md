@@ -8,7 +8,7 @@ TWF uses **indentation-based scoping** (like Python):
 4. **Block start:** A colon (`:`) followed by NEWLINE and INDENT starts a new block
 5. **Block end:** DEDENT ends the current block
 6. **Blank lines:** Blank lines, empty or holding any mix of spaces and tabs, are skipped
-7. **No mixing:** Indentation that mixes tabs and spaces, within a line or across a file's lines, is a `LEX` error at the offending character, naming the file's style. The line keeps the level its leading run of that style gives it, so the rest of the file still parses
+7. **No mixing:** Indentation that mixes tabs and spaces, within a line or across a file's lines, is a `LEX` error at the offending character, naming the file's style. Each such line is placed where an editor shows it (a tab stop at a spaces file's first indent width, or every four columns in a tab file), so a block written wholly in the other style keeps its structure. A stray character after a line's indentation is ignored when that indentation is already an open level
 
 ## Example
 

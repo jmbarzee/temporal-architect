@@ -82,9 +82,8 @@ func TestTabBlockHeaderTrailingComment(t *testing.T) {
 
 // Mixing tabs and spaces in indentation, within a line or across lines, is one
 // ILLEGAL at the offending character, naming the style the file's first
-// indented line set. The line keeps the level its leading run of that style
-// gives it, or the current level when it starts off-style, so its tokens still
-// follow. Blank lines are never checked.
+// indented line set. The line's tokens still follow, at the level measureIndent
+// places it. Blank lines are never checked.
 func TestMixedIndentationIsAnError(t *testing.T) {
 	for _, tc := range []struct {
 		name, src string

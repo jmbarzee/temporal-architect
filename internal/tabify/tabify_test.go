@@ -38,6 +38,16 @@ func TestTabify(t *testing.T) {
 			want: "workflow W():\n\ta\n\n\n\tb\n",
 		},
 		{
+			name: "blank lines of tabs and spaces close no block",
+			src:  "workflow W():\n    if (x):\n        a\n\t \n        b\n",
+			want: "workflow W():\n\tif (x):\n\t\ta\n\n\t\tb\n",
+		},
+		{
+			name: "CRLF line ends stay",
+			src:  "workflow W():\r\n    if (x):\r\n        a\r\n\r\n        b\r\n",
+			want: "workflow W():\r\n\tif (x):\r\n\t\ta\r\n\r\n\t\tb\r\n",
+		},
+		{
 			name: "tabs stay as they are",
 			src:  "workflow W():\n\tactivity A(a,\n\t\t   b)\n",
 			want: "workflow W():\n\tactivity A(a,\n\t\t   b)\n",
@@ -129,6 +139,14 @@ func TestTabifyMarkdown(t *testing.T) {
 	}
 	if got != want {
 		t.Errorf("got:\n%s\nwant:\n%s", got, want)
+	}
+	nested := "````markdown\n```twf\nw:\n    a\n```\n````\n\n```twf\nw:\n    a\n    ```\n```\n"
+	wantNested := "````markdown\n```twf\nw:\n    a\n```\n````\n\n```twf\nw:\n\ta\n\t```\n```\n"
+	if got, err := TabifyMarkdown(nested); err != nil || got != wantNested {
+		t.Errorf("fences: got %q, %v, want %q", got, err, wantNested)
+	}
+	if got, err := TabifyMarkdown(strings.ReplaceAll(md, "\n", "\r\n")); err != nil || got != strings.ReplaceAll(want, "\n", "\r\n") {
+		t.Errorf("CRLF: got %q, %v", got, err)
 	}
 	if _, err := TabifyMarkdown("```twf\nw:\n    a\n  b\n```\n"); err == nil || !strings.HasPrefix(err.Error(), "block at line 1: line 3:") {
 		t.Errorf("got error %v, want one naming the block and its line", err)

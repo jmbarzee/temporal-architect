@@ -3,6 +3,7 @@ package lexer
 import (
 	"bytes"
 	"fmt"
+	"slices"
 	"strings"
 	"unicode/utf8"
 
@@ -22,6 +23,7 @@ type Lexer struct {
 	indentStack []int // stack of indent widths, starts at [0]
 	indentChar  byte  // ' ' or '\t', fixed by the first indented line; 0 before it
 	indentLine  int   // the line that fixed indentChar
+	indentUnit  int   // a spaces file's first indent width, its tab stop for recovery
 	eofEmitted  bool  // true after first EOF has been emitted
 }
 
@@ -179,6 +181,7 @@ func (l *Lexer) handleIndent() (token.Token, bool) {
 	run := l.input[start:end]
 	if l.indentChar == 0 && len(run) > 0 {
 		l.indentChar, l.indentLine = run[0], l.line
+		l.indentUnit = len(run) - len(bytes.TrimLeft(run, string(run[0])))
 	}
 	indent, bad := l.measureIndent(run)
 	if bad >= 0 {
@@ -214,23 +217,51 @@ func (l *Lexer) indentEnd(i int) int {
 // indents with tabs or with spaces, fixed by its first indented line (run[0]
 // stands in before that line is reached). With one character per file, widths
 // order the levels exactly as their whitespace prefixes do, so a tab's display
-// width never matters. A run that breaks the style is measured by the part
-// before the break, or stays at the current level when it breaks at once, so a
-// stray character costs one error rather than a misnested block.
+// width never matters.
+//
+// A run that breaks the style is placed for recovery, so the rest of the file
+// still parses: at its in-style prefix when that is an open level (a stray
+// character after a line's indentation), and otherwise where an editor shows
+// it, with a tab stop at a spaces file's first indent width, or every four
+// columns in a tab file. Shown past the current level, it opens one level;
+// otherwise it sits at the deepest open level it reaches.
 func (l *Lexer) measureIndent(run []byte) (width, bad int) {
 	style := l.indentChar
 	if style == 0 && len(run) > 0 {
 		style = run[0]
 	}
-	for i, ch := range run {
-		if ch != style {
-			if i == 0 {
-				return l.indentStack[len(l.indentStack)-1], 0
-			}
-			return i, i
+	bad = bytes.IndexFunc(run, func(r rune) bool { return byte(r) != style })
+	if bad < 0 {
+		return len(run), -1
+	}
+	if bad > 0 && slices.Contains(l.indentStack, bad) {
+		return bad, bad
+	}
+	stop := l.indentUnit
+	if style == '\t' || stop == 0 {
+		stop = 4
+	}
+	shown := 0
+	for _, ch := range run {
+		if ch == '\t' {
+			shown += stop - shown%stop
+		} else {
+			shown++
 		}
 	}
-	return len(run), -1
+	step := stop
+	if style == '\t' {
+		shown, step = shown/stop, 1
+	}
+	top := l.indentStack[len(l.indentStack)-1]
+	if shown > top {
+		return top + step, bad
+	}
+	for i := len(l.indentStack) - 1; ; i-- {
+		if l.indentStack[i] <= shown {
+			return l.indentStack[i], bad
+		}
+	}
 }
 
 // indentStyleError returns the ILLEGAL for the indentation run starting at

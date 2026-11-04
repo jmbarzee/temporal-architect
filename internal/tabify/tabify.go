@@ -12,10 +12,17 @@ import (
 // never has to be guessed. A continuation line inside a multi-line argument
 // list is not a level; it gets one tab per unit of the file's first indent
 // level, then spaces for what is left, keeping its alignment. Blank lines
-// become empty. Source already indented with tabs comes back unchanged, so a
-// second run changes nothing. Source that mixes tabs and spaces, or dedents to
-// a width no open block has, is an error.
+// become empty, and CRLF line ends stay CRLF. Source already indented with
+// tabs comes back unchanged, so a second run changes nothing. Source that
+// mixes tabs and spaces, or dedents to a width no open block has, is an error.
 func Tabify(src string) (string, error) {
+	if strings.Contains(src, "\r\n") {
+		out, err := Tabify(strings.ReplaceAll(src, "\r\n", "\n"))
+		if err != nil {
+			return src, err
+		}
+		return strings.ReplaceAll(out, "\n", "\r\n"), nil
+	}
 	lines := strings.Split(src, "\n")
 	if done, err := tabbed(lines); done || err != nil {
 		return src, err
@@ -27,7 +34,7 @@ func Tabify(src string) (string, error) {
 		body := strings.TrimLeft(line, " ")
 		width := len(line) - len(body)
 		switch {
-		case strings.TrimLeft(body, "\t") == "":
+		case strings.Trim(line, " \t") == "":
 			lines[i] = ""
 			continue
 		case depth > 0:
@@ -108,24 +115,36 @@ func argDepth(body string, depth int) int {
 	return depth
 }
 
-// fence matches the opening line of a twf code block in Markdown.
-var fence = regexp.MustCompile("^([ \t]*)(```+|~~~+)twf[ \t]*$")
+// fence matches the opening line of a fenced code block in Markdown.
+var fence = regexp.MustCompile("^([ \t]*)(```+|~~~+)[ \t]*([^ \t`]*)")
 
 // TabifyMarkdown re-indents the body of every ```twf fenced block in md with
-// Tabify, below the indentation the fence itself carries. The error names the
+// Tabify, below the indentation the fence itself carries. Other fenced blocks,
+// and any twf fence inside them, are left as written. The error names the
 // block's first line.
 func TabifyMarkdown(md string) (string, error) {
+	if strings.Contains(md, "\r\n") {
+		out, err := TabifyMarkdown(strings.ReplaceAll(md, "\r\n", "\n"))
+		if err != nil {
+			return md, err
+		}
+		return strings.ReplaceAll(out, "\n", "\r\n"), nil
+	}
 	lines := strings.Split(md, "\n")
 	for i := 0; i < len(lines); i++ {
 		m := fence.FindStringSubmatch(lines[i])
 		if m == nil {
 			continue
 		}
-		prefix, marker := m[1], m[2]
+		prefix, marker, info := m[1], m[2], m[3]
 		start := i + 1
 		end := start
-		for end < len(lines) && !isClose(lines[end], marker) {
+		for end < len(lines) && !isClose(lines[end], prefix, marker) {
 			end++
+		}
+		i = end
+		if info != "twf" {
+			continue
 		}
 		body := make([]string, end-start)
 		for j, line := range lines[start:end] {
@@ -133,7 +152,7 @@ func TabifyMarkdown(md string) (string, error) {
 		}
 		out, err := Tabify(strings.Join(body, "\n"))
 		if err != nil {
-			return md, fmt.Errorf("block at line %d: %w", i+1, err)
+			return md, fmt.Errorf("block at line %d: %w", start, err)
 		}
 		for j, line := range strings.Split(out, "\n") {
 			if line != "" {
@@ -141,13 +160,18 @@ func TabifyMarkdown(md string) (string, error) {
 			}
 			lines[start+j] = line
 		}
-		i = end
 	}
 	return strings.Join(lines, "\n"), nil
 }
 
-// isClose reports whether line closes a fenced block opened by marker.
-func isClose(line, marker string) bool {
-	t := strings.TrimSpace(line)
-	return strings.HasPrefix(t, marker) && strings.Trim(t, marker[:1]) == ""
+// isClose reports whether line closes a fenced block opened by marker, whose
+// opening fence was indented by prefix: a run of at least as many of the same
+// character, indented no deeper than the opening fence, and nothing after it.
+func isClose(line, prefix, marker string) bool {
+	rest := strings.TrimLeft(line, " \t")
+	if len(line)-len(rest) > len(prefix) {
+		return false
+	}
+	rest = strings.TrimRight(rest, " \t")
+	return strings.HasPrefix(rest, marker) && strings.Trim(rest, marker[:1]) == ""
 }

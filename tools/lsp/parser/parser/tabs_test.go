@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 
@@ -153,6 +154,64 @@ func TestMixedIndentationKeepsTheStatement(t *testing.T) {
 			}
 			if _, ok := wf.Body[1].(*ast.CloseStmt); !ok {
 				t.Errorf("second statement is %T, want *ast.CloseStmt", wf.Body[1])
+			}
+		})
+	}
+}
+
+// Lines off the file's style are LEX errors, one each, and are placed where an
+// editor shows them, so a whole block or definition in the other style keeps
+// its structure and nothing else is reported.
+func TestOffStyleBlocksKeepTheirStructure(t *testing.T) {
+	for _, tc := range []struct {
+		name, src string
+		lex       int
+		body      []int // statements per definition
+	}{
+		{
+			name: "a tab definition in a spaces file",
+			src:  "workflow W(x):\n    close complete(x)\n\nactivity A(x):\n\tif (x):\n\t\treturn x\n\treturn x\n",
+			lex:  3, body: []int{1, 2},
+		},
+		{
+			name: "a two-space comment sets the style of a tab file",
+			src:  "workflow W(x):\n  # note\n\tif (x):\n\t\tactivity A(x)\n\tclose complete(x)\n\nactivity A(x):\n\treturn x\n",
+			lex:  4, body: []int{2, 1},
+		},
+		{
+			name: "a stray eight spaces at depth two of a tab file",
+			src:  "workflow W(x):\n\tif (x):\n\t\tactivity A(x)\n        activity A(x)\n\tclose complete(x)\n\nactivity A(x):\n\treturn x\n",
+			lex:  1, body: []int{2, 1},
+		},
+		{
+			name: "two spaces and a tab at depth four",
+			src:  "workflow W(x):\n    activity A(x)\n  \tclose complete(x)\n\nactivity A(x):\n    return x\n",
+			lex:  1, body: []int{2, 1},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			file, errs := ParseFileAll(tc.src)
+			lex := 0
+			for _, e := range errs {
+				if e.Code() != CodeLexical {
+					t.Errorf("unexpected diagnostic %v", e)
+				}
+				lex++
+			}
+			if lex != tc.lex {
+				t.Errorf("got %d LEX errors %v, want %d", lex, errs, tc.lex)
+			}
+			var body []int
+			for _, d := range file.Definitions {
+				switch d := d.(type) {
+				case *ast.WorkflowDef:
+					body = append(body, len(d.Body))
+				case *ast.ActivityDef:
+					body = append(body, len(d.Body))
+				}
+			}
+			if !slices.Equal(body, tc.body) {
+				t.Errorf("got definitions with %v statements, want %v", body, tc.body)
 			}
 		})
 	}
