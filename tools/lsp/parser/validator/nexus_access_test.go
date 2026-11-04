@@ -125,7 +125,7 @@ worker shopTypes:
 	}
 	b.WriteString("\tnexus endpoint PayEndpoint\n\t\toptions:\n\t\t\ttask_queue: \"payments\"\n")
 	if endpointOption != "" {
-		b.WriteString("            " + endpointOption + "\n")
+		b.WriteString("\t\t\t" + endpointOption + "\n")
 	}
 	return b.String()
 }
@@ -180,8 +180,8 @@ func TestNexusCallerNotAllowedAttribution(t *testing.T) {
 		if e.Kind != ErrNexusCallerNotAllowed {
 			continue
 		}
-		if e.Line != 8 || e.Column != 5 || e.Name != "Checkout" || e.File != "a.twf" || e.Severity != "" {
-			t.Errorf("got %d:%d Name %q File %q Severity %q, want 8:5 Checkout a.twf error", e.Line, e.Column, e.Name, e.File, e.Severity)
+		if e.Line != 8 || e.Column != 2 || e.Name != "Checkout" || e.File != "a.twf" || e.Severity != "" {
+			t.Errorf("got %d:%d Name %q File %q Severity %q, want 8:2 Checkout a.twf error", e.Line, e.Column, e.Name, e.File, e.Severity)
 		}
 		return
 	}

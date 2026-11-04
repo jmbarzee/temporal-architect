@@ -259,8 +259,8 @@ namespace ns:
 			if e.Kind != tt.kind {
 				continue
 			}
-			if e.File != "deploy.twf" || e.Line != tt.line || e.Column != 5 {
-				t.Errorf("%s at %s:%d:%d, want deploy.twf:%d:5", tt.kind, e.File, e.Line, e.Column, tt.line)
+			if e.File != "deploy.twf" || e.Line != tt.line || e.Column != 2 {
+				t.Errorf("%s at %s:%d:%d, want deploy.twf:%d:2", tt.kind, e.File, e.Line, e.Column, tt.line)
 			}
 		}
 	}
@@ -306,8 +306,8 @@ namespace prod:
 		if e.Kind != ErrTaskQueueMismatch {
 			continue
 		}
-		if e.File != "alpha.twf" || e.Line != 10 || e.Column != 5 {
-			t.Errorf("TASK_QUEUE_MISMATCH at %s:%d:%d, want alpha.twf:10:5", e.File, e.Line, e.Column)
+		if e.File != "alpha.twf" || e.Line != 10 || e.Column != 2 {
+			t.Errorf("TASK_QUEUE_MISMATCH at %s:%d:%d, want alpha.twf:10:2", e.File, e.Line, e.Column)
 		}
 		if want := `workers wa and wb on task queue "q"`; !strings.Contains(e.Msg, want) {
 			t.Errorf("TASK_QUEUE_MISMATCH %q, want it to name %s", e.Msg, want)

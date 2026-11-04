@@ -745,7 +745,7 @@ func TestDuplicateRoutesFirstDeclaration(t *testing.T) {
 `
 	workflow := func(body string) string { return "workflow W(x: X):" + body }
 	service := func(body string) string {
-		return "nexus service S:\n\tsync Op(x: X) -> (X):" + strings.ReplaceAll(body, "\n    ", "\n        ")
+		return "nexus service S:\n\tsync Op(x: X) -> (X):" + strings.ReplaceAll(body, "\n\t", "\n\t\t")
 	}
 	tests := []struct {
 		name string
@@ -852,7 +852,7 @@ func TestDuplicateDeclarationRoutesFirst(t *testing.T) {
 				task_queue: "nowhere"
 `
 	const routed = `
-	activity A(x)
+		activity A(x)
 `
 	const async = "\n\tasync Op workflow V\n"
 	signal := func(body string) string { return "\n\tsignal Ping(x: X):" + body }

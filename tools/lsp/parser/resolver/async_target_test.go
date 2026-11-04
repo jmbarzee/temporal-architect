@@ -14,15 +14,15 @@ func TestAsyncTargetUndefinedPosition(t *testing.T) {
 		kind   ErrorKind
 		column int
 	}{
-		{"promise workflow", "promise p <- workflow Missing(x)", ErrUndefinedWorkflow, 27},
-		{"promise activity", "promise p <- activity Missing(x)", ErrUndefinedActivity, 27},
-		{"promise signal", "promise p <- signal Missing", ErrUndefinedSignal, 25},
-		{"await workflow", "await workflow Missing(x)", ErrUndefinedWorkflow, 20},
-		{"await update", "await update Missing", ErrUndefinedUpdate, 18},
+		{"promise workflow", "promise p <- workflow Missing(x)", ErrUndefinedWorkflow, 24},
+		{"promise activity", "promise p <- activity Missing(x)", ErrUndefinedActivity, 24},
+		{"promise signal", "promise p <- signal Missing", ErrUndefinedSignal, 22},
+		{"await workflow", "await workflow Missing(x)", ErrUndefinedWorkflow, 17},
+		{"await update", "await update Missing", ErrUndefinedUpdate, 15},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			file := mustParse(t, "workflow P(x: string):\n    "+tt.line+"\n\tclose complete()\n")
+			file := mustParse(t, "workflow P(x: string):\n\t"+tt.line+"\n\tclose complete()\n")
 			errs := Resolve(file)
 			if got := kindsOf(errs); !slices.Equal(got, []ErrorKind{tt.kind}) {
 				t.Fatalf("kinds = %v, want only %v: %v", got, tt.kind, errs)

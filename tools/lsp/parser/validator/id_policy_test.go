@@ -200,8 +200,8 @@ workflow P(a: A):
 `))
 	for _, e := range errs {
 		if e.Kind == ErrChildStartConflictMismatch {
-			if e.Line != 9 || e.Column != 5 {
-				t.Errorf("hint at %d:%d, want 9:5", e.Line, e.Column)
+			if e.Line != 9 || e.Column != 2 {
+				t.Errorf("hint at %d:%d, want 9:2", e.Line, e.Column)
 			}
 			return
 		}
@@ -235,14 +235,14 @@ nexus service Svc:
 		line, col        int // of the first one
 		msg              string
 	}{
-		{"defaults pair", "workflow_id_reuse_policy: REJECT_DUPLICATE\n        workflow_id_conflict_policy: TERMINATE_EXISTING", "Q",
-			"task_queue: \"q\"", "priority:\n                    priority_key: 1", 1, 6, 9, "Q's default_options pair"},
+		{"defaults pair", "workflow_id_reuse_policy: REJECT_DUPLICATE\n\t\tworkflow_id_conflict_policy: TERMINATE_EXISTING", "Q",
+			"task_queue: \"q\"", "priority:\n\t\t\t\t\tpriority_key: 1", 1, 6, 3, "Q's default_options pair"},
 		{"call-site reuse meets default conflict", "workflow_id_conflict_policy: TERMINATE_EXISTING", "Q",
-			"task_queue: \"q\"", "workflow_id_reuse_policy: REJECT_DUPLICATE", 1, 13, 17, "this start's workflow_id_reuse_policy: REJECT_DUPLICATE meets Q's default workflow_id_conflict_policy"},
+			"task_queue: \"q\"", "workflow_id_reuse_policy: REJECT_DUPLICATE", 1, 13, 5, "this start's workflow_id_reuse_policy: REJECT_DUPLICATE meets Q's default workflow_id_conflict_policy"},
 		{"call-site conflict meets default reuse", "workflow_id_reuse_policy: REJECT_DUPLICATE", "Q",
-			"task_queue: \"q\"", "workflow_id_conflict_policy: TERMINATE_EXISTING", 1, 13, 17, "this start's workflow_id_conflict_policy: TERMINATE_EXISTING meets Q's default workflow_id_reuse_policy"},
+			"task_queue: \"q\"", "workflow_id_conflict_policy: TERMINATE_EXISTING", 1, 13, 5, "this start's workflow_id_conflict_policy: TERMINATE_EXISTING meets Q's default workflow_id_reuse_policy"},
 		{"both at the call site", "task_queue: \"q\"", "Q",
-			"workflow_id_conflict_policy: TERMINATE_EXISTING", "workflow_id_reuse_policy: REJECT_DUPLICATE", 1, 12, 17, "this start pairs"},
+			"workflow_id_conflict_policy: TERMINATE_EXISTING", "workflow_id_reuse_policy: REJECT_DUPLICATE", 1, 12, 5, "this start pairs"},
 		{"unresolved callee", "task_queue: \"q\"", "Missing",
 			"workflow_id_conflict_policy: TERMINATE_EXISTING", "workflow_id_reuse_policy: REJECT_DUPLICATE", 0, 0, 0, ""},
 	}

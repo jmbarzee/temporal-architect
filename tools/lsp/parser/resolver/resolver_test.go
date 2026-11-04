@@ -1208,10 +1208,10 @@ workflow Dup():
 	close complete()
 `
 	want := []string{
-		`a.twf:10:5 duplicate nexus endpoint name "e": defined in namespace nc and namespace nd`,
-		`a.twf:15:5 duplicate nexus endpoint name "e": defined in namespace nc and namespace nb`,
+		`a.twf:10:2 duplicate nexus endpoint name "e": defined in namespace nc and namespace nd`,
+		`a.twf:15:2 duplicate nexus endpoint name "e": defined in namespace nc and namespace nb`,
 		`a.twf:19:1 duplicate workflow definition: Dup (first at b.twf:11)`,
-		`b.twf:7:5 duplicate nexus endpoint name "e": defined in namespace nc and namespace na`,
+		`b.twf:7:2 duplicate nexus endpoint name "e": defined in namespace nc and namespace na`,
 	}
 	for range 50 {
 		file := ast.Stamp([]ast.StampInput{
@@ -1381,7 +1381,7 @@ namespace n:
 	for _, e := range Resolve(file) {
 		got = append(got, fmt.Sprintf("%d:%d %s %s", e.Line, e.Column, e.Code(), e.Msg))
 	}
-	want := []string{`13:5 DUPLICATE_ENDPOINT duplicate nexus endpoint name "e" in namespace n (first at line 10)`}
+	want := []string{`13:2 DUPLICATE_ENDPOINT duplicate nexus endpoint name "e" in namespace n (first at line 10)`}
 	if !slices.Equal(got, want) {
 		t.Fatalf("errors:\n got  %s\n want %s", strings.Join(got, "\n      "), strings.Join(want, "\n      "))
 	}
@@ -1417,8 +1417,8 @@ namespace n:
 			task_queue: "q"
 `
 	want := []string{
-		`7:12 NAMESPACE_UNDEFINED_WORKER namespace n references undefined worker: ghost`,
-		`10:5 DUPLICATE_ENDPOINT duplicate nexus endpoint name "e": defined in namespace m and namespace n`,
+		`7:9 NAMESPACE_UNDEFINED_WORKER namespace n references undefined worker: ghost`,
+		`10:2 DUPLICATE_ENDPOINT duplicate nexus endpoint name "e": defined in namespace m and namespace n`,
 		`14:1 DUPLICATE_NAMESPACE duplicate namespace definition: n (first at line 6)`,
 	}
 	for range 50 {
@@ -1477,11 +1477,11 @@ namespace n:
 		got = append(got, fmt.Sprintf("%d:%d %s %s", e.Line, e.Column, e.Code(), e.Msg))
 	}
 	want := []string{
-		`4:9 DUPLICATE_CONDITION duplicate condition in workflow W: Ready (first at line 3)`,
-		`7:5 DUPLICATE_SIGNAL duplicate signal in workflow W: Ping (first at line 5)`,
-		`11:5 DUPLICATE_QUERY duplicate query in workflow W: Status (first at line 9)`,
-		`15:5 DUPLICATE_UPDATE duplicate update in workflow W: Bump (first at line 13)`,
-		`26:5 DUPLICATE_NEXUS_OPERATION duplicate operation in nexus service S: Op (first at line 24)`,
+		`4:3 DUPLICATE_CONDITION duplicate condition in workflow W: Ready (first at line 3)`,
+		`7:2 DUPLICATE_SIGNAL duplicate signal in workflow W: Ping (first at line 5)`,
+		`11:2 DUPLICATE_QUERY duplicate query in workflow W: Status (first at line 9)`,
+		`15:2 DUPLICATE_UPDATE duplicate update in workflow W: Bump (first at line 13)`,
+		`26:2 DUPLICATE_NEXUS_OPERATION duplicate operation in nexus service S: Op (first at line 24)`,
 	}
 	if !slices.Equal(got, want) {
 		t.Fatalf("errors:\n got  %s\n want %s", strings.Join(got, "\n      "), strings.Join(want, "\n      "))

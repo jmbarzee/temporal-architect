@@ -141,7 +141,7 @@ namespace ns:
 			want = []*ResolveError{{
 				Msg:    `task_queue "` + tt.queue + `" of worker w in namespace ns is not a well-formed template: ` + tt.want,
 				Line:   10,
-				Column: 13,
+				Column: 4,
 				Kind:   ErrQueueTemplateMalformed,
 				Name:   "w",
 				File:   "ns.twf",
@@ -169,7 +169,7 @@ func TestEndpointTaskQueueTemplated(t *testing.T) {
 	want := []*ResolveError{{
 		Msg:    `task_queue "q-{org}-{shard}" of nexus endpoint fabric-shard-{org}-BootstrapShard in namespace fabric-shard-{org} has a {org} parameter: an endpoint targets one task queue in its namespace`,
 		Line:   4,
-		Column: 13,
+		Column: 4,
 		Kind:   ErrEndpointTaskQueueTemplated,
 		Name:   "fabric-shard-{org}-BootstrapShard",
 		File:   "ns.twf",
