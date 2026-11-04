@@ -1356,6 +1356,40 @@ func TestDuplicateKeepsFirst(t *testing.T) {
 	}
 }
 
+// TestDuplicateEndpointInOneNamespace: an endpoint declared twice in one
+// namespace keeps its first, and the error on the later one names the first's
+// line, in DUPLICATE_*'s format, rather than the namespace twice.
+func TestDuplicateEndpointInOneNamespace(t *testing.T) {
+	src := `workflow W():
+    nexus e S.Op()
+    close complete()
+
+nexus service S:
+    sync Op() -> ():
+        close complete()
+
+namespace n:
+    nexus endpoint e
+        options:
+            task_queue: "a"
+    nexus endpoint e
+        options:
+            task_queue: "b"
+`
+	file := mustParse(t, src)
+	var got []string
+	for _, e := range Resolve(file) {
+		got = append(got, fmt.Sprintf("%d:%d %s %s", e.Line, e.Column, e.Code(), e.Msg))
+	}
+	want := []string{`13:5 DUPLICATE_ENDPOINT duplicate nexus endpoint name "e" in namespace n (first at line 10)`}
+	if !slices.Equal(got, want) {
+		t.Fatalf("errors:\n got  %s\n want %s", strings.Join(got, "\n      "), strings.Join(want, "\n      "))
+	}
+	if ep := file.Definitions[0].(*ast.WorkflowDef).Body[0].(*ast.NexusCall).Endpoint.Resolved; ep != &findNamespace(file).Endpoints[0] {
+		t.Errorf("call resolved to %+v, want the first endpoint", ep)
+	}
+}
+
 // TestDuplicateNamespaceChecksFirst: a namespace declared twice in one package
 // is its first declaration, so the first's workers and endpoints are checked
 // and the later one's are not: the undefined worker and the endpoint name it

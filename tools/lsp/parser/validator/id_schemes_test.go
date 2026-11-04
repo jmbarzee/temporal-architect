@@ -116,6 +116,33 @@ workflow Step(doc: Doc):
 	}
 }
 
+// TestParentSendKeptHandlerSender: the sender side of the same rule. An `id:
+// parent` send only in Step's dropped Report is not checked, so Coordinator,
+// which never starts Step, draws no NOT_A_PARENT.
+func TestParentSendKeptHandlerSender(t *testing.T) {
+	file, err := parser.ParseFile(`
+workflow Coordinator(doc: Doc):
+    signal Progress(pct: int):
+        pct = pct
+    close complete()
+
+workflow Step(doc: Doc):
+    signal Report():
+        doc = doc
+    signal Report():
+        signal Coordinator.Progress(50)
+            id: parent
+    close complete()
+`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resolver.Resolve(file)
+	if errs := Validate(file); hasKind(errs, ErrNotAParent, "warning") {
+		t.Errorf("a send in the dropped Report was checked: %v", errs)
+	}
+}
+
 func TestIDSchemeOverlap(t *testing.T) {
 	model := `
 workflow ShipItem(order: Order, item: Item):

@@ -6,7 +6,7 @@ import { WorkflowContent, InlineWorkflowBlock, SyncBodyBlock } from './WorkflowC
 import { BlockIcon } from '../../theme/temporal-theme'
 import { useToggle } from './useToggle'
 import { DefinitionContext, HandlerContext } from '../WorkflowCanvas'
-import { handlersOf } from '../definitionMaps'
+import { firstBy, firstByName, handlersOf } from '../definitionMaps'
 import { ContextualNavButtons } from './ContextualNav'
 import { OptionsSection } from './OptionsSection'
 import { childReveal, replayFlash, scrollRowIntoView, type Reveal } from '../reveal'
@@ -212,6 +212,8 @@ function NamespaceDefBlock({ def, controlledExpanded, onToggle, reveal }: { def:
   const toggle = onToggle ?? internalToggle
 
   const totalEntries = (def.workers?.length || 0) + (def.endpoints?.length || 0)
+  // A reveal lights only the first row of a name, the one the resolver keeps.
+  const firstEndpoints = new Set(firstBy(def.endpoints, ep => ep.endpointName))
 
   return (
     <div className={`block block-namespace-def ${expanded ? 'expanded' : 'collapsed'}`}>
@@ -238,7 +240,7 @@ function NamespaceDefBlock({ def, controlledExpanded, onToggle, reveal }: { def:
             <div className="namespace-entry-section">
               <div className="namespace-entry-label">nexus endpoints</div>
               {def.endpoints.map((ep) => (
-                <NamespaceEndpointEntry key={`${ep.line}:${ep.column}`} entry={ep} reveal={childReveal(reveal, ep.endpointName)} />
+                <NamespaceEndpointEntry key={`${ep.line}:${ep.column}`} entry={ep} reveal={firstEndpoints.has(ep) ? childReveal(reveal, ep.endpointName) : undefined} />
               ))}
             </div>
           )}
@@ -369,6 +371,8 @@ function NexusServiceDefBlock({ def, controlledExpanded, onToggle, reveal }: { d
   const expanded = controlledExpanded ?? internalExpanded
   const toggle = onToggle ?? internalToggle
   const opCount = def.operations?.length || 0
+  // A reveal lights only the first row of a name, the one the resolver keeps.
+  const firstOps = new Set(firstByName(def.operations))
 
   return (
     <div className={`block block-nexus-service-def ${expanded ? 'expanded' : 'collapsed'}`}>
@@ -384,7 +388,7 @@ function NexusServiceDefBlock({ def, controlledExpanded, onToggle, reveal }: { d
       {expanded && (
         <div className="block-body">
           {(def.operations || []).map((op) => (
-            <NexusOperationBlock key={`${op.line}:${op.column}`} operation={op} reveal={childReveal(reveal, op.name)} />
+            <NexusOperationBlock key={`${op.line}:${op.column}`} operation={op} reveal={firstOps.has(op) ? childReveal(reveal, op.name) : undefined} />
           ))}
         </div>
       )}

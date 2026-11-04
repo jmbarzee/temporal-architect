@@ -319,7 +319,8 @@ is now checked against the target's signals.
 - A signal, query, update or condition declared twice in one workflow, or an
   operation twice in one nexus service, is now an error on the later one
   (`DUPLICATE_SIGNAL`, `_QUERY`, `_UPDATE`, `_CONDITION`, `_NEXUS_OPERATION`),
-  and the first is kept everywhere, as for definitions.
+  and the first is kept everywhere, as for definitions. An endpoint declared
+  twice in one namespace likewise says where the first is.
 - A `DISPATCH_NO_REACHABLE_DEPLOYMENT` names an operation by its own service
   when another service's name prefixes it.
 - **LSP:** rename, references and go-to-definition ranges cover the name, not

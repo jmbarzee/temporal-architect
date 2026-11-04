@@ -11,11 +11,16 @@ export function setFirst<K, V>(m: Map<K, V>, key: K, value: V) {
 
 const keepFirst = <T extends { name: string }>(m: Map<string, T>, def: T) => setFirst(m, def.name, def)
 
+// firstBy returns items without any whose name (nameOf) an earlier one has.
+export function firstBy<T>(items: T[] | undefined, nameOf: (item: T) => string): T[] {
+  const m = new Map<string, T>()
+  for (const item of items ?? []) setFirst(m, nameOf(item), item)
+  return [...m.values()]
+}
+
 // firstByName returns decls without any whose name an earlier one declares.
 export function firstByName<T extends { name: string }>(decls: T[] | undefined): T[] {
-  const m = new Map<string, T>()
-  for (const d of decls ?? []) keepFirst(m, d)
-  return [...m.values()]
+  return firstBy(decls, d => d.name)
 }
 
 // keptDefinitions returns definitions without any whose kind and qualified
@@ -57,10 +62,7 @@ export function definitionMaps(definitions: Definition[]): DefinitionContext {
 // twice in the workflow (a DUPLICATE_* resolve error) is its first, as the
 // resolver keeps it.
 export function handlersOf(def: WorkflowDef): HandlerContext {
-  const byName = <T extends { name: string }>(decls: T[] | undefined) => {
-    const m = new Map<string, T>()
-    for (const d of decls ?? []) keepFirst(m, d)
-    return m
-  }
+  const byName = <T extends { name: string }>(decls: T[] | undefined) =>
+    new Map(firstByName(decls).map(d => [d.name, d]))
   return { signals: byName(def.signals), queries: byName(def.queries), updates: byName(def.updates) }
 }

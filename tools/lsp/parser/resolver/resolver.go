@@ -493,6 +493,7 @@ func Resolve(file *ast.File) []*ResolveError {
 	// namespaces (in any package) stays a hard error. The namespaces pass 1
 	// keeps are walked in definition order, so the first declaration keeps the
 	// name and each later one is the duplicate.
+	owner := map[*ast.NamespaceEndpoint]*ast.NamespaceDef{}
 	for _, def := range file.Definitions {
 		ns, ok := def.(*ast.NamespaceDef)
 		if !ok || s.namespaces[pkgKey{effPkg(ast.PackageIDOf(ns, nil), s.filePkg), ns.Name}] != ns {
@@ -515,8 +516,13 @@ func Resolve(file *ast.File) []*ResolveError {
 				})
 			}
 			if existing, exists := s.allEndpoints[ep.EndpointName]; exists {
+				msg := fmt.Sprintf("duplicate nexus endpoint name %q: defined in namespace %s and namespace %s", ep.EndpointName, existing.Namespace, ns.Name)
+				if owner[existing] == ns {
+					// One namespace's endpoints share its file.
+					msg = fmt.Sprintf("duplicate nexus endpoint name %q in namespace %s (first at line %d)", ep.EndpointName, ns.Name, existing.Line)
+				}
 				s.errs = append(s.errs, &ResolveError{
-					Msg:    fmt.Sprintf("duplicate nexus endpoint name %q: defined in namespace %s and namespace %s", ep.EndpointName, existing.Namespace, ns.Name),
+					Msg:    msg,
 					Line:   ep.Line,
 					Column: ep.Column,
 					Kind:   ErrDuplicateEndpoint,
@@ -526,6 +532,7 @@ func Resolve(file *ast.File) []*ResolveError {
 				continue
 			}
 			s.allEndpoints[ep.EndpointName] = ep
+			owner[ep] = ns
 		}
 	}
 
