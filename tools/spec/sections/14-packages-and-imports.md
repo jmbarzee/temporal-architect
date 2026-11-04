@@ -3,8 +3,8 @@
 Packages group symbols so that references can cross file and directory boundaries. This section
 freezes the **syntax and surface**. Cross-package *resolution* — following an import to the package
 it names and binding a qualified reference to a symbol there — is implemented: a qualified reference
-resolves against the imported package that owns the symbol, and an import whose package is absent
-from the tree is **treated as external**, so qualified references through it resolve as external.
+resolves against the package with exactly the imported path, and an import whose package is not in
+the run is **treated as external**, so qualified references through it resolve as external.
 See [Referencing Symbols](#referencing-symbols) below and the resolver diagnostics in
 [the twf CLI reference](../../lsp/cmd/twf/README.md#diagnostic-codes).
 
@@ -81,36 +81,50 @@ import_decl ::= 'import' [IDENT] STRING NEWLINE
 
 Two forms (Go-style, alias-first):
 
-- `import "<full/module/path>"` — import a package and reference it by its **leaf name**. The leaf
-  name is the last path segment, except that a trailing `/vN` **version segment** (`v` followed by
-  one or more digits, with a preceding segment) is **stripped** and the preceding segment used
-  instead — the rule is modeled on Go's `importPathToAssumedName`.
-  For example, `import "github.com/acme/orders/billing"` is referenced as `billing`, and
-  `import "github.com/acme/orders/billing/v2"` is *also* referenced as `billing` (the `/v2` is
-  stripped, not treated as the package name).
-- `import alias "<full/module/path>"` — bind an explicit **alias** (the leading identifier) as the
-  **local** reference name for the package. The alias overrides only the local reference name; the
-  **target package** it resolves against is always the version-stripped leaf, never the alias. Use
-  an alias to disambiguate when two imports would otherwise share the same leaf name — the case that
-  still needs one is **v1 and v2 of the same package**, which strip to the same leaf. For example,
-  `import billing "github.com/acme/orders/billing"` alongside
-  `import billingv2 "github.com/acme/orders/billing/v2"`: both strip to `billing`, so the second is
-  aliased to `billingv2` to keep the two references distinct.
+- `import "<import path>"` — import the package with exactly that import path and reference it by
+  the path's **assumed name**: its last element, with a trailing version element (`v` and digits)
+  dropped — `import "github.com/acme/orders/billing/v2"` is referenced as `billing`. The rule is
+  modeled on Go's `importPathToAssumedName`. When the assumed name cannot be a package name
+  (`library-temporal-kube`, `yaml.v3`), the import needs an alias.
+- `import alias "<import path>"` — bind an explicit **alias** as the local reference name. The alias
+  names the package only in the importing package; the package imported is always the one with
+  exactly that path. Use an alias when two imports would share a qualifier — two packages named
+  `fabric` at different paths, or v1 and v2 of one package:
+  `import billing "github.com/acme/orders/billing"` beside
+  `import billingv2 "github.com/acme/orders/billing/v2"`.
+
+Imports are **package-scoped**: an import line in any file of a package is visible in every file of
+that package. A package's own name is bound to itself (`billing.Charge` inside `billing`). Each
+import line is checked in order; the first failure reports, and the line binds nothing (references
+through its qualifier stay quiet):
+
+| Error | When |
+|-------|------|
+| `INVALID_IMPORT_PATH` | The path is not a valid path, or is a local one (`./x`) |
+| `SELF_IMPORT` | The path is the package's own |
+| `IMPORT_NEEDS_ALIAS` | No alias, and the assumed name cannot be a package name |
+| `DUPLICATE_IMPORT_NAME` | The qualifier is the package's own name, or is already bound to a different path (the same qualifier for the same path again is one binding) |
+| `IMPORT_NOT_FOUND` | The path lies under a module in the run, which has no such package (a typo, a wrong case) |
+
+Otherwise the path names a kept package of the run — **bound** — or names none: if its package is on
+disk but not among the inputs, `IMPORT_NOT_LOADED` (warning; pass the directory it names); if it
+lies under no module in the run, `UNRESOLVED_IMPORT` (warning). Both treat the package as
+**external**: references through it resolve as external, with no `UNDEFINED_*`. If the import's
+package is in the inputs but was ignored (see [Modules](#modules)), the import is silent — that
+error is already reported. Import cycles between packages are allowed. How the path is looked up on
+disk is in [15 — Modules](./15-modules.md#finding-an-imported-package).
 
 Notes on the string path:
 
-- The path is the imported package's **import path** (its module path plus directory, see
-  [Modules](#modules)). An import still binds to the in-tree package whose declared name is the
-  path's version-stripped leaf.
-- `as` is a reserved hard keyword registered alongside `package`/`import` in this slice; it has no
-  grammar role here (the aliased-import surface is the leading-identifier form above).
+- `as` is a reserved hard keyword registered alongside `package`/`import`; it has no grammar role
+  (the aliased-import surface is the leading-identifier form above).
 
 ## Referencing Symbols
 
 - **Same-package references are bare**: a symbol declared in the same package is referenced by its
   plain name, exactly as today.
-- **Cross-package references are qualified** by the package **leaf name** — the version-stripped
-  leaf, per [Import Declarations](#import-declarations) — or the import alias: `billing.ChargeCard`.
+- **Cross-package references are qualified** by the import's qualifier — the path's assumed name,
+  per [Import Declarations](#import-declarations), or the import alias: `billing.ChargeCard`.
   A qualified name is written `pkg.Name` and is only legal in the **keyword-led call positions**
   enumerated below.
 

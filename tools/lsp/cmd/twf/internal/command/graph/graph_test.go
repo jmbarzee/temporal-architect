@@ -105,11 +105,11 @@ func TestGraphCommand_MultiPackageTree(t *testing.T) {
 
 	// F8: same short name in two packages → two distinct qualified nodes.
 	for _, want := range []string{
-		"workflow:orderer.ChannelJoin", // package rides inside the name element
-		"workflow:peer.ChannelJoin",
-		"workflow:app.Coordinator",
-		"nexusService:app.LocalSvc",
-		"nexusOperation:app.LocalSvc.DoLocal",
+		"workflow:acme/orderer.ChannelJoin", // the package's import path rides inside the name element
+		"workflow:acme/peer.ChannelJoin",
+		"workflow:acme/app.Coordinator",
+		"nexusService:acme/app.LocalSvc",
+		"nexusOperation:acme/app.LocalSvc.DoLocal",
 		"nexusEndpoint:Gateway", // endpoints stay flat-global (unqualified)
 	} {
 		if !defs[want] {

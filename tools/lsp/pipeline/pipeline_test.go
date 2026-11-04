@@ -587,8 +587,8 @@ func TestUnpackagedDefinitionsOmitQualifiedName(t *testing.T) {
 	}
 }
 
-// TestPackagedOutputCarriesIdentityFields pins S2a's wire fields on a packaged
-// fixture: graph nodes carry name and packageId, every output has the packages
+// TestPackagedOutputCarriesIdentityFields pins the package identity fields on a
+// packaged fixture: graph nodes carry name and packageId, every output has the packages
 // table, decompose nodes and chunks carry labels, and every section id is
 // rebuilt byte-identically from its labelKind and subjects.
 func TestPackagedOutputCarriesIdentityFields(t *testing.T) {
@@ -597,7 +597,7 @@ func TestPackagedOutputCarriesIdentityFields(t *testing.T) {
 		t.Fatalf("BuildDecompose: %v", err)
 	}
 	g := payload.Graph
-	if g.Packages["agent"].Name != "agent" || g.Packages["kube"].Name != "kube" || g.Packages["deploy"].Name != "deploy" {
+	if g.Packages["github.com/example/app/agent/v1"].Name != "agent" || g.Packages["github.com/example/library-kube/twf/kube/v1"].Name != "kube" || g.Packages["github.com/example/app/deploy"].Name != "deploy" {
 		t.Errorf("graph packages = %+v", g.Packages)
 	}
 	for _, n := range g.Nodes {
@@ -648,7 +648,7 @@ func TestPackagedOutputCarriesIdentityFields(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(out), `"packageId":"agent"`) {
+	if !strings.Contains(string(out), `"packageId":"github.com/example/app/agent/v1"`) {
 		t.Error("AST definitions carry no packageId")
 	}
 }

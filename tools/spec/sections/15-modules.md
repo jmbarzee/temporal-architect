@@ -79,3 +79,27 @@ Each step works on what the previous ones left:
 A **kept package** survives every step. `PACKAGE_NAME_MISMATCH` is then reported at each file of
 a kept package whose clause is not its path's assumed name (a recovered clause is exempt). An
 ignored file still reports its parse errors, counts toward no totals, and is left out of the AST.
+
+## Finding an Imported Package
+
+An import binds only the kept package whose path is exactly the import's. For any other path, twf
+looks on disk:
+
+- The **known modules** are those holding input files and not ignored. A path **lies under**
+  module `M` when it equals `M`'s path or starts with it plus `/`.
+- First, if an ignored input file (one with a package clause, or ignored at step 0) sits in a
+  directory whose derived path is the import's, the import is silent: its cause is reported.
+- Then, for each known module the path lies under, longest path first, twf walks the path's
+  remaining elements from the module root by exact directory names, never following a symlinked
+  directory and stopping at an element a walk skips (`.*`, `_*`, `testdata`). Entering a directory
+  with a `twf.mod`: a broken one is silent when its module has input files, else ends the walk; a
+  module that lost `DUPLICATE_MODULE` is silent; a module whose path does not lie under the import's
+  ends the walk; otherwise the walk continues inside that module.
+- At the last element, the directory **provides** the package when it holds a non-skipped `.twf`
+  file whose first token is `package`. None of its package files among the inputs is
+  `IMPORT_NOT_LOADED`; all of them ignored is silent.
+- No provider under a known module is `IMPORT_NOT_FOUND`, naming the reason — and, when a kept
+  package's path differs from the import's only in case, `did you mean "<that path>"?`. A path under
+  no known module is `UNRESOLVED_IMPORT`.
+
+A package with no path (a virtual source's) is reached by its declared name.

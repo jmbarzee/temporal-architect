@@ -35,6 +35,13 @@ type expander struct {
 	// modFilePos is the input position of each module's first file, keyed by
 	// the twf.mod's spelling, for diagnostic order.
 	modFilePos map[string]int
+
+	// What the exclusions found, for the provider lookup: the known modules,
+	// the roots of modules that lost DUPLICATE_MODULE, and each input module
+	// root's first input file.
+	known         []knownModule
+	lostDuplicate map[string]bool
+	moduleFirst   map[string]*parsed
 }
 
 func newExpander(mode Mode, overlays map[string]string) (*expander, error) {
@@ -52,6 +59,8 @@ func newExpander(mode Mode, overlays map[string]string) (*expander, error) {
 	e.physCwd = e.canonical(cwd)
 	e.mods = newModules(e.canonical(os.TempDir()))
 	e.modFilePos = map[string]int{}
+	e.lostDuplicate = map[string]bool{}
+	e.moduleFirst = map[string]*parsed{}
 	for p, text := range overlays {
 		e.overlays[e.canonical(p)] = text
 	}
