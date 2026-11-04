@@ -81,7 +81,7 @@ func addMissingDefinitionActions(doc *Document, params *protocol.CodeActionParam
 				if returnType != "" {
 					def = fmt.Sprintf("\nactivity %s(%s) -> (%s):\n\t# TODO: implement\n\treturn result\n", name, params, returnType)
 				} else {
-					def = fmt.Sprintf("\nactivity %s(%s):\n\t# TODO: implement\n", name, params)
+					def = fmt.Sprintf("\nactivity %s(%s):\n\t# TODO: implement\n\treturn\n", name, params)
 				}
 			} else {
 				if returnType != "" {
@@ -228,15 +228,22 @@ func findReturnStatements(stmts []ast.Statement) []*ast.ReturnStmt {
 }
 
 // indentUnit is the file's own indentation step: the leading whitespace of
-// its first indented line, or a tab, the canonical style, when no line is
-// indented.
+// its first indented statement line, or a tab, the canonical style, when no
+// statement is indented. Lines are read through the lexer, so a header's
+// argument list continuing onto the next line, and comment lines, never count.
 func indentUnit(lines []string) string {
-	for _, l := range lines {
-		body := strings.TrimLeft(l, " \t")
-		if body == "" || body == l || strings.HasPrefix(body, "#") {
+	lineStart := true
+	for _, tok := range lexer.New(strings.Join(lines, "\n")).AllTokens() {
+		switch tok.Type {
+		case token.NEWLINE, token.INDENT, token.DEDENT, token.ILLEGAL:
+			lineStart = lineStart || tok.Type == token.NEWLINE
 			continue
 		}
-		return l[:len(l)-len(body)]
+		if lineStart && tok.Type != token.COMMENT && tok.Type != token.EOF && tok.Column > 1 {
+			line := lines[tok.Line-1]
+			return line[:len(line)-len(strings.TrimLeft(line, " \t"))]
+		}
+		lineStart = false
 	}
 	return "\t"
 }
