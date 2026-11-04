@@ -1,8 +1,8 @@
 // Package pipeline is the twf parse→graph→assemble core and its wire contract.
 // It owns the JSON envelope shape (summary + diagnostics + payload), the
-// structured Diagnostic model, the parse pipeline (ParseFiles / ParseSource),
-// the lifters that turn parse/resolve/validate/graph output into Diagnostics,
-// and the high-level Build assembler. It is a public, importable package: every
+// structured Diagnostic model, the parse pipeline (ParseSources, wrapped by
+// ParseFiles and ParseSource), the lifters that turn parse/resolve/validate/
+// graph output into Diagnostics, and the high-level Build assembler. It is a public, importable package: every
 // in-tree command consumes it, and the out-of-module `twf serve` binary
 // (issue #138) imports it in-process. Nothing here knows about cobra or text
 // rendering — CLI-only rendering (FormatDiagnostic) lives on the cmd/twf side.

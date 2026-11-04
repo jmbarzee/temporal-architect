@@ -8,6 +8,7 @@ import (
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/parser"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/resolver"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/validator"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/pipeline"
 )
 
 // Document holds the content and analysis results for a single open file.
@@ -25,13 +26,15 @@ type Document struct {
 // doc.File stays the single-buffer AST with the buffer's own line numbers, and
 // is always resolved in isolation so its Ref.Resolved pointers stay populated
 // for the positional features (hover, definition, references, rename,
-// signature-help, code-actions). doc.ParseErrs and doc.ValidateErrs stay
-// single-buffer (parse is intra-file, validation is intra-workflow).
+// signature-help, code-actions). doc.ParseErrs stay single-buffer (parse is
+// intra-file).
 //
-// Only doc.ResolveErrs changes when a workspace root is set and the buffer has
-// a filesystem path: it becomes the resolve diagnostics of the merged `.twf`
-// tree, filtered to the open buffer. The merged AST is a separate parse used
-// only for diagnostics — it never becomes doc.File.
+// When a workspace root is set and the buffer has a filesystem path,
+// doc.ResolveErrs and doc.ValidateErrs become the diagnostics of the merged
+// `.twf` tree — pipeline.ParseSources over the root and the buffer, with the
+// buffer's live text overlaid — filtered to the open buffer. The merged AST is
+// used only for diagnostics; it never becomes doc.File. If the tree cannot be
+// read, the buffer keeps its single-buffer diagnostics.
 func (d *Document) analyze(root string) {
 	d.File = nil
 	d.ParseErrs = nil
@@ -54,10 +57,17 @@ func (d *Document) analyze(root string) {
 	if bufAbs == "" {
 		return
 	}
-	bufBase := filepath.Base(bufAbs)
-	merged := mergeWorkspace(root, bufAbs, d.Content, bufBase)
-	mergedErrs := resolver.Resolve(merged)
-	d.ResolveErrs = filterMergedResolveErrs(mergedErrs, bufBase)
+	res, err := pipeline.ParseSources(pipeline.Request{
+		Inputs: []pipeline.Input{
+			{Path: root, Kind: pipeline.Tree},
+			{Path: bufAbs, Kind: pipeline.File},
+		},
+		Overlays: map[string]string{bufAbs: d.Content},
+	})
+	if err != nil {
+		return
+	}
+	d.ResolveErrs, d.ValidateErrs = filterToBuffer(res, filepath.Base(bufAbs))
 }
 
 // DocumentStore is a thread-safe store of open documents.
