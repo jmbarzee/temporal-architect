@@ -123,8 +123,8 @@ func TestDiagnosticsOnCRLF(t *testing.T) {
 		name, src, msg string
 		want           protocol.Range
 	}{
-		{"parse error", crlf("workflow W():\n\tif (x) junk:\n\t\tclose complete\n"), "junk", lineSpan(1, 11, 16)},
-		{"resolve error", crlf("workflow W():\n\tactivity Missing(x)\n\tclose complete\n"), "undefined activity", lineSpan(1, 13, 23)},
+		{"parse error", crlf("workflow W():\n\tif (x) junk:\n\t\tclose complete\n"), "junk", lineSpan(1, 8, 13)},
+		{"resolve error", crlf("workflow W():\n\tactivity Missing(x)\n\tclose complete\n"), "undefined activity", lineSpan(1, 10, 20)},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

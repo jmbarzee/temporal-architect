@@ -64,7 +64,7 @@ func TestCheckReportsIndentationErrorsFirst(t *testing.T) {
 		{"mixed", "workflow W(x):\n\tif (x):\n\t  close complete(x)\n",
 			"[parse/LEX] at bad.twf:3:2: indentation mixes tabs and spaces; this file indents with tabs (set by line 2)"},
 		{"dedent to no open block", "activity A(d) -> (string):\n\t\t# c\n\twork(d)\n",
-			"[parse/LEX] at bad.twf:3:5: inconsistent indentation"},
+			"[parse/LEX] at bad.twf:3:2: inconsistent indentation"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Chdir(t.TempDir())

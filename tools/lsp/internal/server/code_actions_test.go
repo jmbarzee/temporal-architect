@@ -115,14 +115,14 @@ func TestAddMissingDefinitionParses(t *testing.T) {
 // TestAddMissingDefinitionUsesFileIndent: the stub is indented the way the
 // file is, not with a fixed four spaces.
 func TestAddMissingDefinitionUsesFileIndent(t *testing.T) {
-	src := "workflow W():\n\tworkflow Missing(x)\n\tclose complete\n"
+	src := "workflow W():\n  workflow Missing(x)\n  close complete\n"
 	at := protocol.Position{Line: 1, Character: 2}
 	actions := codeActions(t, src, protocol.Range{Start: at, End: at}, "Add missing workflow 'Missing'")
 	if len(actions) != 1 {
 		t.Fatalf("want one action, got %+v", actions)
 	}
 	got := applyEdits(t, src, actions[0].Edit.Changes[renameURI])
-	if !strings.HasSuffix(got, ":\n\t# TODO: implement\n\tclose complete\n") {
+	if !strings.HasSuffix(got, ":\n  # TODO: implement\n  close complete\n") {
 		t.Errorf("stub not indented with the file's two spaces:\n%s", got)
 	}
 	if doc := NewDocumentStore().Open(renameURI, got); len(doc.ParseErrs) > 0 {
@@ -136,13 +136,13 @@ func TestIndentUnit(t *testing.T) {
 		lines []string
 		want  string
 	}{
-		{"four spaces", []string{"workflow W():", "\tclose complete"}, "    "},
-		{"two spaces", []string{"# c", "workflow W():", "\tclose complete"}, "  "},
+		{"four spaces", []string{"workflow W():", "    close complete"}, "    "},
+		{"two spaces", []string{"# c", "workflow W():", "  close complete"}, "  "},
 		{"tab", []string{"workflow W():", "\tclose complete"}, "\t"},
 		{"skips indented comments and blank lines", []string{"workflow W():", "", "\t\t# c", "\tclose complete"}, "\t"},
 		{"none indented", []string{"workflow W():"}, "\t"},
 		{"skips a header's continuation", []string{"workflow W(a: int,", "           b: int):", "\tclose complete"}, "\t"},
-		{"skips a continuation in a spaces file", []string{"workflow W(a: int,", "\t\tb: int):", "\tclose complete"}, "    "},
+		{"skips a continuation in a spaces file", []string{"workflow W(a: int,", "\t\tb: int):", "    close complete"}, "    "},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

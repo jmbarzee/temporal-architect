@@ -39,10 +39,10 @@ func TestDiagnosticsCountUTF16(t *testing.T) {
 		name, src, msg string
 		want           protocol.Range
 	}{
-		{"parse error after é", "workflow W():\n\tif (\"é\") junk:\n\t\tclose complete\n", "junk", lineSpan(1, 13, 18)},
-		{"parse error after a surrogate pair", "workflow W():\n\tif (\"😀\") junk:\n\t\tclose complete\n", "junk", lineSpan(1, 14, 19)},
+		{"parse error after é", "workflow W():\n\tif (\"é\") junk:\n\t\tclose complete\n", "junk", lineSpan(1, 10, 15)},
+		{"parse error after a surrogate pair", "workflow W():\n\tif (\"😀\") junk:\n\t\tclose complete\n", "junk", lineSpan(1, 11, 16)},
 		{"parse error at the end of a line after é", "workflow W(x: \"é\")\n\tclose complete\n", "requires ':'", lineSpan(0, 18, 18)},
-		{"resolve error on a line with é and a surrogate pair", "workflow W():\n\tactivity Missing(note: \"é😀\")\n\tclose complete\n", "undefined activity", lineSpan(1, 13, 33)},
+		{"resolve error on a line with é and a surrogate pair", "workflow W():\n\tactivity Missing(note: \"é😀\")\n\tclose complete\n", "undefined activity", lineSpan(1, 10, 30)},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -128,11 +128,11 @@ func TestSemanticTokensCountUTF16(t *testing.T) {
 		}
 	}
 	for _, want := range []semToken{
-		{1, 8, 5, semString},     // "é😀"
-		{1, 16, 1, semVariable},  // y
-		{1, 19, 10, semComment},  // # ü😀 note
-		{2, 15, 8, semParameter}, // (a, "é",
-		{3, 0, 13, semParameter}, //         "😀")
+		{1, 5, 5, semString},     // "é😀"
+		{1, 13, 1, semVariable},  // y
+		{1, 16, 10, semComment},  // # ü😀 note
+		{2, 12, 8, semParameter}, // (a, "é",
+		{3, 0, 7, semParameter},  // \t\t"😀")
 	} {
 		if !slices.Contains(toks, want) {
 			t.Errorf("no token %+v in %+v", want, toks)

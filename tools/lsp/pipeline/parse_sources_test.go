@@ -55,7 +55,7 @@ func TestParseSourcesOverlayReplacesDisk(t *testing.T) {
 
 	res, err := pipeline.ParseSources(pipeline.Request{
 		Inputs:   []pipeline.Input{{Path: dir, Kind: pipeline.Tree}},
-		Overlays: map[string]string{caller: callerTWF + "    activity Ghost()\n"},
+		Overlays: map[string]string{caller: callerTWF + "\tactivity Ghost()\n"},
 	})
 	if err != nil {
 		t.Fatalf("ParseSources: %v", err)
