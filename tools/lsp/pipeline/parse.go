@@ -59,8 +59,8 @@ type Input struct {
 // Source is one in-memory TWF document. Name is used only for diagnostic
 // attribution; an empty Name defaults to "<source>.twf".
 //
-// A source has no directory, so it is in no module: it is checked as a file
-// outside every module is, and a package clause is PACKAGE_OUTSIDE_MODULE.
+// A source has no directory, so it is in no module: it is checked like a file
+// outside every module, and a package clause is PACKAGE_OUTSIDE_MODULE.
 // Module and Dir place it in a module instead — its package's path is Module,
 // plus "/" and Dir when Dir is set — so in-memory sources (tests, a caller
 // that knows the context) import each other by path. One request's sources

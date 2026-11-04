@@ -294,6 +294,8 @@ func TestInlineSourceMatchesTheCLI(t *testing.T) {
 		name, src string
 		codes     string // twf_check's diagnostic codes
 	}{
+		{"empty", "", ""},
+		{"whitespace only", " \n\n   ", ""},
 		{"no package clause", wf, ""},
 		{"package clause", "package orders\n\n" + wf, "PACKAGE_OUTSIDE_MODULE"},
 		{"package clause with an import", "package fabric\n\n" + imp, "PACKAGE_OUTSIDE_MODULE"},
