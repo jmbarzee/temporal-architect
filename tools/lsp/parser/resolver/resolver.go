@@ -1306,9 +1306,9 @@ func (c *resolveCtx) errorf(kind ErrorKind, pos ast.Pos, name, format string, ar
 	return err
 }
 
-// reservedName is the one name a model may not declare: `id: parent` must mean
+// ReservedName is the one name a model may not declare: `id: parent` must mean
 // the parent execution, never a variable.
-const reservedName = "parent"
+const ReservedName = "parent"
 
 // paramList is an opaque parameter list and where it is declared.
 type paramList struct {
@@ -1345,27 +1345,27 @@ func (s *state) checkReservedNames(wf *ast.WorkflowDef) {
 func (s *state) checkReservedIn(file string, params []paramList, conditions []*ast.ConditionDecl, bodies [][]ast.Statement) {
 	report := func(pos ast.Pos, what string) {
 		s.errs = append(s.errs, &ResolveError{
-			Msg:    fmt.Sprintf("%q is reserved and cannot name a %s; `id: parent` addresses the parent execution", reservedName, what),
+			Msg:    fmt.Sprintf("%q is reserved and cannot name a %s; `id: parent` addresses the parent execution", ReservedName, what),
 			Line:   pos.Line,
 			Column: pos.Column,
 			Kind:   ErrReservedName,
-			Name:   reservedName,
+			Name:   ReservedName,
 			File:   file,
 		})
 	}
 	checkBinding := func(pos ast.Pos, binding string) {
-		if binding != "" && ast.IDPathRoot(binding) == reservedName {
+		if binding != "" && ast.IDPathRoot(binding) == ReservedName {
 			report(pos, "binding")
 		}
 	}
 
 	for _, pl := range params {
-		if ast.ParamNames(pl.params)[reservedName] {
+		if ast.ParamNames(pl.params)[ReservedName] {
 			report(pl.Pos, "param")
 		}
 	}
 	for _, cond := range conditions {
-		if cond.Name == reservedName {
+		if cond.Name == ReservedName {
 			report(cond.Pos, "condition")
 		}
 	}
@@ -1373,11 +1373,11 @@ func (s *state) checkReservedIn(file string, params []paramList, conditions []*a
 		ast.WalkStatements(body, func(st ast.Statement) bool {
 			switch st := st.(type) {
 			case *ast.PromiseStmt:
-				if st.Name == reservedName {
+				if st.Name == ReservedName {
 					report(st.Pos, "promise")
 				}
 			case *ast.ForStmt:
-				if ast.ParamNames(st.Variable)[reservedName] {
+				if ast.ParamNames(st.Variable)[ReservedName] {
 					report(st.Pos, "loop variable")
 				}
 			case *ast.ActivityCall:
@@ -1400,11 +1400,11 @@ func (s *state) checkReservedIn(file string, params []paramList, conditions []*a
 			case *ast.IdentTarget:
 				checkBinding(pos, t.Result)
 			case *ast.SignalTarget:
-				if ast.ParamNames(t.Params)[reservedName] {
+				if ast.ParamNames(t.Params)[ReservedName] {
 					report(pos, "binding")
 				}
 			case *ast.UpdateTarget:
-				if ast.ParamNames(t.Params)[reservedName] {
+				if ast.ParamNames(t.Params)[ReservedName] {
 					report(pos, "binding")
 				}
 			}

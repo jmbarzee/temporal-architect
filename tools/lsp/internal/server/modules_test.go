@@ -27,7 +27,7 @@ func TestCreateModuleFileAction(t *testing.T) {
 	store.SetFolders([]string{dir})
 	doc := store.Open(uri, buf)
 
-	actions := createModuleFileActions(store, doc, &protocol.CodeActionParams{Range: posToRange(1, 1)})
+	actions := createModuleFileActions(store, doc, &protocol.CodeActionParams{Range: posToRange(nil, 1, 1)})
 	if len(actions) != 1 {
 		t.Fatalf("got %d actions, want 1: %+v", len(actions), actions)
 	}
@@ -72,7 +72,7 @@ func TestCreateModuleFileActionNotOfferedAboveRepositories(t *testing.T) {
 	store := NewDocumentStore()
 	store.SetFolders([]string{dir})
 	doc := store.Open(uri, buf)
-	if actions := createModuleFileActions(store, doc, &protocol.CodeActionParams{Range: posToRange(1, 1)}); len(actions) != 0 {
+	if actions := createModuleFileActions(store, doc, &protocol.CodeActionParams{Range: posToRange(nil, 1, 1)}); len(actions) != 0 {
 		t.Errorf("offered %+v above a repository", actions)
 	}
 }
