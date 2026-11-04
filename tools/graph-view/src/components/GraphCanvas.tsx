@@ -331,13 +331,21 @@ export function GraphCanvas({
   }, [nodes, viewport, nodeScale, taxonomy])
 
   // Mouse handlers
-  const handleWheel = React.useCallback((e: React.WheelEvent) => {
-    e.preventDefault()
-    const rect = e.currentTarget.getBoundingClientRect()
-    const sx = e.clientX - rect.left
-    const sy = e.clientY - rect.top
-    const factor = e.deltaY < 0 ? 1.15 : 0.85
-    onViewportChange(zoomAt(viewport, sx, sy, factor))
+  // Wheel zoom listens natively and non-passive: React's root wheel listener
+  // is passive, so its preventDefault cannot keep the page from scrolling.
+  React.useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault()
+      const rect = canvas.getBoundingClientRect()
+      const sx = e.clientX - rect.left
+      const sy = e.clientY - rect.top
+      const factor = e.deltaY < 0 ? 1.15 : 0.85
+      onViewportChange(zoomAt(viewport, sx, sy, factor))
+    }
+    canvas.addEventListener('wheel', handleWheel, { passive: false })
+    return () => canvas.removeEventListener('wheel', handleWheel)
   }, [viewport, onViewportChange])
 
   const handlePointerDown = React.useCallback((e: React.PointerEvent) => {
@@ -1073,7 +1081,6 @@ export function GraphCanvas({
       <canvas
         ref={canvasRef}
         style={{ width: size.w, height: size.h }}
-        onWheel={handleWheel}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}

@@ -391,6 +391,8 @@ The graph lives on an infinite 2D canvas. Standard viewport interactions:
 
 Dragging a node should **reheat** the simulation locally so nearby nodes can adjust.
 
+Scrolling over the canvas zooms it and never scrolls the page behind the pane. Resizing the pane (a host panel opening beside it) keeps the world point at the pane's centre fixed, so what was framed stays framed.
+
 ### Fit-to-View
 
 A button (or automatic behavior on level change) that adjusts the viewport to frame all currently visible nodes with padding.
