@@ -18,6 +18,7 @@ import {
   layoutToJSON,
 } from '@temporal-architect/graph-view'
 import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION } from '../adapter/dimensions'
+import { definitionMaps } from './definitionMaps'
 import { useEditorTheme } from '../theme/useEditorTheme'
 import { loadState, saveState, type StorageConfig } from '../adapter/storage'
 import type {
@@ -109,17 +110,6 @@ export const HandlerContext = React.createContext<HandlerContext>({
   queries: new Map(),
   updates: new Map(),
 })
-
-// handlersOf maps a workflow's handlers by name. A name declared twice (a
-// DUPLICATE_* resolve error) is its first declaration's, as the resolver keeps it.
-export function handlersOf(def: WorkflowDef): HandlerContext {
-  const byName = <T extends { name: string }>(decls: T[] | undefined) => {
-    const m = new Map<string, T>()
-    for (const d of decls || []) if (!m.has(d.name)) m.set(d.name, d)
-    return m
-  }
-  return { signals: byName(def.signals), queries: byName(def.queries), updates: byName(def.updates) }
-}
 
 // Reverse reference index for contextual navigation
 export interface CallerRef {
@@ -329,34 +319,7 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
   }, [focusKey, treeFilePinned, treeShowsFiles, updateFilter])
 
   // Build lookup maps for definitions (shared by both views)
-  const context = React.useMemo<DefinitionContext>(() => {
-    const workflows = new Map<string, WorkflowDef>()
-    const activities = new Map<string, ActivityDef>()
-    const workers = new Map<string, WorkerDef>()
-    const nexusServices = new Map<string, NexusServiceDef>()
-    const namespaces = new Map<string, NamespaceDef>()
-    // A name declared twice (a DUPLICATE_* resolve error) is its first
-    // declaration's, as the resolver keeps it.
-    const keepFirst = <T extends { name: string }>(m: Map<string, T>, def: T) => {
-      if (!m.has(def.name)) m.set(def.name, def)
-    }
-
-    for (const def of ast.definitions) {
-      if (def.type === 'workflowDef') {
-        keepFirst(workflows, def)
-      } else if (def.type === 'activityDef') {
-        keepFirst(activities, def)
-      } else if (def.type === 'workerDef') {
-        keepFirst(workers, def)
-      } else if (def.type === 'nexusServiceDef') {
-        keepFirst(nexusServices, def)
-      } else if (def.type === 'namespaceDef') {
-        keepFirst(namespaces, def)
-      }
-    }
-
-    return { workflows, activities, workers, nexusServices, namespaces }
-  }, [ast])
+  const context = React.useMemo(() => definitionMaps(ast.definitions), [ast])
 
   // The single entry point for all view switches. Reads the transition
   // intent, runs the reconciler, applies the result, and flips the

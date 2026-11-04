@@ -115,8 +115,10 @@ func (x *expander) exclude(files []*parsed) []*resolver.ResolveError {
 	}
 
 	// Step 2: one module path, one root. The later module (by its first input
-	// file) loses; paths compare case-insensitively.
-	firstRoot := map[string]*mod{}
+	// file) loses; paths compare case-insensitively. A loser names every other
+	// root, by canonical path, so its message does not depend on input order.
+	byModPath := map[string][]*mod{}
+	var modKeys []string
 	for _, m := range mods {
 		mp, ok := modPath[m.root]
 		if !ok || !hasKept(m.files) {
@@ -124,10 +126,25 @@ func (x *expander) exclude(files []*parsed) []*resolver.ResolveError {
 			continue
 		}
 		key := strings.ToLower(mp)
-		if winner, ok := firstRoot[key]; ok {
-			f := x.mods.file(m.root)
+		if byModPath[key] == nil {
+			modKeys = append(modKeys, key)
+		}
+		byModPath[key] = append(byModPath[key], m)
+	}
+	for _, key := range modKeys {
+		group := byModPath[key]
+		byRootPath := append([]*mod(nil), group...)
+		sort.Slice(byRootPath, func(i, j int) bool { return byRootPath[i].root < byRootPath[j].root })
+		for _, m := range group[1:] {
+			var others []string
+			for _, o := range byRootPath {
+				if o != m {
+					others = append(others, x.spellRoot(o.root, o.first))
+				}
+			}
+			mp, f := modPath[m.root], x.mods.file(m.root)
 			errs = append(errs, &resolver.ResolveError{
-				Msg:  fmt.Sprintf("module %s is also rooted at %s; this copy is ignored", mp, x.spellRoot(winner.root, winner.first)),
+				Msg:  fmt.Sprintf("module %s is also rooted at %s; this copy is ignored", mp, strings.Join(others, ", ")),
 				Line: f.file.PathLine, Column: 1, Kind: resolver.ErrDuplicateModule, Name: mp, File: x.spellModFile(m.root, m.first),
 			})
 			delete(modPath, m.root)
@@ -135,9 +152,7 @@ func (x *expander) exclude(files []*parsed) []*resolver.ResolveError {
 			for _, p := range m.files {
 				p.excluded = true
 			}
-			continue
 		}
-		firstRoot[key] = m
 	}
 
 	// The known modules: those holding input files and kept through step 2.

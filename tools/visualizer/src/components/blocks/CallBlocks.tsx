@@ -1,6 +1,7 @@
 import React from 'react'
 import type { ActivityCall, WorkflowCall, NexusCall } from '../../types/ast'
-import { DefinitionContext, HandlerContext, handlersOf } from '../WorkflowCanvas'
+import { DefinitionContext, HandlerContext } from '../WorkflowCanvas'
+import { handlersOf } from '../definitionMaps'
 import { WorkflowContent, InlineWorkflowBlock, SyncBodyBlock } from './WorkflowContent'
 import { useToggle } from './useToggle'
 import { StatementBlock } from './StatementBlock'
