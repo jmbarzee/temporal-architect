@@ -2,7 +2,6 @@ package server
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 
@@ -57,7 +56,7 @@ func implLocation(doc *Document, cursor protocol.Position) (protocol.Location, b
 		return protocol.Location{}, false
 	}
 	target := pipeline.ImplFile(path, s.Impl)
-	if _, err := os.Stat(target); err != nil {
+	if !pipeline.IsFile(target) {
 		return protocol.Location{}, false
 	}
 	return protocol.Location{URI: pathToURI(filepath.ToSlash(target))}, true
@@ -88,19 +87,4 @@ func annotationCompletions(prefix string) (items []protocol.CompletionItem, ok b
 // and underscores, possibly none.
 func isNamePrefix(s string) bool {
 	return strings.Trim(s, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_") == ""
-}
-
-// byteColumn is the 1-based byte column of a UTF-16 character offset in text.
-func byteColumn(text string, character uint32) int {
-	var n uint32
-	for i, r := range text {
-		if n >= character {
-			return i + 1
-		}
-		n++
-		if r >= 0x10000 {
-			n++
-		}
-	}
-	return len(text) + 1
 }

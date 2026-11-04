@@ -84,6 +84,10 @@ func parseWorkerDef(p *Parser) (ast.Definition, error) {
 				p.advance()
 			}
 
+		case token.AT:
+			if err := p.skipBodyAnnotation(); err != nil {
+				return nil, err
+			}
 		default:
 			return nil, p.errorf("unexpected %s in worker block", p.current.Type)
 		}

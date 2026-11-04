@@ -412,8 +412,11 @@ func optionsUnder(stmt ast.Statement) func(token.Token) string {
 
 // parseStatement parses one statement of a body in the body's context.
 func (p *Parser) parseStatement() (ast.Statement, error) {
-	if p.current.Type == token.COMMENT {
+	switch p.current.Type {
+	case token.COMMENT:
 		return p.parseComment(), nil
+	case token.AT:
+		return nil, p.bodyAnnotation()
 	}
 
 	var parseFn stmtParser

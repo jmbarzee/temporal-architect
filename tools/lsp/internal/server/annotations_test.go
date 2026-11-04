@@ -32,7 +32,8 @@ func TestSDKHover(t *testing.T) {
 }
 
 // TestSDKDefinition: Go to Definition on an `@sdk` path opens the entry file,
-// read from the .twf file's directory outside a module.
+// read from the .twf file's directory outside a module; a directory is no
+// entry file.
 func TestSDKDefinition(t *testing.T) {
 	dir := t.TempDir()
 	main := filepath.Join(dir, "cmd", "w", "main.go")
@@ -55,9 +56,16 @@ func TestSDKDefinition(t *testing.T) {
 		{"on the opening quote", 0, 9, fileURI(canonical(main))},
 		{"on the SDK", 0, 6, ""},
 		{"no path", 1, 7, ""},
+		{"a directory", 0, 12, ""},
 	}
+	dirURI := fileURI(filepath.Join(dir, "d.twf"))
+	store.Open(dirURI, "@sdk(go, \"cmd/w\")\nworker w:\n\tactivity A\n")
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			uri := uri
+			if tt.name == "a directory" {
+				uri = dirURI
+			}
 			at := protocol.TextDocumentPositionParams{TextDocument: protocol.TextDocumentIdentifier{URI: uri}, Position: protocol.Position{Line: tt.line, Character: tt.col}}
 			got, err := definitionHandler(store)(nil, &protocol.DefinitionParams{TextDocumentPositionParams: at})
 			if err != nil {

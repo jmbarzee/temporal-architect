@@ -102,7 +102,7 @@ Parse failures share the code `SYNTAX`; dispatch on the message until categorica
 | Code | Kind | Severity | Cause | Fix |
 |------|------|----------|-------|-----|
 | `UNKNOWN_ANNOTATION` | parse | error | An annotation other than `@sdk` | Remove it; `@sdk` is the only annotation |
-| `ANNOTATION_MISPLACED` | parse | error | `@sdk` above a workflow, activity, namespace or Nexus service, or annotations with no definition below them | Move it above the worker that registers the definition |
+| `ANNOTATION_MISPLACED` | parse | error | `@sdk` above a workflow, activity, namespace or Nexus service; an annotation inside a body, or with a blank line or nothing below it | Move it above the worker that registers the definition |
 | `UNKNOWN_SDK` | parse | error | `@sdk` with no SDK, or one outside `go`, `typescript`, `python`, `java`, `dotnet`, `ruby`, `php`, `rust` | Name one of them, unquoted |
 | `DUPLICATE_SDK` | parse | error | One SDK twice on one worker | Keep one; the first is kept |
 | `INVALID_IMPL_PATH` | parse | error | An absolute path, a URL, a `\`, or an empty path | Write the entry file `/`-separated, relative to the module root (else the `.twf` file's directory) |

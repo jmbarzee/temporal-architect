@@ -53,6 +53,10 @@ func TestImplNotFound(t *testing.T) {
 			"design/w.twf":       implTWF("package design\n\n", "cmd/main.go"),
 			"design/cmd/main.go": "package main",
 		}, ".", []string{"w.twf warning"}},
+		{"a directory", map[string]string{
+			"w.twf":       implTWF("", "cmd"),
+			"cmd/main.go": "package main",
+		}, ".", []string{"w.twf warning"}},
 		{"missing", map[string]string{
 			"w.twf": implTWF("", "cmd/main.go"),
 		}, ".", []string{"w.twf warning"}},

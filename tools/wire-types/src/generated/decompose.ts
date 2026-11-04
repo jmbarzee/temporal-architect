@@ -51,7 +51,7 @@ export interface Node {
   label: string;
   workers?: string[]; // hosting worker definition keys
   namespaces?: string[]; // hosting namespace node IDs
-  langs?: string[]; // reserved for the language-boundary split (issue 23; no @lang yet)
+  langs?: string[]; // reserved for the language-boundary split, keyed on the worker's `@sdk`, not yet split (issue 42)
   complexity: number /* int */;
 }
 /**

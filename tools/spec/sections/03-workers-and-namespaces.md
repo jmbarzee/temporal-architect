@@ -60,8 +60,9 @@ sdk_annotation ::= '@' 'sdk' '(' sdk [ ',' STRING ] ')' NEWLINE
 sdk            ::= 'go' | 'typescript' | 'python' | 'java' | 'dotnet' | 'ruby' | 'php' | 'rust'
 ```
 
-Annotations sit on the lines directly above a definition, comment lines allowed among them. `@sdk`
-is the only annotation, and it annotates only a worker.
+Annotations sit on the lines directly above a top-level definition: comment lines may sit among
+them, a blank line may not. `@sdk` is the only annotation, and it annotates only a worker. An
+annotation anywhere else is `ANNOTATION_MISPLACED`.
 
 - **The SDK belongs to the worker.** A worker implementation is written in one SDK. Its workflows,
   activities and Nexus services take that SDK by being registered on it; a definition carries no

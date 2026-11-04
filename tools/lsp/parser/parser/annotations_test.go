@@ -66,24 +66,37 @@ func TestWorkerSDKs(t *testing.T) {
 	}
 }
 
-// TestAnnotationMisplaced: an annotation sits directly above a definition,
-// and `@sdk` above a worker only.
+// TestAnnotationMisplaced: an annotation sits directly above a top-level
+// definition, with no blank line between, and `@sdk` above a worker only; the
+// definitions around it are kept.
 func TestAnnotationMisplaced(t *testing.T) {
 	tests := []struct{ name, src, want string }{
 		{"on a workflow", "@sdk(go)\nworkflow W():\n\tclose complete()\n", "1:1 ANNOTATION_MISPLACED"},
 		{"on an activity", "@sdk(go)\nactivity A():\n\treturn x\n", "1:1 ANNOTATION_MISPLACED"},
 		{"before an import", "@sdk(go)\nimport \"x/y\"\n", "1:1 ANNOTATION_MISPLACED"},
 		{"at the end", annotatedBody + "@sdk(go)\n", "3:1 ANNOTATION_MISPLACED"},
+		{"a blank line above the worker", "@sdk(go)\n\n" + annotatedBody, "1:1 ANNOTATION_MISPLACED"},
+		{"a blank line above a comment", "@sdk(go)\n\n# note\n" + annotatedBody, "1:1 ANNOTATION_MISPLACED"},
+		{"in a workflow body", "workflow W():\n\t@sdk(go)\n\tclose complete()\n", "2:2 ANNOTATION_MISPLACED"},
+		{"in an activity body", "activity A():\n\t@sdk(go)\n\treturn x\n", "2:2 ANNOTATION_MISPLACED"},
+		{"in a worker body", "worker w:\n\t@sdk(go)\n\tactivity A\n", "2:2 ANNOTATION_MISPLACED"},
+		{"in a namespace body", "namespace n:\n\t@sdk(go)\n\tworker w\n", "2:2 ANNOTATION_MISPLACED"},
+		{"in a nexus service body", "nexus service S:\n\t@sdk(go)\n\tasync Op workflow W\n", "2:2 ANNOTATION_MISPLACED"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, errs := ParseFileAll(tt.src)
+			file, errs := ParseFileAll(tt.src)
 			var got []string
 			for _, e := range errs {
 				got = append(got, fmt.Sprintf("%d:%d %s", e.Line, e.Column, e.Code()))
 			}
-			if len(got) == 0 || got[0] != tt.want {
-				t.Errorf("errors = %v, want first %s", got, tt.want)
+			if len(got) != 1 || got[0] != tt.want {
+				t.Errorf("errors = %v, want %s", got, tt.want)
+			}
+			for _, def := range file.Definitions {
+				if w, ok := def.(*ast.WorkerDef); ok && len(w.SDKs) > 0 {
+					t.Errorf("worker %s took a misplaced annotation: %+v", w.Name, w.SDKs)
+				}
 			}
 		})
 	}

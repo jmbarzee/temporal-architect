@@ -136,7 +136,7 @@ Diagnostics for [`@sdk` annotations](./03-workers-and-namespaces.md#sdk-annotati
 | Code | Trigger | Severity |
 |---|---|---|
 | `UNKNOWN_ANNOTATION` | an annotation other than `@sdk` | error |
-| `ANNOTATION_MISPLACED` | `@sdk` on anything but a worker, or annotations with no definition below them | error |
+| `ANNOTATION_MISPLACED` | `@sdk` on anything but a worker; an annotation inside a body, or with no definition directly below it | error |
 | `UNKNOWN_SDK` | an `@sdk` naming no SDK, or one not in the `sdk` enum | error |
 | `DUPLICATE_SDK` | one SDK twice on one worker | error |
 | `INVALID_IMPL_PATH` | an absolute path, a URL, a `\`, or an empty path | error |

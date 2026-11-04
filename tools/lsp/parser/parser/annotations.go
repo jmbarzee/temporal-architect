@@ -19,23 +19,24 @@ const (
 	CodeInvalidImplPath     = "INVALID_IMPL_PATH"
 )
 
-// annotation is one annotation line: its '@', its name, and its arguments,
-// each an IDENT or a STRING positioned in the file.
+// annotation is one annotation line: its '@', its name, its arguments, each
+// an IDENT or a STRING positioned in the file, and the line it ends on.
 type annotation struct {
 	at, name token.Token
 	args     []token.Token
+	end      int
 }
 
 // parseAnnotated parses the annotation lines above a definition, then the
 // definition, and applies the annotations to it. def is nil when no
 // definition follows them.
 func (p *Parser) parseAnnotated() (ast.Definition, error) {
-	annots, err := p.parseAnnotations()
+	annots, end, err := p.parseAnnotations()
 	if err != nil {
 		return nil, err
 	}
 	parse, ok := topLevelParsers[p.current.Type]
-	if !ok {
+	if !ok || p.current.Line > end+1 {
 		if len(annots) == 0 {
 			return nil, nil // each line failed, and is reported
 		}
@@ -55,30 +56,38 @@ func (p *Parser) parseAnnotated() (ast.Definition, error) {
 }
 
 // parseAnnotations parses annotation lines, and comment lines among them, up
-// to the line that does not start with '@'. Collecting errors, a malformed
-// line is reported and left out.
+// to a line that does not start with '@' or follows a blank line. end is the
+// last line read. Collecting errors, a malformed line is reported and left
+// out.
 //
 //	annotation ::= '@' IDENT [ '(' annot_arg (',' annot_arg)* ')' ] NEWLINE
 //	annot_arg  ::= IDENT | STRING
-func (p *Parser) parseAnnotations() ([]annotation, error) {
-	var annots []annotation
+func (p *Parser) parseAnnotations() (annots []annotation, end int, err error) {
+	end = p.current.Line - 1
 	for {
-		switch p.current.Type {
-		case token.NEWLINE, token.COMMENT:
+		switch {
+		case p.current.Type == token.NEWLINE:
 			p.advance()
 			continue
-		case token.AT:
-		default:
-			return annots, nil
+		case p.current.Line > end+1:
+			return annots, end, nil
+		case p.current.Type == token.COMMENT:
+			end = p.current.Line
+			p.advance()
+			continue
+		case p.current.Type != token.AT:
+			return annots, end, nil
 		}
 		start := p.current
 		a, err := p.parseAnnotation()
 		if err != nil {
 			if err := p.recoverLine(err, start, p.depth); err != nil {
-				return nil, err
+				return nil, 0, err
 			}
+			end = start.Line
 			continue
 		}
+		end = a.end
 		annots = append(annots, a)
 	}
 }
@@ -91,8 +100,10 @@ func (p *Parser) parseAnnotation() (annotation, error) {
 		return a, p.errorf("expected an annotation name directly after '@'")
 	}
 	a.name = p.current
+	a.end = a.name.Line
 	p.advance()
 	if p.current.Type == token.ARGS {
+		a.end = p.current.Line + strings.Count(p.current.Literal, "\n")
 		args, err := annotationArgs(p.current)
 		if err != nil {
 			return a, err
@@ -209,6 +220,26 @@ func implPathError(arg token.Token) *ParseError {
 // annotationError is a coded parse error at tok.
 func annotationError(tok token.Token, code, msg string) *ParseError {
 	return &ParseError{Msg: msg, Line: tok.Line, Column: tok.Column, code: code}
+}
+
+// skipBodyAnnotation reports an annotation line inside a body, where none
+// belongs, and skips it.
+func (p *Parser) skipBodyAnnotation() error {
+	if err := p.soft(p.bodyAnnotation()); err != nil {
+		return err
+	}
+	for p.current.Type != token.NEWLINE && p.current.Type != token.DEDENT && p.current.Type != token.EOF {
+		p.advance()
+	}
+	if p.current.Type == token.NEWLINE {
+		p.advance()
+	}
+	return nil
+}
+
+// bodyAnnotation is the error for an annotation inside a body.
+func (p *Parser) bodyAnnotation() error {
+	return p.codedErrorf(CodeAnnotationMisplaced, "an annotation sits above a top-level definition, not inside a body")
 }
 
 // soft reports an error that leaves the parse intact: collecting errors, it

@@ -40,7 +40,7 @@ type Node struct {
 	Label      string   `json:"label"`
 	Workers    []string `json:"workers,omitempty"`    // hosting worker definition keys
 	Namespaces []string `json:"namespaces,omitempty"` // hosting namespace node IDs
-	Langs      []string `json:"langs,omitempty"`      // reserved for the language-boundary split (issue 23; no @lang yet)
+	Langs      []string `json:"langs,omitempty"`      // reserved for the language-boundary split, keyed on the worker's `@sdk`, not yet split (issue 42)
 	Complexity int      `json:"complexity"`
 }
 

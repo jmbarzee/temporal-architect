@@ -107,6 +107,21 @@ func utf16Len(s string) uint32 {
 	return n
 }
 
+// byteColumn is the 1-based byte column of a UTF-16 character offset in text.
+func byteColumn(text string, character uint32) int {
+	var n uint32
+	for i, r := range text {
+		if n >= character {
+			return i + 1
+		}
+		n++
+		if r >= 0x10000 {
+			n++
+		}
+	}
+	return len(text) + 1
+}
+
 // sources maps the source files a positional request reaches to their URIs
 // and lines: the requesting buffer, other open buffers, then the disk.
 type sources struct {

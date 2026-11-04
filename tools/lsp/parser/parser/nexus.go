@@ -65,6 +65,10 @@ func parseNexusServiceDef(p *Parser) (ast.Definition, error) {
 				return nil, err
 			}
 			svc.Operations = append(svc.Operations, op)
+		case token.AT:
+			if err := p.skipBodyAnnotation(); err != nil {
+				return nil, err
+			}
 		default:
 			return nil, p.errorf("expected 'async' or 'sync' in nexus service body, got %s", p.current.Type)
 		}

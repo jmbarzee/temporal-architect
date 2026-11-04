@@ -19,6 +19,12 @@ func ImplFile(twfPath, impl string) string {
 	return filepath.Join(dir, filepath.FromSlash(impl))
 }
 
+// IsFile reports whether path names a file, not a directory.
+func IsFile(path string) bool {
+	info, err := os.Stat(path)
+	return err == nil && !info.IsDir()
+}
+
 // implNotFound reports each worker `@sdk` path that names no file on disk.
 // A source with no file has no base to read the path from and is skipped.
 func implNotFound(files []*parsed) []*validator.Error {
@@ -40,7 +46,7 @@ func implNotFound(files []*parsed) []*validator.Error {
 				if s.Impl == "" {
 					continue
 				}
-				if _, err := os.Stat(filepath.Join(base, filepath.FromSlash(s.Impl))); err == nil {
+				if IsFile(filepath.Join(base, filepath.FromSlash(s.Impl))) {
 					continue
 				}
 				errs = append(errs, &validator.Error{
