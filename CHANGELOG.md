@@ -49,7 +49,9 @@ paths are two packages; alias one to import both. New errors:
 `DUPLICATE_IMPORT_NAME`, and `IMPORT_NOT_FOUND` for a typo under your own
 module (it used to be a silent external). `IMPORT_NOT_LOADED` warns when a
 package is on disk but not among the inputs. A path under no module in the run
-is still `UNRESOLVED_IMPORT`, treated as external.
+is still `UNRESOLVED_IMPORT`, treated as external. No import binds by package
+name anywhere: an MCP inline `source` or an editor buffer with no file has no
+import path, so its imports are external, matching `twf check`.
 
 ### ⚠️ Breaking: wire output
 

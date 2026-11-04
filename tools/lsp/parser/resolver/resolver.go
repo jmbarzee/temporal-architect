@@ -392,14 +392,11 @@ type state struct {
 	allEndpoints  map[string]*ast.NamespaceEndpoint
 	packages      map[string]bool
 	// names maps a package identity to its declared name; paths maps a kept
-	// package's import path to its identity; byName maps a declared name to
-	// the identity of a package with no path (a virtual source's, or an
-	// unstamped AST's), which an import still reaches by its assumed name.
+	// package's import path to its identity. An import binds only by path.
 	names    map[string]string
 	paths    map[string]string
 	pathOf   map[string]string // identity → import path
 	moduleOf map[string]string // identity → module path
-	byName   map[string]string
 	// noQualifier lists, per package, the failed import lines that formed no
 	// qualifier, for QUALIFIED_REF_WITHOUT_IMPORT to name.
 	noQualifier map[string][]lineRef
@@ -427,7 +424,6 @@ func Resolve(file *ast.File) []*ResolveError {
 		paths:         map[string]string{},
 		pathOf:        map[string]string{},
 		moduleOf:      map[string]string{},
-		byName:        map[string]string{},
 		noQualifier:   map[string][]lineRef{},
 		bindings:      map[string]map[string]*importBinding{},
 	}
@@ -732,22 +728,25 @@ func Resolve(file *ast.File) []*ResolveError {
 }
 
 // notePackage records that package identity p, declared as name, holds a
-// definition. A package with no path (a virtual source's, or one an unstamped
-// AST names by its declared name) is reachable by name.
+// definition.
 func (s *state) notePackage(p, name string) {
 	s.packages[p] = true
-	if p == "" {
-		return
-	}
-	if _, ok := s.names[p]; !ok {
+	if _, ok := s.names[p]; !ok && p != "" {
 		if name == "" {
 			name = p
 		}
 		s.names[p] = name
 	}
-	if s.pathOf[p] == "" {
-		s.byName[s.names[p]] = p
+}
+
+// hasPathless reports whether a package declared as name has no import path.
+func (s *state) hasPathless(name string) bool {
+	for id, n := range s.names {
+		if n == name && s.pathOf[id] == "" {
+			return true
+		}
 	}
+	return false
 }
 
 // packageLabel names a package in a message: "package <name>", with its path
@@ -866,9 +865,6 @@ func (s *state) bindImport(file *ast.File, imp *ast.ImportDecl) {
 	case looked && out.Kind == ast.ImportNotLoaded:
 		b.external = true
 		b.warning = &ResolveError{Msg: fmt.Sprintf("import %q is not among the inputs; %s; treated as external", p, out.Detail), Severity: "warning", Kind: ErrImportNotLoaded, Name: qual}
-	case s.byName[module.AssumedName(p)] != "":
-		// A package with no path, reached by its name.
-		b.targetPkg = s.byName[module.AssumedName(p)]
 	default:
 		b.external = true
 		msg := fmt.Sprintf("import %q is unresolved (no package %q in the tree); treated as external", p, module.AssumedName(p))
@@ -881,6 +877,8 @@ func (s *state) bindImport(file *ast.File, imp *ast.ImportDecl) {
 		if len(elsewhere) > 0 {
 			slices.Sort(elsewhere)
 			msg += fmt.Sprintf(" (package %s is at %s)", module.AssumedName(p), strings.Join(elsewhere, ", "))
+		} else if s.hasPathless(module.AssumedName(p)) {
+			msg += fmt.Sprintf(" (package %s here has no import path)", module.AssumedName(p))
 		}
 		b.warning = &ResolveError{Msg: msg, Severity: "warning", Kind: ErrUnresolvedImport, Name: qual}
 	}

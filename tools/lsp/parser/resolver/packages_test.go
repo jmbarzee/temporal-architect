@@ -1,6 +1,7 @@
 package resolver
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
@@ -14,48 +15,31 @@ import (
 // (which would be an import cycle).
 func mustMerge(t *testing.T, sources ...string) *ast.File {
 	t.Helper()
-	merged := &ast.File{}
-	pkgs := map[string]bool{}
-	for _, src := range sources {
-		f := mustParse(t, src)
-		pkgs[f.Package] = true
-		for _, imp := range f.Imports {
-			imp.Package = f.Package
-			merged.Imports = append(merged.Imports, imp)
-		}
-		for _, def := range f.Definitions {
-			stampPkg(def, f.Package)
-			merged.Definitions = append(merged.Definitions, def)
-		}
+	inputs := make([]ast.StampInput, len(sources))
+	for i, src := range sources {
+		inputs[i] = ast.StampInput{File: mustParse(t, src), Module: testPath(src)}
 	}
-	if len(pkgs) == 1 {
-		for p := range pkgs {
-			merged.Package = p
-		}
-	}
-	return merged
+	return ast.Stamp(inputs)
 }
 
-func stampPkg(def ast.Definition, pkg string) {
-	switch d := def.(type) {
-	case *ast.WorkflowDef:
-		d.Package = pkg
-	case *ast.ActivityDef:
-		d.Package = pkg
-	case *ast.WorkerDef:
-		d.Package = pkg
-	case *ast.NamespaceDef:
-		d.Package = pkg
-	case *ast.NexusServiceDef:
-		d.Package = pkg
+// testPath is the import path a test source declares on its first line
+// (`# path: acme/orderer`), or "" for a path-less package, whose imports bind
+// nothing.
+func testPath(src string) string {
+	first, _, _ := strings.Cut(src, "\n")
+	path, ok := strings.CutPrefix(first, "# path: ")
+	if !ok {
+		return ""
 	}
+	return strings.TrimSpace(path)
 }
 
 // TestCrossPackageSameNameResolves: F8 — the same short name in two packages
 // resolves without a DUPLICATE_* error, and a cross-package call through an
 // import resolves to the correct package's definition.
 func TestCrossPackageSameNameResolves(t *testing.T) {
-	orderer := `package orderer
+	orderer := `# path: acme/orderer
+package orderer
 
 workflow ChannelJoin(id):
     close complete(id)
@@ -143,13 +127,14 @@ namespace nsB:
 // clash on the same qualifier; an alias binds a distinct qualifier, and a
 // reference through the alias resolves to the aliased package.
 func TestAliasResolvesLeafClash(t *testing.T) {
-	orderer := `package orderer
+	orderer := `# path: beta/orderer
+package orderer
 
 workflow Run(id):
     close complete(id)
 `
-	// app imports two "orderer" leaves: the bare one binds "orderer", the
-	// aliased one binds "ord". Both target package orderer (present).
+	// app imports two "orderer" paths: the bare one binds "orderer" and is
+	// external, the aliased one binds "ord" to the package at beta/orderer.
 	app := `package app
 
 import "acme/orderer"
@@ -330,7 +315,8 @@ workflow Order(id):
 // (`import orders ".../orders/v1"` → package orders, present), so a reference
 // through the alias resolves rather than silently falling to external (#135).
 func TestVersionedImportAliasedResolves(t *testing.T) {
-	orders := `package orders
+	orders := `# path: example.com/acme/orders/v1
+package orders
 
 workflow ProcessOrder(id):
     close complete(id)
@@ -361,7 +347,8 @@ workflow Caller(id):
 // its qualifier to the version-stripped leaf (`import ".../orders/v1"` →
 // qualifier and package "orders"), so `orders.ProcessOrder` resolves (#135).
 func TestVersionedImportBareResolves(t *testing.T) {
-	orders := `package orders
+	orders := `# path: example.com/acme/orders/v1
+package orders
 
 workflow ProcessOrder(id):
     close complete(id)
@@ -392,7 +379,8 @@ workflow Caller(id):
 // the leaf overrides only the local qualifier — the target is still the
 // version-stripped package (`import o ".../orders/v1"` → `o.X` targets orders).
 func TestVersionedImportAliasDistinctNameResolves(t *testing.T) {
-	orders := `package orders
+	orders := `# path: example.com/acme/orders/v1
+package orders
 
 workflow ProcessOrder(id):
     close complete(id)
@@ -424,7 +412,8 @@ workflow Caller(id):
 // resolved package "orders" and raises UNDEFINED_WORKFLOW instead of silently
 // passing as external (#135 — the silent-failure this fix closes).
 func TestVersionedImportTypoRaisesUndefined(t *testing.T) {
-	orders := `package orders
+	orders := `# path: example.com/acme/orders/v1
+package orders
 
 workflow ProcessOrder(id):
     close complete(id)
@@ -486,5 +475,20 @@ workflow Caller(id):
 	call := caller.Body[0].(*ast.WorkflowCall)
 	if call.Workflow.Resolved != nil {
 		t.Errorf("external versioned ref should be left unresolved, got %v", call.Workflow.Resolved)
+	}
+}
+
+// TestImportsNeverBindByName: packages with no import path are reached by no
+// import, even one whose assumed name is their declared name.
+func TestImportsNeverBindByName(t *testing.T) {
+	file := mustMerge(t, "package orderer\n\nworkflow Run(id):\n    close complete(id)\n",
+		"package app\n\nimport \"acme/orderer\"\n\nworkflow Caller(id):\n    workflow orderer.Run(id) -> r\n    close complete(r)\n")
+	errs := Resolve(file)
+	if len(errs) != 1 || errs[0].Kind != ErrUnresolvedImport {
+		t.Fatalf("want one UNRESOLVED_IMPORT, got %v", errs)
+	}
+	call := file.Definitions[1].(*ast.WorkflowDef).Body[0].(*ast.WorkflowCall)
+	if call.Workflow.Resolved != nil {
+		t.Error("the import bound package orderer by name")
 	}
 }

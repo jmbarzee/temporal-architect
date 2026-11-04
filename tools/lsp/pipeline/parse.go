@@ -7,6 +7,7 @@ import (
 	"sort"
 
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/module"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/parser"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/resolver"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/validator"
@@ -19,6 +20,8 @@ type source struct {
 	content string
 	// canonical is an on-disk source's identity; "" for a virtual source.
 	canonical string
+	// module and dir place a virtual source in a module (Source.Module).
+	module, dir string
 }
 
 // InputKind says how ParseSources expands an Input.
@@ -55,9 +58,19 @@ type Input struct {
 
 // Source is one in-memory TWF document. Name is used only for diagnostic
 // attribution; an empty Name defaults to "<source>.twf".
+//
+// A source has no directory, so its package has no import path and its
+// imports bind nothing in the run: they are external. Module and Dir place it
+// in a module instead — its package's path is Module, plus "/" and Dir when
+// Dir is set — so in-memory sources (tests, a caller that knows the context)
+// import each other by path. One request's sources are all in a module or
+// none. The file-level checks of on-disk inputs (clause conflicts, the name
+// rule) do not run on in-memory sources.
 type Source struct {
 	Name    string
 	Content string
+	Module  string
+	Dir     string
 }
 
 // Request is one ParseSources run. Inputs and Virtual are mutually exclusive.
@@ -104,12 +117,20 @@ func ParseSources(req Request) (Result, error) {
 	}
 
 	var sources []source
-	for _, v := range req.Virtual {
+	for i, v := range req.Virtual {
+		switch {
+		case (v.Module == "") != (req.Virtual[0].Module == ""):
+			return Result{}, fmt.Errorf("virtual source %d: sources in a module and sources in none cannot share a run", i)
+		case v.Module == "" && v.Dir != "":
+			return Result{}, fmt.Errorf("virtual source %d: Dir needs a Module", i)
+		case v.Module != "" && module.CheckPath(v.Module) != nil:
+			return Result{}, fmt.Errorf("virtual source %d: invalid module path %q: %v", i, v.Module, module.CheckPath(v.Module))
+		}
 		base := "<source>.twf"
 		if v.Name != "" {
 			base = filepath.Base(v.Name)
 		}
-		sources = append(sources, source{base: base, content: v.Content})
+		sources = append(sources, source{base: base, content: v.Content, module: v.Module, dir: v.Dir})
 	}
 
 	var x *expander
@@ -241,7 +262,6 @@ func ParseSource(name, content string) (*ast.File, []Diagnostic, error) {
 // defaultFile is the file attribution for a resolve/validate error that
 // carries none.
 func parseSources(sources []source, defaultFile string, x *expander) Result {
-	merged := &ast.File{}
 	var diags []Diagnostic
 
 	files := make([]*parsed, len(sources))
@@ -261,70 +281,37 @@ func parseSources(sources []source, defaultFile string, x *expander) Result {
 	} else {
 		for _, p := range files {
 			p.excluded = p.file.ClauseExcluded
+			p.modPath = p.src.module
 		}
 	}
 
-	// Track the distinct packages seen across all files so the merged
-	// File.Package can be set to the sole package (single-package tree) or
-	// left empty (multi-package tree). The resolver keys off the per-def
-	// stamp, not this field, once multiple packages are present.
-	pkgSeen := map[string]bool{}
-	pkgs := map[string]*ast.PackageInfo{}
-
+	// Merge the kept files. A package's identity is its import path; a
+	// package with none (a virtual source outside a module) is identified by
+	// its declared name, and nothing can import it.
+	var kept []ast.StampInput
 	for _, p := range files {
 		if p.excluded {
 			continue
 		}
-		// A package's identity is its import path; a package with none (a
-		// virtual source's) is identified by its declared name.
-		id := p.file.Package
-		if p.pkgPath != "" {
-			id = p.pkgPath
+		in := ast.StampInput{File: p.file, SourceFile: p.src.base, Module: p.modPath}
+		if p.root != "" {
+			if rel, err := filepath.Rel(p.root, p.dir); err == nil && rel != "." {
+				in.Dir = filepath.ToSlash(rel)
+			}
+		} else {
+			in.Dir = p.src.dir
 		}
-		pkgSeen[id] = true
-		if id != "" && pkgs[id] == nil {
-			pkgs[id] = &ast.PackageInfo{ID: id, Name: p.file.Package, Path: p.pkgPath, Module: p.modPath}
-		}
-
-		// Thread the file's imports into the merged payload, each stamped with
-		// its owning package so the resolver can build per-package binding
-		// tables. Runtime-only — never serialized.
-		for _, imp := range p.file.Imports {
-			imp.Package = p.file.Package
-			imp.PkgID = id
-			imp.SourceFile = p.src.base
-			merged.Imports = append(merged.Imports, imp)
-		}
-
-		for _, def := range p.file.Definitions {
-			setSourceFile(def, p.src.base)
-			setPackage(def, p.file.Package, id)
-			merged.Definitions = append(merged.Definitions, def)
-		}
+		kept = append(kept, in)
 	}
-	for _, info := range pkgs {
-		merged.Packages = append(merged.Packages, *info)
-	}
+	merged := ast.Stamp(kept)
 	if x != nil {
-		kept := map[string]bool{}
-		for _, info := range pkgs {
+		paths := map[string]bool{}
+		for _, info := range merged.Packages {
 			if info.Path != "" {
-				kept[info.Path] = true
+				paths[info.Path] = true
 			}
 		}
-		merged.ImportOutcomes = x.lookupImports(files, kept)
-	}
-	sort.Slice(merged.Packages, func(i, j int) bool { return merged.Packages[i].ID < merged.Packages[j].ID })
-
-	// The sole package's declared name when the whole run is one package
-	// (counted by identity, so two `fabric` directories are two), including
-	// the all-default case; empty when the merge spans several packages.
-	if len(pkgSeen) == 1 {
-		for id := range pkgSeen {
-			if info := pkgs[id]; info != nil {
-				merged.Package = info.Name
-			}
-		}
+		merged.ImportOutcomes = x.lookupImports(files, paths)
 	}
 
 	// A resolve or validate error carries the reference-site file (#136,
@@ -392,40 +379,4 @@ func lessDiag(fa, la, ca int, codeA, msgA string, fb, lb, cb int, codeB, msgB st
 		return codeA < codeB
 	}
 	return msgA < msgB
-}
-
-// setSourceFile stamps a definition with its source file name.
-func setSourceFile(def ast.Definition, sourceFile string) {
-	switch d := def.(type) {
-	case *ast.WorkflowDef:
-		d.SourceFile = sourceFile
-	case *ast.ActivityDef:
-		d.SourceFile = sourceFile
-	case *ast.WorkerDef:
-		d.SourceFile = sourceFile
-	case *ast.NamespaceDef:
-		d.SourceFile = sourceFile
-	case *ast.NexusServiceDef:
-		d.SourceFile = sourceFile
-	}
-}
-
-// setPackage stamps a definition with its owning package: the declaring
-// file's package clause (empty is the implicit default package) and the
-// package's identity. Runtime-only — the resolver and graph read them, and the
-// AST wire emits only the identity and the qualifiedName derived from it.
-// Mirrors setSourceFile.
-func setPackage(def ast.Definition, pkg, id string) {
-	switch d := def.(type) {
-	case *ast.WorkflowDef:
-		d.Package, d.PkgID = pkg, id
-	case *ast.ActivityDef:
-		d.Package, d.PkgID = pkg, id
-	case *ast.WorkerDef:
-		d.Package, d.PkgID = pkg, id
-	case *ast.NamespaceDef:
-		d.Package, d.PkgID = pkg, id
-	case *ast.NexusServiceDef:
-		d.Package, d.PkgID = pkg, id
-	}
 }

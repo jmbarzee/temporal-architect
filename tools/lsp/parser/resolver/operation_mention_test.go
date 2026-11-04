@@ -141,7 +141,8 @@ namespace ns:
 // TestWorkerRegistersOperationThreeSegmentsConfirmed: a resolved service with
 // the named operation gets the confirmed message.
 func TestWorkerRegistersOperationThreeSegmentsConfirmed(t *testing.T) {
-	file := mustMerge(t, `package orders
+	file := mustMerge(t, `# path: example.com/orders
+package orders
 
 nexus service Svc:
     async OpA workflow A
