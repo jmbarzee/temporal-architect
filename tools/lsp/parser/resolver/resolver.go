@@ -437,29 +437,31 @@ func Resolve(file *ast.File) []*ResolveError {
 	}
 
 	// Pass 1: collect definitions keyed by (package, name), duplicate-detecting
-	// per key, and record which packages the tree contains.
+	// per key, and record which packages the tree contains. file.Definitions
+	// runs input files in order, then position, so a duplicated key is its
+	// first declaration's.
 	for _, def := range file.Definitions {
 		switch d := def.(type) {
 		case *ast.WorkflowDef:
 			p := effPkg(ast.PackageIDOf(d, nil), s.filePkg)
 			s.notePackage(p, d.Package)
-			collectInto(s.workflows, pkgKey{p, d.Name}, d, "workflow", ErrDuplicateWorkflow, d.Line, d.Column, d.SourceFile, &s.errs)
+			collectInto(s.workflows, pkgKey{p, d.Name}, d, "workflow", ErrDuplicateWorkflow, &s.errs)
 		case *ast.ActivityDef:
 			p := effPkg(ast.PackageIDOf(d, nil), s.filePkg)
 			s.notePackage(p, d.Package)
-			collectInto(s.activities, pkgKey{p, d.Name}, d, "activity", ErrDuplicateActivity, d.Line, d.Column, d.SourceFile, &s.errs)
+			collectInto(s.activities, pkgKey{p, d.Name}, d, "activity", ErrDuplicateActivity, &s.errs)
 		case *ast.WorkerDef:
 			p := effPkg(ast.PackageIDOf(d, nil), s.filePkg)
 			s.notePackage(p, d.Package)
-			collectInto(s.workers, pkgKey{p, d.Name}, d, "worker", ErrDuplicateWorker, d.Line, d.Column, d.SourceFile, &s.errs)
+			collectInto(s.workers, pkgKey{p, d.Name}, d, "worker", ErrDuplicateWorker, &s.errs)
 		case *ast.NamespaceDef:
 			p := effPkg(ast.PackageIDOf(d, nil), s.filePkg)
 			s.notePackage(p, d.Package)
-			collectInto(s.namespaces, pkgKey{p, d.Name}, d, "namespace", ErrDuplicateNamespace, d.Line, d.Column, d.SourceFile, &s.errs)
+			collectInto(s.namespaces, pkgKey{p, d.Name}, d, "namespace", ErrDuplicateNamespace, &s.errs)
 		case *ast.NexusServiceDef:
 			p := effPkg(ast.PackageIDOf(d, nil), s.filePkg)
 			s.notePackage(p, d.Package)
-			collectInto(s.nexusServices, pkgKey{p, d.Name}, d, "nexus service", ErrDuplicateNexusService, d.Line, d.Column, d.SourceFile, &s.errs)
+			collectInto(s.nexusServices, pkgKey{p, d.Name}, d, "nexus service", ErrDuplicateNexusService, &s.errs)
 		}
 	}
 
@@ -1409,21 +1411,28 @@ func (s *state) checkReservedIn(file string, params []paramList, conditions []*a
 	}
 }
 
-// collectInto registers a definition under its (package, name) key, appending a
-// duplicate error (per key, so same-named defs in different packages coexist)
-// if the key already exists.
-func collectInto[T any](m map[pkgKey]T, key pkgKey, def T, kind string, errKind ErrorKind, line, column int, file string, errs *[]*ResolveError) {
-	if _, exists := m[key]; exists {
-		*errs = append(*errs, &ResolveError{
-			Msg:    fmt.Sprintf("duplicate %s definition: %s", kind, key.name),
-			Line:   line,
-			Column: column,
-			Kind:   errKind,
-			Name:   key.name,
-			File:   file,
-		})
+// collectInto registers a definition under its (package, name) key, so
+// same-named defs in different packages coexist. A key already registered
+// keeps its first definition, and the later one gets a duplicate error naming
+// where the first is.
+func collectInto[T ast.Definition](m map[pkgKey]T, key pkgKey, def T, kind string, errKind ErrorKind, errs *[]*ResolveError) {
+	first, exists := m[key]
+	if !exists {
+		m[key] = def
+		return
 	}
-	m[key] = def
+	at := fmt.Sprintf("line %d", first.NodeLine())
+	if f := ast.SourceFileOf(first); f != "" {
+		at = fmt.Sprintf("%s:%d", f, first.NodeLine())
+	}
+	*errs = append(*errs, &ResolveError{
+		Msg:    fmt.Sprintf("duplicate %s definition: %s (first at %s)", kind, key.name, at),
+		Line:   def.NodeLine(),
+		Column: def.NodeColumn(),
+		Kind:   errKind,
+		Name:   key.name,
+		File:   ast.SourceFileOf(def),
+	})
 }
 
 // resolvePkgRef resolves a package-scoped reference (activity / workflow / nexus

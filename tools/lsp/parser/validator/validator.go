@@ -168,6 +168,13 @@ func (v *validationCtx) key(def ast.Packaged, name string) pkgKey {
 	return pkgKey{ast.PackageIDOf(def, v.file), name}
 }
 
+// keepFirst sets m[k] to v unless k is already set.
+func keepFirst[V any](m map[pkgKey]V, k pkgKey, v V) {
+	if _, ok := m[k]; !ok {
+		m[k] = v
+	}
+}
+
 // refKey returns the (package, name) key a worker registration or call-site
 // reference resolves to: the resolved target's own package when resolved (so a
 // ref in package P to a same-named def keys to the package that actually holds
@@ -211,20 +218,22 @@ func Validate(file *ast.File) []*Error {
 		nexusServices: make(map[pkgKey]*ast.NexusServiceDef),
 	}
 
-	// Build definition maps from the AST, keyed by (package, name).
+	// Build definition maps from the AST, keyed by (package, name). A key
+	// declared twice (a DUPLICATE_* resolve error) is its first declaration's,
+	// as the resolver keeps it.
 	for _, def := range file.Definitions {
 		switch d := def.(type) {
 		case *ast.WorkflowDef:
-			v.workflows[v.key(d, d.Name)] = d
+			keepFirst(v.workflows, v.key(d, d.Name), d)
 		case *ast.ActivityDef:
-			v.activities[v.key(d, d.Name)] = d
+			keepFirst(v.activities, v.key(d, d.Name), d)
 		case *ast.WorkerDef:
-			v.workers[v.key(d, d.Name)] = d
+			keepFirst(v.workers, v.key(d, d.Name), d)
 		case *ast.NamespaceDef:
-			v.namespaces[v.key(d, d.Name)] = d
+			keepFirst(v.namespaces, v.key(d, d.Name), d)
 			v.nsDefs = append(v.nsDefs, d)
 		case *ast.NexusServiceDef:
-			v.nexusServices[v.key(d, d.Name)] = d
+			keepFirst(v.nexusServices, v.key(d, d.Name), d)
 		}
 	}
 
@@ -690,7 +699,7 @@ type caller struct {
 // walkAllBodies walks all workflow and nexus service sync op bodies, in
 // definition order, checking call routing, endpoint-service linkage, and
 // endpoint caller allowlists. A duplicate definition (already reported by the
-// resolver) is walked once, as its canonical map entry.
+// resolver) is walked once, as its first declaration.
 func (v *validationCtx) walkAllBodies(defs []ast.Definition) {
 	if len(v.namespaces) == 0 {
 		return

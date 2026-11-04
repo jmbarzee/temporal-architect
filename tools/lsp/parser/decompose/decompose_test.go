@@ -524,6 +524,67 @@ namespace ns:
 	}
 }
 
+// TestDuplicateMeasuresFirstDeclaration: a workflow declared twice
+// (DUPLICATE_WORKFLOW) is its first declaration, as the resolver keeps it: the
+// later one's body and handler neither score its complexity nor make it a root.
+func TestDuplicateMeasuresFirstDeclaration(t *testing.T) {
+	const first = `
+workflow Parent():
+    workflow Child()
+    close complete
+
+workflow Child():
+    close complete
+`
+	const later = `
+workflow Child():
+    signal Ping():
+        return
+    activity Work()
+    if (x):
+        activity Work()
+    close complete
+`
+	const rest = `
+activity Work():
+    return
+
+worker w:
+    workflow Parent
+    workflow Child
+    activity Work
+
+namespace ns:
+    worker w
+        options:
+            task_queue: "q"
+`
+	child := graph.DefKey(graph.KindWorkflow, "Child")
+	decompose := func(src string) (*Result, int) {
+		file, parseErrs := parser.ParseFileAll(src)
+		for _, e := range parseErrs {
+			t.Fatalf("parse: %v", e)
+		}
+		resolver.Resolve(file)
+		res := Decompose(file, graph.Extract(file), Options{})
+		for _, n := range res.Nodes {
+			if n.Key == child {
+				return res, n.Complexity
+			}
+		}
+		t.Fatalf("no node %s", child)
+		return nil, 0
+	}
+	_, want := decompose(first + rest)
+	res, got := decompose(first + later + rest)
+	if got != want {
+		t.Errorf("Child complexity = %d, want the first declaration's %d", got, want)
+	}
+	if rootReason(res, child, reasonHandler) {
+		t.Errorf("Child is a root for the later declaration's handler; roots = %+v", res.Roots)
+	}
+}
+
 // ---------------------------------------------------------------------------
 // 9. Service-extraction strategy peels a shared hub + its dominated closure and
 //    separates the remainder into components (Phase 3b)

@@ -2,7 +2,11 @@ package validator
 
 import (
 	"slices"
+	"strings"
 	"testing"
+
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/parser"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/resolver"
 )
 
 // routingMsgs returns the messages of the routing and linkage errors in errs.
@@ -719,6 +723,62 @@ namespace alpha:
 			errs := Validate(mustParseAndResolve(t, types+tt.namespaces))
 			if got := countKind(errs, ErrTaskQueueMismatch); got != tt.want {
 				t.Errorf("TASK_QUEUE_MISMATCH count = %d, want %d: %v", got, tt.want, errs)
+			}
+		})
+	}
+}
+
+// TestDuplicateRoutesFirstDeclaration: a workflow or nexus service declared
+// twice (DUPLICATE_WORKFLOW, DUPLICATE_NEXUS_SERVICE) is routing-checked as
+// its first declaration, as the resolver keeps it, not the later one.
+func TestDuplicateRoutesFirstDeclaration(t *testing.T) {
+	const misrouted = `
+    activity A(x) -> r
+        options:
+            task_queue: "nowhere"
+    close complete(r)
+`
+	const routed = `
+    activity A(x) -> r
+    close complete(r)
+`
+	workflow := func(body string) string { return "workflow W(x: X):" + body }
+	service := func(body string) string {
+		return "nexus service S:\n    sync Op(x: X) -> (X):" + strings.ReplaceAll(body, "\n    ", "\n        ")
+	}
+	tests := []struct {
+		name string
+		decl func(body string) string
+		rest string // the other kind, declared once
+	}{
+		{"workflow", workflow, service(routed)},
+		{"nexus service", service, workflow(routed)},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			src := tt.decl(misrouted) + "\n" + tt.decl(routed) + "\n" + tt.rest + `
+activity A(x: X) -> (X):
+    return x
+
+worker w:
+    workflow W
+    activity A
+    nexus service S
+
+namespace n:
+    worker w
+        options:
+            task_queue: "q"
+`
+			file, err := parser.ParseFile(src)
+			if err != nil {
+				t.Fatal(err)
+			}
+			resolver.Resolve(file)
+			got := routingMsgs(Validate(file))
+			want := []string{`activity A has task_queue "nowhere", but no worker on that queue in namespace n registers it`}
+			if !slices.Equal(got, want) {
+				t.Errorf("routing diagnostics:\n got  %q\n want %q", got, want)
 			}
 		})
 	}
