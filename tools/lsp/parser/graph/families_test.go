@@ -569,3 +569,73 @@ namespace n2:
 		checkRouted(t, dispatched(extractAllowingErrors(t, src)), want)
 	})
 }
+
+// TestDuplicateEndpointFirstDeclaration: an endpoint name declared in several
+// namespaces (DUPLICATE_ENDPOINT) is the first declaration's, as the resolver
+// binds it: one endpoint node and its containment, and calls and routes
+// through it, on every run.
+func TestDuplicateEndpointFirstDeclaration(t *testing.T) {
+	src := `nexus service S:
+    sync Op(x: X) -> (X):
+        return x
+
+workflow W(x: X):
+    nexus e S.Op(x) -> r
+    close complete(r)
+
+worker ww:
+    workflow W
+
+worker sw:
+    nexus service S
+`
+	for _, ns := range []string{"nc", "na", "nb"} {
+		src += `
+namespace ` + ns + `:
+    worker ww
+        options:
+            task_queue: "w"
+    worker sw
+        options:
+            task_queue: "q"
+    nexus endpoint e
+        options:
+            task_queue: "q"
+`
+	}
+	const (
+		ep = "nexusEndpoint:e/namespace:nc"
+		op = "nexusOperation:S.Op/worker:sw/namespace:nc"
+	)
+	want := []string{
+		"containment " + ep + " -> namespace:nc",
+		"nexusCall workflow:W/worker:ww/namespace:na -> " + op,
+		"nexusCall workflow:W/worker:ww/namespace:nb -> " + op,
+		"nexusCall workflow:W/worker:ww/namespace:nc -> " + op,
+		"nexusRoute " + op + " -> " + ep,
+	}
+	for range 50 {
+		g := extractAllowingErrors(t, src)
+		var got []string
+		for _, r := range routed(g, EdgeContainment, EdgeNexusCall, EdgeNexusRoute) {
+			if !strings.HasPrefix(r, EdgeContainment) || strings.HasPrefix(r, "containment nexusEndpoint:") {
+				got = append(got, r)
+			}
+		}
+		if slices.Equal(got, want) && len(nodesOfKind(g, KindNexusEndpoint)) == 1 && findNode(g, ep) != nil {
+			continue
+		}
+		t.Fatalf("got %s\nendpoint nodes %v", strings.Join(got, "\n    "), nodesOfKind(g, KindNexusEndpoint))
+	}
+}
+
+// nodesOfKind returns the IDs of g's nodes of the given kind.
+func nodesOfKind(g *Graph, kind string) []string {
+	var ids []string
+	for _, n := range g.Nodes {
+		if defKindOf(n.Definition) == kind {
+			ids = append(ids, n.ID)
+		}
+	}
+	return ids
+}

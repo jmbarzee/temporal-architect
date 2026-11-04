@@ -1,6 +1,8 @@
 package graph
 
 import (
+	"cmp"
+	"maps"
 	"slices"
 
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
@@ -89,7 +91,13 @@ func indexAST(file *ast.File) *astIndex {
 		}
 	}
 
-	for _, ns := range idx.namespaces {
+	// Namespaces in definition order, by file then position, so an endpoint
+	// name declared twice (DUPLICATE_ENDPOINT) is its first declaration's, as
+	// the resolver binds it.
+	byPosition := func(a, b *ast.NamespaceDef) int {
+		return cmp.Or(cmp.Compare(a.SourceFile, b.SourceFile), cmp.Compare(a.Line, b.Line), cmp.Compare(a.Column, b.Column))
+	}
+	for _, ns := range slices.SortedFunc(maps.Values(idx.namespaces), byPosition) {
 		for _, nw := range ns.Workers {
 			queue := taskQueue(nw.Options)
 			idx.workerDeployments = append(idx.workerDeployments, workerDeployment{
@@ -104,6 +112,9 @@ func indexAST(file *ast.File) *astIndex {
 		}
 		for i := range ns.Endpoints {
 			ep := &ns.Endpoints[i]
+			if idx.endpointsByName[ep.EndpointName] != nil {
+				continue
+			}
 			queue := taskQueue(ep.Options)
 			idx.endpointsByName[ep.EndpointName] = &endpointDeployment{
 				Name:           ep.EndpointName,
