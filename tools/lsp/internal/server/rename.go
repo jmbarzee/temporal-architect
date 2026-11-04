@@ -3,6 +3,7 @@ package server
 import (
 	"fmt"
 	"reflect"
+	"slices"
 
 	"github.com/jmbarzee/glsp"
 	protocol "github.com/jmbarzee/glsp/protocol_3_16"
@@ -51,8 +52,9 @@ func prepareRenameHandler(store *DocumentStore) protocol.TextDocumentPrepareRena
 }
 
 // checkNewName reports why at's declaration, among occs in file, cannot be
-// renamed to newName: the lexer would not read newName as one name, or another
-// declaration already holds it where the two would clash.
+// renamed to newName: the lexer would not read newName as one name, newName
+// has other template params, or another declaration already holds it where
+// the two would clash.
 func checkNewName(file *ast.File, occs []occurrence, at occurrence, newName string) error {
 	decl := occurrence{name: at.name, decl: at.decl} // its owner, once found
 	for _, o := range occs {
@@ -81,6 +83,9 @@ func checkNewName(file *ast.File, occs []occurrence, at occurrence, newName stri
 		return fail("it is a keyword")
 	case tok.Type != token.IDENT || tok.Literal != newName:
 		return fail("it is not a name")
+	}
+	if !sameParams(ast.ExtractTemplateParams(decl.name), ast.ExtractTemplateParams(newName)) {
+		return fail("it changes the name's template parameters, which changes its meaning, not just its name; edit the declaration instead")
 	}
 	switch decl.decl.(type) {
 	case *ast.ConditionDecl, *ast.PromiseStmt:
@@ -146,6 +151,12 @@ func scopeOf(decl occurrence) string {
 }
 
 func sameKind(a, b ast.Node) bool { return reflect.TypeOf(a) == reflect.TypeOf(b) }
+
+// sameParams reports whether two lists of distinct template params hold the
+// same set.
+func sameParams(a, b []string) bool {
+	return len(a) == len(b) && !slices.ContainsFunc(a, func(p string) bool { return !slices.Contains(b, p) })
+}
 
 func packageOf(file *ast.File, def ast.Definition) string {
 	if p, ok := def.(ast.Packaged); ok {
