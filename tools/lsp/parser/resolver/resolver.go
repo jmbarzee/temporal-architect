@@ -408,23 +408,23 @@ func Resolve(file *ast.File) []*ResolveError {
 	for _, def := range file.Definitions {
 		switch d := def.(type) {
 		case *ast.WorkflowDef:
-			p := effPkg(d.Package, s.filePkg)
+			p := effPkg(ast.PackageIDOf(d, nil), s.filePkg)
 			s.packages[p] = true
 			collectInto(s.workflows, pkgKey{p, d.Name}, d, "workflow", ErrDuplicateWorkflow, d.Line, d.Column, d.SourceFile, &s.errs)
 		case *ast.ActivityDef:
-			p := effPkg(d.Package, s.filePkg)
+			p := effPkg(ast.PackageIDOf(d, nil), s.filePkg)
 			s.packages[p] = true
 			collectInto(s.activities, pkgKey{p, d.Name}, d, "activity", ErrDuplicateActivity, d.Line, d.Column, d.SourceFile, &s.errs)
 		case *ast.WorkerDef:
-			p := effPkg(d.Package, s.filePkg)
+			p := effPkg(ast.PackageIDOf(d, nil), s.filePkg)
 			s.packages[p] = true
 			collectInto(s.workers, pkgKey{p, d.Name}, d, "worker", ErrDuplicateWorker, d.Line, d.Column, d.SourceFile, &s.errs)
 		case *ast.NamespaceDef:
-			p := effPkg(d.Package, s.filePkg)
+			p := effPkg(ast.PackageIDOf(d, nil), s.filePkg)
 			s.packages[p] = true
 			collectInto(s.namespaces, pkgKey{p, d.Name}, d, "namespace", ErrDuplicateNamespace, d.Line, d.Column, d.SourceFile, &s.errs)
 		case *ast.NexusServiceDef:
-			p := effPkg(d.Package, s.filePkg)
+			p := effPkg(ast.PackageIDOf(d, nil), s.filePkg)
 			s.packages[p] = true
 			collectInto(s.nexusServices, pkgKey{p, d.Name}, d, "nexus service", ErrDuplicateNexusService, d.Line, d.Column, d.SourceFile, &s.errs)
 		}
@@ -509,7 +509,7 @@ func Resolve(file *ast.File) []*ResolveError {
 	// present, otherwise the path's leaf; the target package is the leaf; the
 	// import is external when that package is absent from the tree.
 	for _, imp := range file.Imports {
-		p := effPkg(imp.Package, s.filePkg)
+		p := effPkg(ast.ImportPackageIDOf(imp, nil), s.filePkg)
 		leaf := leafName(imp.Path)
 		q := imp.Alias
 		if q == "" {
@@ -540,7 +540,7 @@ func Resolve(file *ast.File) []*ResolveError {
 		if !ok {
 			continue
 		}
-		ownPkg := effPkg(wf.Package, s.filePkg)
+		ownPkg := effPkg(ast.PackageIDOf(wf, nil), s.filePkg)
 
 		signals := make(map[string]*ast.SignalDecl)
 		queries := make(map[string]*ast.QueryDecl)
@@ -596,7 +596,7 @@ func Resolve(file *ast.File) []*ResolveError {
 		if !ok {
 			continue
 		}
-		svcPkg := effPkg(svc.Package, s.filePkg)
+		svcPkg := effPkg(ast.PackageIDOf(svc, nil), s.filePkg)
 		for _, op := range svc.Operations {
 			switch op.OpType {
 			case ast.NexusOpAsync:
@@ -639,7 +639,7 @@ func Resolve(file *ast.File) []*ResolveError {
 
 	// Pass 3: resolve worker and namespace references, package-scoped.
 	for _, w := range s.workers {
-		wPkg := effPkg(w.Package, s.filePkg)
+		wPkg := effPkg(ast.PackageIDOf(w, nil), s.filePkg)
 		for i := range w.Workflows {
 			resolvePkgRef(s, wPkg, &w.Workflows[i], s.workflows, "workflow", ErrWorkerUndefinedWorkflow, w.SourceFile)
 		}
@@ -654,7 +654,7 @@ func Resolve(file *ast.File) []*ResolveError {
 	}
 
 	for _, ns := range s.namespaces {
-		nsPkg := effPkg(ns.Package, s.filePkg)
+		nsPkg := effPkg(ast.PackageIDOf(ns, nil), s.filePkg)
 		for i := range ns.Workers {
 			nw := &ns.Workers[i]
 			targetPkg, external, ok := s.resolveQualifier(nsPkg, nw.Worker.Package, nw.Line, nw.Column, ns.SourceFile)

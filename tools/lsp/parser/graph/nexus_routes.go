@@ -20,7 +20,7 @@ package graph
 // rather than re-deriving it by matching node (namespace, queue) fields.
 func (g *Graph) emitNexusRoutes(idx *astIndex) {
 	for _, svc := range idx.nexusServices {
-		svcQName := idx.defQName(svc.Package, svc.Name)
+		svcQName := idx.defQName(svc, svc.Name)
 		serviceDeployments := idx.deploymentsHosting(KindNexusService, svcQName)
 		if len(serviceDeployments) == 0 {
 			continue

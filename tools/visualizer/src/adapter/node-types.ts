@@ -492,3 +492,8 @@ export const DEFAULT_TAXONOMY_SPEC: TaxonomySpec = {
 }
 
 export const DEFAULT_TAXONOMY: Taxonomy = createTaxonomy(DEFAULT_TAXONOMY_SPEC)
+
+/** The node type whose AST definitions have this `type` (`workflowDef` → `workflow`). */
+export function nodeTypeForDefType(defType: unknown): NodeType | undefined {
+  return (Object.keys(NODE_TYPE_REGISTRY) as NodeType[]).find(t => NODE_TYPE_REGISTRY[t].defType === defType)
+}

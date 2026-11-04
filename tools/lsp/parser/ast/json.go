@@ -226,9 +226,51 @@ func marshalOptionEntries(entries []*OptionEntry) []OptionEntryJSON {
 	return result
 }
 
+// PackageRef is one entry of an output's packages table, keyed by package
+// identity.
+type PackageRef struct {
+	// Name is the package's declared name.
+	Name string `json:"name"`
+}
+
+// PackageRefs is a merged file's packages table: each kept package's identity
+// mapped to its declared name, or nil for an unpackaged design.
+func PackageRefs(file *File) map[string]PackageRef {
+	if file == nil || len(file.Packages) == 0 {
+		return nil
+	}
+	out := make(map[string]PackageRef, len(file.Packages))
+	for _, p := range file.Packages {
+		out[p.ID] = PackageRef{Name: p.Name}
+	}
+	return out
+}
+
+// Label is how messages and text output name a definition: its package's
+// declared name and its name (`fabric.Setup`; `fabric.Svc.Op` for an
+// operation), with the package identity appended in parentheses when another
+// package in the table shares the declared name. A default-package
+// definition's label is its bare name.
+func Label(packages map[string]PackageRef, pkgID, name string) string {
+	if pkgID == "" {
+		return name
+	}
+	ref, ok := packages[pkgID]
+	if !ok {
+		return QualifiedName(pkgID, name)
+	}
+	label := QualifiedName(ref.Name, name)
+	for id, other := range packages {
+		if id != pkgID && other.Name == ref.Name {
+			return label + " (" + pkgID + ")"
+		}
+	}
+	return label
+}
+
 // qualifiedNameJSON is the qualifiedName a workflow / activity / nexus-service
-// DTO emits (issue #184): QualifiedName of the definition's runtime package
-// stamp, which the pipeline's merge writes for every definition, so it equals
+// DTO emits (issue #184): QualifiedName of the definition's package identity
+// (PackageIDOf, from the stamps the pipeline's merge writes), so it equals
 // the name element of the definition's graph node ID. It is empty — and the
 // omitempty field absent — for an unstamped (default-package) definition,
 // whose graph name is already the bare name, so unpackaged output stays
@@ -251,7 +293,10 @@ type WorkflowDefJSON struct {
 	// QualifiedName is the name element of this definition's graph node ID
 	// (`pkg.Name`); absent for a default-package definition, whose graph name
 	// is the bare Name. Join graph nodes to definitions on it (issue #184).
-	QualifiedName  string            `json:"qualifiedName,omitempty"`
+	QualifiedName string `json:"qualifiedName,omitempty"`
+	// PackageID is the owning package's identity, a key into the envelope's
+	// packages table; absent for the default package.
+	PackageID      string            `json:"packageId,omitempty"`
 	Params         string            `json:"params"`
 	ReturnType     string            `json:"returnType,omitempty"`
 	IDScheme       *IDSchemeJSON     `json:"idScheme,omitempty"`
@@ -283,7 +328,8 @@ func (w *WorkflowDef) MarshalJSON() ([]byte, error) {
 		Column:         w.Column,
 		SourceFile:     w.SourceFile,
 		Name:           w.Name,
-		QualifiedName:  qualifiedNameJSON(w.Package, w.Name),
+		QualifiedName:  qualifiedNameJSON(PackageIDOf(w, nil), w.Name),
+		PackageID:      PackageIDOf(w, nil),
 		Params:         w.Params,
 		ReturnType:     w.ReturnType,
 		DefaultOptions: marshalOptionsBlock(w.DefaultOptions),
@@ -337,7 +383,10 @@ type ActivityDefJSON struct {
 	// QualifiedName is the name element of this definition's graph node ID
 	// (`pkg.Name`); absent for a default-package definition, whose graph name
 	// is the bare Name. Join graph nodes to definitions on it (issue #184).
-	QualifiedName  string            `json:"qualifiedName,omitempty"`
+	QualifiedName string `json:"qualifiedName,omitempty"`
+	// PackageID is the owning package's identity, a key into the envelope's
+	// packages table; absent for the default package.
+	PackageID      string            `json:"packageId,omitempty"`
 	Params         string            `json:"params"`
 	ReturnType     string            `json:"returnType,omitempty"`
 	DefaultOptions *OptionsBlockJSON `json:"defaultOptions,omitempty"`
@@ -351,7 +400,8 @@ func (a *ActivityDef) MarshalJSON() ([]byte, error) {
 		Column:         a.Column,
 		SourceFile:     a.SourceFile,
 		Name:           a.Name,
-		QualifiedName:  qualifiedNameJSON(a.Package, a.Name),
+		QualifiedName:  qualifiedNameJSON(PackageIDOf(a, nil), a.Name),
+		PackageID:      PackageIDOf(a, nil),
 		Params:         a.Params,
 		ReturnType:     a.ReturnType,
 		DefaultOptions: marshalOptionsBlock(a.DefaultOptions),
@@ -403,11 +453,14 @@ func marshalWorkerRefs[T interface {
 
 // WorkerDefJSON is the JSON representation of WorkerDef.
 type WorkerDefJSON struct {
-	Type       string          `json:"type"`
-	Line       int             `json:"line"`
-	Column     int             `json:"column"`
-	SourceFile string          `json:"sourceFile,omitempty"`
-	Name       string          `json:"name"`
+	Type       string `json:"type"`
+	Line       int    `json:"line"`
+	Column     int    `json:"column"`
+	SourceFile string `json:"sourceFile,omitempty"`
+	Name       string `json:"name"`
+	// PackageID is the owning package's identity, a key into the envelope's
+	// packages table; absent for the default package.
+	PackageID  string          `json:"packageId,omitempty"`
 	Workflows  []WorkerRefJSON `json:"workflows"`
 	Activities []WorkerRefJSON `json:"activities"`
 	Services   []WorkerRefJSON `json:"services"`
@@ -420,6 +473,7 @@ func (w *WorkerDef) MarshalJSON() ([]byte, error) {
 		Column:     w.Column,
 		SourceFile: w.SourceFile,
 		Name:       w.Name,
+		PackageID:  PackageIDOf(w, nil),
 		Workflows:  marshalWorkerRefs(w.Workflows),
 		Activities: marshalWorkerRefs(w.Activities),
 		Services:   marshalWorkerRefs(w.Services),
@@ -460,6 +514,9 @@ type NamespaceDefJSON struct {
 	Column     int    `json:"column"`
 	SourceFile string `json:"sourceFile,omitempty"`
 	Name       string `json:"name"`
+	// PackageID is the owning package's identity, a key into the envelope's
+	// packages table; absent for the default package.
+	PackageID string `json:"packageId,omitempty"`
 	// TemplateParams is the distinct {param} parameters in the namespace name, in
 	// order of first appearance. Omitted (omitempty) for a static namespace so
 	// its output stays byte-identical.
@@ -475,6 +532,7 @@ func (n *NamespaceDef) MarshalJSON() ([]byte, error) {
 		Column:         n.Column,
 		SourceFile:     n.SourceFile,
 		Name:           n.Name,
+		PackageID:      PackageIDOf(n, nil),
 		TemplateParams: n.TemplateParams,
 		Workers:        make([]NamespaceWorkerJSON, 0, len(n.Workers)),
 		Endpoints:      make([]NamespaceEndpointJSON, 0, len(n.Endpoints)),
@@ -1278,8 +1336,11 @@ type NexusServiceDefJSON struct {
 	// (`pkg.Name`); absent for a default-package definition, whose graph name
 	// is the bare Name. Join graph nodes to definitions on it (issue #184).
 	// Its operations' graph names are `${qualifiedName ?? name}.${op}`.
-	QualifiedName string                `json:"qualifiedName,omitempty"`
-	Operations    []*NexusOperationJSON `json:"operations,omitempty"`
+	QualifiedName string `json:"qualifiedName,omitempty"`
+	// PackageID is the owning package's identity, a key into the envelope's
+	// packages table; absent for the default package.
+	PackageID  string                `json:"packageId,omitempty"`
+	Operations []*NexusOperationJSON `json:"operations,omitempty"`
 }
 
 func (n *NexusServiceDef) MarshalJSON() ([]byte, error) {
@@ -1289,7 +1350,8 @@ func (n *NexusServiceDef) MarshalJSON() ([]byte, error) {
 		Column:        n.Column,
 		SourceFile:    n.SourceFile,
 		Name:          n.Name,
-		QualifiedName: qualifiedNameJSON(n.Package, n.Name),
+		QualifiedName: qualifiedNameJSON(PackageIDOf(n, nil), n.Name),
+		PackageID:     PackageIDOf(n, nil),
 	}
 	for _, op := range n.Operations {
 		opj := &NexusOperationJSON{

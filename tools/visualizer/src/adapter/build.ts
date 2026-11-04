@@ -20,6 +20,7 @@ import type {
   NodeKind,
   ParserEdge,
   ParserGraph,
+  ParserNode,
 } from '../types/parser-graph'
 // The axes this domain projects a node onto. Names, not concepts, belong to the
 // host: the library never mentions any of these ids.
@@ -151,12 +152,33 @@ function nodeTypeFromKind(kind: string): NodeType {
 // Pretty name for the canvas label. Nexus operations come in as
 // `Service.Op`; we strip the service prefix so the label is the op
 // alone — the service identity is already visible via the parent node.
-function displayNameFor(nodeType: NodeType, definitionName: string): string {
-  if (nodeType === 'nexusOperation') {
-    const dot = definitionName.lastIndexOf('.')
-    return dot >= 0 ? definitionName.slice(dot + 1) : definitionName
+export function displayNameFor(nodeType: NodeType, pn: ParserNode, packages: ParserGraph['packages']): string {
+  // A graph from an older twf has no `name`: its definition key's name element
+  // already carries the package (`billing.Charge`).
+  if (pn.name === undefined) {
+    const { name } = splitDefinitionKey(pn.definition)
+    return nodeType === 'nexusOperation' ? lastSegment(name) : name
   }
-  return definitionName
+  // An operation shows the op alone; its service is its containment parent.
+  if (nodeType === 'nexusOperation') return lastSegment(pn.name)
+  if (!pn.packageId) return pn.name
+  const pkgName = packages?.[pn.packageId]?.name ?? pn.packageId
+  const shared = Object.entries(packages ?? {}).some(([id, ref]) => id !== pn.packageId && ref.name === pkgName)
+  return `${pkgName}.${pn.name}${shared ? ` (${pn.packageId})` : ''}`
+}
+
+/** The display label of the graph node with this id, or the id when there is none. */
+export function nodeLabel(pg: ParserGraph, id: string): string {
+  const pn = pg.nodes.find(n => n.id === id)
+  if (!pn) return id
+  return displayNameFor(nodeTypeFromKind(splitDefinitionKey(pn.definition).kind), pn, pg.packages)
+}
+
+// lastSegment is the text after a name's last `.` — a parse of `name`, never of
+// the node id.
+function lastSegment(name: string): string {
+  const dot = name.lastIndexOf('.')
+  return dot >= 0 ? name.slice(dot + 1) : name
 }
 
 // ---------------------------------------------------------------------------
@@ -178,13 +200,13 @@ export function buildGraph(parserGraph: ParserGraph, astLookup: AstLookup): Grap
 
   // --- Nodes ---
   for (const pn of parserGraph.nodes) {
-    const { kind, name } = splitDefinitionKey(pn.definition)
+    const { kind } = splitDefinitionKey(pn.definition)
     const nodeType = nodeTypeFromKind(kind)
     const def = astLookup.get(pn.definition)?.def
     nodes.push({
       id: pn.id,
       values: dimensionsFor(nodeType, def?.sourceFile),
-      name: displayNameFor(nodeType, name),
+      name: displayNameFor(nodeType, pn, parserGraph.packages),
       // Per-domain display metadata the library must not interpret. The
       // tooltip reads these back out by name; nothing in the engine does.
       payload: {

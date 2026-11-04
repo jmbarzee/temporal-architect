@@ -199,8 +199,11 @@ func (wg *workGraph) buildChunk(members []string, roots map[string]*Root) Chunk 
 	}
 	sort.Strings(overlap)
 
+	base := chunkBase(rootKeys, members)
 	return Chunk{
-		ID:         chunkID(rootKeys, members),
+		ID:         "chunk:" + base,
+		BaseKey:    base,
+		Label:      wg.label(base),
 		Roots:      chunkRoots,
 		Members:    members,
 		Overlap:    overlap,
@@ -299,15 +302,14 @@ func (wg *workGraph) distinctSCCs(members []string) int {
 	return len(seen)
 }
 
-// chunkID derives a stable chunk identifier from the lexicographically smallest
-// root key (or member key, when a chunk somehow has no root).
-func chunkID(rootKeys, members []string) string {
-	base := ""
+// chunkBase is the key a chunk's id is built from: the lexicographically
+// smallest root key (or member key, when a chunk somehow has no root).
+func chunkBase(rootKeys, members []string) string {
 	switch {
 	case len(rootKeys) > 0:
-		base = rootKeys[0]
+		return rootKeys[0]
 	case len(members) > 0:
-		base = members[0]
+		return members[0]
 	}
-	return "chunk:" + base
+	return ""
 }

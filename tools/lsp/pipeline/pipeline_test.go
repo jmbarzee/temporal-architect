@@ -586,3 +586,69 @@ func TestUnpackagedDefinitionsOmitQualifiedName(t *testing.T) {
 		t.Errorf("unpackaged AST JSON carries qualifiedName: %s", out)
 	}
 }
+
+// TestPackagedOutputCarriesIdentityFields pins S2a's wire fields on a packaged
+// fixture: graph nodes carry name and packageId, every output has the packages
+// table, decompose nodes and chunks carry labels, and every section id is
+// rebuilt byte-identically from its labelKind and subjects.
+func TestPackagedOutputCarriesIdentityFields(t *testing.T) {
+	payload, err := pipeline.BuildDecompose([]string{testdata("packaged_multi_file")}, decompose.Options{Ceiling: 1, Floor: -1})
+	if err != nil {
+		t.Fatalf("BuildDecompose: %v", err)
+	}
+	g := payload.Graph
+	if g.Packages["agent"].Name != "agent" || g.Packages["kube"].Name != "kube" || g.Packages["deploy"].Name != "deploy" {
+		t.Errorf("graph packages = %+v", g.Packages)
+	}
+	for _, n := range g.Nodes {
+		if n.Name == "" {
+			t.Errorf("node %s has no name", n.ID)
+		}
+		kind := n.Definition[:strings.IndexByte(n.Definition, ':')]
+		hosted := kind == graph.KindWorkflow || kind == graph.KindActivity || kind == graph.KindNexusService || kind == graph.KindNexusOperation
+		if hosted && n.PackageID == "" {
+			t.Errorf("hosted node %s has no packageId", n.ID)
+		}
+		if hosted && kind != graph.KindNexusOperation && n.Definition != kind+":"+ast.QualifiedName(n.PackageID, n.Name) {
+			t.Errorf("node %s: definition %q != kind:QualifiedName(packageId, name)", n.ID, n.Definition)
+		}
+	}
+	d := payload.Decomposition
+	if len(d.Packages) != 3 {
+		t.Errorf("decomposition packages = %+v", d.Packages)
+	}
+	for _, n := range d.Nodes {
+		if n.Label == "" || n.PackageID == "" {
+			t.Errorf("decompose node %s: label %q packageId %q", n.Key, n.Label, n.PackageID)
+		}
+	}
+	var checkSections func(parent string, divs []decompose.Division)
+	checkSections = func(parent string, divs []decompose.Division) {
+		for _, div := range divs {
+			for _, s := range div.Sections {
+				want := parent + "/" + s.LabelKind
+				if len(s.Subjects) > 0 {
+					want += ":" + strings.Join(s.Subjects, ",")
+				}
+				if s.ID != want || s.Label == "" {
+					t.Errorf("section %q: rebuilt id %q, label %q", s.ID, want, s.Label)
+				}
+				checkSections(s.ID, s.Divisions)
+			}
+		}
+	}
+	for _, c := range d.Chunks {
+		if c.ID != "chunk:"+c.BaseKey || c.Label == "" {
+			t.Errorf("chunk %q: baseKey %q label %q", c.ID, c.BaseKey, c.Label)
+		}
+		checkSections(c.ID, c.Divisions)
+	}
+
+	out, err := json.Marshal(payload.AST)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(out), `"packageId":"agent"`) {
+		t.Error("AST definitions carry no packageId")
+	}
+}

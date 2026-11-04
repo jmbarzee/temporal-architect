@@ -57,9 +57,9 @@ func (g *Graph) emitContainment(idx *astIndex) {
 		emitHostedContainment(g, wd, KindActivity, refNamesAndLines(wd.worker.Activities, idx))
 		emitHostedContainment(g, wd, KindNexusService, refNamesAndLines(wd.worker.Services, idx))
 		for _, r := range wd.worker.Services {
-			svcQName := hostedRefQName(r, idx)
+			svcQName, ok := hostedRefQName(r, idx)
 			svc := idx.nexusServices[svcQName]
-			if svc == nil {
+			if !ok || svc == nil {
 				continue
 			}
 			for _, op := range svc.Operations {
@@ -91,7 +91,9 @@ func refNamesAndLines[T interface {
 }](refs []ast.Ref[T], idx *astIndex) []refLine {
 	out := make([]refLine, 0, len(refs))
 	for _, r := range refs {
-		out = append(out, refLine{Name: hostedRefQName(r, idx), Line: r.Line})
+		if name, ok := hostedRefQName(r, idx); ok {
+			out = append(out, refLine{Name: name, Line: r.Line})
+		}
 	}
 	return out
 }

@@ -2,6 +2,7 @@ package decompose
 
 import (
 	"sort"
+	"strings"
 )
 
 // This file owns the explore phase — the soft divisions suggested for
@@ -345,7 +346,11 @@ func (wg *workGraph) buildSections(c *Chunk, labels map[string]string) ([]Sectio
 		for _, m := range members {
 			comp += wg.nodes[m].complexity
 		}
-		sections = append(sections, Section{ID: id, Members: members, Complexity: comp})
+		kind, subjects := splitSectionLabel(lab)
+		sections = append(sections, Section{
+			ID: id, LabelKind: kind, Subjects: subjects, Label: wg.sectionLabel(kind, subjects),
+			Members: members, Complexity: comp,
+		})
 	}
 
 	seen := map[string]bool{}
@@ -397,4 +402,38 @@ func anyBelowFloor(sections []Section, floor int) bool {
 		}
 	}
 	return false
+}
+
+// splitSectionLabel splits a strategy's section label (`branch:workflow:F`,
+// `worker:worker:w1,worker:w2`, `core`) into its kind and subjects.
+func splitSectionLabel(lab string) (string, []string) {
+	kind, rest, ok := strings.Cut(lab, ":")
+	if !ok || rest == "" {
+		return kind, nil
+	}
+	return kind, strings.Split(rest, ",")
+}
+
+// sectionLabel is a section's display text: its kind and its subjects' labels
+// joined by ", " (a node key shows the node's label, a worker or namespace key
+// its name), or the bare kind for none and for the `none` sentinel.
+func (wg *workGraph) sectionLabel(kind string, subjects []string) string {
+	var parts []string
+	for _, s := range subjects {
+		switch {
+		case s == "none":
+		case wg.nodes[s] != nil:
+			parts = append(parts, wg.label(s))
+		default:
+			_, name, found := strings.Cut(s, ":")
+			if !found {
+				name = s
+			}
+			parts = append(parts, name)
+		}
+	}
+	if len(parts) == 0 {
+		return kind
+	}
+	return kind + ": " + strings.Join(parts, ", ")
 }

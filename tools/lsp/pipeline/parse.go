@@ -269,28 +269,45 @@ func parseSources(sources []source, defaultFile string, x *expander) Result {
 	// left empty (multi-package tree). The resolver keys off the per-def
 	// stamp, not this field, once multiple packages are present.
 	pkgSeen := map[string]bool{}
+	pkgs := map[string]*ast.PackageInfo{}
 
 	for _, p := range files {
 		if p.excluded {
 			continue
 		}
 		pkgSeen[p.file.Package] = true
+		// A package's identity is its declared name for now; its import path
+		// rides along in the packages table.
+		id := p.file.Package
+		if id != "" {
+			switch info := pkgs[id]; {
+			case info == nil:
+				pkgs[id] = &ast.PackageInfo{ID: id, Name: p.file.Package, Path: p.pkgPath}
+			case info.Path != p.pkgPath:
+				info.Path = "" // several directories share the identity
+			}
+		}
 
 		// Thread the file's imports into the merged payload, each stamped with
 		// its owning package so the resolver can build per-package binding
 		// tables. Runtime-only — never serialized.
 		for _, imp := range p.file.Imports {
 			imp.Package = p.file.Package
+			imp.PkgID = id
 			imp.SourceFile = p.src.base
 			merged.Imports = append(merged.Imports, imp)
 		}
 
 		for _, def := range p.file.Definitions {
 			setSourceFile(def, p.src.base)
-			setPackage(def, p.file.Package)
+			setPackage(def, p.file.Package, id)
 			merged.Definitions = append(merged.Definitions, def)
 		}
 	}
+	for _, info := range pkgs {
+		merged.Packages = append(merged.Packages, *info)
+	}
+	sort.Slice(merged.Packages, func(i, j int) bool { return merged.Packages[i].ID < merged.Packages[j].ID })
 
 	// Sole package when the whole tree is single-package (every file shares one
 	// package clause, including the all-default case); empty when the merge
@@ -384,21 +401,22 @@ func setSourceFile(def ast.Definition, sourceFile string) {
 	}
 }
 
-// setPackage stamps a definition with its owning package (the declaring file's
-// package clause; empty is the implicit default package). Runtime-only — the
-// resolver and graph read it, and the AST wire emits only the qualifiedName
-// derived from it, never the stamp itself. Mirrors setSourceFile.
-func setPackage(def ast.Definition, pkg string) {
+// setPackage stamps a definition with its owning package: the declaring
+// file's package clause (empty is the implicit default package) and the
+// package's identity. Runtime-only — the resolver and graph read them, and the
+// AST wire emits only the identity and the qualifiedName derived from it.
+// Mirrors setSourceFile.
+func setPackage(def ast.Definition, pkg, id string) {
 	switch d := def.(type) {
 	case *ast.WorkflowDef:
-		d.Package = pkg
+		d.Package, d.PkgID = pkg, id
 	case *ast.ActivityDef:
-		d.Package = pkg
+		d.Package, d.PkgID = pkg, id
 	case *ast.WorkerDef:
-		d.Package = pkg
+		d.Package, d.PkgID = pkg, id
 	case *ast.NamespaceDef:
-		d.Package = pkg
+		d.Package, d.PkgID = pkg, id
 	case *ast.NexusServiceDef:
-		d.Package = pkg
+		d.Package, d.PkgID = pkg, id
 	}
 }

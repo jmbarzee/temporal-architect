@@ -136,8 +136,8 @@ namespace prod:
 	if got := countKind(errs, ErrUncoveredActivity); got != 1 {
 		t.Fatalf("expected exactly 1 UNCOVERED_ACTIVITY (shipping.Pack left off the shared worker), got %d: %v", got, errs)
 	}
-	if !hasWarning(errs, "activity Pack is not registered on any instantiated worker") {
-		t.Errorf("expected the UNCOVERED_ACTIVITY warning to name Pack, got: %v", errs)
+	if !hasWarning(errs, "activity shipping.Pack is not registered on any instantiated worker") {
+		t.Errorf("expected the UNCOVERED_ACTIVITY warning to name shipping.Pack, got: %v", errs)
 	}
 	// The rest of the topology is still covered — proving only the genuine gap warns.
 	for kind, label := range map[ErrorKind]string{

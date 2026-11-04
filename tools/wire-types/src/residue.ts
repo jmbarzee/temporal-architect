@@ -182,6 +182,20 @@ export type DivisionStrategy =
 
 /** decompose Advisory kinds in decompose/result.go. */
 export type AdvisoryKind = "suggestContract";
+/** A decomposition section's grouping kind (`Section.labelKind`). */
+export type LabelKind =
+  | "root"
+  | "branch"
+  | "isolated"
+  | "subtree"
+  | "service"
+  | "component"
+  | "nexus"
+  | "shared"
+  | "core"
+  | "trunk"
+  | "worker"
+  | "namespace";
 
 // ── Leaf aliases (generated shape already matches the ergonomic shape) ───────
 

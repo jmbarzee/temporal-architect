@@ -13,11 +13,10 @@ import (
 // QUALIFIED name (ast.QualifiedName(pkg, name)) so same-named definitions in
 // different packages are distinct entries — the lockstep with the
 // package-aware resolver (issue #109). Endpoints stay flat-global; workers and
-// namespaces keep bare-name identity. filePkg is the merged file's package
-// (empty for a multi-package tree), the fallback for a def whose runtime stamp
-// is empty.
+// namespaces keep bare-name identity. file is the merged file, whose sole
+// package is the fallback for a def the merge left unstamped.
 type astIndex struct {
-	filePkg       string
+	file          *ast.File
 	workflows     map[string]*ast.WorkflowDef
 	activities    map[string]*ast.ActivityDef
 	workers       map[string]*ast.WorkerDef
@@ -66,7 +65,7 @@ type endpointDeployment struct {
 
 func indexAST(file *ast.File) *astIndex {
 	idx := &astIndex{
-		filePkg:         file.Package,
+		file:            file,
 		workflows:       map[string]*ast.WorkflowDef{},
 		activities:      map[string]*ast.ActivityDef{},
 		workers:         map[string]*ast.WorkerDef{},
@@ -78,15 +77,15 @@ func indexAST(file *ast.File) *astIndex {
 	for _, def := range file.Definitions {
 		switch d := def.(type) {
 		case *ast.WorkflowDef:
-			idx.workflows[idx.defQName(d.Package, d.Name)] = d
+			idx.workflows[idx.defQName(d, d.Name)] = d
 		case *ast.ActivityDef:
-			idx.activities[idx.defQName(d.Package, d.Name)] = d
+			idx.activities[idx.defQName(d, d.Name)] = d
 		case *ast.WorkerDef:
 			idx.workers[d.Name] = d
 		case *ast.NamespaceDef:
 			idx.namespaces[d.Name] = d
 		case *ast.NexusServiceDef:
-			idx.nexusServices[idx.defQName(d.Package, d.Name)] = d
+			idx.nexusServices[idx.defQName(d, d.Name)] = d
 		}
 	}
 
@@ -124,25 +123,24 @@ func indexAST(file *ast.File) *astIndex {
 // package, name), where the effective package is the def's runtime stamp or the
 // file's package. It is the name element of every workflow / activity /
 // nexus-service (and derived nexus-operation) node ID.
-func (idx *astIndex) defQName(defPkg, name string) string {
-	return ast.QualifiedName(pkgOf(defPkg, idx.filePkg), name)
+func (idx *astIndex) defQName(def ast.Packaged, name string) string {
+	return ast.QualifiedName(ast.PackageIDOf(def, idx.file), name)
 }
 
 // hostedRefQName is the qualified target name of a worker registration ref: the
-// package it resolved to (its resolved def's stamp) joined with the ref name,
-// so a worker in package P registering a same-named workflow hosts P's copy —
-// not a same-named workflow in another package. An unresolved ref falls back to
-// the file's package (bare name for an unpackaged tree), matching no real node,
-// which is correct since there is no definition to host.
+// package it resolved to joined with the ref name, so a worker in package P
+// registering a same-named workflow hosts P's copy — not a same-named workflow
+// in another package. ok is false for a ref that did not resolve (external,
+// undefined): it hosts nothing, so it emits no containment and matches no node.
 func hostedRefQName[T interface {
 	comparable
 	ast.Packaged
-}](r ast.Ref[T], idx *astIndex) string {
+}](r ast.Ref[T], idx *astIndex) (name string, ok bool) {
 	var zero T
-	if r.Resolved != zero {
-		return ast.QualifiedName(pkgOf(r.Resolved.PackageName(), idx.filePkg), r.Name)
+	if r.Resolved == zero {
+		return "", false
 	}
-	return ast.QualifiedName(idx.filePkg, r.Name)
+	return ast.QualifiedName(ast.PackageIDOf(r.Resolved, idx.file), r.Name), true
 }
 
 // taskQueue extracts the task_queue value from an options block, or ""
@@ -185,21 +183,21 @@ func (idx *astIndex) deploymentsHosting(kind, name string) []workerDeployment {
 		switch kind {
 		case KindWorkflow:
 			for _, r := range wd.worker.Workflows {
-				if hostedRefQName(r, idx) == name {
+				if q, ok := hostedRefQName(r, idx); ok && q == name {
 					hosted = true
 					break
 				}
 			}
 		case KindActivity:
 			for _, r := range wd.worker.Activities {
-				if hostedRefQName(r, idx) == name {
+				if q, ok := hostedRefQName(r, idx); ok && q == name {
 					hosted = true
 					break
 				}
 			}
 		case KindNexusService:
 			for _, r := range wd.worker.Services {
-				if hostedRefQName(r, idx) == name {
+				if q, ok := hostedRefQName(r, idx); ok && q == name {
 					hosted = true
 					break
 				}
@@ -224,6 +222,7 @@ func (g *Graph) enumerateNodes(idx *astIndex) {
 		g.addNode(Node{
 			ID:             NamespaceID(ns.Name),
 			Definition:     DefKey(KindNamespace, ns.Name),
+			Name:           ns.Name,
 			TemplateParams: ns.TemplateParams,
 		})
 	}
@@ -247,6 +246,7 @@ func (g *Graph) enumerateNodes(idx *astIndex) {
 		g.addNode(Node{
 			ID:             id,
 			Definition:     DefKey(KindWorker, wd.WorkerName),
+			Name:           wd.WorkerName,
 			Queue:          wd.Queue,
 			TemplateParams: wd.TemplateParams,
 		})
@@ -257,6 +257,7 @@ func (g *Graph) enumerateNodes(idx *astIndex) {
 			g.addNode(Node{
 				ID:         WorkerID(name, ""),
 				Definition: DefKey(KindWorker, name),
+				Name:       name,
 				Orphan:     true,
 			})
 		}
@@ -269,30 +270,35 @@ func (g *Graph) enumerateNodes(idx *astIndex) {
 		g.addNode(Node{
 			ID:             EndpointID(ep.Name, ep.Namespace),
 			Definition:     DefKey(KindNexusEndpoint, ep.Name),
+			Name:           ep.Name,
 			Queue:          ep.Queue,
 			TemplateParams: ep.TemplateParams,
 		})
 	}
 
-	for name := range idx.workflows {
-		g.enumerateHosted(KindWorkflow, name, idx)
+	for qname, d := range idx.workflows {
+		g.enumerateHosted(KindWorkflow, qname, d.Name, ast.PackageIDOf(d, idx.file), idx)
 	}
-	for name := range idx.activities {
-		g.enumerateHosted(KindActivity, name, idx)
+	for qname, d := range idx.activities {
+		g.enumerateHosted(KindActivity, qname, d.Name, ast.PackageIDOf(d, idx.file), idx)
 	}
-	for name := range idx.nexusServices {
-		g.enumerateHosted(KindNexusService, name, idx)
+	for qname, d := range idx.nexusServices {
+		g.enumerateHosted(KindNexusService, qname, d.Name, ast.PackageIDOf(d, idx.file), idx)
 	}
 
 	for _, svc := range idx.nexusServices {
-		svcQName := idx.defQName(svc.Package, svc.Name)
+		svcQName := idx.defQName(svc, svc.Name)
 		serviceDeployments := idx.deploymentsHosting(KindNexusService, svcQName)
+		pkg := ast.PackageIDOf(svc, idx.file)
 		for _, op := range svc.Operations {
 			opName := nexusOpQualifiedName(svcQName, op.Name)
+			bare := nexusOpQualifiedName(svc.Name, op.Name)
 			if len(serviceDeployments) == 0 {
 				g.addNode(Node{
 					ID:         HostedID(KindNexusOperation, opName, "", "", true),
 					Definition: DefKey(KindNexusOperation, opName),
+					Name:       bare,
+					PackageID:  pkg,
 					Orphan:     true,
 				})
 				continue
@@ -305,6 +311,8 @@ func (g *Graph) enumerateNodes(idx *astIndex) {
 				g.addNode(Node{
 					ID:         HostedID(KindNexusOperation, opName, wd.WorkerName, wd.NamespaceName, false),
 					Definition: DefKey(KindNexusOperation, opName),
+					Name:       bare,
+					PackageID:  pkg,
 					Worker:     DefKey(KindWorker, wd.WorkerName),
 					Queue:      wd.Queue,
 				})
@@ -314,14 +322,17 @@ func (g *Graph) enumerateNodes(idx *astIndex) {
 }
 
 // enumerateHosted emits one deployment node per worker that hosts the
-// definition, or a single orphan node when no worker hosts it. Shared
+// definition, or a single orphan node when no worker hosts it. name is the
+// definition's qualified name, bare and pkg its name and package identity. Shared
 // between workflows, activities, and nexus services.
-func (g *Graph) enumerateHosted(kind, name string, idx *astIndex) {
+func (g *Graph) enumerateHosted(kind, name, bare, pkg string, idx *astIndex) {
 	deployments := idx.deploymentsHosting(kind, name)
 	if len(deployments) == 0 {
 		g.addNode(Node{
 			ID:         HostedID(kind, name, "", "", true),
 			Definition: DefKey(kind, name),
+			Name:       bare,
+			PackageID:  pkg,
 			Orphan:     true,
 		})
 		return
@@ -330,6 +341,8 @@ func (g *Graph) enumerateHosted(kind, name string, idx *astIndex) {
 		n := Node{
 			ID:         HostedID(kind, name, wd.WorkerName, wd.NamespaceName, false),
 			Definition: DefKey(kind, name),
+			Name:       bare,
+			PackageID:  pkg,
 		}
 		// Worker/namespace membership is the containment edge, not a
 		// denormalized field. nexusService is the lone exception: it still

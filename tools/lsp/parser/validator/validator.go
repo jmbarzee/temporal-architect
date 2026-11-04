@@ -149,20 +149,8 @@ type pkgKey struct {
 	name string
 }
 
-// effPkg returns a definition's effective package: its runtime package stamp
-// when present (set by the envelope merge), otherwise the file's own package.
-// Mirrors resolver.effPkg / graph.pkgOf so all three key in lockstep. A
-// single-file parse that never went through the merge leaves the stamp empty
-// and falls back to file.Package, keeping existing behaviour identical.
-func effPkg(defPkg, filePkg string) string {
-	if defPkg != "" {
-		return defPkg
-	}
-	return filePkg
-}
-
 type validationCtx struct {
-	filePkg       string
+	file          *ast.File
 	workflows     map[pkgKey]*ast.WorkflowDef
 	activities    map[pkgKey]*ast.ActivityDef
 	workers       map[pkgKey]*ast.WorkerDef
@@ -175,28 +163,32 @@ type validationCtx struct {
 	errs   []*Error
 }
 
-// key returns the (package, name) key for a definition given its runtime
-// package stamp and name, folding in the file-package fallback.
-func (v *validationCtx) key(defPkg, name string) pkgKey {
-	return pkgKey{effPkg(defPkg, v.filePkg), name}
+// key returns the (package, name) key for a definition: its package identity
+// (ast.PackageIDOf, folding in the file-package fallback) and name.
+func (v *validationCtx) key(def ast.Packaged, name string) pkgKey {
+	return pkgKey{ast.PackageIDOf(def, v.file), name}
 }
 
 // refKey returns the (package, name) key a worker registration or call-site
 // reference resolves to: the resolved target's own package when resolved (so a
 // ref in package P to a same-named def keys to the package that actually holds
-// the def), otherwise the file-package fallback (matching no real definition,
-// which is correct — an unresolved ref hosts/routes to nothing). Mirrors
-// graph.hostedRefQName so validator coverage/routing align with the graph.
+// the def). A ref that did not resolve (external, undefined) keys by its
+// written qualifier under a prefix no package identity has, so it never
+// matches — and never covers — a real definition, while two such refs still
+// compare by what they name. Mirrors graph.hostedRefQName.
 func refKey[T interface {
 	comparable
 	ast.Packaged
 }](v *validationCtx, r ast.Ref[T]) pkgKey {
 	var zero T
 	if r.Resolved != zero {
-		return pkgKey{effPkg(r.Resolved.PackageName(), v.filePkg), r.Name}
+		return pkgKey{ast.PackageIDOf(r.Resolved, v.file), r.Name}
 	}
-	return pkgKey{effPkg("", v.filePkg), r.Name}
+	return pkgKey{unresolvedPkg + r.Package, r.Name}
 }
+
+// unresolvedPkg prefixes the package element of an unresolved ref's key.
+const unresolvedPkg = "\x00"
 
 // Validate runs deployment/routing validation on a resolved AST.
 // Call after resolver.Resolve().
@@ -209,7 +201,7 @@ func refKey[T interface {
 // registry.
 func Validate(file *ast.File) []*Error {
 	v := &validationCtx{
-		filePkg:       file.Package,
+		file:          file,
 		workflows:     make(map[pkgKey]*ast.WorkflowDef),
 		activities:    make(map[pkgKey]*ast.ActivityDef),
 		workers:       make(map[pkgKey]*ast.WorkerDef),
@@ -222,16 +214,16 @@ func Validate(file *ast.File) []*Error {
 	for _, def := range file.Definitions {
 		switch d := def.(type) {
 		case *ast.WorkflowDef:
-			v.workflows[v.key(d.Package, d.Name)] = d
+			v.workflows[v.key(d, d.Name)] = d
 		case *ast.ActivityDef:
-			v.activities[v.key(d.Package, d.Name)] = d
+			v.activities[v.key(d, d.Name)] = d
 		case *ast.WorkerDef:
-			v.workers[v.key(d.Package, d.Name)] = d
+			v.workers[v.key(d, d.Name)] = d
 		case *ast.NamespaceDef:
-			v.namespaces[v.key(d.Package, d.Name)] = d
+			v.namespaces[v.key(d, d.Name)] = d
 			v.nsDefs = append(v.nsDefs, d)
 		case *ast.NexusServiceDef:
-			v.nexusServices[v.key(d.Package, d.Name)] = d
+			v.nexusServices[v.key(d, d.Name)] = d
 		}
 	}
 
@@ -241,7 +233,7 @@ func Validate(file *ast.File) []*Error {
 	// resolves to the same declaration on every run.
 	for _, def := range file.Definitions {
 		ns, ok := def.(*ast.NamespaceDef)
-		if !ok || v.namespaces[v.key(ns.Package, ns.Name)] != ns {
+		if !ok || v.namespaces[v.key(ns, ns.Name)] != ns {
 			continue
 		}
 		for i := range ns.Endpoints {
@@ -378,9 +370,10 @@ func checkTypeNames[T interface {
 			first[r.Name] = at
 			continue
 		}
-		msg := fmt.Sprintf("worker %s registers %s %s and %s %s under one name, %q; Temporal registers types by name, not package, so one worker can hold only one of them", w.Name, kind, ast.QualifiedName(prev.pkg, prev.name), kind, ast.QualifiedName(at.pkg, at.name), r.Name)
+		packages := ast.PackageRefs(v.file)
+		msg := fmt.Sprintf("worker %s registers %s %s and %s %s under one name, %q; Temporal registers types by name, not package, so one worker can hold only one of them", w.Name, kind, ast.Label(packages, prev.pkg, prev.name), kind, ast.Label(packages, at.pkg, at.name), r.Name)
 		if prev == at {
-			msg = fmt.Sprintf("worker %s registers %s %s twice; Temporal registers each name once per worker", w.Name, kind, ast.QualifiedName(at.pkg, at.name))
+			msg = fmt.Sprintf("worker %s registers %s %s twice; Temporal registers each name once per worker", w.Name, kind, ast.Label(packages, at.pkg, at.name))
 		}
 		v.errs = append(v.errs, &Error{
 			Msg:    msg,
@@ -440,7 +433,7 @@ func (v *validationCtx) checkCoverage() {
 			if w == nil {
 				continue
 			}
-			instantiatedWorkers[v.key(w.Package, w.Name)] = true
+			instantiatedWorkers[v.key(w, w.Name)] = true
 			for _, ref := range w.Workflows {
 				coveredWorkflows[refKey(v, ref)] = true
 			}
@@ -453,10 +446,10 @@ func (v *validationCtx) checkCoverage() {
 		}
 	}
 
-	checkUncovered(v.workflows, coveredWorkflows, "workflow %s is not registered on any instantiated worker", ErrUncoveredWorkflow, &v.errs)
-	checkUncovered(v.activities, coveredActivities, "activity %s is not registered on any instantiated worker", ErrUncoveredActivity, &v.errs)
-	checkUncovered(v.nexusServices, coveredServices, "nexus service %s is not referenced by any worker", ErrUncoveredService, &v.errs)
-	checkUncovered(v.workers, instantiatedWorkers, "worker %s is not instantiated in any namespace", ErrUninstantiatedWorker, &v.errs)
+	checkUncovered(v.workflows, coveredWorkflows, ast.PackageRefs(v.file), "workflow %s is not registered on any instantiated worker", ErrUncoveredWorkflow, &v.errs)
+	checkUncovered(v.activities, coveredActivities, ast.PackageRefs(v.file), "activity %s is not registered on any instantiated worker", ErrUncoveredActivity, &v.errs)
+	checkUncovered(v.nexusServices, coveredServices, ast.PackageRefs(v.file), "nexus service %s is not referenced by any worker", ErrUncoveredService, &v.errs)
+	checkUncovered(v.workers, instantiatedWorkers, ast.PackageRefs(v.file), "worker %s is not instantiated in any namespace", ErrUninstantiatedWorker, &v.errs)
 }
 
 // checkTaskQueueCoherence reports workers that share a (namespace, deploy key)
@@ -720,7 +713,7 @@ func (v *validationCtx) walkAllBodies(defs []ast.Definition) {
 	for _, def := range defs {
 		switch d := def.(type) {
 		case *ast.WorkflowDef:
-			key := v.key(d.Package, d.Name)
+			key := v.key(d, d.Name)
 			if v.workflows[key] != d {
 				continue
 			}
@@ -736,7 +729,7 @@ func (v *validationCtx) walkAllBodies(defs []ast.Definition) {
 				v.walkStatements(u.Body, from)
 			}
 		case *ast.NexusServiceDef:
-			key := v.key(d.Package, d.Name)
+			key := v.key(d, d.Name)
 			if v.nexusServices[key] != d {
 				continue
 			}
@@ -1106,14 +1099,13 @@ func sameSet[K comparable](a, b map[K]bool) bool {
 }
 
 // checkUncovered reports a warning for each definition in defs whose
-// (package, name) key is not present in the covered set. The bare name (never
-// the package-qualified form) is used in the message and Error.Name, keeping
-// single-package diagnostics byte-identical.
-func checkUncovered[T ast.Definition](defs map[pkgKey]T, covered map[pkgKey]bool, msgFmt string, kind ErrorKind, errs *[]*Error) {
+// (package, name) key is not present in the covered set, naming it by its
+// label in the message and by its bare name in Error.Name.
+func checkUncovered[T ast.Definition](defs map[pkgKey]T, covered map[pkgKey]bool, packages map[string]ast.PackageRef, msgFmt string, kind ErrorKind, errs *[]*Error) {
 	for key, node := range defs {
 		if !covered[key] {
 			*errs = append(*errs, &Error{
-				Msg:      fmt.Sprintf(msgFmt, key.name),
+				Msg:      fmt.Sprintf(msgFmt, ast.Label(packages, key.pkg, key.name)),
 				Line:     node.NodeLine(),
 				Column:   node.NodeColumn(),
 				Severity: "warning",

@@ -325,6 +325,7 @@ func (b *builder) ensureWorkerAndNamespace(namespace, queue string) {
 		b.og.Nodes = append(b.og.Nodes, graph.Node{
 			ID:         nsID,
 			Definition: graph.DefKey(graph.KindNamespace, namespace),
+			Name:       namespace,
 		})
 		b.nodesSeen[nsID] = struct{}{}
 	}
@@ -334,6 +335,7 @@ func (b *builder) ensureWorkerAndNamespace(namespace, queue string) {
 		b.og.Nodes = append(b.og.Nodes, graph.Node{
 			ID:         wID,
 			Definition: graph.DefKey(graph.KindWorker, queue),
+			Name:       queue,
 			Queue:      queue,
 		})
 		b.nodesSeen[wID] = struct{}{}
@@ -349,6 +351,7 @@ func (b *builder) ensureHosted(kind, name, namespace, queue string) string {
 		b.og.Nodes = append(b.og.Nodes, graph.Node{
 			ID:         nodeID,
 			Definition: graph.DefKey(kind, name),
+			Name:       name,
 		})
 		b.nodesSeen[nodeID] = struct{}{}
 		b.addContainment(nodeID, graph.WorkerID(workerName, namespace))

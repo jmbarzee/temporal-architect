@@ -80,7 +80,7 @@ func (wg *workGraph) heuristicRoots(file *ast.File) map[string]*Root {
 				continue
 			}
 			if len(wf.Signals)+len(wf.Queries)+len(wf.Updates) > 0 {
-				add(graph.DefKey(graph.KindWorkflow, wf.Name), reasonHandler)
+				add(graph.DefKey(graph.KindWorkflow, ast.QualifiedName(ast.PackageIDOf(wf, file), wf.Name)), reasonHandler)
 			}
 		}
 	}

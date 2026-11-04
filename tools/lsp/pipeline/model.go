@@ -72,6 +72,11 @@ type Position struct {
 type Envelope struct {
 	Summary     ast.FileSummary `json:"summary"`
 	Diagnostics []Diagnostic    `json:"diagnostics"`
+	// Packages maps each kept package's identity to its declared name, on
+	// `twf parse` and `twf symbols --json` (definitions and symbols carry the
+	// identity as packageId); absent for an unpackaged design. Graph and
+	// chunks output carry the table in their payloads.
+	Packages map[string]ast.PackageRef `json:"packages,omitempty"`
 
 	// Optional payload fields. Exactly one (or none, for check) is populated
 	// per command. The naming matches each subcommand's existing data shape

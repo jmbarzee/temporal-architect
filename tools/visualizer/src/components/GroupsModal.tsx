@@ -43,7 +43,8 @@ interface GroupsModalProps {
 }
 
 // Last path segment of a section id (e.g. ".../service:workflow:AgenticTask"
-// -> "service:workflow:AgenticTask") for a compact, readable row label.
+// -> "service:workflow:AgenticTask"): the row label for a decomposition from an
+// older twf, which carries no `label`.
 function shortSectionId(id: string): string {
   const i = id.lastIndexOf('/')
   return i >= 0 ? id.slice(i + 1) : id
@@ -221,7 +222,7 @@ export function GroupsModal({
                         checked={enabled}
                         onChange={() => toggleEnabled(chunk.id)}
                       />
-                      <span className="groups-chunk-name">{shortSectionId(chunk.id)}</span>
+                      <span className="groups-chunk-name">{chunk.label ?? shortSectionId(chunk.id)}</span>
                       <span className="groups-chunk-meta">{chunk.members.length}n · c{chunk.complexity}</span>
                     </label>
 
@@ -374,7 +375,7 @@ function SectionRows({
                   isn't currently a glow group. */}
               <span className="groups-swatch" style={{ background: color ?? 'transparent' }} />
               <span className="groups-section-name" title={section.id}>
-                {shortSectionId(section.id)}
+                {section.label ?? shortSectionId(section.id)}
               </span>
               <span className="groups-section-meta">{section.members.length}n · c{section.complexity}</span>
             </div>
