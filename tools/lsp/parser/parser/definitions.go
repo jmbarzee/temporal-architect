@@ -130,6 +130,7 @@ declLoop:
 	return &ast.WorkflowDef{
 		Pos:            pos,
 		Name:           name.Literal,
+		NamePos:        posOf(name),
 		Params:         params.Literal,
 		ReturnType:     returnType,
 		IDScheme:       idScheme,
@@ -188,6 +189,7 @@ func parseActivityDef(p *Parser) (ast.Definition, error) {
 	return &ast.ActivityDef{
 		Pos:            pos,
 		Name:           name.Literal,
+		NamePos:        posOf(name),
 		Params:         params.Literal,
 		ReturnType:     returnType,
 		DefaultOptions: defaultOptions,
@@ -262,6 +264,7 @@ func parseSignalDeclRest(p *Parser, pos ast.Pos, name token.Token) (*ast.SignalD
 	return &ast.SignalDecl{
 		Pos:     pos,
 		Name:    name.Literal,
+		NamePos: posOf(name),
 		Params:  params,
 		Options: options,
 		Body:    body,
@@ -312,6 +315,7 @@ func parseQueryDecl(p *Parser) (*ast.QueryDecl, error) {
 	return &ast.QueryDecl{
 		Pos:        pos,
 		Name:       name.Literal,
+		NamePos:    posOf(name),
 		Params:     params.Literal,
 		ReturnType: returnType,
 		Options:    options,
@@ -365,6 +369,7 @@ func parseUpdateDecl(p *Parser) (*ast.UpdateDecl, error) {
 	return &ast.UpdateDecl{
 		Pos:        pos,
 		Name:       name.Literal,
+		NamePos:    posOf(name),
 		Params:     params.Literal,
 		ReturnType: returnType,
 		Options:    options,
@@ -436,7 +441,8 @@ func parseConditionDecl(p *Parser) (*ast.ConditionDecl, error) {
 	}
 
 	return &ast.ConditionDecl{
-		Pos:  pos,
-		Name: name.Literal,
+		Pos:     pos,
+		Name:    name.Literal,
+		NamePos: posOf(name),
 	}, nil
 }

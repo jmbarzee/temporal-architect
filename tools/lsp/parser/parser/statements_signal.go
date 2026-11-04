@@ -77,27 +77,28 @@ func parseSignalSendRest(p *Parser, pos ast.Pos, first token.Token) (ast.Stateme
 	}
 
 	head := ast.SendHead{
-		Pos:     ast.Pos{Line: first.Line, Column: first.Column},
+		Pos:     posOf(first),
 		Address: address,
 	}
-	headPos := head.Pos
 	switch {
 	case len(segs) == 3:
 		head.Kind = ast.SendHeadType
-		head.Type = ast.Ref[*ast.WorkflowDef]{Pos: headPos, Package: segs[0].Literal, Name: segs[1].Literal}
+		head.Type = refTo[*ast.WorkflowDef](segs[0], segs[1])
 	case address != nil:
 		head.Kind = ast.SendHeadType
-		head.Type = ast.Ref[*ast.WorkflowDef]{Pos: headPos, Name: segs[0].Literal}
+		head.Type = nameRef[*ast.WorkflowDef](segs[0])
 	default:
 		head.Kind = ast.SendHeadHandle
-		head.Handle = ast.Ref[*ast.PromiseStmt]{Pos: headPos, Name: segs[0].Literal}
+		head.Handle = nameRef[*ast.PromiseStmt](segs[0])
 	}
 
+	signal := segs[len(segs)-1]
 	return &ast.SignalSendStmt{
-		Pos:    pos,
-		Head:   head,
-		Signal: segs[len(segs)-1].Literal,
-		Args:   args.Literal,
+		Pos:       pos,
+		Head:      head,
+		Signal:    signal.Literal,
+		SignalPos: posOf(signal),
+		Args:      args.Literal,
 	}, nil
 }
 

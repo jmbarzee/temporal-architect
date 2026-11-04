@@ -45,8 +45,8 @@ worker wa:
 	}
 	e := errs[0]
 	want := "a worker registers a whole nexus service; Svc.OpA names operation OpA of Svc — register `nexus service Svc`, or move OpA into a service of its own"
-	if e.Msg != want || e.Line != 14 || e.Column != 5 || e.Name != "wa" {
-		t.Errorf("got %d:%d %q (Name %q), want 14:5 %q (Name wa)", e.Line, e.Column, e.Msg, e.Name, want)
+	if e.Msg != want || e.Line != 14 || e.Column != 23 || e.Name != "wa" {
+		t.Errorf("got %d:%d %q (Name %q), want 14:23 %q (Name wa)", e.Line, e.Column, e.Msg, e.Name, want)
 	}
 	w := file.Definitions[3].(*ast.WorkerDef)
 	ref := w.Services[0]
