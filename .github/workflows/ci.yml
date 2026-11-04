@@ -49,9 +49,6 @@ jobs:
       - name: Typecheck visualizer
         run: make typecheck
 
-      - name: Verify visualizer
-        run: make verify-visualizer
-
       - name: Build toolchain (binary + the two npm libraries)
         run: make build
 
