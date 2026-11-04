@@ -9,11 +9,12 @@ import type { BandOverlay } from '../graph/forces'
 import type { ResolvedPhysics } from '../graph/forces'
 import { chargeFor, coreRadiusFor, springFor } from '../graph/simulation'
 import type { Viewport } from '../graph/viewport'
-import { screenToWorld, worldToScreen, zoomAt } from '../graph/viewport'
+import { screenToWorld, worldToScreen } from '../graph/viewport'
 import { nodeSizeMul, type NodeScaleParams } from '../graph/node-scale'
 import type { Taxonomy } from '../graph/taxonomy'
 import { useTaxonomy } from './graph-view/useTaxonomy'
 import { useLatest } from './graph-view/useControllable'
+import { listenWheelZoom } from './graph-view/wheelZoom'
 import type { EdgeStroke, Theme } from '../graph/scheme'
 import { NEUTRAL_STROKE } from '../graph/shapes'
 import { withAlpha } from '../graph/scheme'
@@ -334,24 +335,13 @@ export function GraphCanvas({
   }, [nodes, viewport, nodeScale, taxonomy])
 
   // Mouse handlers
-  // Wheel zoom listens natively and non-passive: React's root wheel listener
-  // is passive, so its preventDefault cannot keep the page from scrolling.
-  // Registered once; the camera and its setter are read through refs.
+  // Wheel zoom, registered once; the camera and its setter are read through refs.
   const viewportRef = useLatest(viewport)
   const onViewportChangeRef = useLatest(onViewportChange)
   React.useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
-    const handleWheel = (e: WheelEvent) => {
-      e.preventDefault()
-      const rect = canvas.getBoundingClientRect()
-      const sx = e.clientX - rect.left
-      const sy = e.clientY - rect.top
-      const factor = e.deltaY < 0 ? 1.15 : 0.85
-      onViewportChangeRef.current(zoomAt(viewportRef.current, sx, sy, factor))
-    }
-    canvas.addEventListener('wheel', handleWheel, { passive: false })
-    return () => canvas.removeEventListener('wheel', handleWheel)
+    return listenWheelZoom(canvas, () => viewportRef.current, vp => onViewportChangeRef.current(vp))
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handlePointerDown = React.useCallback((e: React.PointerEvent) => {
