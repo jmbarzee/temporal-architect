@@ -27,7 +27,7 @@ module github.com/acme/shop   # twf.mod, at the design's root
 A package is **one directory** of a module, and its **import path** is the
 module path plus that directory: `orders/` is `github.com/acme/shop/orders`.
 A packaged file with no `twf.mod` above it is `PACKAGE_OUTSIDE_MODULE` and is
-ignored. Clause-less designs are unaffected and need no `twf.mod`.
+ignored; an MCP inline `source` is outside every module. Clause-less designs are unaffected and need no `twf.mod`.
 
 - `twf mod init <module path>` writes the file. The path is required; with no
   argument it fails and suggests one (from the enclosing module, the design's
@@ -50,8 +50,8 @@ paths are two packages; alias one to import both. New errors:
 module (it used to be a silent external). `IMPORT_NOT_LOADED` warns when a
 package is on disk but not among the inputs. A path under no module in the run
 is still `UNRESOLVED_IMPORT`, treated as external. No import binds by package
-name anywhere: an MCP inline `source` or an editor buffer with no file has no
-import path, so its imports are external, matching `twf check`.
+name anywhere: an editor buffer with no file has no import path, so its
+imports are external.
 
 ### ⚠️ Breaking: wire output
 

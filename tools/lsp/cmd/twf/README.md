@@ -474,7 +474,8 @@ Example client config:
 **Tools** are thin wrappers over the same parser pipeline as the CLI, so their
 JSON output is identical to the corresponding subcommand. Each file tool takes
 `paths` (resolved on the filesystem where the server runs) **or** inline
-`source`:
+`source`, checked as a file outside every module (a `package` clause is
+`PACKAGE_OUTSIDE_MODULE`):
 
 | Tool | Mirrors |
 |---|---|
