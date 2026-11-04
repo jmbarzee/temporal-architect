@@ -1,6 +1,8 @@
 package check_test
 
 import (
+	"os"
+	"strings"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -51,5 +53,37 @@ func TestCheckMultiPackageTree(t *testing.T) {
 	}
 	if !sawExternal {
 		t.Errorf("expected an UNRESOLVED_IMPORT (treated-as-external) warning, got %+v", diags)
+	}
+}
+
+// TestCheckReportsIndentationErrorsFirst: on a file with bad indentation, the
+// first diagnostic `twf check` prints is the LEX error, not the parser error it
+// causes, even where both fall at one position.
+func TestCheckReportsIndentationErrorsFirst(t *testing.T) {
+	for _, tc := range []struct{ name, src, want string }{
+		{"mixed", "workflow W(x):\n\tif (x):\n\t  close complete(x)\n",
+			"[parse/LEX] at bad.twf:3:2: indentation mixes tabs and spaces; this file indents with tabs (set by line 2)"},
+		{"dedent to no open block", "activity A(d) -> (string):\n        # c\n    work(d)\n",
+			"[parse/LEX] at bad.twf:3:5: inconsistent indentation"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Chdir(t.TempDir())
+			if err := os.WriteFile("bad.twf", []byte(tc.src), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			var code int
+			var stderr string
+			var errErr error
+			stdout, err := clitest.CaptureStdout(func() {
+				stderr, errErr = clitest.CaptureStderr(func() { code = runCheck([]string{"bad.twf"}) })
+			})
+			if err != nil || errErr != nil {
+				t.Fatal(err, errErr)
+			}
+			first, _, _ := strings.Cut(stdout+stderr, "\n")
+			if code == 0 || !strings.Contains(first, tc.want) {
+				t.Errorf("twf check exit %d, first line %q, want %q\nstdout:\n%s\nstderr:\n%s", code, first, tc.want, stdout, stderr)
+			}
+		})
 	}
 }

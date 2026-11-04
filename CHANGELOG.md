@@ -300,6 +300,9 @@ is now checked against the target's signals.
   or spaces, and indentation that mixes the two, within a line or across
   lines, is a `parse/LEX` error naming that style. A tab after a line's
   leading spaces no longer turns the statement into a silent raw line.
+- A `parse/LEX` error, such as bad indentation or an unterminated string, is
+  listed ahead of the `parse/SYNTAX` error it causes at the same position in
+  `twf check`. The Go API `parser.ParseFile` reports it in place of that error.
 - **LSP:** a bad statement line drops only itself from the editor's outline,
   hover and references; the definition around it and its other statements stay.
 - An undefined workflow, activity, signal or update used as a `promise` /
