@@ -1,17 +1,19 @@
 package server
 
 import (
-	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/lexer"
-	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/token"
+	"strings"
+
 	"github.com/jmbarzee/glsp"
 	protocol "github.com/jmbarzee/glsp/protocol_3_16"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/lexer"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/token"
 )
 
 // Semantic token type indices (must match legend order).
 type semanticTokenType = uint32
 
 const (
-	semKeyword   semanticTokenType = iota
+	semKeyword semanticTokenType = iota
 	semFunction
 	semMethod
 	semEvent
@@ -50,6 +52,7 @@ func semanticTokensHandler(store *DocumentStore) protocol.TextDocumentSemanticTo
 // buildSemanticTokens lexes the content and returns delta-encoded semantic token data.
 func buildSemanticTokens(content string) []uint32 {
 	tokens := lexer.New(content).AllTokens()
+	lines := strings.Split(content, "\n")
 
 	var data []uint32
 	var prevLine, prevCol uint32
@@ -89,21 +92,24 @@ func buildSemanticTokens(content string) []uint32 {
 			continue
 		}
 
-		length := tokenLength(tok, content)
-		line := uint32(tok.Line - 1)   // LSP 0-based
-		col := uint32(tok.Column - 1)  // LSP 0-based
-
-		deltaLine := line - prevLine
-		var deltaCol uint32
-		if deltaLine == 0 {
-			deltaCol = col - prevCol
-		} else {
-			deltaCol = col
+		// One token per line of its source text (an argument list may span
+		// several), positioned and measured in UTF-16 code units.
+		for i, part := range strings.Split(content[tok.Offset:tok.End], "\n") {
+			start := position(lines, tok.Line+i, 1)
+			if i == 0 {
+				start = position(lines, tok.Line, tok.Column)
+			}
+			length := utf16Len(strings.TrimSuffix(part, "\r"))
+			if length == 0 {
+				continue
+			}
+			deltaCol := start.Character
+			if start.Line == prevLine {
+				deltaCol -= prevCol
+			}
+			data = append(data, start.Line-prevLine, deltaCol, length, tokenType, modifiers)
+			prevLine, prevCol = start.Line, start.Character
 		}
-
-		data = append(data, deltaLine, deltaCol, length, tokenType, modifiers)
-		prevLine = line
-		prevCol = col
 
 		if !isStructural(tok.Type) {
 			prevType = tok.Type
@@ -222,27 +228,5 @@ func classifyIdent(prevType token.TokenType, indentLevel int) (tokenType uint32,
 	default:
 		// Category 4: Bare ident in body — loose statement (params, assignments, expressions).
 		return semVariable, 0, true
-	}
-}
-
-// tokenLength returns the display length of a token in content.
-func tokenLength(tok token.Token, content string) uint32 {
-	switch tok.Type {
-	case token.ARGS:
-		return uint32(len(tok.Literal)) + 2 // parens
-	case token.STRING:
-		// The Literal is unescaped, so measure the quoted source instead.
-		end := tok.Offset + 1
-		for content[end] != '"' {
-			if content[end] == '\\' {
-				end++
-			}
-			end++
-		}
-		return uint32(end + 1 - tok.Offset)
-	case token.COMMENT, token.TRAILING_COMMENT:
-		return uint32(len(tok.Literal)) + 1 // #
-	default:
-		return uint32(len(tok.Literal))
 	}
 }

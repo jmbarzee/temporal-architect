@@ -1,9 +1,9 @@
 package server
 
 import (
-	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
 	"github.com/jmbarzee/glsp"
 	protocol "github.com/jmbarzee/glsp/protocol_3_16"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
 )
 
 func documentSymbolHandler(store *DocumentStore) protocol.TextDocumentDocumentSymbolFunc {
@@ -13,19 +13,20 @@ func documentSymbolHandler(store *DocumentStore) protocol.TextDocumentDocumentSy
 			return nil, nil
 		}
 
+		lines := doc.lines()
 		var symbols []protocol.DocumentSymbol
 		for _, def := range doc.File.Definitions {
 			switch d := def.(type) {
 			case *ast.WorkflowDef:
-				symbols = append(symbols, workflowSymbol(d))
+				symbols = append(symbols, workflowSymbol(lines, d))
 			case *ast.ActivityDef:
-				symbols = append(symbols, activitySymbol(d))
+				symbols = append(symbols, activitySymbol(lines, d))
 			case *ast.WorkerDef:
-				symbols = append(symbols, workerSymbol(d))
+				symbols = append(symbols, workerSymbol(lines, d))
 			case *ast.NamespaceDef:
-				symbols = append(symbols, namespaceSymbol(d))
+				symbols = append(symbols, namespaceSymbol(lines, d))
 			case *ast.NexusServiceDef:
-				symbols = append(symbols, nexusServiceSymbol(d))
+				symbols = append(symbols, nexusServiceSymbol(lines, d))
 			}
 		}
 
@@ -33,13 +34,13 @@ func documentSymbolHandler(store *DocumentStore) protocol.TextDocumentDocumentSy
 	}
 }
 
-func workflowSymbol(wf *ast.WorkflowDef) protocol.DocumentSymbol {
+func workflowSymbol(lines []string, wf *ast.WorkflowDef) protocol.DocumentSymbol {
 	r := defRange(wf)
 	sym := protocol.DocumentSymbol{
 		Name:           wf.Name,
 		Kind:           protocol.SymbolKindFunction,
 		Range:          r,
-		SelectionRange: posToRange(wf.Line, wf.Column),
+		SelectionRange: nameRange(lines, wf.NamePos, wf.Name),
 	}
 
 	var children []protocol.DocumentSymbol
@@ -50,7 +51,7 @@ func workflowSymbol(wf *ast.WorkflowDef) protocol.DocumentSymbol {
 			Name:           s.Name,
 			Kind:           protocol.SymbolKindEvent,
 			Range:          lineRange(s.Line, endLine),
-			SelectionRange: posToRange(s.Line, s.Column),
+			SelectionRange: nameRange(lines, s.NamePos, s.Name),
 		})
 	}
 	for _, q := range wf.Queries {
@@ -59,7 +60,7 @@ func workflowSymbol(wf *ast.WorkflowDef) protocol.DocumentSymbol {
 			Name:           q.Name,
 			Kind:           protocol.SymbolKindMethod,
 			Range:          lineRange(q.Line, endLine),
-			SelectionRange: posToRange(q.Line, q.Column),
+			SelectionRange: nameRange(lines, q.NamePos, q.Name),
 		})
 	}
 	for _, u := range wf.Updates {
@@ -68,7 +69,7 @@ func workflowSymbol(wf *ast.WorkflowDef) protocol.DocumentSymbol {
 			Name:           u.Name,
 			Kind:           protocol.SymbolKindMethod,
 			Range:          lineRange(u.Line, endLine),
-			SelectionRange: posToRange(u.Line, u.Column),
+			SelectionRange: nameRange(lines, u.NamePos, u.Name),
 		})
 	}
 
@@ -79,17 +80,17 @@ func workflowSymbol(wf *ast.WorkflowDef) protocol.DocumentSymbol {
 	return sym
 }
 
-func activitySymbol(act *ast.ActivityDef) protocol.DocumentSymbol {
+func activitySymbol(lines []string, act *ast.ActivityDef) protocol.DocumentSymbol {
 	r := defRange(act)
 	return protocol.DocumentSymbol{
 		Name:           act.Name,
 		Kind:           protocol.SymbolKindFunction,
 		Range:          r,
-		SelectionRange: posToRange(act.Line, act.Column),
+		SelectionRange: nameRange(lines, act.NamePos, act.Name),
 	}
 }
 
-func workerSymbol(w *ast.WorkerDef) protocol.DocumentSymbol {
+func workerSymbol(lines []string, w *ast.WorkerDef) protocol.DocumentSymbol {
 	// Estimate end line from the last ref.
 	endLine := w.Line
 	for _, ref := range w.Workflows {
@@ -112,7 +113,7 @@ func workerSymbol(w *ast.WorkerDef) protocol.DocumentSymbol {
 		Name:           w.Name,
 		Kind:           protocol.SymbolKindModule,
 		Range:          lineRange(w.Line, endLine),
-		SelectionRange: posToRange(w.Line, w.Column),
+		SelectionRange: nameRange(lines, w.NamePos, w.Name),
 	}
 
 	var children []protocol.DocumentSymbol
@@ -121,7 +122,7 @@ func workerSymbol(w *ast.WorkerDef) protocol.DocumentSymbol {
 			Name:           ref.Name,
 			Kind:           protocol.SymbolKindFunction,
 			Range:          lineRange(ref.Line, ref.Line),
-			SelectionRange: posToRange(ref.Line, ref.Column),
+			SelectionRange: nameRange(lines, ref.Pos, ref.Name),
 		})
 	}
 	for _, ref := range w.Activities {
@@ -129,7 +130,7 @@ func workerSymbol(w *ast.WorkerDef) protocol.DocumentSymbol {
 			Name:           ref.Name,
 			Kind:           protocol.SymbolKindFunction,
 			Range:          lineRange(ref.Line, ref.Line),
-			SelectionRange: posToRange(ref.Line, ref.Column),
+			SelectionRange: nameRange(lines, ref.Pos, ref.Name),
 		})
 	}
 	for _, ref := range w.Services {
@@ -137,7 +138,7 @@ func workerSymbol(w *ast.WorkerDef) protocol.DocumentSymbol {
 			Name:           ref.Name,
 			Kind:           protocol.SymbolKindInterface,
 			Range:          lineRange(ref.Line, ref.Line),
-			SelectionRange: posToRange(ref.Line, ref.Column),
+			SelectionRange: nameRange(lines, ref.Pos, ref.Name),
 		})
 	}
 	if len(children) > 0 {
@@ -146,7 +147,7 @@ func workerSymbol(w *ast.WorkerDef) protocol.DocumentSymbol {
 	return sym
 }
 
-func namespaceSymbol(ns *ast.NamespaceDef) protocol.DocumentSymbol {
+func namespaceSymbol(lines []string, ns *ast.NamespaceDef) protocol.DocumentSymbol {
 	endLine := ns.Line
 	for _, w := range ns.Workers {
 		if w.Line > endLine {
@@ -163,7 +164,7 @@ func namespaceSymbol(ns *ast.NamespaceDef) protocol.DocumentSymbol {
 		Name:           ns.Name,
 		Kind:           protocol.SymbolKindNamespace,
 		Range:          lineRange(ns.Line, endLine),
-		SelectionRange: posToRange(ns.Line, ns.Column),
+		SelectionRange: nameRange(lines, ns.NamePos, ns.Name),
 	}
 
 	var children []protocol.DocumentSymbol
@@ -172,7 +173,7 @@ func namespaceSymbol(ns *ast.NamespaceDef) protocol.DocumentSymbol {
 			Name:           w.Worker.Name,
 			Kind:           protocol.SymbolKindModule,
 			Range:          lineRange(w.Line, w.Line),
-			SelectionRange: posToRange(w.Line, w.Column),
+			SelectionRange: nameRange(lines, w.Worker.Pos, w.Worker.Name),
 		})
 	}
 	for _, ep := range ns.Endpoints {
@@ -180,7 +181,7 @@ func namespaceSymbol(ns *ast.NamespaceDef) protocol.DocumentSymbol {
 			Name:           ep.EndpointName,
 			Kind:           protocol.SymbolKindInterface,
 			Range:          lineRange(ep.Line, ep.Line),
-			SelectionRange: posToRange(ep.Line, ep.Column),
+			SelectionRange: nameRange(lines, ep.NamePos, ep.EndpointName),
 		})
 	}
 	if len(children) > 0 {
@@ -189,7 +190,7 @@ func namespaceSymbol(ns *ast.NamespaceDef) protocol.DocumentSymbol {
 	return sym
 }
 
-func nexusServiceSymbol(svc *ast.NexusServiceDef) protocol.DocumentSymbol {
+func nexusServiceSymbol(lines []string, svc *ast.NexusServiceDef) protocol.DocumentSymbol {
 	endLine := svc.Line
 	for _, op := range svc.Operations {
 		if op.Line > endLine {
@@ -202,7 +203,7 @@ func nexusServiceSymbol(svc *ast.NexusServiceDef) protocol.DocumentSymbol {
 		Name:           svc.Name,
 		Kind:           protocol.SymbolKindInterface,
 		Range:          lineRange(svc.Line, endLine),
-		SelectionRange: posToRange(svc.Line, svc.Column),
+		SelectionRange: nameRange(lines, svc.NamePos, svc.Name),
 	}
 
 	var children []protocol.DocumentSymbol
@@ -212,7 +213,7 @@ func nexusServiceSymbol(svc *ast.NexusServiceDef) protocol.DocumentSymbol {
 			Name:           op.Name,
 			Kind:           protocol.SymbolKindMethod,
 			Range:          lineRange(op.Line, opEndLine),
-			SelectionRange: posToRange(op.Line, op.Column),
+			SelectionRange: nameRange(lines, op.NamePos, op.Name),
 		})
 	}
 	if len(children) > 0 {

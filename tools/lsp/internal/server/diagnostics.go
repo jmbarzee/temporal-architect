@@ -45,33 +45,33 @@ func publishAll(context *glsp.Context, store *DocumentStore) error {
 }
 
 func publishDiagnostics(context *glsp.Context, doc *Document) error {
-	var diags []protocol.Diagnostic
-
-	for _, pe := range doc.ParseErrs {
-		diags = appendDiag(diags, pe.Line, pe.Column, "", pe.Code(), pe.Msg)
-	}
-	for _, re := range doc.ResolveErrs {
-		diags = appendDiag(diags, re.Line, re.Column, re.Severity, re.Code(), re.Msg)
-	}
-	for _, ve := range doc.ValidateErrs {
-		diags = appendDiag(diags, ve.Line, ve.Column, ve.Severity, ve.Code(), ve.Msg)
-	}
-
-	if diags == nil {
-		diags = []protocol.Diagnostic{}
-	}
-
 	context.Notify(protocol.ServerTextDocumentPublishDiagnostics, protocol.PublishDiagnosticsParams{
 		URI:         doc.URI,
-		Diagnostics: diags,
+		Diagnostics: diagnostics(doc),
 	})
 	return nil
+}
+
+// diagnostics is doc's parse, resolve and validate errors as LSP diagnostics.
+func diagnostics(doc *Document) []protocol.Diagnostic {
+	lines := doc.lines()
+	diags := []protocol.Diagnostic{}
+	for _, pe := range doc.ParseErrs {
+		diags = appendDiag(diags, lines, pe.Line, pe.Column, "", pe.Code(), pe.Msg)
+	}
+	for _, re := range doc.ResolveErrs {
+		diags = appendDiag(diags, lines, re.Line, re.Column, re.Severity, re.Code(), re.Msg)
+	}
+	for _, ve := range doc.ValidateErrs {
+		diags = appendDiag(diags, lines, ve.Line, ve.Column, ve.Severity, ve.Code(), ve.Msg)
+	}
+	return diags
 }
 
 // appendDiag appends an LSP diagnostic with the parser's symbolic code in the
 // LSP `Code` field. Editor clients can use it for hover-help routing,
 // suppress-by-code workflows, and external rule documentation links.
-func appendDiag(diags []protocol.Diagnostic, line, column int, severity, code, msg string) []protocol.Diagnostic {
+func appendDiag(diags []protocol.Diagnostic, lines []string, line, column int, severity, code, msg string) []protocol.Diagnostic {
 	sev := protocol.DiagnosticSeverityError
 	switch severity {
 	case "warning":
@@ -80,7 +80,7 @@ func appendDiag(diags []protocol.Diagnostic, line, column int, severity, code, m
 		sev = protocol.DiagnosticSeverityHint
 	}
 	d := protocol.Diagnostic{
-		Range:    posToRange(line, column),
+		Range:    posToRange(lines, line, column),
 		Severity: ptrTo(sev),
 		Source:   ptrTo("twf"),
 		Message:  msg,
@@ -101,22 +101,5 @@ func lineRange(startLine, endLine int) protocol.Range {
 	return protocol.Range{
 		Start: protocol.Position{Line: s, Character: 0},
 		End:   protocol.Position{Line: e, Character: 0},
-	}
-}
-
-// posToRange converts a 1-based parser position to an LSP 0-based range.
-// We highlight the entire line since we don't have end positions.
-func posToRange(line, column int) protocol.Range {
-	l := uint32(0)
-	if line > 0 {
-		l = uint32(line - 1)
-	}
-	c := uint32(0)
-	if column > 0 {
-		c = uint32(column - 1)
-	}
-	return protocol.Range{
-		Start: protocol.Position{Line: l, Character: c},
-		End:   protocol.Position{Line: l, Character: c + 1000}, // highlight to end of line
 	}
 }
