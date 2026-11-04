@@ -190,11 +190,20 @@ describe('Tree scroll alignment', () => {
       expect(lastScrollOf(rowOf(container, 'payments-worker'))).toBe(block)
     })
 
-    it(`a ${label} nested row revealed by Show in Tree scrolls to '${block}'`, async () => {
+    it(`a ${label} nested operation row revealed by Show in Tree scrolls to '${block}'`, async () => {
       sizes.nested = height
       const { container } = render(<Host />)
       await reveal(focusOn('Payments', 'nexusServiceDef', 'GetStatus'))
       expect(lastScrollOf(opRow(container, 'GetStatus'))).toBe(block)
+    })
+
+    it(`a ${label} nested endpoint row revealed by Show in Tree scrolls to '${block}'`, async () => {
+      sizes.nested = height
+      const { container } = render(<Host />)
+      await reveal(focusOn('payments', 'namespaceDef', 'PaymentsEndpoint'))
+      const endpoint = container.querySelector<HTMLElement>('.namespace-entry-endpoint')!
+      expect(endpoint.textContent).toContain('PaymentsEndpoint')
+      expect(lastScrollOf(endpoint)).toBe(block)
     })
   }
 })
