@@ -145,6 +145,101 @@ func TestExpandInputsHardLinksInTwoDirectoriesAreTwoInputs(t *testing.T) {
 	}
 }
 
+// TestExpandInputsHardLinksInOneDirectoryAreTwoInputs: identity is the
+// directory and the entry name, so two names of one file are two inputs, and
+// each keeps its own name — on a case-insensitive disk too, where a wrong-case
+// spelling takes the link it folds to, not the lexically first.
+func TestExpandInputsHardLinksInOneDirectoryAreTwoInputs(t *testing.T) {
+	root := tree(t, "x/b.twf")
+	if err := os.Link(filepath.Join(root, "x", "b.twf"), filepath.Join(root, "x", "a.twf")); err != nil {
+		t.Skipf("link: %v", err)
+	}
+	t.Chdir(root)
+	if got := expand(t, "x/b.twf", "x"); !reflect.DeepEqual(got, []string{"x/b.twf", "x/a.twf"}) {
+		t.Errorf("got %v", got)
+	}
+	if a, b := pipeline.Canonicalize("x/a.twf"), pipeline.Canonicalize("x/b.twf"); filepath.Base(a) != "a.twf" || filepath.Base(b) != "b.twf" {
+		t.Errorf("each link keeps its own name: %s, %s", a, b)
+	}
+	if !caseInsensitive(t, root) {
+		return
+	}
+	if got, want := pipeline.Canonicalize("x/B.TWF"), pipeline.Canonicalize("x/b.twf"); got != want {
+		t.Errorf("x/B.TWF → %s, want %s", got, want)
+	}
+}
+
+// caseInsensitive reports whether dir's disk matches names ignoring case.
+func caseInsensitive(t *testing.T, dir string) bool {
+	t.Helper()
+	probe := filepath.Join(dir, "CaseProbe")
+	writeFile(t, probe, "")
+	defer os.Remove(probe)
+	_, err := os.Stat(filepath.Join(dir, "caseprobe"))
+	return err == nil
+}
+
+// TestCaseInsensitiveDiskOneIdentity: on a case-insensitive disk, a file, a
+// package directory and a module root named in another case are one input,
+// one package and one module (§3.7).
+func TestCaseInsensitiveDiskOneIdentity(t *testing.T) {
+	root := layout(t, map[string]string{
+		"Demo/twf.mod":      "module example.com/demo\n",
+		"Demo/fabric/f.twf": wf("fabric", "F"),
+		"Demo/top/t.twf":    wf("top", "T"),
+	})
+	if !caseInsensitive(t, root) {
+		t.Skip("disk is case-sensitive")
+	}
+	t.Chdir(root)
+	diags, defs := checkArgs(t, "Demo/fabric", "DEMO/FABRIC/F.TWF", "demo/Fabric", "dEMO/top")
+	if len(diags) != 0 {
+		t.Errorf("diagnostics = %q, want none (one module, one package)", diags)
+	}
+	if strings.Join(defs, ",") != "Demo/fabric/f.twf,dEMO/top/t.twf" {
+		t.Errorf("kept %v, want each file once, spelled as first named", defs)
+	}
+}
+
+// TestNormalizationInsensitiveDiskOneIdentity: on APFS, a module root named
+// in NFD and in NFC is one module.
+func TestNormalizationInsensitiveDiskOneIdentity(t *testing.T) {
+	const nfc, nfd = "café", "café"
+	root := layout(t, map[string]string{
+		nfc + "/twf.mod": "module example.com/demo\n",
+		nfc + "/x/x.twf": wf("x", "X"),
+		nfc + "/y/y.twf": wf("y", "Y"),
+	})
+	if _, err := os.Stat(filepath.Join(root, nfd)); err != nil {
+		t.Skip("disk is normalization-sensitive")
+	}
+	t.Chdir(root)
+	diags, defs := checkArgs(t, nfc+"/x", nfd+"/y", nfd+"/x/x.twf")
+	if len(diags) != 0 {
+		t.Errorf("diagnostics = %q, want none (one module)", diags)
+	}
+	if len(defs) != 2 {
+		t.Errorf("kept %q, want two files", defs)
+	}
+}
+
+// TestFirmlinkSpellingOneIdentity: a file named through macOS's
+// /System/Volumes/Data firmlink is the file named without it.
+func TestFirmlinkSpellingOneIdentity(t *testing.T) {
+	root := tree(t, "x/a.twf")
+	abs := filepath.Join(pipeline.Canonicalize(root), "x", "a.twf")
+	firm := "/System/Volumes/Data" + abs
+	if runtime.GOOS != "darwin" {
+		t.Skip("firmlinks are macOS's")
+	}
+	if _, err := os.Stat(firm); err != nil {
+		t.Skipf("no firmlink spelling: %v", err)
+	}
+	if got := expand(t, abs, firm); !reflect.DeepEqual(got, []string{filepath.ToSlash(abs)}) {
+		t.Errorf("got %v, want one input", got)
+	}
+}
+
 func TestCanonicalizeCaseAndNormalization(t *testing.T) {
 	if runtime.GOOS != "darwin" {
 		t.Skip("case-insensitive, normalization-insensitive disk")

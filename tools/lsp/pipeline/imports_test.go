@@ -3,6 +3,7 @@ package pipeline_test
 import (
 	"encoding/json"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -269,4 +270,130 @@ func diagCodes(res pipeline.Result) []string {
 func calledSetup(res pipeline.Result) *ast.WorkflowDef {
 	wf := res.File.Definitions[0].(*ast.WorkflowDef)
 	return wf.Body[0].(*ast.WorkflowCall).Workflow.Resolved
+}
+
+// TestProviderLookup pins the provider lookup's edge cases (spec 15, Finding
+// an Imported Package): top/ imports `q "<imp>"` and the run is given args.
+func TestProviderLookup(t *testing.T) {
+	const notFound = `top/top.twf:3:1 IMPORT_NOT_FOUND: import "example.com/demo/`
+	tests := []struct {
+		name  string
+		imp   string
+		files map[string]string
+		links map[string]string // link → target, relative to the root
+		args  []string
+		want  []string
+	}{
+		{
+			name:  "nested module declaring a shorter path",
+			imp:   "example.com/demo/lib/x",
+			files: map[string]string{"lib/twf.mod": "module example.com/demo\n", "lib/x/x.twf": wf("x", "X")},
+			args:  []string{"top"},
+			want:  []string{notFound + `lib/x": module example.com/demo (at .) has no package lib/x: the nested module at lib declares example.com/demo, which does not provide it (or pass the module that provides it)`},
+		},
+		{
+			name:  "nested module declaring the path it sits at",
+			imp:   "example.com/demo/lib/x",
+			files: map[string]string{"lib/twf.mod": "module example.com/demo/lib\n", "lib/x/x.twf": wf("x", "X")},
+			args:  []string{"top"},
+			want:  []string{`top/top.twf:3:1 IMPORT_NOT_LOADED: import "example.com/demo/lib/x" is not among the inputs; pass its package directory lib/x (module example.com/demo/lib); treated as external`},
+		},
+		{
+			// lib/twf.mod repeats the outer path with inputs on both sides: it
+			// loses DUPLICATE_MODULE (app/ comes first), and the import sinks.
+			name:  "nested module that lost DUPLICATE_MODULE",
+			imp:   "example.com/demo/lib/x",
+			files: map[string]string{"app/app.twf": wf("app", "App"), "lib/twf.mod": "module example.com/demo\n", "lib/x/x.twf": wf("x", "X")},
+			args:  []string{"."},
+			want:  []string{`lib/twf.mod:1:1 DUPLICATE_MODULE: module example.com/demo is also rooted at .; this copy is ignored`},
+		},
+		{
+			name:  "symlinked directory mid-walk",
+			imp:   "example.com/demo/vendor/lib/x",
+			files: map[string]string{"vendor/keep.twf": wf("", "Keep"), "elsewhere/x/x.twf": wf("x", "X")},
+			links: map[string]string{"vendor/lib": "elsewhere"},
+			args:  []string{"top"},
+			want:  []string{notFound + `vendor/lib/x": module example.com/demo (at .) has no package vendor/lib/x: lib is a symlinked directory (not followed)`},
+		},
+		{
+			name:  "broken twf.mod with no inputs",
+			imp:   "example.com/demo/lib/x",
+			files: map[string]string{"lib/twf.mod": "modul example.com/demo/lib\n", "lib/x/x.twf": wf("x", "X")},
+			args:  []string{"top"},
+			want:  []string{notFound + `lib/x": module example.com/demo (at .) has no package lib/x: lib/twf.mod is broken`},
+		},
+		{
+			name:  "broken twf.mod with inputs",
+			imp:   "example.com/demo/lib/x",
+			files: map[string]string{"lib/twf.mod": "modul example.com/demo/lib\n", "lib/x/x.twf": wf("x", "X")},
+			args:  []string{"top", "lib"},
+			want:  []string{`lib/twf.mod:1:1 MODULE_FILE_INVALID: unknown directive "modul"; expected "module <path>"`},
+		},
+		{
+			name:  "case-only module match",
+			imp:   "example.com/Demo/fabric",
+			files: map[string]string{"fabric/f.twf": wf("fabric", "F")},
+			args:  []string{"."},
+			want:  []string{`top/top.twf:3:1 IMPORT_NOT_FOUND: import "example.com/Demo/fabric": module example.com/demo (at .): module path differs in case; did you mean "example.com/demo/fabric"?`},
+		},
+		{
+			name: "case-only module match, no such package",
+			imp:  "example.com/Demo/fabric",
+			args: []string{"."},
+			want: []string{`top/top.twf:3:1 IMPORT_NOT_FOUND: import "example.com/Demo/fabric": module example.com/demo (at .): module path differs in case`},
+		},
+		{
+			// The only package file's package line is not its first clause: as an
+			// input it is excluded at step 0, and the import sinks behind that.
+			name:  "only package file excluded at step 0",
+			imp:   "example.com/demo/fabric",
+			files: map[string]string{"fabric/f.twf": wf("", "F") + "\npackage fabric\n"},
+			args:  []string{"."},
+			want:  []string{`fabric/f.twf:4:1 SYNTAX: package clause must be the file's first clause`},
+		},
+		{
+			// Not an input, the same directory holds no package: the file's first
+			// token is not `package`.
+			name:  "only package file not first, not passed",
+			imp:   "example.com/demo/fabric",
+			files: map[string]string{"fabric/f.twf": wf("", "F") + "\npackage fabric\n"},
+			args:  []string{"top"},
+			want:  []string{notFound + `fabric": module example.com/demo (at .) has no package fabric: the directory holds no package`},
+		},
+		{
+			// A failed first clause is still a package file: passed, step 0
+			// excludes it and the import sinks; not passed, it provides.
+			name:  "only package file a failed clause",
+			imp:   "example.com/demo/fabric",
+			files: map[string]string{"fabric/f.twf": "package 123\n\n" + wf("", "F")},
+			args:  []string{"."},
+			want:  []string{"fabric/f.twf:1:1 SYNTAX: expected a package name after package"},
+		},
+		{
+			name:  "only package file a failed clause, not passed",
+			imp:   "example.com/demo/fabric",
+			files: map[string]string{"fabric/f.twf": "package 123\n\n" + wf("", "F")},
+			args:  []string{"top"},
+			want:  []string{`top/top.twf:3:1 IMPORT_NOT_LOADED: import "example.com/demo/fabric" is not among the inputs; pass its package directory fabric (module example.com/demo); treated as external`},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			files := map[string]string{
+				"twf.mod":     "module example.com/demo\n",
+				"top/top.twf": "package top\n\nimport q " + strconv.Quote(tt.imp) + "\n\nworkflow Main():\n    workflow q.W()\n    close complete(\"ok\")\n",
+			}
+			for k, v := range tt.files {
+				files[k] = v
+			}
+			root := layout(t, files)
+			for link, target := range tt.links {
+				symlink(t, filepath.Join(root, filepath.FromSlash(target)), filepath.Join(root, filepath.FromSlash(link)))
+			}
+			t.Chdir(root)
+			if diags := runCheck(t, tt.args...); strings.Join(diags, "\n") != strings.Join(tt.want, "\n") {
+				t.Errorf("diagnostics =\n%s\nwant\n%s", strings.Join(diags, "\n"), strings.Join(tt.want, "\n"))
+			}
+		})
+	}
 }
