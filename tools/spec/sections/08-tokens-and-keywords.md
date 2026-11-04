@@ -128,8 +128,13 @@ semantics.
 ```
 NUMBER ::= [0-9]+ ['.' [0-9]+]
 DURATION ::= NUMBER ('ms' | 's' | 'm' | 'h' | 'd')
-STRING ::= '"' [^"]* '"'
+STRING ::= '"' ( string_char | '\"' | '\\' )* '"'
+string_char ::= any character except '"', '\', or a newline
 ```
+
+A `STRING` is single-line. `\"` and `\\` are its only escapes, standing for `"` and `\`; any other
+backslash escape is an error. A string's value is its unescaped content. The same rule holds for
+strings inside an argument list, so an escaped quote there does not end the string.
 
 `NUMBER` and `DURATION` tokens are recognized everywhere. In raw expressions, digits that start a line or follow operators are consumed by the raw text scanner.
 
@@ -148,4 +153,4 @@ family; see [Endpoint Options](./03-workers-and-namespaces.md#endpoint-options).
 comment ::= '#' .* NEWLINE
 ```
 
-Comments start with `#` and continue to the end of the line. Comments can appear anywhere in the source and are captured in the AST but do not affect execution semantics.
+Comments start with `#` and continue to the end of the line. Comments can appear anywhere in the source and do not affect execution semantics. Comments are captured in the AST, except one that follows a block header — a line that ends in `:` or opens an indented block, such as a definition header, `if (...):`, or a call followed by `options:` — which is discarded.

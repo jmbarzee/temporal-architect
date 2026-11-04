@@ -2,6 +2,7 @@ package lexer
 
 import (
 	"fmt"
+	"unicode/utf8"
 
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/token"
 )
@@ -9,11 +10,12 @@ import (
 // Lexer tokenizes .twf source input with indentation-aware INDENT/DEDENT emission.
 type Lexer struct {
 	input   []byte
-	pos     int           // current position in input
-	line    int           // 1-based line number
-	col     int           // 1-based column number
-	atBOL   bool          // at beginning of line (for indent processing)
-	pending []token.Token // queued tokens (INDENT/DEDENT)
+	pos     int             // current position in input
+	line    int             // 1-based line number
+	col     int             // 1-based column number
+	atBOL   bool            // at beginning of line (for indent processing)
+	last    token.TokenType // last token emitted on this line; NEWLINE before the first
+	pending []token.Token   // queued tokens (INDENT/DEDENT, or a literal behind its escape error)
 
 	indentStack []int // stack of indent levels, starts at [0]
 	eofEmitted  bool  // true after first EOF has been emitted
@@ -27,6 +29,7 @@ func New(input string) *Lexer {
 		line:        1,
 		col:         1,
 		atBOL:       true,
+		last:        token.NEWLINE,
 		indentStack: []int{0},
 	}
 }
@@ -74,6 +77,11 @@ func (l *Lexer) NextToken() token.Token {
 
 		case ch == '#':
 			tok = l.scanComment()
+			// A comment after a block header (a line ending in ':' or opening
+			// an indented block) would sit between the header and its block.
+			if l.last != token.NEWLINE && (l.last == token.COLON || l.opensBlock()) {
+				tok.Type = token.TRAILING_COMMENT
+			}
 
 		case ch == '(':
 			tok = l.scanArgs()
@@ -121,6 +129,7 @@ func (l *Lexer) NextToken() token.Token {
 			tok = l.scanRawText()
 		}
 
+		l.last = tok.Type
 		return tok
 	}
 }
@@ -237,6 +246,25 @@ func (l *Lexer) scanComment() token.Token {
 	return tok
 }
 
+// opensBlock reports whether the line ending at l.pos is followed, past any
+// blank lines, by a more indented line: whether an INDENT follows its NEWLINE.
+func (l *Lexer) opensBlock() bool {
+	top := l.indentStack[len(l.indentStack)-1]
+	for i := l.pos; i < len(l.input); {
+		i++ // skip the '\n' ending the previous line
+		indent := 0
+		for i < len(l.input) && l.input[i] == ' ' {
+			indent++
+			i++
+		}
+		if i < len(l.input) && l.input[i] == '\n' {
+			continue // blank line
+		}
+		return i < len(l.input) && indent > top
+	}
+	return false
+}
+
 // scanArgs consumes an argument group delimited by the opening '(' up to its
 // matching ')'. The scan is balanced and string-aware: it maintains a delimiter
 // stack (pushing on '(' '{' '[', popping on ')' '}' ']') so nested groups don't
@@ -248,13 +276,16 @@ func (l *Lexer) scanComment() token.Token {
 // Reaching EOF with the stack still open is a loud error: it returns a
 // token.ILLEGAL positioned at the opening '(', rather than silently swallowing
 // the rest of the input as valid ARGS content. An unterminated string span
-// inside the group is likewise a loud error at that string's opening '"'.
+// inside the group is likewise a loud error at that string's opening '"'. An
+// unknown escape inside a string span is returned ahead of the ARGS token (see
+// scanString).
 func (l *Lexer) scanArgs() token.Token {
 	// openTok captures the opening '(' position; reused for ARGS or ILLEGAL.
 	openTok := l.makeToken(token.ARGS, "")
 	l.advance() // consume '('
 	start := l.pos
 
+	var bad *token.Token
 	stack := []byte{'('}
 	for l.pos < len(l.input) {
 		ch := l.input[l.pos]
@@ -267,8 +298,12 @@ func (l *Lexer) scanArgs() token.Token {
 			// Skip the whole string span so delimiters inside a string never
 			// affect depth. An unterminated string is a loud error.
 			strTok := l.makeToken(token.ILLEGAL, "unterminated string literal")
-			if !l.skipStringSpan() {
+			_, strBad, ok := l.scanStringSpan()
+			if !ok {
 				return strTok
+			}
+			if bad == nil {
+				bad = strBad
 			}
 		case '(', '{', '[':
 			stack = append(stack, ch)
@@ -280,7 +315,7 @@ func (l *Lexer) scanArgs() token.Token {
 				tok := openTok
 				tok.Literal = string(l.input[start:l.pos])
 				l.advance() // consume the matching ')'
-				return tok
+				return l.withEscapeError(tok, bad)
 			}
 			l.advance()
 		default:
@@ -294,49 +329,68 @@ func (l *Lexer) scanArgs() token.Token {
 	return openTok
 }
 
-// skipStringSpan advances the lexer past a "..."-delimited span, starting with
-// the position on the opening '"'. Strings are single-line: it returns false —
-// leaving the position at the offending newline or at EOF for error recovery —
-// when no closing '"' is found before a newline or EOF. On success it consumes
-// the closing '"' and returns true.
-func (l *Lexer) skipStringSpan() bool {
+// scanStringSpan consumes a "..." string literal, starting on its opening '"',
+// and returns its unescaped value. Strings are single-line, and \" and \\ are
+// the only escapes. ok is false when a newline or EOF comes before the closing
+// '"'; the position is then left there for error recovery. An unknown escape
+// does not stop the scan: the literal is consumed whole, keeping that backslash
+// in the value, and the first one is returned as bad, an ILLEGAL at its '\'.
+func (l *Lexer) scanStringSpan() (val string, bad *token.Token, ok bool) {
 	l.advance() // consume opening '"'
-	for l.pos < len(l.input) && l.input[l.pos] != '"' {
-		if l.input[l.pos] == '\n' {
-			return false // newline before closing quote
+	var b []byte
+	for l.pos < len(l.input) {
+		ch := l.input[l.pos]
+		if ch == '"' {
+			l.advance() // consume closing '"'
+			return string(b), bad, true
 		}
+		if ch == '\n' {
+			return "", nil, false
+		}
+		if ch == '\\' && l.pos+1 < len(l.input) {
+			switch next := l.input[l.pos+1]; next {
+			case '"', '\\':
+				l.advance() // consume '\'
+				ch = next
+			default:
+				if bad == nil {
+					r, _ := utf8.DecodeRune(l.input[l.pos+1:])
+					tok := l.makeToken(token.ILLEGAL, fmt.Sprintf(`unknown escape \%c in string literal (only \" and \\ are escapes)`, r))
+					bad = &tok
+				}
+			}
+		}
+		b = append(b, ch)
 		l.advance()
 	}
-	if l.pos >= len(l.input) {
-		return false // EOF before closing quote
-	}
-	l.advance() // consume closing '"'
-	return true
+	return "", nil, false // EOF before closing quote
 }
 
-// scanString consumes a "..."-delimited string literal. Strings are single-line:
-// a newline or EOF before the closing '"' is a loud error, returning a
-// token.ILLEGAL positioned at the opening '"' instead of running forward and
-// swallowing the rest of the file into one STRING token.
+// scanString consumes a "..." string literal into a STRING whose Literal is the
+// unescaped value. An unterminated string is a loud error, a token.ILLEGAL
+// positioned at the opening '"', instead of running forward and swallowing the
+// rest of the file into one STRING token. An unknown escape is returned as an
+// ILLEGAL with the STRING queued behind it, so the parser records the error and
+// still sees the literal.
 func (l *Lexer) scanString() token.Token {
-	// openTok captures the opening '"' position; reused for STRING or ILLEGAL.
-	openTok := l.makeToken(token.ILLEGAL, "unterminated string literal")
-	l.advance() // consume opening '"'
-	start := l.pos
-	for l.pos < len(l.input) && l.input[l.pos] != '"' {
-		if l.input[l.pos] == '\n' {
-			return openTok // newline before closing quote
-		}
-		l.advance()
+	tok := l.makeToken(token.STRING, "")
+	val, bad, ok := l.scanStringSpan()
+	if !ok {
+		tok.Type, tok.Literal = token.ILLEGAL, "unterminated string literal"
+		return tok
 	}
-	if l.pos >= len(l.input) {
-		return openTok // EOF before closing quote
+	tok.Literal = val
+	return l.withEscapeError(tok, bad)
+}
+
+// withEscapeError returns tok, or, when bad is set, returns bad and queues tok
+// to follow it.
+func (l *Lexer) withEscapeError(tok token.Token, bad *token.Token) token.Token {
+	if bad == nil {
+		return tok
 	}
-	tok := openTok
-	tok.Type = token.STRING
-	tok.Literal = string(l.input[start:l.pos])
-	l.advance() // consume closing '"'
-	return tok
+	l.pending = append(l.pending, tok)
+	return *bad
 }
 
 func (l *Lexer) scanIdentifier() token.Token {
@@ -377,6 +431,7 @@ func (l *Lexer) RescanDeployName(tok token.Token) (token.Token, error) {
 	l.line = tok.Line
 	l.col = tok.Column
 	l.atBOL = false
+	l.last = token.IDENT // the name re-scanned below
 	l.pending = nil
 	l.eofEmitted = false
 	return l.scanDeployName()

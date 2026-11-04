@@ -89,7 +89,7 @@ func buildSemanticTokens(content string) []uint32 {
 			continue
 		}
 
-		length := tokenLength(tok)
+		length := tokenLength(tok, content)
 		line := uint32(tok.Line - 1)   // LSP 0-based
 		col := uint32(tok.Column - 1)  // LSP 0-based
 
@@ -161,7 +161,7 @@ func classifyToken(tok token.Token, prevType token.TokenType, indentLevel int, i
 	case token.STRING:
 		return semString, 0, true
 
-	case token.COMMENT:
+	case token.COMMENT, token.TRAILING_COMMENT:
 		return semComment, 0, true
 
 	case token.COLON, token.ARROW, token.DOT:
@@ -225,14 +225,22 @@ func classifyIdent(prevType token.TokenType, indentLevel int) (tokenType uint32,
 	}
 }
 
-// tokenLength returns the display length of a token.
-func tokenLength(tok token.Token) uint32 {
+// tokenLength returns the display length of a token in content.
+func tokenLength(tok token.Token, content string) uint32 {
 	switch tok.Type {
 	case token.ARGS:
 		return uint32(len(tok.Literal)) + 2 // parens
 	case token.STRING:
-		return uint32(len(tok.Literal)) + 2 // quotes
-	case token.COMMENT:
+		// The Literal is unescaped, so measure the quoted source instead.
+		end := tok.Offset + 1
+		for content[end] != '"' {
+			if content[end] == '\\' {
+				end++
+			}
+			end++
+		}
+		return uint32(end + 1 - tok.Offset)
+	case token.COMMENT, token.TRAILING_COMMENT:
 		return uint32(len(tok.Literal)) + 1 // #
 	default:
 		return uint32(len(tok.Literal))

@@ -11,8 +11,9 @@ import (
 // advance moves to the next token.
 //
 // Structural lexer errors arrive as token.ILLEGAL tokens (unterminated string,
-// unterminated argument list, inconsistent indentation). They carry the lexer's
-// message as their literal and are positioned at the opening delimiter. We
+// unterminated argument list, inconsistent indentation, unknown string escape).
+// They carry the lexer's message as their literal and are positioned at the
+// opening delimiter, or at the backslash of an unknown escape. We
 // record each one and skip past it, so the recursive-descent parser never has to
 // special-case ILLEGAL at every consumption site: the lexer already recovered to
 // the next line/EOF, giving the parser a clean boundary to resume from.
@@ -22,12 +23,16 @@ func (p *Parser) advance() {
 }
 
 // scan reads the next token from the lexer, recording and skipping any
-// structural token.ILLEGAL tokens (see advance). Centralizing the skip here
-// lets both advance and the deploy-name re-sync path share it.
+// structural token.ILLEGAL tokens (see advance) and skipping any
+// token.TRAILING_COMMENT, which would otherwise stand between a block-opening
+// line and its INDENT. Centralizing the skip here lets both advance and the
+// deploy-name re-sync path share it.
 func (p *Parser) scan() token.Token {
 	tok := p.lex.NextToken()
-	for tok.Type == token.ILLEGAL {
-		p.recordLexError(tok)
+	for tok.Type == token.ILLEGAL || tok.Type == token.TRAILING_COMMENT {
+		if tok.Type == token.ILLEGAL {
+			p.recordLexError(tok)
+		}
 		tok = p.lex.NextToken()
 	}
 	return tok
