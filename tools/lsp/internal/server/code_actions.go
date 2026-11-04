@@ -158,7 +158,7 @@ func closeComplete(value string) string {
 	}
 }
 
-// statementRange is the range of the single-line statement at pos in content,
+// statementRange is the range of the statement at pos in content,
 // whose lines are lines: from its keyword to its last token, before any
 // comment. An argument list may carry it onto later lines.
 func statementRange(content string, lines []string, pos ast.Pos) protocol.Range {

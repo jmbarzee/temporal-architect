@@ -65,9 +65,10 @@ func lineSpan(line, start, end uint32) protocol.Range {
 	return protocol.Range{Start: protocol.Position{Line: line, Character: start}, End: protocol.Position{Line: line, Character: end}}
 }
 
-// TestCodeActionMatchesUTF16Diagnostic: the range of a published diagnostic,
-// on a line wider in bytes than in UTF-16, finds its fix.
-func TestCodeActionMatchesUTF16Diagnostic(t *testing.T) {
+// TestCodeActionMatchesUTF16DiagnosticLine: the range of a published
+// diagnostic, on a line wider in bytes than in UTF-16, finds its fix. Matching
+// is by line, so this pins the line, not the columns.
+func TestCodeActionMatchesUTF16DiagnosticLine(t *testing.T) {
 	src := "workflow W():\n    activity Missing(note: \"é😀\")\n    close complete\n"
 	store := NewDocumentStore()
 	doc := store.Open(renameURI, src)
