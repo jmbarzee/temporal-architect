@@ -197,16 +197,19 @@ func (t TokenType) String() string {
 
 // Token represents a single lexical token.
 //
-// Offset is the byte offset of the token's first character in the source input.
-// It lets the parser rewind the lexer to a token's start to re-scan it under a
-// different sub-grammar (see Lexer.RescanDeployName) — the deploy-name positions
-// are the only ones that need this, because the lexer is otherwise context-free.
+// Offset is the byte offset of the token's first character in the source input,
+// and End the offset just past its last. Offset lets the parser rewind the lexer
+// to a token's start to re-scan it under a different sub-grammar (see
+// Lexer.RescanDeployName); together they let it slice raw text from the source
+// verbatim, where a Literal (an unescaped string, argument content without its
+// parentheses) would not reproduce it.
 type Token struct {
 	Type    TokenType
 	Literal string
 	Line    int
 	Column  int
 	Offset  int
+	End     int
 }
 
 func (t Token) String() string {
@@ -214,6 +217,11 @@ func (t Token) String() string {
 		return fmt.Sprintf("%s@%d:%d", t.Type, t.Line, t.Column)
 	}
 	return fmt.Sprintf("%s(%q)@%d:%d", t.Type, t.Literal, t.Line, t.Column)
+}
+
+// IsKeyword reports whether t is a keyword token type.
+func (t TokenType) IsKeyword() bool {
+	return int(t) >= 0 && int(t) < len(tokenTable) && tokenTable[t].isKeyword
 }
 
 // LookupIdent returns the TokenType for an identifier string.

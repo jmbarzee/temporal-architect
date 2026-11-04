@@ -2786,7 +2786,7 @@ func TestWorkerServiceThirdSegmentKeepsWorker(t *testing.T) {
 	if len(w.Services) != 2 || w.Services[0].Package != "pkg" || w.Services[0].Name != "Svc" {
 		t.Fatalf("services = %+v", w.Services)
 	}
-	want := []ast.OperationMention{{Pos: ast.Pos{Line: 2, Column: 5}, ServiceIndex: 0, Op: "OpA"}}
+	want := []ast.OperationMention{{Pos: ast.Pos{Line: 2, Column: 27}, ServiceIndex: 0, Op: "OpA"}}
 	if !reflect.DeepEqual(w.OperationMentions, want) {
 		t.Errorf("mentions = %+v, want %+v", w.OperationMentions, want)
 	}

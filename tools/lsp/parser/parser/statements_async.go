@@ -82,13 +82,12 @@ func parseTimerTarget(p *Parser) (*ast.TimerTarget, error) {
 }
 
 func parseSignalTarget(p *Parser, allowArrows bool) (*ast.SignalTarget, error) {
-	pos := ast.Pos{Line: p.current.Line, Column: p.current.Column}
 	p.advance() // consume SIGNAL
 	name, err := p.expect(token.IDENT)
 	if err != nil {
 		return nil, err
 	}
-	t := &ast.SignalTarget{Signal: ast.Ref[*ast.SignalDecl]{Pos: pos, Name: name.Literal}}
+	t := &ast.SignalTarget{Signal: nameRef[*ast.SignalDecl](name)}
 	if allowArrows && p.current.Type == token.ARROW {
 		p.advance()
 		params, err := parseParamBinding(p)
@@ -101,13 +100,12 @@ func parseSignalTarget(p *Parser, allowArrows bool) (*ast.SignalTarget, error) {
 }
 
 func parseUpdateTarget(p *Parser, allowArrows bool) (*ast.UpdateTarget, error) {
-	pos := ast.Pos{Line: p.current.Line, Column: p.current.Column}
 	p.advance() // consume UPDATE
 	name, err := p.expect(token.IDENT)
 	if err != nil {
 		return nil, err
 	}
-	t := &ast.UpdateTarget{Update: ast.Ref[*ast.UpdateDecl]{Pos: pos, Name: name.Literal}}
+	t := &ast.UpdateTarget{Update: nameRef[*ast.UpdateDecl](name)}
 	if allowArrows && p.current.Type == token.ARROW {
 		p.advance()
 		params, err := parseParamBinding(p)
@@ -120,7 +118,6 @@ func parseUpdateTarget(p *Parser, allowArrows bool) (*ast.UpdateTarget, error) {
 }
 
 func parseActivityTarget(p *Parser, allowArrows bool) (*ast.ActivityTarget, error) {
-	pos := ast.Pos{Line: p.current.Line, Column: p.current.Column}
 	p.advance() // consume ACTIVITY
 	pkg, name, err := p.parseRefNameWithPackage()
 	if err != nil {
@@ -130,7 +127,7 @@ func parseActivityTarget(p *Parser, allowArrows bool) (*ast.ActivityTarget, erro
 	if err != nil {
 		return nil, err
 	}
-	t := &ast.ActivityTarget{Activity: ast.Ref[*ast.ActivityDef]{Pos: pos, Package: pkg, Name: name}, Args: args.Literal}
+	t := &ast.ActivityTarget{Activity: refTo[*ast.ActivityDef](pkg, name), Args: args.Literal}
 	if allowArrows && p.current.Type == token.ARROW {
 		p.advance()
 		result, err := p.parseDotQualifiedIdent()
@@ -146,7 +143,6 @@ func parseActivityTarget(p *Parser, allowArrows bool) (*ast.ActivityTarget, erro
 // After an optional DETACH prefix, it branches to either a nexus target
 // (detach nexus ...) or a workflow target (workflow ...).
 func parseWorkflowOrNexusTarget(p *Parser, allowArrows bool, pos ast.Pos) (ast.AsyncTarget, error) {
-	keyword := ast.Pos{Line: p.current.Line, Column: p.current.Column}
 	mode := ast.CallAttached
 	if p.current.Type == token.DETACH {
 		mode = ast.CallDetach
@@ -169,7 +165,7 @@ func parseWorkflowOrNexusTarget(p *Parser, allowArrows bool, pos ast.Pos) (ast.A
 		return nil, err
 	}
 	t := &ast.WorkflowTarget{
-		Workflow: ast.Ref[*ast.WorkflowDef]{Pos: keyword, Package: pkg, Name: name},
+		Workflow: refTo[*ast.WorkflowDef](pkg, name),
 		Mode:     mode,
 		Start:    p.workflowStartKind(),
 		Args:     args.Literal,
@@ -210,9 +206,9 @@ func parseNexusTarget(p *Parser, detach, allowArrows bool, pos ast.Pos) (*ast.Ne
 		return nil, err
 	}
 	t := &ast.NexusTarget{
-		Endpoint:  ast.Ref[*ast.NamespaceEndpoint]{Pos: ast.Pos{Line: endpoint.Line, Column: endpoint.Column}, Name: endpoint.Literal},
-		Service:   ast.Ref[*ast.NexusServiceDef]{Pos: ast.Pos{Line: service.Line, Column: service.Column}, Package: svcPkg, Name: service.Literal},
-		Operation: ast.Ref[*ast.NexusOperation]{Pos: ast.Pos{Line: operation.Line, Column: operation.Column}, Name: operation.Literal},
+		Endpoint:  nameRef[*ast.NamespaceEndpoint](endpoint),
+		Service:   refTo[*ast.NexusServiceDef](svcPkg, service),
+		Operation: nameRef[*ast.NexusOperation](operation),
 		Args:      args.Literal,
 		Detach:    detach,
 	}
@@ -235,7 +231,7 @@ func parseNexusTarget(p *Parser, detach, allowArrows bool, pos ast.Pos) (*ast.Ne
 }
 
 func parseIdentTarget(p *Parser, allowArrows bool) (*ast.IdentTarget, error) {
-	t := &ast.IdentTarget{Name: p.current.Literal}
+	t := &ast.IdentTarget{Pos: posOf(p.current), Name: p.current.Literal}
 	p.advance()
 	if allowArrows && p.current.Type == token.ARROW {
 		p.advance()
@@ -426,8 +422,9 @@ func parsePromiseStmt(p *Parser) (ast.Statement, error) {
 	}
 
 	return &ast.PromiseStmt{
-		Pos:    pos,
-		Name:   name.Literal,
-		Target: target,
+		Pos:     pos,
+		Name:    name.Literal,
+		NamePos: posOf(name),
+		Target:  target,
 	}, nil
 }
