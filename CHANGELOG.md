@@ -290,6 +290,10 @@ is now checked against the target's signals.
 - **Design skill:** `common-errors.md` covers the lexer's `LEX` errors
   (unterminated string, unterminated argument list, inconsistent indentation,
   unknown escape) (#105).
+- **Design skill:** wherever a design introduces a `package` clause — the
+  workflow, the package-per-domain convention, reverse engineering — it says to
+  run `twf mod init <module path>` at the design's root and check that root
+  (#309).
 
 ## v0.15.0 - Workflow ID Schemes & Addressed Signal Sends
 
