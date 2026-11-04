@@ -24,8 +24,9 @@ type knownModule struct {
 // whose path no kept package has. kept maps a kept package's path to itself.
 func (x *expander) lookupImports(files []*parsed, kept map[string]bool) map[*ast.ImportDecl]ast.ImportOutcome {
 	// Pre-check: an excluded input whose directory's derived path is P, and
-	// that has a package clause or was excluded at step 0, sinks P.
-	excludedAt := map[string]bool{}
+	// that has a package clause or was excluded at step 0, sinks P. Its causes
+	// are the file and, when its module lost DUPLICATE_MODULE, that twf.mod.
+	excludedAt := map[string][]string{}
 	for _, p := range files {
 		if !p.excluded || p.root == "" || (!p.hasClause() && !p.file.ClauseExcluded) {
 			continue
@@ -38,7 +39,10 @@ func (x *expander) lookupImports(files []*parsed, kept map[string]bool) map[*ast
 		if rel, err := filepath.Rel(p.root, p.dir); err == nil && rel != "." {
 			dp += "/" + filepath.ToSlash(rel)
 		}
-		excludedAt[dp] = true
+		excludedAt[dp] = append(excludedAt[dp], p.src.base)
+		if x.lostDuplicate[p.root] {
+			excludedAt[dp] = append(excludedAt[dp], x.spellModFile(p.root, x.moduleFirst[p.root]))
+		}
 	}
 	inputs := map[string]*parsed{}
 	for _, p := range files {
@@ -70,11 +74,12 @@ func (x *expander) lookupImports(files []*parsed, kept map[string]bool) map[*ast
 // lookup finds P's provider: under each known module P lies under, longest
 // first, it walks P's remaining elements from the module root. ok is false
 // when P lies under no known module at all.
-func (x *expander) lookup(p string, known []knownModule, excludedAt map[string]bool, inputs map[string]*parsed, kept map[string]bool) (ast.ImportOutcome, bool) {
-	if excludedAt[p] {
-		return ast.ImportOutcome{Kind: ast.ImportSink}, true
+func (x *expander) lookup(p string, known []knownModule, excludedAt map[string][]string, inputs map[string]*parsed, kept map[string]bool) (ast.ImportOutcome, bool) {
+	if causes := excludedAt[p]; causes != nil {
+		return ast.ImportOutcome{Kind: ast.ImportSink, Causes: causes}, true
 	}
 	var firstReason string
+	var first ast.ImportOutcome // the skip of the first reason, if any
 	for _, m := range known {
 		if !under(p, m.path) {
 			continue
@@ -84,7 +89,7 @@ func (x *expander) lookup(p string, known []knownModule, excludedAt map[string]b
 			return o, true
 		}
 		if firstReason == "" {
-			firstReason = reason
+			firstReason, first = reason, o
 		}
 	}
 	if firstReason == "" {
@@ -104,12 +109,13 @@ func (x *expander) lookup(p string, known []knownModule, excludedAt map[string]b
 			break
 		}
 	}
-	return ast.ImportOutcome{Kind: ast.ImportNotFound, Detail: firstReason}, true
+	first.Kind, first.Detail = ast.ImportNotFound, firstReason
+	return first, true
 }
 
 // walkProvider follows P's elements below m's root by exact directory names. It
 // returns an outcome when it reaches a provider or a sink, else the reason it
-// found none.
+// found none (with the skipped directory, when it stopped at one).
 func (x *expander) walkProvider(p string, m knownModule, inputs map[string]*parsed) (ast.ImportOutcome, string) {
 	dir, modPath := m.root, m.path
 	at := x.spellRoot(m.root, m.first)
@@ -122,8 +128,9 @@ func (x *expander) walkProvider(p string, m knownModule, inputs map[string]*pars
 		el, more, _ := strings.Cut(rest, "/")
 		rest = more
 		walked = append(walked, el)
-		if strings.HasPrefix(el, ".") || strings.HasPrefix(el, "_") || el == "testdata" {
-			return ast.ImportOutcome{}, fmt.Sprintf("%s: the walk skips %s/ (pass it explicitly)", noPackage(), el)
+		if skipped(el) {
+			s := filepath.Join(dir, el)
+			return ast.ImportOutcome{Skipped: s, SkippedProvides: providesBelow(s, rest)}, fmt.Sprintf("%s: the walk skips %s/ (pass it explicitly)", noPackage(), el)
 		}
 		next := filepath.Join(dir, el)
 		info, err := os.Lstat(next)
@@ -143,12 +150,12 @@ func (x *expander) walkProvider(p string, m knownModule, inputs map[string]*pars
 		f := x.mods.file(dir)
 		switch {
 		case f.err != nil:
-			if x.moduleFirst[dir] != nil {
-				return ast.ImportOutcome{Kind: ast.ImportSink}, ""
+			if first := x.moduleFirst[dir]; first != nil {
+				return ast.ImportOutcome{Kind: ast.ImportSink, Causes: []string{x.spellModFile(dir, first)}}, ""
 			}
 			return ast.ImportOutcome{}, fmt.Sprintf("%s: %s is broken", noPackage(), x.spellPath(filepath.Join(dir, module.FileName), m.first))
 		case x.lostDuplicate[dir]:
-			return ast.ImportOutcome{Kind: ast.ImportSink}, ""
+			return ast.ImportOutcome{Kind: ast.ImportSink, Causes: []string{x.spellModFile(dir, x.moduleFirst[dir])}}, ""
 		case !under(p, f.file.Path) || !under(f.file.Path, consumed):
 			rel, _ := filepath.Rel(m.root, dir)
 			return ast.ImportOutcome{}, fmt.Sprintf("%s: the nested module at %s declares %s, which does not provide it (or pass the module that provides it)", noPackage(), filepath.ToSlash(rel), f.file.Path)
@@ -160,6 +167,7 @@ func (x *expander) walkProvider(p string, m knownModule, inputs map[string]*pars
 	}
 
 	var pkgFiles, inInputs, kept int
+	var causes []string
 	entries, _ := os.ReadDir(dir)
 	for _, e := range entries {
 		name := e.Name()
@@ -175,6 +183,8 @@ func (x *expander) walkProvider(p string, m knownModule, inputs map[string]*pars
 			inInputs++
 			if !in.excluded {
 				kept++
+			} else {
+				causes = append(causes, in.src.base)
 			}
 		}
 	}
@@ -182,12 +192,42 @@ func (x *expander) walkProvider(p string, m knownModule, inputs map[string]*pars
 	case pkgFiles == 0:
 		return ast.ImportOutcome{}, fmt.Sprintf("%s: the directory holds no package", noPackage())
 	case inInputs > 0 && kept == 0:
-		return ast.ImportOutcome{Kind: ast.ImportSink}, ""
+		return ast.ImportOutcome{Kind: ast.ImportSink, Causes: causes}, ""
 	case inInputs == 0:
 		rel, _ := filepath.Rel(m.root, dir)
 		return ast.ImportOutcome{Kind: ast.ImportNotLoaded, Detail: fmt.Sprintf("pass its package directory %s (module %s)", path.Join(at, filepath.ToSlash(rel)), modPath)}, ""
 	}
 	return ast.ImportOutcome{}, noPackage()
+}
+
+// skipped reports whether a walk skips a directory named el.
+func skipped(el string) bool {
+	return strings.HasPrefix(el, ".") || strings.HasPrefix(el, "_") || el == "testdata"
+}
+
+// providesBelow reports whether a walk of dir would reach, by the elements
+// rest, a directory that provides a package: no element skipped, symlinked or
+// holding a twf.mod on the way.
+func providesBelow(dir, rest string) bool {
+	for _, el := range strings.Split(rest, "/") {
+		if el == "" {
+			continue
+		}
+		next := filepath.Join(dir, el)
+		info, err := os.Lstat(next)
+		if skipped(el) || err != nil || !info.IsDir() || !hasEntry(dir, el) || hasModuleFile(next) {
+			return false
+		}
+		dir = next
+	}
+	entries, _ := os.ReadDir(dir)
+	for _, e := range entries {
+		name := e.Name()
+		if !skipped(name) && strings.HasSuffix(name, ".twf") && e.Type().IsRegular() && firstTokenIsPackage(filepath.Join(dir, name)) {
+			return true
+		}
+	}
+	return false
 }
 
 // under reports whether path p lies under module path m: equal, or m plus
