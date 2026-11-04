@@ -306,7 +306,7 @@ params ::= '(' IDENT (',' IDENT)* ')'
 result ::= IDENT | '(' IDENT (',' IDENT)* ')'
 ```
 
-Single await blocks until the specified operation completes. For signals and updates, the handler body executes first, then the await continues. For activities and workflows, the result is bound to the specified variable(s). For ident targets, the name must refer to a previously declared promise or condition.
+Single await blocks until the specified operation completes. For signals and updates, it takes an arrival as [Signal and update arrival](#signal-and-update-arrival) defines. For activities and workflows, the result is bound to the specified variable(s). For ident targets, the name must refer to a previously declared promise or condition.
 
 **Examples:**
 ```
@@ -319,6 +319,10 @@ await nexus OrderEndpoint OrderService.GetStatus(id) -> status
 await myPromise -> result
 await clusterStarted
 ```
+
+### Signal and update arrival
+
+Every arrival of a signal or update runs its handler body, whether or not anything awaits it. When the handler returns, or at once for a signal without one, the arrival is **pending**. A waiter — `await signal X`, `await update X`, a signal or update case, `promise p <- signal X` or `<- update X` — takes the oldest pending arrival of X and binds its parameters with `->`; with none pending it waits for the next. Each arrival goes to one waiter, in the order the waiters began; one nobody takes stays pending. A promise begins waiting at its binding; an `await one` case takes an arrival only if it wins. An update's caller gets its result when the handler returns, not when a waiter takes it. Code after the wait sees current state, which later arrivals' handlers may already have changed; per-arrival data comes from `->`.
 
 ## Await All Block
 
@@ -379,9 +383,9 @@ result ::= IDENT | '(' IDENT (',' IDENT)* ')'
 
 Waits for the FIRST case to complete (races between signals, updates, timers, activities, workflows, promises, conditions, and nested await all operations).
 
-**Signal cases** wait for a specific signal to arrive. When the signal arrives, the handler body executes first (if defined), then the case body executes (if present). Signal parameters can be bound using `->`.
+**Signal cases** take a pending arrival of a signal ([Signal and update arrival](#signal-and-update-arrival)), then the case body executes (if present). Signal parameters can be bound using `->`.
 
-**Update cases** wait for a specific update to arrive. When the update arrives, the handler body executes and returns a value to the caller, then the case body executes (if present). Update parameters can be bound using `->`.
+**Update cases** take a pending arrival of an update, whose handler has already returned to the caller ([Signal and update arrival](#signal-and-update-arrival)), then the case body executes (if present). Update parameters can be bound using `->`.
 
 **Timer cases** wait for a duration to elapse. When the timer fires, the case body executes (if present).
 
@@ -401,7 +405,7 @@ await one:
 		close fail("timeout")
 ```
 
-The case that completes first "wins" the race, its body executes (if present), and then execution continues after the `await one` block.
+The case that completes first "wins" the race, its body executes (if present), and then execution continues after the `await one` block. A case already ready on entry, a pending arrival included, wins. Whenever more than one case is ready as the workflow resumes, on entry or later, the first listed wins.
 
 **Lifecycle of non-winning cases:** When one case wins, execution continues after the `await one` block. Operations started by non-winning cases (activities, child workflows, timers) are NOT cancelled — they continue running. These pending operations are cancelled only when the workflow run ends: via `close complete`, `close fail`, `close continue_as_new`, or external cancellation. For child workflows, the `parent_close_policy` option controls behavior at parent completion (TERMINATE, REQUEST_CANCEL, or ABANDON).
 
