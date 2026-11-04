@@ -10,7 +10,7 @@ A package groups a directory of `.twf` files so references cross file and direct
 |-----------|----------|
 | A single small design, one directory | A clause-less file (the **implicit default package**) is fine. |
 | Multiple domains (orders, payments, notifications) | One package/directory per domain, mirroring the code layout ([conventions](../reference/twf-conventions.md#package-per-domain-directory)). |
-| Two domains use the same short name (`ChannelJoin`, `CreateNamespace`) | Packages keep both — reference each by its package leaf name; no rename. |
+| Two domains use the same short name (`ChannelJoin`, `CreateNamespace`) | Packages keep both — reference each by its package leaf name; no rename. One worker cannot register both (`WORKER_DUPLICATE_TYPE_NAME`). |
 | A topology / deployment file wiring domains together | Make it its own package (e.g. `deploy`) that `import`s the domains it deploys. |
 | A service genuinely lives in another system / repo | `import` its package; if it isn't in the tree the import is **treated as external**. |
 

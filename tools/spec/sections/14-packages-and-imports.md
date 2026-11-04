@@ -24,7 +24,9 @@ package_clause ::= 'package' IDENT NEWLINE
   without colliding, and so that a reference can name the owning package.
 - A `package` has **no runtime meaning**. It is not a deployment construct. In particular it is
   **distinct from the Temporal `namespace` keyword** — see
-  [Package vs. Namespace](#package-vs-namespace) below.
+  [Package vs. Namespace](#package-vs-namespace) below. Temporal sees bare names, so one worker
+  cannot register two same-named types of one kind from different packages
+  ([`WORKER_DUPLICATE_TYPE_NAME`](./03-workers-and-namespaces.md#worker-definitions)).
 
 ## Import Declarations
 
