@@ -324,18 +324,23 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
     const workers = new Map<string, WorkerDef>()
     const nexusServices = new Map<string, NexusServiceDef>()
     const namespaces = new Map<string, NamespaceDef>()
+    // A name declared twice (a DUPLICATE_* resolve error) is its first
+    // declaration's, as the resolver keeps it.
+    const keepFirst = <T extends { name: string }>(m: Map<string, T>, def: T) => {
+      if (!m.has(def.name)) m.set(def.name, def)
+    }
 
     for (const def of ast.definitions) {
       if (def.type === 'workflowDef') {
-        workflows.set(def.name, def)
+        keepFirst(workflows, def)
       } else if (def.type === 'activityDef') {
-        activities.set(def.name, def)
+        keepFirst(activities, def)
       } else if (def.type === 'workerDef') {
-        workers.set(def.name, def)
+        keepFirst(workers, def)
       } else if (def.type === 'nexusServiceDef') {
-        nexusServices.set(def.name, def)
+        keepFirst(nexusServices, def)
       } else if (def.type === 'namespaceDef') {
-        namespaces.set(def.name, def)
+        keepFirst(namespaces, def)
       }
     }
 

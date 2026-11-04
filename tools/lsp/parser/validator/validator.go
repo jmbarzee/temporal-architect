@@ -241,7 +241,7 @@ func Validate(file *ast.File) []*Error {
 	}
 
 	// 1. Empty definition warnings, then registrations colliding by name.
-	v.checkEmptyDefinitions()
+	v.checkEmptyDefinitions(file.Definitions)
 	v.checkWorkerTypeNames(file.Definitions)
 
 	// 2. Task queue requirements.
@@ -261,7 +261,7 @@ func Validate(file *ast.File) []*Error {
 
 	// 7. id: parent claims, id_scheme overlap and ID policies (definition order).
 	v.checkParentSends(file.Definitions)
-	v.checkIDSchemeOverlap(file.Definitions)
+	v.checkIDSchemeOverlap()
 	v.checkIDPolicies(file.Definitions)
 
 	// Checks walk definition maps, so sort for an order that holds run to run;
@@ -273,61 +273,63 @@ func Validate(file *ast.File) []*Error {
 	return v.errs
 }
 
-func (v *validationCtx) checkEmptyDefinitions() {
-	for _, wf := range v.workflows {
-		if !hasNonCommentStmts(wf.Body) && len(wf.Signals) == 0 && len(wf.Queries) == 0 && len(wf.Updates) == 0 && wf.State == nil {
-			v.errs = append(v.errs, &Error{
-				Msg:      fmt.Sprintf("workflow %s has an empty body", wf.Name),
-				Line:     wf.Line,
-				Column:   wf.Column,
-				Severity: "warning",
-				Kind:     ErrEmptyWorkflow,
-				Name:     wf.Name,
-				File:     wf.SourceFile,
-			})
-		}
-	}
-	for _, act := range v.activities {
-		if !hasNonCommentStmts(act.Body) {
-			msg := fmt.Sprintf("activity %s has an empty body", act.Name)
-			if len(act.Body) > 0 {
-				msg = fmt.Sprintf("activity %s body contains only comments — add at least one statement", act.Name)
+// checkEmptyDefinitions warns on each empty definition. It is body-local, so a
+// dropped duplicate is checked too (see walkAllBodies).
+func (v *validationCtx) checkEmptyDefinitions(defs []ast.Definition) {
+	for _, def := range defs {
+		switch d := def.(type) {
+		case *ast.WorkflowDef:
+			if !hasNonCommentStmts(d.Body) && len(d.Signals) == 0 && len(d.Queries) == 0 && len(d.Updates) == 0 && d.State == nil {
+				v.errs = append(v.errs, &Error{
+					Msg:      fmt.Sprintf("workflow %s has an empty body", d.Name),
+					Line:     d.Line,
+					Column:   d.Column,
+					Severity: "warning",
+					Kind:     ErrEmptyWorkflow,
+					Name:     d.Name,
+					File:     d.SourceFile,
+				})
 			}
-			v.errs = append(v.errs, &Error{
-				Msg:      msg,
-				Line:     act.Line,
-				Column:   act.Column,
-				Severity: "warning",
-				Kind:     ErrEmptyActivity,
-				Name:     act.Name,
-				File:     act.SourceFile,
-			})
-		}
-	}
-	for _, w := range v.workers {
-		if len(w.Workflows) == 0 && len(w.Activities) == 0 && len(w.Services) == 0 {
-			v.errs = append(v.errs, &Error{
-				Msg:      fmt.Sprintf("worker %s has no workflow, activity, or nexus service registrations", w.Name),
-				Line:     w.Line,
-				Column:   w.Column,
-				Severity: "warning",
-				Kind:     ErrEmptyWorker,
-				Name:     w.Name,
-				File:     w.SourceFile,
-			})
-		}
-	}
-	for _, ns := range v.namespaces {
-		if len(ns.Workers) == 0 && len(ns.Endpoints) == 0 {
-			v.errs = append(v.errs, &Error{
-				Msg:      fmt.Sprintf("namespace %s has no worker or endpoint instantiations", ns.Name),
-				Line:     ns.Line,
-				Column:   ns.Column,
-				Severity: "warning",
-				Kind:     ErrEmptyNamespace,
-				Name:     ns.Name,
-				File:     ns.SourceFile,
-			})
+		case *ast.ActivityDef:
+			if !hasNonCommentStmts(d.Body) {
+				msg := fmt.Sprintf("activity %s has an empty body", d.Name)
+				if len(d.Body) > 0 {
+					msg = fmt.Sprintf("activity %s body contains only comments — add at least one statement", d.Name)
+				}
+				v.errs = append(v.errs, &Error{
+					Msg:      msg,
+					Line:     d.Line,
+					Column:   d.Column,
+					Severity: "warning",
+					Kind:     ErrEmptyActivity,
+					Name:     d.Name,
+					File:     d.SourceFile,
+				})
+			}
+		case *ast.WorkerDef:
+			if len(d.Workflows) == 0 && len(d.Activities) == 0 && len(d.Services) == 0 {
+				v.errs = append(v.errs, &Error{
+					Msg:      fmt.Sprintf("worker %s has no workflow, activity, or nexus service registrations", d.Name),
+					Line:     d.Line,
+					Column:   d.Column,
+					Severity: "warning",
+					Kind:     ErrEmptyWorker,
+					Name:     d.Name,
+					File:     d.SourceFile,
+				})
+			}
+		case *ast.NamespaceDef:
+			if len(d.Workers) == 0 && len(d.Endpoints) == 0 {
+				v.errs = append(v.errs, &Error{
+					Msg:      fmt.Sprintf("namespace %s has no worker or endpoint instantiations", d.Name),
+					Line:     d.Line,
+					Column:   d.Column,
+					Severity: "warning",
+					Kind:     ErrEmptyNamespace,
+					Name:     d.Name,
+					File:     d.SourceFile,
+				})
+			}
 		}
 	}
 }
@@ -701,8 +703,16 @@ type caller struct {
 
 // walkAllBodies walks all workflow and nexus service sync op bodies, in
 // definition order, checking call routing, endpoint-service linkage, and
-// endpoint caller allowlists. A duplicate definition (already reported by the
-// resolver) is walked once, as its first declaration.
+// endpoint caller allowlists.
+//
+// A name declared twice (a DUPLICATE_* resolve error) keeps its first
+// declaration, as the resolver does, and the validator applies one rule to the
+// later ones. Body-local checks, about a body or declaration itself (empty
+// definitions, ID policies on a start), run on every declaration, kept or
+// dropped, so the code the user wrote is still checked. Cross-definition
+// checks, relating one definition to others (routing, linkage, allowlists,
+// parent sends, coherence, overlaps), see only the kept declaration: hence the
+// filter here, keptWorkflows, and nsDefs.
 func (v *validationCtx) walkAllBodies(defs []ast.Definition) {
 	if len(v.namespaces) == 0 {
 		return

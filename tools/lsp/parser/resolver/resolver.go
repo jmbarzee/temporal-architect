@@ -1415,7 +1415,7 @@ func (s *state) checkReservedIn(file string, params []paramList, conditions []*a
 // collectInto registers a definition under its (package, name) key, so
 // same-named defs in different packages coexist. A key already registered
 // keeps its first definition, and the later one gets a duplicate error naming
-// where the first is.
+// where the first is: its line, and its file when that is another.
 func collectInto[T ast.Definition](m map[pkgKey]T, key pkgKey, def T, kind string, errKind ErrorKind, errs *[]*ResolveError) {
 	first, exists := m[key]
 	if !exists {
@@ -1423,7 +1423,7 @@ func collectInto[T ast.Definition](m map[pkgKey]T, key pkgKey, def T, kind strin
 		return
 	}
 	at := fmt.Sprintf("line %d", first.NodeLine())
-	if f := ast.SourceFileOf(first); f != "" {
+	if f := ast.SourceFileOf(first); f != ast.SourceFileOf(def) {
 		at = fmt.Sprintf("%s:%d", f, first.NodeLine())
 	}
 	*errs = append(*errs, &ResolveError{

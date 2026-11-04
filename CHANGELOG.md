@@ -302,8 +302,9 @@ is now checked against the target's signals.
   (#290).
 - A workflow, activity, worker, namespace or nexus service declared twice in
   one package is likewise its first declaration, not its last: references,
-  checks, the graph and decomposition all use the first, and the `DUPLICATE_*`
-  error on the later one says where the first is.
+  checks that relate definitions, the graph, decomposition and the visualizer
+  all use the first. Checks local to a body still run on every declaration,
+  and the `DUPLICATE_*` error on the later one says where the first is.
 - A `DISPATCH_NO_REACHABLE_DEPLOYMENT` names an operation by its own service
   when another service's name prefixes it.
 - **LSP:** rename, references and go-to-definition ranges cover the name, not

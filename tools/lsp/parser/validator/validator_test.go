@@ -99,6 +99,37 @@ func TestEmptyNamespaceWarning(t *testing.T) {
 	}
 }
 
+// TestEmptyDefinitionEveryDeclaration: an empty definition is body-local, so
+// a later duplicate the resolver drops (DUPLICATE_*) is still warned about, at
+// its own line, as is an empty first declaration.
+func TestEmptyDefinitionEveryDeclaration(t *testing.T) {
+	file, err := parser.ParseFile(`workflow W(x: int) -> (int):
+    return x
+
+workflow W(x: int) -> (int):
+    # nothing here
+
+activity A(x: int) -> (int):
+    # nothing here
+
+activity A(x: int) -> (int):
+    return x
+`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resolver.Resolve(file)
+	var got []string
+	for _, e := range Validate(file) {
+		if e.Kind == ErrEmptyWorkflow || e.Kind == ErrEmptyActivity {
+			got = append(got, fmt.Sprintf("%d %s", e.Line, e.Code()))
+		}
+	}
+	if want := []string{"4 EMPTY_WORKFLOW", "7 EMPTY_ACTIVITY"}; fmt.Sprint(got) != fmt.Sprint(want) {
+		t.Errorf("got %v, want %v", got, want)
+	}
+}
+
 // ===== TASK QUEUE TESTS =====
 
 func TestWorkerMissingTaskQueue(t *testing.T) {

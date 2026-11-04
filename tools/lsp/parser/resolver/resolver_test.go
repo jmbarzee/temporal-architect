@@ -1317,7 +1317,7 @@ func TestDuplicateKeepsFirst(t *testing.T) {
 				name:   "one file",
 				inputs: []input{{tt.use + "\n" + tt.decl + "\n" + tt.decl, "a.twf"}},
 				first:  len(mustParse(t, tt.use).Definitions),
-				want:   fmt.Sprintf("a.twf:%d:1 duplicate %s definition: X (first at a.twf:%d)", useLines+strings.Count(tt.decl, "\n")+3, tt.kind, useLines+2),
+				want:   fmt.Sprintf("a.twf:%d:1 duplicate %s definition: X (first at line %d)", useLines+strings.Count(tt.decl, "\n")+3, tt.kind, useLines+2),
 			},
 			{
 				name:   "two files",

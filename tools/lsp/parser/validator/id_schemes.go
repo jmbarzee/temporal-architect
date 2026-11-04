@@ -10,7 +10,8 @@ import (
 // checkParentSends checks every `id: parent` send against the model's child
 // starts: the claimed type must start the sender somewhere (NOT_A_PARENT), and
 // every other type that starts the sender must declare the signal too, since at
-// runtime the parent may be any of them (STARTER_LACKS_SIGNAL).
+// runtime the parent may be any of them (STARTER_LACKS_SIGNAL). Starters and
+// senders are the kept declarations only (see walkAllBodies).
 func (v *validationCtx) checkParentSends(defs []ast.Definition) {
 	starters := map[*ast.WorkflowDef][]*ast.WorkflowDef{}
 	addStarter := func(child, parent *ast.WorkflowDef) {
@@ -18,7 +19,7 @@ func (v *validationCtx) checkParentSends(defs []ast.Definition) {
 			starters[child] = append(starters[child], parent)
 		}
 	}
-	for _, wf := range workflowsOf(defs) {
+	for _, wf := range v.keptWorkflows(defs) {
 		walkWorkflow(wf, func(s ast.Statement) {
 			if call, ok := s.(*ast.WorkflowCall); ok {
 				addStarter(call.Workflow.Resolved, wf)
@@ -30,7 +31,7 @@ func (v *validationCtx) checkParentSends(defs []ast.Definition) {
 		})
 	}
 
-	for _, sender := range workflowsOf(defs) {
+	for _, sender := range v.keptWorkflows(defs) {
 		walkWorkflow(sender, func(s ast.Statement) {
 			send, ok := s.(*ast.SignalSendStmt)
 			if !ok || send.Head.Address == nil || send.Head.Address.ID.Kind != ast.IDParent {
@@ -72,13 +73,9 @@ func (v *validationCtx) checkParentSends(defs []ast.Definition) {
 // checkIDSchemeOverlap hints at two workflow types hosted in one namespace whose
 // id_schemes could produce the same ID: a start of one could then collide with,
 // or a send could reach, a running instance of the other.
-func (v *validationCtx) checkIDSchemeOverlap(defs []ast.Definition) {
+func (v *validationCtx) checkIDSchemeOverlap() {
 	reported := map[[2]*ast.WorkflowDef]bool{}
-	for _, def := range defs {
-		ns, ok := def.(*ast.NamespaceDef)
-		if !ok {
-			continue
-		}
+	for _, ns := range v.nsDefs {
 		var hosted []*ast.WorkflowDef
 		for _, nw := range ns.Workers {
 			if nw.Worker.Resolved == nil {
@@ -163,10 +160,12 @@ func globOf(template string) []int {
 	return out
 }
 
-func workflowsOf(defs []ast.Definition) []*ast.WorkflowDef {
+// keptWorkflows returns the workflows of defs the resolver keeps: the first
+// declaration of each (package, name).
+func (v *validationCtx) keptWorkflows(defs []ast.Definition) []*ast.WorkflowDef {
 	var out []*ast.WorkflowDef
 	for _, def := range defs {
-		if wf, ok := def.(*ast.WorkflowDef); ok {
+		if wf, ok := def.(*ast.WorkflowDef); ok && v.workflows[v.key(wf, wf.Name)] == wf {
 			out = append(out, wf)
 		}
 	}
