@@ -1,0 +1,52 @@
+name: _dispatch-dist
+
+# Hands a release off to the distribution repo (jmbarzee/temporal-architect-dist)
+# by sending it a `toolchain-release` repository_dispatch, which opens dist's
+# manifest-bump PR. Authenticates as a GitHub App whose installation token is
+# minted per run, so there is no long-lived token to expire (setup: RELEASING.md
+# → The dist handoff).
+#
+# Without a version it only mints the token. release.yml runs it that way as a
+# pre-flight, so a broken credential fails the release before anything
+# publishes; run it by hand (workflow_dispatch) to check the credential without
+# releasing.
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: "Tag to announce, e.g. 'v0.3.2'. Empty checks the credential only."
+        type: string
+        default: ""
+    secrets:
+      DIST_APP_PRIVATE_KEY:
+        required: true
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  dispatch:
+    name: Dist handoff
+    runs-on: ubuntu-latest
+    steps:
+      - name: Mint dist token
+        id: token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.DIST_APP_CLIENT_ID }}
+          private-key: ${{ secrets.DIST_APP_PRIVATE_KEY }}
+          owner: jmbarzee
+          repositories: temporal-architect-dist
+          # Minting fails unless the installation grants this — the scope
+          # repository_dispatch needs.
+          permission-contents: write
+
+      - name: Dispatch toolchain-release
+        if: inputs.version != ''
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ steps.token.outputs.token }}
+          repository: jmbarzee/temporal-architect-dist
+          event-type: toolchain-release
+          client-payload: '{"version": "${{ inputs.version }}"}'
