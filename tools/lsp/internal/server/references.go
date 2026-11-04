@@ -173,7 +173,11 @@ func (x *indexer) callers(ep *ast.NamespaceEndpoint, lines []string, namespaces 
 		}
 		line := lines[e.Line-1]
 		start := min(e.Column-1, len(line))
-		for _, tok := range lexer.New(line[start:]).AllTokens() {
+		toks := lexer.New(line[start:]).AllTokens()
+		if len(toks) == 0 || toks[0].Literal != e.Key {
+			continue // the text changed since it was analyzed
+		}
+		for _, tok := range toks {
 			ns := namespaces[tok.Literal]
 			if tok.Type != token.STRING || ns == nil || line[start+tok.Offset+1:start+tok.End-1] != tok.Literal {
 				continue // an escape spells the name otherwise
