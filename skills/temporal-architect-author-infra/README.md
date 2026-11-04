@@ -2,7 +2,7 @@
 
 **Goal:** Provision the control-plane resources a validated TWF design depends on — namespaces, Nexus endpoints, and search attributes — as infrastructure-as-code.
 
-**Primary focus:** Topology fidelity. The third implementer of a design, parallel to `author-go`: `author-go` writes the worker code, `author-infra` provisions the resources that code registers against and runs on. Closes the Nexus endpoint registration `author-go` deliberately punts as out-of-band infra.
+**Primary focus:** Topology fidelity. Parallel to the language authors: they write the worker code, `author-infra` provisions the resources that code registers against and runs on, including the Nexus endpoint registration they leave out-of-band.
 
 **Scope:**
 - Produces: applied IaC — Terraform (`temporalio/temporalcloud`) or `tcld` / `temporal operator` CLI runbooks

@@ -5,11 +5,11 @@ description: Provision the control-plane resources a .twf design needs — names
 
 # Temporal Architect: Infrastructure Authoring
 
-Provision the **control-plane resources** a `.twf` design depends on — namespaces, Nexus endpoints, search attributes — as applied infrastructure-as-code, delivered as `.tf` files or CLI runbooks. It also owns the Nexus endpoint registration `author-go` leaves out-of-band.
+Provision the **control-plane resources** a `.twf` design depends on — namespaces, Nexus endpoints, search attributes — as applied infrastructure-as-code, delivered as `.tf` files or CLI runbooks. It also owns the Nexus endpoint registration the language authors leave out-of-band.
 
 ## Principles
 
-- **Provision the topology, never code.** Read only `namespace`, `nexus endpoint` (with its `worker_target`), and worker task queues; workflow and activity bodies belong to `author-go`.
+- **Provision the topology, never code.** Read only `namespace`, `nexus endpoint` (with its `worker_target`), and worker task queues; workflow and activity bodies belong to the language authors.
 - **The `.twf` is the contract.** Derive resources from declared topology. What the `.twf` cannot express yet (below), ask for — never invent.
 - **One owner per resource.** Once Terraform manages a resource, change it only through Terraform; `import` what already exists rather than letting Terraform create a duplicate.
 - **The user decides.** You own the mechanical mapping; the user owns deployment target, regions, retention, auth model, and which caller namespaces an endpoint trusts. Offer specific options with tradeoffs. Namespace *count* is a design call upstream of this skill ([namespaces.md](../temporal-architect-design/reference/namespaces.md)).
@@ -47,7 +47,7 @@ For existing infra, dispatch the shared [`project-discovery` subagent](../tempor
 | custom search attribute *(not in `.twf`)* | `temporalcloud_namespace_search_attribute` | `temporal operator search-attribute create` |
 | endpoint `allowed_caller_namespaces` | `allowed_caller_namespaces` (namespace **IDs**) | `--allow-namespace` / `tcld nexus endpoint allowed-namespace` |
 
-Task queues are not resources: they exist once a worker polls them, and an endpoint's `worker_target` is what makes one routable for Nexus. Only a static queue fills `worker_target.task_queue`. A family queue (`"sandbox-{sandboxId}"`) names a set of runtime queues: nothing to provision, and never an endpoint target; Nexus reaches it through an async operation whose workflow routes on ([nexus.md](../temporal-architect-design/topics/nexus.md#fronting-a-worker-family)). The endpoint **name** is what caller code invokes, and the **target task queue** is what the handler worker polls; both must match the `.twf` and `author-go`'s output, or Nexus tasks route nowhere.
+Task queues are not resources: they exist once a worker polls them, and an endpoint's `worker_target` is what makes one routable for Nexus. Only a static queue fills `worker_target.task_queue`. A family queue (`"sandbox-{sandboxId}"`) names a set of runtime queues: nothing to provision, and never an endpoint target; Nexus reaches it through an async operation whose workflow routes on ([nexus.md](../temporal-architect-design/topics/nexus.md#fronting-a-worker-family)). The endpoint **name** is what caller code invokes, and the **target task queue** is what the handler worker polls; both must match the `.twf` and the language author's output, or Nexus tasks route nowhere.
 
 ### Endpoint access policy
 

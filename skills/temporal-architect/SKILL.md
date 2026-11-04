@@ -1,6 +1,6 @@
 ---
 name: temporal-architect
-description: Entry point for designing, building, adopting, or evolving Temporal systems — start here. Coordinates the temporal-architect skill set (design, Go authoring, infrastructure): orients the design↔code direction, decomposes a `.twf` design into independently-implementable chunks at contract boundaries, and dispatches the right specialist skills. Use at the start of any Temporal architecture, workflow, worker, or Temporal-adoption task.
+description: Entry point for designing, building, adopting, or evolving Temporal systems — start here. Coordinates the temporal-architect skill set (design, per-SDK authoring, infrastructure): orients the design↔code direction, decomposes a `.twf` design into independently-implementable chunks at contract boundaries, and dispatches the right specialist skills. Use at the start of any Temporal architecture, workflow, worker, or Temporal-adoption task.
 ---
 
 # Temporal Architect
@@ -10,10 +10,14 @@ This skill does not design or author; it routes to the specialists:
 | Skill | Owns |
 |-------|------|
 | `temporal-architect-design` | The `.twf` design (workflows, activities, namespaces, Nexus), forward and recovered from code. Never SDK code. |
-| `temporal-architect-author-go` | Go SDK implementation of a `.twf`. |
 | `temporal-architect-author-infra` | Control-plane provisioning (namespaces, Nexus endpoints, search attributes). Orthogonal to language authoring. |
+| `temporal-developer` | Temporal's official skill: SDK idioms, testing, determinism, errors, data, versioning. Each language author names the topics it hands there. |
 
-Language authors are built from [reference/author-template.md](reference/author-template.md).
+Language authors, one per SDK, each built from [reference/author-template.md](reference/author-template.md):
+
+| `@sdk` | Author |
+|--------|--------|
+| `go` | `temporal-architect-author-go` |
 
 Its job is to protect the main agent's context: keep it on the architecture (workloads, scaling, reliability, availability) and dispatch code-scale authoring to subagents that each see only their chunk. The main agent is not always the design agent — sometimes it is authoring or reverse-engineering.
 
@@ -52,10 +56,10 @@ Before dispatching a non-trivial design, read [reference/decomposition.md](refer
 
 ## Route
 
-Load the minimum that fits. **Default:** `temporal-architect-design` + the **one** author for the chunk's language, plus `temporal-architect-author-infra` if the topology needs control-plane resources. Load a skill, not its internals.
+Load the minimum that fits. **Default:** `temporal-architect-design` + the **one** author for the chunk's SDK, plus `temporal-architect-author-infra` if the topology needs control-plane resources. Load a skill, not its internals.
 
 - **Skip design** for a pure implementation of a settled `.twf` — load only the author(s).
 - **Design in the main agent** when the work is design-heavy or collaborative: the user usually wants to be in the design loop. Dispatch authoring to subagents.
-- **A language boundary wants both authors.** Pin the boundary contract once, then prefer isolated per-language author subagents that exchange only that contract — two SDK vocabularies in one context are confusable. Co-loading is acceptable when the boundary is small.
+- **An SDK boundary wants both authors.** Pin the boundary contract once, then prefer isolated per-SDK author subagents that exchange only that contract — two SDK vocabularies in one context are confusable. Co-loading is acceptable when the boundary is small.
 
-`@lang` annotations ([#23](https://github.com/jmbarzee/temporal-architect/issues/23)) will become the per-chunk dispatch key; until then, infer language from project layout or the user.
+A chunk's SDK is the `@sdk` of the worker registering it; without one, infer it from project layout or ask the user. An SDK with no author row is an open question for the user, not a guess.

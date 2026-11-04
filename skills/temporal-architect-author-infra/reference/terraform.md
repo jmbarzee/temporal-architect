@@ -50,7 +50,7 @@ Key attributes:
 | `name` | Must start/end alphanumeric, hyphens allowed. The `.twf` namespace name. |
 | `regions` | Cloud-prefixed (`aws-us-east-1`, not `us-east-1`). One region, or two for an HA namespace. **Changing/adding/removing regions on an existing namespace is not supported** — the provider errors. |
 | `retention_days` | Workflow history retention. A deliberate cost/compliance choice — ask the user. |
-| `api_key_auth` vs `accepted_client_ca` | API-key auth or mTLS client CA. Pick the model the workers will use; this must match `author-go`'s client config. |
+| `api_key_auth` vs `accepted_client_ca` | API-key auth or mTLS client CA. Pick the model the workers will use; this must match the workers' client config. |
 | `namespace_lifecycle.enable_delete_protection` | Recommend `true` for anything real. |
 
 ## `temporalcloud_namespace_search_attribute`

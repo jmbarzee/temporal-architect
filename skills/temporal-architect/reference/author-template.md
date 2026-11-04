@@ -22,7 +22,18 @@ A `.twf` name is the registered name, byte for byte (`twf spec workflows`, `acti
 
 ## Delegation
 
-SDK idioms delegated to `temporal-developer`.
+This skill owns the `.twf` ↔ SDK translation: call shapes, wire names, options, project layout, verify. How to write the SDK's Temporal code well belongs to Temporal's official `temporal-developer` skill, pinned at `v0.6.3`; load it for these topics. One table, each topic with its file there:
+
+| Topic | `temporal-developer` |
+|---|---|
+| worker setup | |
+| testing | |
+| determinism | |
+| errors | |
+| data | |
+| versioning | |
+
+If it is not installed, install it from https://github.com/temporalio/skill-temporal-developer at `v0.6.3`, or read the topic's file there.
 
 ## Process
 
@@ -30,7 +41,7 @@ The layers, root-down, each with its check.
 
 ## Verify
 
-The command that checks the generated code.
+One fenced command, run from the project root, that builds, vets, and tests the generated code and exits 0 only when all pass. Selective dispatch ([decomposition.md](decomposition.md#selective-dispatch)) runs it from this section, so it keeps this heading.
 
 ## Output conventions
 

@@ -20,7 +20,7 @@ Discovered facts, one author subagent per hard chunk:
 
 - **Isolated components** — disconnected call structure is independent work.
 - **`nexusCall` cuts** — cross-namespace/worker by construction; the Nexus operation signature *is* the contract.
-- **Language boundaries** — a hard split once `@lang` lands ([#23](https://github.com/jmbarzee/temporal-architect/issues/23)).
+- **SDK boundaries** — definitions registered on workers of different `@sdk` go to different authors. `twf graph chunks` does not split on them yet: cut them yourself.
 
 Every definition lands in exactly one hard chunk. A node reachable from two roots is reported as **overlap**: implement it once and let both chunks consume it.
 
@@ -45,7 +45,7 @@ The decomposition knows the design, not what is already implemented. For each ch
 
 1. Resolve its code through the `@sdk` path of the worker registering it (design skill's `twf-conventions.md`).
 2. No linked code → new → dispatch an author.
-3. Linked code → run the author's fast verify (e.g. `go build` / `go test` on the linked package). Clean against the current `.twf` → skip; a failure, or a `.twf` edit touching the chunk → dispatch.
+3. Linked code → run the command in its author's SKILL.md `## Verify` section. Clean against the current `.twf` → skip; a failure, or a `.twf` edit touching the chunk → dispatch.
 
 Never re-author a component that doesn't need it. This build/test signal is a coarse stopgap for a missing chunk↔impl staleness check ([#40](https://github.com/jmbarzee/temporal-architect/issues/40)).
 
