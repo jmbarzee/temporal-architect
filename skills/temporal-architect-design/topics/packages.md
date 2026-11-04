@@ -1,6 +1,6 @@
 # Packages and Imports
 
-> **Example:** [`packages/packages.twf`](./packages/packages.twf), with its [`twf.mod`](./packages/twf.mod)
+> **Example:** [`packages/orders/orders.twf`](./packages/orders/orders.twf), with its module's [`twf.mod`](./packages/twf.mod)
 
 A package groups a directory of `.twf` files so references cross file and directory boundaries and one short name can live in two domains without colliding. It is a **compile-time symbol grouping with no runtime effect** — unrelated to `namespace`, which is the Temporal deployment construct.
 
@@ -58,4 +58,4 @@ To reach a service in another package, define the endpoint locally (it is part o
 
 ## External by Unresolved Import
 
-An `import` of a package not in the tree is treated as external — rules in [common-errors.md](../reference/common-errors.md#packages-imports-and-external-references). In the example, `payments` is external; `twf check` exits 0 with one `UNRESOLVED_IMPORT` warning.
+An `import` of a package not in the tree is treated as external — rules in [common-errors.md](../reference/common-errors.md#packages-imports-and-external-references). In the example, `payments` lives in another module, so it is external; `twf check` exits 0 with one `UNRESOLVED_IMPORT` warning.

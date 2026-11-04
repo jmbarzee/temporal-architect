@@ -17,7 +17,7 @@ The greenfield advice "write before you read the reference docs" inverts here: t
 3. **Fidelity check** — confirm the `.twf` matches what the code does ([Fidelity first](#fidelity-first-then-design-review)).
 4. **Design Review** — only now run the standard [Design Review](../SKILL.md#design-review).
 
-Mirror the code's layout: one `twf mod init <module path>` at the repo root, with the code's own module path (e.g. `go.mod`'s), so `.twf` import paths match the code's; each domain in its own [package](./twf-conventions.md#package-per-domain-directory), `import` across packages for cross-domain references, and an [impl-link header](./twf-conventions.md#impl-link-header) recording where the implementation lives. `worker` and `namespace` follow [Deployment topology during recovery](#deployment-topology-during-recovery).
+Mirror the code's layout: `twf mod init <module path>` at each code module's root (beside its `go.mod`), with that module's path, so `.twf` import paths match the code's; each domain in its own [package](./twf-conventions.md#package-per-domain-directory), `import` across packages for cross-domain references, and an [impl-link header](./twf-conventions.md#impl-link-header) recording where the implementation lives. `worker` and `namespace` follow [Deployment topology during recovery](#deployment-topology-during-recovery).
 
 ### B1b — Drift (`.twf` exists but is stale)
 
@@ -39,13 +39,13 @@ When the target is **more than one bounded slice** — a whole service, a multi-
 1. **Map** — dispatch the [slice-mapper subagent](../subagents/slice-mapper.md) on the repo root. It returns a proposed slice map, a cross-slice edge list (`from` → `to`, `via` = the contract artifact), and a suggested order. It recovers nothing.
 2. **Confirm** — narrow the map **with the user** before any fan-out.
 3. **Order** — **contract producers before consumers**: pin the shared contracts (the proto package / Nexus op / shared worker others depend on) first. A producer recovered first is a real package the consumer can `import`, so no cross-slice edge needs a placeholder.
-4. **Fan out** — after the one root `twf mod init` ([B1a](#b1a--bootstrap-no-twf-yet)), one project-discovery + extraction (B1a steps 2–4) per confirmed slice, in that order, each into its own package of that module under the symbols-only rule. A slice never runs its own `twf mod init`.
+4. **Fan out** — after the `twf mod init`s ([B1a](#b1a--bootstrap-no-twf-yet)), which no slice runs itself, one project-discovery + extraction (B1a steps 2–4) per confirmed slice, in that order, each into its own package under the symbols-only rule.
 
 Keep this distinct from the forward codegen fan-out ([#85](https://github.com/jmbarzee/temporal-architect/issues/85)); a deterministic code → map engine is deferred to [#128](https://github.com/jmbarzee/temporal-architect/issues/128).
 
 ## Stitch & `twf check`
 
-1. **Collect** the per-slice packages under the root `twf.mod`, so one `twf check .` there resolves them together.
+1. **Collect** the per-slice packages into one workspace, under the `twf.mod`s from B1a.
 2. **Resolve cross-slice references** — the consumer `import`s the producer's package and refers to its symbols by qualified name.
 3. **Author the shared topology** in the `deploy` package ([above](#deployment-topology-during-recovery)).
 4. **Check the whole workspace**, not slice by slice, and iterate to clean — a package that checked alone can still surface cross-package resolution or coverage gaps.
