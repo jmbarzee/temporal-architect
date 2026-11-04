@@ -50,7 +50,9 @@ statement of a fixed form (calls, sends, `await`, `promise`, `set`, `unset`, `cl
 `continue`) and for the `condition`, `id_scheme:` and nexus `async` operation lines.
 
 A tool that reports every error at once (`twf check`, the language server) leaves a failed statement
-out and keeps parsing the rest of its body: the line, any block indented under it, and an `else:`
-clause after that block are skipped, and the definition holding them stays in the result. A failed
+out and keeps parsing the rest of its body: the line, any block indented under it, and, for an `if`,
+its one `else:` clause are skipped, and the definition holding them stays in the result. A failed
 line among a workflow's handler declarations or `state:` conditions is left out the same way. A
-complete statement followed by stray tokens is kept; only the stray tokens are skipped.
+complete statement followed by stray tokens is kept; only the stray tokens are skipped. A line
+indented under a statement that opens no block is `unexpected indent` (see [Indentation
+Rules](./09-indentation.md)); the indented block is skipped and the body around it keeps parsing.

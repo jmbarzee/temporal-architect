@@ -107,27 +107,34 @@ func (p *Parser) parseOptionalAddress() (*ast.Address, error) {
 	if p.current.Type != token.INDENT {
 		return nil, nil
 	}
+	depth := p.depth
 	switch {
 	case p.peek.Type == token.COMMENT:
 		// Comments may sit above the address; nothing else is indented under a send.
 		p.advance() // consume INDENT
-		p.skipBlankLinesAndComments()
-		if p.current.Type == token.DEDENT {
-			p.advance()
-			return nil, nil
+		if _, err := p.indentedComments(); err != nil {
+			return nil, err
 		}
 	case p.peek.Type == token.OPTIONS || isAddressKey(p.peek):
 		p.advance() // consume INDENT
 	default:
-		return nil, nil
+		return nil, nil // the body reports the indented line
 	}
 	switch {
+	case p.current.Type == token.DEDENT:
+		p.advance()
+		return nil, nil
+	case p.current.Type == token.EOF:
+		return nil, nil
 	case p.current.Type == token.OPTIONS:
 		return nil, p.codedErrorf(CodeAddressMisplaced, "a signal send takes no options:")
 	case p.current.Type == token.IDENT && p.current.Literal == "run_id":
 		return nil, p.codedErrorf(CodeAddressMisplaced, "run_id: follows an id: line")
 	case p.current.Type != token.IDENT || p.current.Literal != "id":
-		return nil, p.errorf("unexpected %q indented under a signal send", p.current.Literal)
+		_, err := p.endIndented(depth, func(token.Token) string {
+			return "unexpected indent: only comments and an id: address sit under a signal send"
+		})
+		return nil, err
 	}
 
 	addr := &ast.Address{Pos: ast.Pos{Line: p.current.Line, Column: p.current.Column}}
@@ -168,7 +175,9 @@ func (p *Parser) parseOptionalAddress() (*ast.Address, error) {
 	}
 	addr.ID = id
 
-	p.skipBlankLinesAndComments()
+	if _, err := p.indentedComments(); err != nil {
+		return nil, err
+	}
 	if p.current.Type == token.IDENT && p.current.Literal == "run_id" {
 		if id.Kind == ast.IDParent {
 			return nil, p.codedErrorf(CodeAddressMisplaced, "run_id: is not allowed under id: parent")
@@ -188,7 +197,9 @@ func (p *Parser) parseOptionalAddress() (*ast.Address, error) {
 			return nil, err
 		}
 		addr.RunID = runID
-		p.skipBlankLinesAndComments()
+		if _, err := p.indentedComments(); err != nil {
+			return nil, err
+		}
 	}
 
 	switch {
@@ -200,7 +211,11 @@ func (p *Parser) parseOptionalAddress() (*ast.Address, error) {
 	case isAddressKey(p.current):
 		return nil, p.codedErrorf(CodeAddressMisplaced, "an address is one id: line, then an optional run_id: line")
 	default:
-		return nil, p.codedErrorf(CodeAddressMisplaced, "unexpected %q in a send's address", p.current.Literal)
+		got := p.current.Literal
+		if got == "" {
+			got = p.current.Type.String()
+		}
+		return nil, p.codedErrorf(CodeAddressMisplaced, "unexpected %q in a send's address", got)
 	}
 	return addr, nil
 }

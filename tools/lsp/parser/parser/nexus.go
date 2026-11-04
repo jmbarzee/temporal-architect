@@ -48,6 +48,11 @@ func parseNexusServiceDef(p *Parser) (ast.Definition, error) {
 				p.advance()
 			}
 			continue
+		case token.INDENT: // under an async operation or a comment
+			if _, err := p.overIndent(nil); err != nil { // the service drops comments
+				return nil, err
+			}
+			continue
 		case token.ASYNC:
 			op, err := parseAsyncOperation(p)
 			if err != nil {

@@ -70,6 +70,7 @@ type Parser struct {
 	peek    token.Token
 	prev    token.TokenType // the type of the token before current
 	depth   int             // INDENTs minus DEDENTs before current
+	elseAt  int             // the offset of the last `else` an if consumed
 
 	bodyCtx bodyContext
 
@@ -327,9 +328,18 @@ func ParseFileAll(input string) (*ast.File, []*ParseError) {
 func (p *Parser) parseBody() ([]ast.Statement, error) {
 	depth := p.depth
 	var stmts []ast.Statement
+	var last ast.Statement // the statement any indented line sits under
 	for p.current.Type != token.DEDENT && p.current.Type != token.EOF {
 		if p.current.Type == token.NEWLINE {
 			p.advance()
+			continue
+		}
+		if p.current.Type == token.INDENT {
+			comments, err := p.overIndent(optionsUnder(last))
+			if err != nil {
+				return nil, err
+			}
+			stmts = append(stmts, comments...)
 			continue
 		}
 		start := p.current
@@ -344,6 +354,9 @@ func (p *Parser) parseBody() ([]ast.Statement, error) {
 			continue
 		}
 		stmts = append(stmts, stmt)
+		if _, ok := stmt.(*ast.Comment); !ok {
+			last = stmt
+		}
 	}
 
 	if p.current.Type == token.DEDENT {
@@ -351,6 +364,27 @@ func (p *Parser) parseBody() ([]ast.Statement, error) {
 	}
 
 	return stmts, nil
+}
+
+// optionsUnder words the error for an options: line indented under stmt, which
+// takes none (a promise-bound or awaited start uses the callee's defaults). It is
+// nil (the default wording) for any other statement.
+func optionsUnder(stmt ast.Statement) func(token.Token) string {
+	var what string
+	switch stmt.(type) {
+	case *ast.PromiseStmt:
+		what = "a promise"
+	case *ast.AwaitStmt:
+		what = "an await"
+	default:
+		return nil
+	}
+	return func(tok token.Token) string {
+		if tok.Type == token.OPTIONS {
+			return what + " takes no options:"
+		}
+		return unexpectedIndent
+	}
 }
 
 // parseStatement parses one statement of a body in the body's context.

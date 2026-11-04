@@ -119,6 +119,46 @@ var recoveryCases = []struct {
 		keep: []int{6, 7},
 	},
 	{
+		name: "a second else after a bad if line is reported",
+		src: `workflow P(x):
+    if (x) junk: # BAD
+        activity A(x)
+    else:
+        activity A(x)
+    else: # BAD
+        activity A(x)
+    activity A(x)
+    close complete(x)
+`,
+		keep: []int{8, 9},
+	},
+	{
+		name: "a second else after a bad else line is reported",
+		src: `workflow P(x):
+    if (x):
+        activity A(x)
+    else junk: # BAD
+        activity A(x)
+    else: # BAD
+        activity A(x)
+    activity A(x)
+    close complete(x)
+`,
+		keep: []int{8, 9},
+	},
+	{
+		name: "an else after a bad line that is not an if is reported",
+		src: `workflow P(x):
+    for junk: # BAD
+        activity A(x)
+    else: # BAD
+        activity A(x)
+    activity A(x)
+    close complete(x)
+`,
+		keep: []int{6, 7},
+	},
+	{
 		name: "bad lines at the head of a workflow body",
 		src: `workflow P(x):
     state:
@@ -236,8 +276,8 @@ func badLines(src string) []int {
 	return lines
 }
 
-// statementLines returns the sorted lines of a workflow's or nexus service's
-// statements and handlers, nested ones included, and of its state conditions.
+// statementLines returns the sorted lines of a workflow's, activity's or nexus
+// service's statements and handlers, nested ones included, and of its state conditions.
 func statementLines(def ast.Definition) []int {
 	var lines []int
 	walk := func(body []ast.Statement) {
@@ -268,6 +308,8 @@ func statementLines(def ast.Definition) []int {
 			lines = append(lines, u.Line)
 			walk(u.Body)
 		}
+	case *ast.ActivityDef:
+		walk(d.Body)
 	case *ast.NexusServiceDef:
 		for _, op := range d.Operations {
 			walk(op.Body)

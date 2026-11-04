@@ -44,6 +44,11 @@ func parseWorkflowDef(p *Parser) (ast.Definition, error) {
 	if err != nil {
 		return nil, err
 	}
+	if p.current.Type == token.INDENT { // indented under id_scheme: or a comment
+		if _, err := p.overIndent(nil); err != nil { // the head drops comments
+			return nil, err
+		}
+	}
 
 	// Optional default_options block, before state:. A definition's defaults are
 	// its external invocation contract, which reads above its internal state:.
@@ -70,8 +75,10 @@ func parseWorkflowDef(p *Parser) (ast.Definition, error) {
 	var firstSend ast.Statement
 
 	// A failed declaration line, like a failed statement, is left out when
-	// collecting errors (see recoverLine).
+	// collecting errors (see recoverLine). ended reports that its recovery
+	// consumed the workflow body's DEDENT.
 	depth := p.depth
+	ended := false
 declLoop:
 	for {
 		// Skip blank lines and comments between declarations.
@@ -111,7 +118,8 @@ declLoop:
 			if err := p.recoverLine(err, start, depth); err != nil {
 				return nil, err
 			}
-			if send || p.depth < depth {
+			ended = p.depth < depth
+			if send || ended {
 				break declLoop // a failed send is the body's first statement
 			}
 		}
@@ -119,7 +127,7 @@ declLoop:
 
 	// Parse workflow body, unless a failed line consumed its end.
 	var body []ast.Statement
-	if p.depth == depth {
+	if !ended {
 		body, err = p.parseBodyAs(bodyWorkflow)
 		if err != nil {
 			return nil, err
@@ -424,6 +432,12 @@ func parseStateBlock(p *Parser) (*ast.StateBlock, error) {
 			p.advance()
 			if p.current.Type == token.NEWLINE {
 				p.advance()
+			}
+			continue
+		}
+		if p.current.Type == token.INDENT {
+			if _, err := p.overIndent(nil); err != nil { // the block drops comments
+				return nil, err
 			}
 			continue
 		}

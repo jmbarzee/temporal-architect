@@ -300,6 +300,15 @@ is now checked against the target's signals.
   or spaces, and indentation that mixes the two, within a line or across
   lines, is a `parse/LEX` error naming that style. A tab after a line's
   leading spaces no longer turns the statement into a silent raw line.
+- A line indented under a statement that opens no block (a call with no
+  `options:`, `close`, `set`, a raw line) is a `parse/SYNTAX` `unexpected
+  indent` error, in activity bodies too. It used to pass as a raw statement
+  and end the enclosing body early, so an unrelated error surfaced below it.
+  Comment lines alone may sit indented under any statement, nested or not.
+  `options:` under a `promise` or `await` says it takes none.
+- After a failed line, only a failed `if`'s own `else:` is skipped; a further
+  `else:` is reported. A bare `await` in an `await one:` case names the token
+  after it.
 - A `parse/LEX` error, such as bad indentation or an unterminated string, is
   listed ahead of the `parse/SYNTAX` error it causes at the same position in
   `twf check`. The Go API `parser.ParseFile` reports it in place of that error.

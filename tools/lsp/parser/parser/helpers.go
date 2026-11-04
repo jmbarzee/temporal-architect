@@ -34,14 +34,15 @@ func (p *Parser) advance() {
 // Parsing strictly, it returns err. Collecting, it records err, skips the rest
 // of the line and any block indented under it, and returns nil; the parser then
 // stands on the block's next line, its DEDENT, or EOF, or past that DEDENT if
-// the failed line consumed it (p.depth < depth). An `else:` clause after the
-// skipped block belongs to the failed line and is skipped with it.
+// the failed line consumed it (p.depth < depth). A failed `if` keeps its one
+// `else:` clause, skipped with it; any further `else:` is the body's next line.
 func (p *Parser) recoverLine(err error, start token.Token, depth int) error {
 	pe, ok := err.(*ParseError)
 	if !p.collecting || !ok {
 		return err
 	}
 	p.addError(pe)
+	elseLeft := start.Type == token.IF && p.elseAt < start.Offset // the failed if's else: is still ahead
 	for p.current.Type != token.EOF && p.depth >= depth {
 		if p.depth == depth {
 			if p.current.Type == token.DEDENT {
@@ -49,13 +50,82 @@ func (p *Parser) recoverLine(err error, start token.Token, depth int) error {
 			}
 			moved := p.current.Offset != start.Offset
 			lineStart := p.prev == token.NEWLINE || p.prev == token.DEDENT
-			if moved && lineStart && p.current.Type != token.INDENT && p.current.Type != token.ELSE {
+			if moved && lineStart && p.current.Type != token.INDENT && (p.current.Type != token.ELSE || !elseLeft) {
 				return nil
+			}
+			if p.current.Type == token.ELSE {
+				elseLeft = false
 			}
 		}
 		p.advance()
 	}
 	return nil
+}
+
+// unexpectedIndent is the error for a line indented under a statement that
+// opens no block.
+const unexpectedIndent = "unexpected indent: the statement above opens no block"
+
+// overIndent handles an INDENT at the start of a line under a statement that
+// opens no block, ending the indented block as endIndented does.
+func (p *Parser) overIndent(why func(token.Token) string) ([]ast.Statement, error) {
+	depth := p.depth
+	p.advance() // consume INDENT
+	return p.endIndented(depth, why)
+}
+
+// indentedComments consumes comment lines, more deeply indented ones included,
+// and returns them. It stops at any other token.
+func (p *Parser) indentedComments() ([]ast.Statement, error) {
+	var comments []ast.Statement
+	for {
+		switch p.current.Type {
+		case token.NEWLINE:
+			p.advance()
+		case token.COMMENT:
+			comments = append(comments, p.parseComment())
+		case token.INDENT:
+			more, err := p.overIndent(nil)
+			comments = append(comments, more...)
+			if err != nil {
+				return comments, err
+			}
+		default:
+			return comments, nil
+		}
+	}
+}
+
+// endIndented ends a block indented under a statement, whose INDENT took the
+// parser past depth: comment lines are kept, up to the block's DEDENT. Any other
+// line is an "unexpected indent" error, worded by why(its first token) when why
+// is set. Collecting errors, it is recorded and the rest of the block skipped,
+// so the statement above is kept and the parser stands on the body's next line.
+func (p *Parser) endIndented(depth int, why func(token.Token) string) ([]ast.Statement, error) {
+	comments, err := p.indentedComments()
+	if err != nil {
+		return comments, err
+	}
+	switch p.current.Type {
+	case token.DEDENT:
+		p.advance()
+		return comments, nil
+	case token.EOF:
+		return comments, nil
+	}
+	msg := unexpectedIndent
+	if why != nil {
+		msg = why(p.current)
+	}
+	err = p.errorf("%s", msg)
+	if !p.collecting {
+		return comments, err
+	}
+	p.addError(err.(*ParseError))
+	for p.current.Type != token.EOF && p.depth > depth {
+		p.advance()
+	}
+	return comments, nil
 }
 
 // endLine ends a statement's line after what: it consumes the NEWLINE, or stops
@@ -316,21 +386,26 @@ func nameRef[T any](name token.Token) ast.Ref[T] {
 }
 
 // parseOptionalOptionsLine checks for an options block after a call:
-// INDENT { COMMENT NEWLINE } OPTIONS COLON NEWLINE INDENT entries DEDENT
-// { COMMENT NEWLINE } DEDENT
+// INDENT { comment } [ OPTIONS COLON NEWLINE INDENT entries DEDENT ]
+// { comment } DEDENT
 // Comments may sit above or below the block, as they may inside it, and alone
-// under the call. Returns the options block (nil if no options found).
+// under the call; they are discarded. Any other line under the call is an
+// unexpected indent (see endIndented), and the call is kept. Returns the
+// options block (nil if no options found).
 func (p *Parser) parseOptionalOptionsLine(ctx OptionsContext) (*ast.OptionsBlock, error) {
 	if p.current.Type != token.INDENT {
 		return nil, nil
 	}
 	switch p.peek.Type {
 	case token.OPTIONS, token.COMMENT:
-		p.advance() // consume INDENT
 	default:
-		return nil, nil
+		return nil, nil // the body reports the indented line
 	}
-	p.skipBlankLinesAndComments()
+	depth := p.depth
+	p.advance() // consume INDENT
+	if _, err := p.indentedComments(); err != nil {
+		return nil, err
+	}
 	var opts *ast.OptionsBlock
 	if p.current.Type == token.OPTIONS {
 		p.advance() // consume OPTIONS
@@ -339,7 +414,9 @@ func (p *Parser) parseOptionalOptionsLine(ctx OptionsContext) (*ast.OptionsBlock
 		if opts, err = p.parseOptionsBlock(ctx); err != nil {
 			return nil, err
 		}
-		p.skipBlankLinesAndComments()
+		if _, err := p.indentedComments(); err != nil {
+			return nil, err
+		}
 	}
 	if isAddressKey(p.current) {
 		if ctx == OptionsContextChildStart || ctx == OptionsContextClientStart {
@@ -347,12 +424,14 @@ func (p *Parser) parseOptionalOptionsLine(ctx OptionsContext) (*ast.OptionsBlock
 		}
 		return nil, p.codedErrorf(CodeAddressMisplaced, "%s: is an address key, valid only under a signal send", p.current.Literal)
 	}
-	if p.current.Type != token.DEDENT {
-		if opts == nil {
-			return nil, p.errorf("expected options: or a comment, got %s (%q)", p.current.Type, p.current.Literal)
-		}
-		return nil, p.errorf("expected the end of the options block, got %s (%q)", p.current.Type, p.current.Literal)
+	if _, err := p.endIndented(depth, underCall); err != nil {
+		return nil, err
 	}
-	p.advance() // consume the outer DEDENT
 	return opts, nil
+}
+
+// underCall words the error for a line under a call that is neither a comment
+// nor its options: block.
+func underCall(token.Token) string {
+	return "unexpected indent: only comments and one options: block sit under a call"
 }

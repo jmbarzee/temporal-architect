@@ -7,8 +7,9 @@ TWF uses **indentation-based scoping** (like Python):
 3. **Levels compare by prefix:** A line is deeper than its block when its indentation extends the block's, and closes blocks back to the one whose indentation it equals. A tab's display width never matters
 4. **Block start:** A colon (`:`) followed by NEWLINE and INDENT starts a new block
 5. **Block end:** DEDENT ends the current block
-6. **Blank lines:** Blank lines, empty or holding any mix of spaces and tabs, are skipped
-7. **No mixing:** Indentation that mixes tabs and spaces, within a line or across a file's lines, is a `LEX` error at the offending character, naming the file's style. Each such line is placed where an editor shows it (a tab stop at a spaces file's first indent width, or every four columns in a tab file), so a block written wholly in the other style keeps its structure. A stray character after a line's indentation is ignored when that indentation is already an open level, except on the first line under a block header, which must be deeper
+6. **Nothing else indents:** Only a block header ending in `:`, a call with its `options:` block and a signal send with its address take lines indented under them. A line indented under any other statement (a call with no `options:`, `close`, `set`, a raw line) is `unexpected indent`, in every body, an activity's included: raw pseudocode does not continue onto an indented line. Comment lines alone may sit indented under any statement, and the lines of a multi-line `( … )` argument list may be indented freely
+7. **Blank lines:** Blank lines, empty or holding any mix of spaces and tabs, are skipped
+8. **No mixing:** Indentation that mixes tabs and spaces, within a line or across a file's lines, is a `LEX` error at the offending character, naming the file's style. Each such line is placed where an editor shows it (a tab stop at a spaces file's first indent width, or every four columns in a tab file), so a block written wholly in the other style keeps its structure. A stray character after a line's indentation is ignored when that indentation is already an open level, except on the first line under a block header, which must be deeper
 
 ## Example
 

@@ -133,6 +133,7 @@ func parseIfStmt(p *Parser) (ast.Statement, error) {
 
 	var elseBody []ast.Statement
 	if p.current.Type == token.ELSE {
+		p.elseAt = p.current.Offset
 		p.advance()
 		if _, err := p.expect(token.COLON); err != nil {
 			return nil, err
