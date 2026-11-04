@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/resolver"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/validator"
 )
 
 // writeTWF writes content to name under dir and returns its absolute path and
@@ -210,5 +211,105 @@ workflow Main():
 
 	if len(doc.ResolveErrs) != 0 {
 		t.Fatalf("sibling error leaked onto open buffer: %v", doc.ResolveErrs)
+	}
+}
+
+func hasValidateKind(errs []*validator.Error, kind validator.ErrorKind) bool {
+	for _, e := range errs {
+		if e.Kind == kind {
+			return true
+		}
+	}
+	return false
+}
+
+// TestWorkspaceValidatesMergedTree: with a root set, validation runs over the
+// merged tree, as `twf check <root>` does. A workflow in the buffer that no
+// worker in a sibling file registers is UNCOVERED_WORKFLOW on the buffer —
+// which validating the buffer alone (it has no namespace) cannot see.
+func TestWorkspaceValidatesMergedTree(t *testing.T) {
+	dir := t.TempDir()
+
+	writeTWF(t, dir, "deploy.twf", `worker w:
+    workflow Registered
+
+namespace ns:
+    worker w
+        options:
+            task_queue: "q"
+`)
+	buf := `workflow Registered():
+    close complete("ok")
+
+workflow Orphan():
+    close complete("ok")
+`
+	_, bufURI := writeTWF(t, dir, "flows.twf", buf)
+
+	store := NewDocumentStore()
+	store.SetRoot(dir)
+	doc := store.Open(bufURI, buf)
+
+	var found *validator.Error
+	for _, e := range doc.ValidateErrs {
+		if e.Kind == validator.ErrUncoveredWorkflow {
+			found = e
+		}
+	}
+	if found == nil {
+		t.Fatalf("expected UNCOVERED_WORKFLOW for Orphan, got %v", doc.ValidateErrs)
+	}
+	if found.Name != "Orphan" || found.File != "flows.twf" {
+		t.Errorf("UNCOVERED_WORKFLOW = %s in %s, want Orphan in flows.twf", found.Name, found.File)
+	}
+}
+
+// TestWorkspaceSiblingValidateErrorDoesNotLeak: a validator error attributed
+// to a sibling file stays off the open buffer.
+func TestWorkspaceSiblingValidateErrorDoesNotLeak(t *testing.T) {
+	dir := t.TempDir()
+
+	deploy := `worker w:
+    workflow W
+
+namespace ns:
+    worker w
+`
+	_, deployURI := writeTWF(t, dir, "deploy.twf", deploy)
+	buf := `workflow W():
+    close complete("ok")
+`
+	_, bufURI := writeTWF(t, dir, "flows.twf", buf)
+
+	store := NewDocumentStore()
+	store.SetRoot(dir)
+	doc := store.Open(bufURI, buf)
+
+	if hasValidateKind(doc.ValidateErrs, validator.ErrMissingTaskQueue) {
+		t.Errorf("sibling MISSING_TASK_QUEUE leaked onto the buffer: %v", doc.ValidateErrs)
+	}
+	if sib := store.Open(deployURI, deploy); !hasValidateKind(sib.ValidateErrs, validator.ErrMissingTaskQueue) {
+		t.Errorf("expected MISSING_TASK_QUEUE on deploy.twf, got %v", sib.ValidateErrs)
+	}
+}
+
+// TestWorkspaceUnsavedBufferJoinsTree: a buffer whose file is not on disk yet
+// still merges with the tree under the root.
+func TestWorkspaceUnsavedBufferJoinsTree(t *testing.T) {
+	dir := t.TempDir()
+
+	writeTWF(t, dir, "callee.twf", `workflow Callee():
+    close complete("ok")
+`)
+	buf := `workflow Caller():
+    workflow Callee() -> r
+    close complete(r)
+`
+	store := NewDocumentStore()
+	store.SetRoot(dir)
+	doc := store.Open("file://"+filepath.Join(dir, "unsaved.twf"), buf)
+
+	if hasKind(doc.ResolveErrs, resolver.ErrUndefinedWorkflow) {
+		t.Errorf("unsaved buffer did not see its sibling: %v", doc.ResolveErrs)
 	}
 }
