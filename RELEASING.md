@@ -57,7 +57,7 @@ The release's last job, `dispatch-dist` (`_dispatch-dist.yml`), sends a
 which opens dist's manifest-bump PR. It authenticates as a GitHub App, minting
 a short-lived installation token per run, so no credential expires.
 
-One-time setup, or to rotate the key:
+One-time setup:
 
 1. Create an app at <https://github.com/settings/apps/new>: any name,
    homepage `https://github.com/jmbarzee/temporal-architect`, **Webhook →
@@ -73,6 +73,9 @@ One-time setup, or to rotate the key:
    gh variable set DIST_APP_CLIENT_ID --repo jmbarzee/temporal-architect --body <client-id>
    gh secret set DIST_APP_PRIVATE_KEY --repo jmbarzee/temporal-architect < <key>.pem
    ```
+
+To rotate the key, generate a new one (step 2), re-run the `gh secret set`
+line, then delete the old key on the app's page.
 
 Check the credential without releasing (mints a token, dispatches nothing):
 
