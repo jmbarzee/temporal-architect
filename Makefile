@@ -198,6 +198,11 @@ typecheck-graph-view: tools/graph-view/node_modules/.package-lock.json
 typecheck-catalog: tools/graph-view/node_modules/.package-lock.json
 	cd tools/graph-view && ./node_modules/.bin/tsc --noEmit -p examples/course-catalog/tsconfig.json
 
+## Run the visualizer's verification bundle (pure checks over its adapter, run
+## under node). Not part of `make test`, which is Go-only.
+verify-visualizer: tools/graph-view/node_modules/.package-lock.json
+	cd tools/visualizer && npm run --silent verify
+
 ## Run Go tests
 # tools/sampler is its own module (resolved against ../lsp via the repo-root
 # go.work), so `./...` from tools/lsp does not reach it. Both must be listed or

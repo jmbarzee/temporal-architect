@@ -167,7 +167,9 @@ type Diagnostic struct {
 	Code     string `json:"code"`
 	Message  string `json:"message"`
 	From     string `json:"from,omitempty"`
-	Line     int    `json:"line"`
+	// File is the source file of the definition whose body holds the call.
+	File string `json:"file,omitempty"`
+	Line int    `json:"line"`
 }
 
 // Graph is the full extracted output. JSON arrays are always non-nil so
@@ -179,6 +181,10 @@ type Graph struct {
 	CoarsenedEdges []CoarsenedEdge `json:"coarsenedEdges"`
 	Unresolved     []Unresolved    `json:"unresolved"`
 	Diagnostics    []Diagnostic    `json:"diagnostics"`
+
+	// walkFile is the source file of the body emitDispatchEdges is walking,
+	// which addDiagnostic stamps on a diagnostic with none.
+	walkFile string
 }
 
 // ---------------------------------------------------------------------------
@@ -293,7 +299,35 @@ func Extract(file *ast.File) *Graph {
 	g.emitCoarsenedEdges()
 
 	g.finalize()
+	sortDiagnostics(g.Diagnostics, file)
 	return g
+}
+
+// sortDiagnostics orders diagnostics by their file's position in the merged
+// definitions, then line, code and message, so the order does not follow map
+// iteration.
+func sortDiagnostics(diags []Diagnostic, file *ast.File) {
+	pos := map[string]int{}
+	for _, def := range file.Definitions {
+		if f := ast.SourceFileOf(def); f != "" {
+			if _, ok := pos[f]; !ok {
+				pos[f] = len(pos)
+			}
+		}
+	}
+	sort.SliceStable(diags, func(i, j int) bool {
+		a, b := diags[i], diags[j]
+		if pa, pb := pos[a.File], pos[b.File]; pa != pb {
+			return pa < pb
+		}
+		if a.Line != b.Line {
+			return a.Line < b.Line
+		}
+		if a.Code != b.Code {
+			return a.Code < b.Code
+		}
+		return a.Message < b.Message
+	})
 }
 
 func newGraph() *Graph {
@@ -394,6 +428,9 @@ func (g *Graph) node(id string) *Node {
 // implicit-routing problem at one call site walked twice (once per
 // caller-deployment copy) shouldn't surface twice.
 func (g *Graph) addDiagnostic(d Diagnostic) {
+	if d.File == "" {
+		d.File = g.walkFile
+	}
 	for _, existing := range g.Diagnostics {
 		if existing.Code == d.Code && existing.From == d.From && existing.Line == d.Line {
 			return

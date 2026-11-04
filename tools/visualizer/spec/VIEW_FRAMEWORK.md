@@ -177,7 +177,7 @@ signal across the whole visualizer.
 ## Initial Defaults
 
 ### Tree View
-- File filter: focused file (if the AST identifies one), otherwise no files selected (= all included).
+- File filter: focused file (if the AST identifies one), otherwise no files selected (= all included). The host's focused file selects the source file it names exactly, else every source file it matches by a suffix on `/` boundaries (either direction, after `\` → `/` and dropping leading `./` and `../`), so a host sending a base name or an absolute path still focuses twf's as-given spelling; the findings bars match a finding's file to the selection the same way.
 - Kind: the values the taxonomy declares default-visible — Workers and Workflows **ON**; Namespaces, the Nexus kinds and Activities **OFF**.
 - Pins: every axis **unpinned** (propagation enabled).
 - All definitions collapsed.
@@ -222,7 +222,7 @@ Each bar:
 - Shows the count for its severity (`N errors`, `M warnings`).
 - Is **collapsed by default** — it is a notification, expanded on demand. Each bar collapses/expands independently.
 - Has its own **scrollable body** so a long list never pushes the rest of the toolbar off-screen.
-- Splits its body into **Shown files** / **Hidden files** sub-groups (by the current file filter) when the filter is hiding findings, so the user sees which findings the filter is keeping out of view. Each detail row shows the code and message, and the file name and position when the finding carries a file (graph-stage findings do not).
+- Splits its body into **Shown files** / **Hidden files** sub-groups (by the current file filter) when the filter is hiding findings, so the user sees which findings the filter is keeping out of view. Each detail row shows the code and message, and the file name and position when the finding carries a file (a graph-stage finding names its calling definition's file; an unresolved target names none).
 
 ### Errors Are Informational
 

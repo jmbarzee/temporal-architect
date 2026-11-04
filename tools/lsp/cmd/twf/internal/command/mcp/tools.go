@@ -15,30 +15,33 @@ import (
 )
 
 // filesInput is the shared input for the file-oriented tools. Provide either
-// paths (read from the local filesystem) or inline source — at least one.
+// paths (read from the local filesystem) or inline source — exactly one.
 type filesInput struct {
-	Paths  []string `json:"paths,omitempty" jsonschema:"One or more .twf file paths to analyze, resolved on the local filesystem where this server runs. Provide this or source."`
-	Source string   `json:"source,omitempty" jsonschema:"Inline TWF source to analyze instead of reading from disk (e.g. an unsaved editor buffer). Provide this or paths."`
+	Paths  []string `json:"paths,omitempty" jsonschema:"One or more .twf file paths to analyze, resolved on the local filesystem where this server runs. Provide this or source, not both."`
+	Source string   `json:"source,omitempty" jsonschema:"Inline TWF source to analyze instead of reading from disk (e.g. an unsaved editor buffer). Provide this or paths, not both."`
 }
 
 // chunksInput extends filesInput with the decomposition knobs of
 // `twf graph chunks`.
 type chunksInput struct {
-	Paths    []string `json:"paths,omitempty" jsonschema:"One or more .twf file paths to decompose, resolved on the local filesystem where this server runs. Provide this or source."`
-	Source   string   `json:"source,omitempty" jsonschema:"Inline TWF source to decompose instead of reading from disk. Provide this or paths."`
+	Paths    []string `json:"paths,omitempty" jsonschema:"One or more .twf file paths to decompose, resolved on the local filesystem where this server runs. Provide this or source, not both."`
+	Source   string   `json:"source,omitempty" jsonschema:"Inline TWF source to decompose instead of reading from disk. Provide this or paths, not both."`
 	Ceiling  int      `json:"ceiling,omitempty" jsonschema:"Complexity ceiling; chunks above it get ranked soft divisions. 0 (default) emits the hard partition only."`
 	Floor    int      `json:"floor,omitempty" jsonschema:"Complexity floor; chunks below it are flagged too-granular. 0 selects the default, negative disables."`
 	MaxDepth int      `json:"maxDepth,omitempty" jsonschema:"Max nesting depth for recursive re-division of over-ceiling sections. 0 selects the default, negative disables recursion."`
 	By       []string `json:"by,omitempty" jsonschema:"Division strategy bias for over-ceiling chunks: any of tree, nexus, worker, namespace, service, subtree. Empty means all applicable."`
 }
 
-// resolveInput parses from inline source when provided, otherwise from the
-// given file paths. It errors if neither is supplied.
+// resolveInput parses from inline source or from the given file paths. It
+// errors unless exactly one is supplied.
 func resolveInput(paths []string, src string) (*ast.File, []pipeline.Diagnostic, error) {
-	if strings.TrimSpace(src) != "" {
+	hasSource := strings.TrimSpace(src) != ""
+	switch {
+	case hasSource && len(paths) > 0:
+		return nil, nil, fmt.Errorf("provide either paths or source, not both")
+	case hasSource:
 		return pipeline.ParseSource("input.twf", src)
-	}
-	if len(paths) == 0 {
+	case len(paths) == 0:
 		return nil, nil, fmt.Errorf("provide either paths or source")
 	}
 	return pipeline.ParseFiles(paths)

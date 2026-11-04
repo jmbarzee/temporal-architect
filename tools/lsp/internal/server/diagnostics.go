@@ -7,8 +7,8 @@ import (
 
 func didOpenHandler(store *DocumentStore) protocol.TextDocumentDidOpenFunc {
 	return func(context *glsp.Context, params *protocol.DidOpenTextDocumentParams) error {
-		doc := store.Open(params.TextDocument.URI, params.TextDocument.Text)
-		return publishDiagnostics(context, doc)
+		store.Open(params.TextDocument.URI, params.TextDocument.Text)
+		return publishAll(context, store)
 	}
 }
 
@@ -16,8 +16,8 @@ func didChangeHandler(store *DocumentStore) protocol.TextDocumentDidChangeFunc {
 	return func(context *glsp.Context, params *protocol.DidChangeTextDocumentParams) error {
 		// Full sync: last content change has the full text.
 		text := params.ContentChanges[len(params.ContentChanges)-1].(protocol.TextDocumentContentChangeEventWhole).Text
-		doc := store.Update(params.TextDocument.URI, text)
-		return publishDiagnostics(context, doc)
+		store.Update(params.TextDocument.URI, text)
+		return publishAll(context, store)
 	}
 }
 
@@ -29,8 +29,19 @@ func didCloseHandler(store *DocumentStore) protocol.TextDocumentDidCloseFunc {
 			URI:         params.TextDocument.URI,
 			Diagnostics: []protocol.Diagnostic{},
 		})
-		return nil
+		return publishAll(context, store)
 	}
+}
+
+// publishAll publishes every open document's diagnostics: one buffer's text
+// can change another's.
+func publishAll(context *glsp.Context, store *DocumentStore) error {
+	for _, doc := range store.All() {
+		if err := publishDiagnostics(context, doc); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func publishDiagnostics(context *glsp.Context, doc *Document) error {

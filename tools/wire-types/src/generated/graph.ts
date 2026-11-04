@@ -177,6 +177,10 @@ export interface Diagnostic {
   code: string;
   message: string;
   from?: string;
+  /**
+   * File is the source file of the definition whose body holds the call.
+   */
+  file?: string;
   line: number /* int */;
 }
 /**

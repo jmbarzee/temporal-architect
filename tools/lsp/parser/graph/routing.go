@@ -27,7 +27,9 @@ import (
 // When no callee matches, no edge; a DISPATCH_NO_REACHABLE_DEPLOYMENT
 // diagnostic is added so the consumer knows the call landed nowhere.
 func (g *Graph) emitDispatchEdges(idx *astIndex) {
+	defer func() { g.walkFile = "" }()
 	for _, wf := range idx.workflows {
+		g.walkFile = wf.SourceFile
 		wfQName := idx.defQName(wf.Package, wf.Name)
 		for _, callerDep := range idx.deploymentsHosting(KindWorkflow, wfQName) {
 			callerID := HostedID(KindWorkflow, wfQName, callerDep.WorkerName, callerDep.NamespaceName, false)
@@ -45,6 +47,7 @@ func (g *Graph) emitDispatchEdges(idx *astIndex) {
 	}
 
 	for _, svc := range idx.nexusServices {
+		g.walkFile = svc.SourceFile
 		svcQName := idx.defQName(svc.Package, svc.Name)
 		serviceDeployments := idx.deploymentsHosting(KindNexusService, svcQName)
 		for _, op := range svc.Operations {

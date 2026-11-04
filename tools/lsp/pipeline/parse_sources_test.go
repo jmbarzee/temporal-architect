@@ -60,7 +60,7 @@ func TestParseSourcesOverlayReplacesDisk(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ParseSources: %v", err)
 	}
-	if !hasCode(res, "caller.twf", "UNDEFINED_ACTIVITY") {
+	if !hasCode(res, filepath.ToSlash(caller), "UNDEFINED_ACTIVITY") {
 		t.Errorf("overlay text not analyzed; got %v", codes(res))
 	}
 }
@@ -167,4 +167,40 @@ func TestParseSourcesRejectsBadRequests(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestGraphDiagnosticNamesTheCallingFile(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, filepath.Join(dir, "a_flow.twf"), `workflow Bad(input: string) -> (string):
+    activity Phantom(input) -> r
+        options:
+            task_queue: "nonexistent"
+    close complete(r)
+`)
+	writeFile(t, filepath.Join(dir, "b_deploy.twf"), `activity Phantom(input: string) -> (string):
+    return input
+
+worker badWorker:
+    workflow Bad
+    activity Phantom
+
+namespace bad:
+    worker badWorker
+        options:
+            task_queue: "real-queue"
+`)
+	payload, err := pipeline.Build([]string{dir})
+	if err != nil {
+		t.Fatalf("Build: %v", err)
+	}
+	want := filepath.ToSlash(filepath.Join(dir, "a_flow.twf"))
+	for _, d := range payload.Diagnostics {
+		if d.Kind == "graph" && d.Code == "DISPATCH_NO_REACHABLE_DEPLOYMENT" {
+			if d.File != want {
+				t.Errorf("graph diagnostic file = %q, want %s", d.File, want)
+			}
+			return
+		}
+	}
+	t.Fatalf("no DISPATCH_NO_REACHABLE_DEPLOYMENT; got %v", payload.Diagnostics)
 }
