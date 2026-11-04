@@ -111,16 +111,16 @@ func (e *expander) overlaid(kind InputKind, canon string) bool {
 // `.twf` file would take its target's directory). Entries are visited in
 // lexical order, and overlaid files not on disk join at their position.
 func (e *expander) walk(spelledDir, canonDir string, recursive bool) {
-	for _, name := range e.entries(canonDir) {
+	for _, ent := range e.entries(canonDir) {
+		name := ent.name
 		if strings.HasPrefix(name, ".") || strings.HasPrefix(name, "_") {
 			continue
 		}
 		canon := filepath.Join(canonDir, name)
 		spelled := spelledDir + "/" + name
-		info, err := os.Lstat(canon)
 		switch {
-		case err != nil:
-			// Not on disk: an overlay, or a directory holding one.
+		case !ent.onDisk:
+			// An overlay, or a directory holding one.
 			if _, ok := e.overlays[canon]; ok {
 				if strings.HasSuffix(name, ".twf") {
 					e.add(spell(spelled), canon, "")
@@ -128,8 +128,8 @@ func (e *expander) walk(spelledDir, canonDir string, recursive bool) {
 			} else if recursive && name != "testdata" {
 				e.walk(spelled, canon, true)
 			}
-		case info.Mode()&fs.ModeSymlink != 0:
-		case info.IsDir():
+		case ent.mode&fs.ModeSymlink != 0:
+		case ent.mode.IsDir():
 			if recursive && name != "testdata" {
 				e.walk(spelled, canon, true)
 			}
@@ -139,27 +139,37 @@ func (e *expander) walk(spelledDir, canonDir string, recursive bool) {
 	}
 }
 
+// entry is one name a directory lists: on disk with its type, or only the
+// first path element of an overlay below it.
+type entry struct {
+	name   string
+	onDisk bool
+	mode   fs.FileMode
+}
+
 // entries lists a directory's names in lexical order: what is on disk plus the
 // first path element of every overlay below it.
-func (e *expander) entries(canonDir string) []string {
-	names := map[string]bool{}
+func (e *expander) entries(canonDir string) []entry {
+	byName := map[string]entry{}
 	if dirents, err := os.ReadDir(canonDir); err == nil {
 		for _, d := range dirents {
-			names[d.Name()] = true
+			byName[d.Name()] = entry{name: d.Name(), onDisk: true, mode: d.Type()}
 		}
 	}
 	prefix := canonDir + string(filepath.Separator)
 	for p := range e.overlays {
 		if rest, ok := strings.CutPrefix(p, prefix); ok {
 			first, _, _ := strings.Cut(rest, string(filepath.Separator))
-			names[first] = true
+			if _, ok := byName[first]; !ok {
+				byName[first] = entry{name: first}
+			}
 		}
 	}
-	out := make([]string, 0, len(names))
-	for n := range names {
-		out = append(out, n)
+	out := make([]entry, 0, len(byName))
+	for _, ent := range byName {
+		out = append(out, ent)
 	}
-	sort.Strings(out)
+	sort.Slice(out, func(i, j int) bool { return out[i].name < out[j].name })
 	return out
 }
 
@@ -204,22 +214,20 @@ func (e *expander) canonical(p string) string {
 		}
 	}
 
-	var rest []string
-	resolved := abs
-	for {
-		r, err := filepath.EvalSymlinks(resolved)
-		if err == nil {
-			resolved = r
+	// The longest prefix that exists, resolved physically; elements are split
+	// by hand, since Dir would clean `..` before a symlink before it resolves.
+	vol := filepath.VolumeName(abs)
+	elems := strings.Split(abs[len(vol):], string(filepath.Separator))
+	resolved, rest := filepath.Clean(abs), []string(nil)
+	for k := len(elems); k > 0; k-- {
+		prefix := vol + strings.Join(elems[:k], string(filepath.Separator))
+		if prefix == vol {
+			prefix += string(filepath.Separator)
+		}
+		if r, err := filepath.EvalSymlinks(prefix); err == nil {
+			resolved, rest = r, elems[k:]
 			break
 		}
-		parent := filepath.Dir(resolved)
-		if parent == resolved {
-			resolved = filepath.Clean(abs)
-			rest = nil
-			break
-		}
-		rest = append([]string{filepath.Base(resolved)}, rest...)
-		resolved = parent
 	}
 
 	c := e.onDiskSpelling(stripFirmlink(resolved))

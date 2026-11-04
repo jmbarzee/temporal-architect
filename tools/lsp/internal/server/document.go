@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"sort"
+	"strings"
 	"sync"
 
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
@@ -63,10 +64,12 @@ func (d *Document) analyze(folders []string, overlays map[string]string, runs ma
 	if home := homeFolder(folders, canon); home != "" {
 		inputs = append(inputs, pipeline.Input{Path: home, Kind: pipeline.Tree})
 	}
-	inputs = append(inputs,
-		pipeline.Input{Path: filepath.Dir(canon), Kind: pipeline.Dir},
-		pipeline.Input{Path: canon, Kind: pipeline.File},
-	)
+	inputs = append(inputs, pipeline.Input{Path: filepath.Dir(canon), Kind: pipeline.Dir})
+	// The directory reaches the buffer unless a walk skips its name; only then
+	// does the buffer need its own input, so buffers of one directory share a run.
+	if name := filepath.Base(canon); strings.HasPrefix(name, ".") || strings.HasPrefix(name, "_") || !strings.HasSuffix(name, ".twf") {
+		inputs = append(inputs, pipeline.Input{Path: canon, Kind: pipeline.File})
+	}
 
 	key := fmt.Sprint(inputs)
 	run, ok := runs[key]
@@ -127,13 +130,15 @@ func NewDocumentStore() *DocumentStore {
 }
 
 // Open adds or replaces a document in the store and re-analyzes every open
-// document, since its text can change their diagnostics.
+// document, since its text can change theirs.
 func (s *DocumentStore) Open(uri, content string) *Document {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	// Opening is not an edit: a file already open under another URI keeps
+	// that buffer's (possibly unsaved) text.
 	doc := &Document{URI: uri, Content: content}
 	s.docs[uri] = doc
-	s.touch(doc)
+	s.reanalyze()
 	return doc
 }
 
@@ -162,7 +167,12 @@ func (s *DocumentStore) touch(doc *Document) {
 // buffer's text and sharing a run among documents with the same inputs.
 func (s *DocumentStore) reanalyze() {
 	docs := s.all()
-	sort.Slice(docs, func(i, j int) bool { return docs[i].edited < docs[j].edited })
+	sort.Slice(docs, func(i, j int) bool {
+		if docs[i].edited != docs[j].edited {
+			return docs[i].edited < docs[j].edited
+		}
+		return docs[i].URI < docs[j].URI
+	})
 	overlays := map[string]string{}
 	for _, d := range docs {
 		if p := uriToPath(d.URI); p != "" {

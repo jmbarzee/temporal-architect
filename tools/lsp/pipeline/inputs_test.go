@@ -178,6 +178,16 @@ func TestCanonicalizeMissingFileKeepsItsTail(t *testing.T) {
 	}
 }
 
+func TestCanonicalizeMissingFileAfterSymlinkDotDot(t *testing.T) {
+	root := tree(t, "other/sub/a.twf")
+	symlink(t, filepath.Join(root, "other", "sub"), filepath.Join(root, "lnk"))
+	t.Chdir(root)
+	want := filepath.Join(pipeline.Canonicalize(filepath.Join(root, "other")), "x.twf")
+	if got := pipeline.Canonicalize("lnk/../x.twf"); got != want {
+		t.Errorf("got %s, want %s (.. after a symlink is physical)", got, want)
+	}
+}
+
 func TestInWalk(t *testing.T) {
 	root := tree(t, "a.twf", "_x/b.twf", ".claude/worktrees/w/c.twf", "sub/testdata/d.twf", "sub/e.twf")
 	tests := map[string]bool{

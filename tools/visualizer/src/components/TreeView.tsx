@@ -15,7 +15,7 @@ import type { CallerRef, NavigationContextType } from './WorkflowCanvas'
 import { NavigationContext } from './WorkflowCanvas'
 import { DefinitionBlock } from './blocks/DefinitionBlock'
 import { ErrorBars } from './ErrorBars'
-import { definitionCounts } from '../adapter/useGraphModel'
+import { definitionCounts, sourceFilesOf } from '../adapter/useGraphModel'
 import { DEF_TYPE_ORDER } from '../theme/temporal-theme'
 
 /** A definition's values on the axes it carries: its type, and its file when it has one. */
@@ -506,7 +506,7 @@ export function TreeView({
           searchPlaceholder="Filter by name..."
           searchExtra={searchExtra}
           hiddenMatches={hiddenMatches}
-          findings={<ErrorBars errors={errors} diagnostics={diagnostics} selectedFiles={selectionFor(filter, SOURCE_FILE_DIMENSION)} />}
+          findings={<ErrorBars errors={errors} diagnostics={diagnostics} selectedFiles={selectionFor(filter, SOURCE_FILE_DIMENSION)} sourceFiles={sourceFilesOf(ast)} />}
           refreshFlash={refreshFlash}
         />
 

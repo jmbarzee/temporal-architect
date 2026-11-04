@@ -30,6 +30,18 @@ export function filesChecks(): void {
     equal([...focusedFiles(undefined, SOURCES)], [])
     equal([...focusedFiles('kube.twf', SOURCES)], ['lib/kube/v1/kube.twf'])
   })
+  check('a longer host path picks the closest source, not every shorter one', () => {
+    equal(hostFileMatches('/ws/sub/a.twf', ['a.twf', 'sub/a.twf']), ['sub/a.twf'])
+    equal(hostFileMatches('/ws/x/a.twf', ['a.twf', 'sub/a.twf']), ['a.twf'])
+  })
+  check('a source file never matches another source by suffix', () => {
+    const diag: Diagnostic = {
+      severity: 'error', kind: 'resolve', code: 'X', message: '', file: 'sub/a.twf',
+      start: { line: 1, column: 1 }, end: { line: 1, column: 1 },
+    }
+    const p = partitionByFile([], [diag], new Set(['a.twf']), ['a.twf', 'sub/a.twf'])
+    equal(p.hiddenDiagnostics.length, 1)
+  })
   check('findings partition by suffix match against the selection', () => {
     const diag = (file?: string): Diagnostic => ({
       severity: 'error', kind: 'resolve', code: 'X', message: file ?? '', file,
@@ -39,9 +51,12 @@ export function filesChecks(): void {
       [{ file: 'kube.twf', error: 'm' }],
       [diag('deploy.twf'), diag('kube.twf'), diag()],
       new Set(['designs/deploy.twf']),
+      SOURCES,
     )
     equal(p.shownDiagnostics.map(d => d.file ?? ''), ['deploy.twf', ''])
     equal(p.hiddenDiagnostics.map(d => d.file), ['kube.twf'])
     equal(p.hiddenFileErrors.length, 1)
+    // A file that names no source file is never hidden.
+    equal(partitionByFile([{ file: 'gone.twf', error: 'm' }], [], new Set(['designs/deploy.twf']), SOURCES).shownFileErrors.length, 1)
   })
 }

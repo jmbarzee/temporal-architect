@@ -453,3 +453,24 @@ func TestFileURIToPath(t *testing.T) {
 		}
 	}
 }
+
+// TestWorkspaceSecondURIKeepsUnsavedText: opening a file under a second URI
+// (through a symlinked folder) loads its disk text, which must not replace the
+// first buffer's unsaved edits in the analysis.
+func TestWorkspaceSecondURIKeepsUnsavedText(t *testing.T) {
+	dir := t.TempDir()
+	link := filepath.Join(t.TempDir(), "ws")
+	if err := os.Symlink(dir, link); err != nil {
+		t.Skipf("symlink: %v", err)
+	}
+	disk := "workflow W():\n    close complete(\"ok\")\n"
+	_, uri := writeTWF(t, dir, "w.twf", disk)
+	store := NewDocumentStore()
+	store.SetFolders([]string{dir})
+	doc := store.Open(uri, disk)
+	store.Update(uri, "workflow W():\n    activity Ghost()\n")
+	store.Open("file://"+filepath.Join(link, "w.twf"), disk)
+	if !hasKind(doc.ResolveErrs, resolver.ErrUndefinedActivity) {
+		t.Errorf("the second URI's disk text replaced the unsaved edit: %v", doc.ResolveErrs)
+	}
+}

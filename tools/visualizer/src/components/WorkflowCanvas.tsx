@@ -490,7 +490,7 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
               keyboard={activeView === 'graph' ? 'global' : 'none'}
               graph={model.graph}
               counts={graphCounts}
-              findings={<ErrorBars errors={model.errors} diagnostics={model.diagnostics} selectedFiles={selectionFor(graphFilter, SOURCE_FILE_DIMENSION)} />}
+              findings={<ErrorBars errors={model.errors} diagnostics={model.diagnostics} selectedFiles={selectionFor(graphFilter, SOURCE_FILE_DIMENSION)} sourceFiles={sourceFilesOf(ast)} />}
               groups={nodeGroups}
               groupsControl={active => (
                 <GroupsModal

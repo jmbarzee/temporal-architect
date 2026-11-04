@@ -17,13 +17,14 @@ import { partitionByFile } from '../adapter/files'
  * it has at least one finding; each has its own scrollable body so a long list
  * never pushes the rest of the toolbar off-screen.
  */
-export function ErrorBars({ errors, diagnostics, selectedFiles }: {
+export function ErrorBars({ errors, diagnostics, selectedFiles, sourceFiles }: {
   errors: FileError[]
   diagnostics: Diagnostic[]
   selectedFiles: ReadonlySet<string>
+  sourceFiles: ReadonlySet<string>
 }) {
   const { shownFileErrors, hiddenFileErrors, shownDiagnostics, hiddenDiagnostics } =
-    partitionByFile(errors, diagnostics, selectedFiles)
+    partitionByFile(errors, diagnostics, selectedFiles, sourceFiles)
 
   const shownErr = shownDiagnostics.filter(d => d.severity === 'error')
   const hiddenErr = hiddenDiagnostics.filter(d => d.severity === 'error')
