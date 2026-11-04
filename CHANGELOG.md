@@ -263,9 +263,12 @@ is now checked against the target's signals.
   comment statement (#275).
 - An undefined workflow, activity, signal or update used as a `promise` /
   `await` target is reported at its name, not at 0:0 (#276).
-- Diagnostics on a reference (`UNDEFINED_*`, `WORKER_DUPLICATE_TYPE_NAME`,
-  `WORKER_REGISTERS_OPERATION`) point at the referenced name, not the
-  statement keyword; a qualifier's error points at the qualifier (#288).
+- Diagnostics on a reference (`UNDEFINED_*`, `SIGNAL_SEND_UNDEFINED_SIGNAL`,
+  `NEXUS_ASYNC_UNDEFINED_WORKFLOW`, `NAMESPACE_UNDEFINED_WORKER`,
+  `WORKER_DUPLICATE_TYPE_NAME`, `WORKER_REGISTERS_OPERATION`) point at the
+  referenced name, not the statement keyword; a qualifier's error points at
+  the qualifier. `twf parse` reports a worker entry's `column` at its name in
+  the same way; the shape is unchanged (#288).
 - Resolver and validator diagnostics come out sorted by file, position, then
   code, so the same input gives the same output on every run (#237).
 - Graph dispatch uses the target's `default_options:` `task_queue` when the
@@ -291,8 +294,9 @@ is now checked against the target's signals.
   same-spelled token (`nexus Orders Orders.Place`, `signal Child.Child.Go()`,
   `promise Child <- workflow Child(wid)`) and two packages' same-named
   declarations stay apart. They reach the workspace's other files, cover signal
-  sends, nexus operations, conditions and promises, and count columns in UTF-16
-  (#288, #300).
+  sends, nexus operations, conditions and promises, and count columns in UTF-16.
+  The server watches `.twf` files, and a rename that would edit a closed file
+  changed on disk since it was read fails instead (#288, #300).
 - **Visualizer:** "Show in Tree" on a nexus operation or endpoint scrolls to and
   flashes that row, not just the service or namespace that owns it (#249).
 - **Visualizer graph view:** wheel zoom no longer logs a passive-listener

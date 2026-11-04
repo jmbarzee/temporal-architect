@@ -13,7 +13,9 @@ func definitionHandler(store *DocumentStore) protocol.TextDocumentDefinitionFunc
 		}
 		for _, o := range occs {
 			if o.isDecl && o.decl == at.decl {
-				return newSources(store, params.TextDocument.URI).location(o), nil
+				if loc, fresh := newSources(store, params.TextDocument.URI).location(o); fresh {
+					return loc, nil
+				}
 			}
 		}
 		return nil, nil

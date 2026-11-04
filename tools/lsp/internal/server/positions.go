@@ -7,14 +7,15 @@ import (
 	"strings"
 
 	protocol "github.com/jmbarzee/glsp/protocol_3_16"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/pipeline"
 )
 
-// nameRange is the LSP range of o's name in content, the text of o's file.
-// The parser counts columns in bytes; LSP counts UTF-16 code units.
-func nameRange(content string, o occurrence) protocol.Range {
+// nameRange is the LSP range of o's name in lines, the text of o's file. The
+// parser counts columns in bytes; LSP counts UTF-16 code units.
+func nameRange(lines []string, o occurrence) protocol.Range {
 	line := max(o.Line-1, 0)
 	text := ""
-	if lines := strings.Split(content, "\n"); line < len(lines) {
+	if line < len(lines) {
 		text = lines[line]
 	}
 	start := utf16Len(text[:min(max(o.Column-1, 0), len(text))])
@@ -22,6 +23,14 @@ func nameRange(content string, o occurrence) protocol.Range {
 		Start: protocol.Position{Line: uint32(line), Character: start},
 		End:   protocol.Position{Line: uint32(line), Character: start + utf16Len(o.name)},
 	}
+}
+
+// spells reports whether lines still hold o's name at o's position.
+func spells(lines []string, o occurrence) bool {
+	if o.Line < 1 || o.Line > len(lines) || o.Column < 1 {
+		return false
+	}
+	return strings.HasPrefix(lines[o.Line-1][min(o.Column-1, len(lines[o.Line-1])):], o.name)
 }
 
 // utf16Len is the length of s in UTF-16 code units.
@@ -37,42 +46,66 @@ func utf16Len(s string) uint32 {
 }
 
 // sources maps the source files a positional request reaches to their URIs
-// and text: the requesting buffer, other open buffers, then the disk.
+// and lines: the requesting buffer, other open buffers, then the disk.
 type sources struct {
 	store *DocumentStore
 	uri   string
 	doc   *Document
-	text  map[string]string
+	files map[string]source
+}
+
+type source struct {
+	uri   string
+	lines []string
 }
 
 func newSources(store *DocumentStore, uri string) *sources {
 	doc, _ := store.Get(uri)
-	return &sources{store: store, uri: uri, doc: doc, text: map[string]string{}}
+	return &sources{store: store, uri: uri, doc: doc, files: map[string]source{}}
 }
 
-// location is o's name in its file.
-func (s *sources) location(o occurrence) protocol.Location {
-	uri, content := s.open(o.file)
-	return protocol.Location{URI: uri, Range: nameRange(content, o)}
+// location is o's name in its file. ok is false when the file no longer spells
+// the name there: a closed file the run read changed or went away since.
+func (s *sources) location(o occurrence) (loc protocol.Location, ok bool) {
+	src := s.open(o.file)
+	return protocol.Location{URI: src.uri, Range: nameRange(src.lines, o)}, spells(src.lines, o)
 }
 
-// open returns the URI and text of the source file spelled file.
-func (s *sources) open(file string) (string, string) {
-	if s.doc != nil && file == s.doc.sourceFile {
-		return s.uri, s.doc.Content
+// open returns the URI and lines of the source file spelled file.
+func (s *sources) open(file string) source {
+	if src, ok := s.files[file]; ok {
+		return src
 	}
-	for _, d := range s.store.All() {
-		if d.sourceFile != "" && d.sourceFile == file {
-			return d.URI, d.Content
+	var src source
+	switch {
+	case s.doc != nil && file == s.doc.sourceFile:
+		src = source{s.uri, strings.Split(s.doc.Content, "\n")}
+	default:
+		for _, d := range s.store.All() {
+			if d.sourceFile != "" && d.sourceFile == file {
+				src = source{d.URI, strings.Split(d.Content, "\n")}
+			}
+		}
+		if src.uri == "" {
+			src.uri = s.closedURI(file)
+			if b, err := os.ReadFile(filepath.FromSlash(file)); err == nil {
+				src.lines = strings.Split(string(b), "\n")
+			}
 		}
 	}
-	text, ok := s.text[file]
-	if !ok {
-		b, _ := os.ReadFile(filepath.FromSlash(file))
-		text = string(b)
-		s.text[file] = text
+	s.files[file] = src
+	return src
+}
+
+// closedURI is the URI of a closed file, spelled through the workspace folder
+// it is under as the client spells that folder, not by its canonical path.
+func (s *sources) closedURI(file string) string {
+	for _, f := range s.store.Folders() {
+		if rest, ok := strings.CutPrefix(file, filepath.ToSlash(pipeline.Canonicalize(f))+"/"); ok {
+			return pathToURI(strings.TrimSuffix(filepath.ToSlash(f), "/") + "/" + rest)
+		}
 	}
-	return pathToURI(file), text
+	return pathToURI(file)
 }
 
 // pathToURI is the `file://` URI of a slash-separated absolute path.

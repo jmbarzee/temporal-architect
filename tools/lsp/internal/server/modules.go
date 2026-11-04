@@ -83,9 +83,9 @@ func executeCommandHandler(store *DocumentStore) protocol.WorkspaceExecuteComman
 	}
 }
 
-// didChangeWatchedFilesHandler re-analyzes every open buffer when a twf.mod
-// changes: twf.mod is always read from disk, and modules are rediscovered on
-// every analysis.
+// didChangeWatchedFilesHandler re-analyzes every open buffer when a twf.mod or
+// a .twf file changes on disk: a buffer's run reads closed files and twf.mod
+// from disk, and modules are rediscovered on every analysis.
 func didChangeWatchedFilesHandler(store *DocumentStore) protocol.WorkspaceDidChangeWatchedFilesFunc {
 	return func(context *glsp.Context, params *protocol.DidChangeWatchedFilesParams) error {
 		store.Reanalyze()
@@ -104,18 +104,18 @@ func isFolder(folders []string, dir string) bool {
 	return false
 }
 
-// watchModuleFiles asks the client to report changes to any twf.mod. The
-// request runs in the background: a handler must not wait on the client. (The
-// LSP 3.17 capability types drop `didChangeWatchedFiles`, so a client without
-// dynamic registration rejects it, harmlessly.) A twf.mod above every folder
-// is not watched; edits there are seen on the next buffer change.
+// watchModuleFiles asks the client to report changes to any twf.mod or .twf
+// file. The request runs in the background: a handler must not wait on the
+// client. (The LSP 3.17 capability types drop `didChangeWatchedFiles`, so a
+// client without dynamic registration rejects it, harmlessly.) A file above
+// every folder is not watched; edits there are seen on the next buffer change.
 func watchModuleFiles(context *glsp.Context) {
 	go context.Call(protocol.ServerClientRegisterCapability, protocol.RegistrationParams{
 		Registrations: []protocol.Registration{{
 			ID:     "twf-mod-watch",
 			Method: string(protocol.MethodWorkspaceDidChangeWatchedFiles),
 			RegisterOptions: protocol.DidChangeWatchedFilesRegistrationOptions{
-				Watchers: []protocol.FileSystemWatcher{{GlobPattern: "**/twf.mod"}},
+				Watchers: []protocol.FileSystemWatcher{{GlobPattern: "**/twf.mod"}, {GlobPattern: "**/*.twf"}},
 			},
 		}},
 	}, nil)

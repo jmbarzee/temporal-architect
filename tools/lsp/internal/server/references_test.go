@@ -356,6 +356,9 @@ func TestRenameAcrossPackages(t *testing.T) {
 			}
 			total := 0
 			for uri, edits := range edit.Changes {
+				if !strings.HasPrefix(uri, "file://"+dir+"/") {
+					t.Errorf("edit URI %s is not under the folder's own spelling %s", uri, dir)
+				}
 				base := filepath.Base(uriToPath(uri))
 				src := packageSources[filepath.Base(filepath.Dir(uriToPath(uri)))+"/"+base]
 				if got := len(edits); got != tt.want[base] {
@@ -367,9 +370,6 @@ func TestRenameAcrossPackages(t *testing.T) {
 					}
 				}
 				total += len(edits)
-				if err := os.WriteFile(uriToPath(uri), []byte(applyEdits(t, src, edits)), 0o644); err != nil {
-					t.Fatal(err)
-				}
 			}
 			if len(edit.Changes) != len(tt.want) {
 				t.Errorf("edited files %v, want %v", edit.Changes, tt.want)
@@ -385,6 +385,14 @@ func TestRenameAcrossPackages(t *testing.T) {
 			def, err := definitionHandler(store)(nil, &protocol.DefinitionParams{TextDocumentPositionParams: at})
 			if loc, ok := def.(protocol.Location); err != nil || !ok || filepath.Base(uriToPath(loc.URI)) != tt.declFile {
 				t.Errorf("definition = %#v (err %v), want a location in %s", def, err, tt.declFile)
+			}
+
+			for uri, edits := range edit.Changes {
+				path := uriToPath(uri)
+				src := packageSources[filepath.Base(filepath.Dir(path))+"/"+filepath.Base(path)]
+				if err := os.WriteFile(path, []byte(applyEdits(t, src, edits)), 0o644); err != nil {
+					t.Fatal(err)
+				}
 			}
 
 			// Every file, opened from its renamed text, is clean.
@@ -416,7 +424,7 @@ func TestNameRangeCountsUTF16(t *testing.T) {
 	col := strings.Index(line, "Charge") + 1 // the parser's 1-based byte column
 	o := occurrence{name: "Charge"}
 	o.Line, o.Column = 2, col
-	got := nameRange("first line\n"+line, o)
+	got := nameRange([]string{"first line", line}, o)
 	want := protocol.Range{
 		Start: protocol.Position{Line: 1, Character: 10}, // 4 spaces, ", é, 😀 (2 units), ", space
 		End:   protocol.Position{Line: 1, Character: 16},

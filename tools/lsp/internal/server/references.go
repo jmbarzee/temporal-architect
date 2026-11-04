@@ -1,6 +1,8 @@
 package server
 
 import (
+	"strings"
+
 	"github.com/jmbarzee/glsp"
 	protocol "github.com/jmbarzee/glsp/protocol_3_16"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
@@ -16,7 +18,9 @@ func referencesHandler(store *DocumentStore) protocol.TextDocumentReferencesFunc
 		var locs []protocol.Location
 		for _, o := range occs {
 			if o.decl == at.decl && (params.Context.IncludeDeclaration || !o.isDecl) {
-				locs = append(locs, src.location(o))
+				if loc, fresh := src.location(o); fresh {
+					locs = append(locs, loc)
+				}
 			}
 		}
 		return locs, nil
@@ -42,6 +46,7 @@ func occurrenceAt(store *DocumentStore, uri string, cursor protocol.Position) (o
 	if !found {
 		return nil, occurrence{}, false
 	}
+	lines := strings.Split(doc.Content, "\n")
 	for _, f := range []*ast.File{doc.run, doc.File} {
 		if f == nil {
 			continue
@@ -51,7 +56,7 @@ func occurrenceAt(store *DocumentStore, uri string, cursor protocol.Position) (o
 			if o.file != doc.sourceFile || o.Line-1 != int(cursor.Line) {
 				continue
 			}
-			r := nameRange(doc.Content, o)
+			r := nameRange(lines, o)
 			if r.Start.Character <= cursor.Character && cursor.Character <= r.End.Character {
 				return occs, o, o.decl != nil
 			}
