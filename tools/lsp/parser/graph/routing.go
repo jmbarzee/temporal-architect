@@ -24,7 +24,8 @@ import (
 //     deployment → workflow deployment on the same deploy key and
 //     namespace.
 //
-// One edge per (caller deployment, matching callee deployment) pair.
+// One edge per (caller deployment, matching callee deployment) pair; a
+// worker instantiated twice in one namespace reaching one callee is one edge.
 // When no callee matches, no edge; a DISPATCH_NO_REACHABLE_DEPLOYMENT
 // diagnostic is added so the consumer knows the call landed nowhere.
 func (g *Graph) emitDispatchEdges(idx *astIndex) {
@@ -111,7 +112,7 @@ func (g *Graph) emitActivityCall(
 	ref ast.Ref[*ast.ActivityDef], opts *ast.OptionsBlock, line int,
 ) {
 	if ref.Resolved == nil {
-		g.Unresolved = append(g.Unresolved, Unresolved{
+		g.addUnresolved(Unresolved{
 			From: callerID, Name: ref.Name, Kind: EdgeActivityCall, Line: line,
 		})
 		return
@@ -124,7 +125,7 @@ func (g *Graph) emitWorkflowCall(
 	ref ast.Ref[*ast.WorkflowDef], opts *ast.OptionsBlock, line int,
 ) {
 	if ref.Resolved == nil {
-		g.Unresolved = append(g.Unresolved, Unresolved{
+		g.addUnresolved(Unresolved{
 			From: callerID, Name: ref.Name, Kind: EdgeWorkflowCall, Line: line,
 		})
 		return
@@ -155,7 +156,7 @@ func (g *Graph) emitSignalSend(idx *astIndex, callerID string, callerDep workerD
 				u.Reason = UnresolvedExternal
 			}
 		}
-		g.Unresolved = append(g.Unresolved, u)
+		g.addUnresolved(u)
 		return
 	}
 	targetQName := idx.defQName(target, target.Name)
@@ -163,7 +164,7 @@ func (g *Graph) emitSignalSend(idx *astIndex, callerID string, callerDep workerD
 		if calleeDep.NamespaceName != callerDep.NamespaceName {
 			continue
 		}
-		g.Edges = append(g.Edges, Edge{
+		g.addEdge(Edge{
 			From:    callerID,
 			To:      HostedID(KindWorkflow, targetQName, calleeDep.WorkerName, calleeDep.NamespaceName, false),
 			Kind:    EdgeSignalSend,
@@ -224,7 +225,7 @@ func (g *Graph) emitQueuedCall(
 				Explicit: explicit,
 			},
 		}
-		g.Edges = append(g.Edges, edge)
+		g.addEdge(edge)
 		matched = true
 	}
 
@@ -245,7 +246,7 @@ func (g *Graph) emitNexusCall(
 ) {
 	if epRef.Resolved == nil || svcRef.Resolved == nil || opRef.Resolved == nil {
 		name := nexusOpCallName(svcRef, opRef)
-		g.Unresolved = append(g.Unresolved, Unresolved{
+		g.addUnresolved(Unresolved{
 			From: callerID, Name: name, Kind: EdgeNexusCall, Line: line,
 		})
 		return
@@ -254,7 +255,7 @@ func (g *Graph) emitNexusCall(
 	ep := idx.endpointsByName[epRef.Resolved.EndpointName]
 	if ep == nil {
 		// Resolved at the AST level but lost from our index — defensive.
-		g.Unresolved = append(g.Unresolved, Unresolved{
+		g.addUnresolved(Unresolved{
 			From: callerID, Name: nexusOpCallName(svcRef, opRef), Kind: EdgeNexusCall, Line: line,
 		})
 		return
@@ -282,7 +283,7 @@ func (g *Graph) emitNexusCall(
 				NexusEndpoint: EndpointID(ep.Name, ep.Namespace),
 			},
 		}
-		g.Edges = append(g.Edges, edge)
+		g.addEdge(edge)
 		matched = true
 	}
 
@@ -308,7 +309,7 @@ func (g *Graph) emitAsyncBacking(
 		if calleeDep.NamespaceName != opDep.NamespaceName || !opDep.queue.SameKey(calleeDep.queue) {
 			continue
 		}
-		g.Edges = append(g.Edges, Edge{
+		g.addEdge(Edge{
 			From:    fromID,
 			To:      HostedID(KindWorkflow, workflowName, calleeDep.WorkerName, calleeDep.NamespaceName, false),
 			Kind:    EdgeAsyncBacking,
@@ -338,21 +339,21 @@ func nexusOpCallName(svc ast.Ref[*ast.NexusServiceDef], op ast.Ref[*ast.NexusOpe
 	return nexusOpQualifiedName(svcName, opName)
 }
 
-// recordUnresolved emits one Unresolved entry per caller deployment,
+// recordUnresolved emits one Unresolved entry per caller deployment node,
 // matching the per-deployment fan-out the dispatch emitter would have
 // produced. Without this, an unresolved async-backing workflow would
 // show up once instead of once-per-service-deployment, making it
 // inconsistent with how unresolved call-site refs are recorded.
 func (g *Graph) recordUnresolved(opQualName, calleeName, kind string, line int, serviceDeployments []workerDeployment) {
 	if len(serviceDeployments) == 0 {
-		g.Unresolved = append(g.Unresolved, Unresolved{
+		g.addUnresolved(Unresolved{
 			From: HostedID(KindNexusOperation, opQualName, "", "", true),
 			Name: calleeName, Kind: kind, Line: line,
 		})
 		return
 	}
 	for _, opDep := range serviceDeployments {
-		g.Unresolved = append(g.Unresolved, Unresolved{
+		g.addUnresolved(Unresolved{
 			From: HostedID(KindNexusOperation, opQualName, opDep.WorkerName, opDep.NamespaceName, false),
 			Name: calleeName, Kind: kind, Line: line,
 		})

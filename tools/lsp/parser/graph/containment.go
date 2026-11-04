@@ -23,16 +23,13 @@ import (
 // the definition's own declaration line and reflects where the
 // containment relationship was authored.
 func (g *Graph) emitContainment(idx *astIndex) {
-	for _, ns := range idx.namespaces {
-		for i := range ns.Endpoints {
-			ep := &ns.Endpoints[i]
-			g.Edges = append(g.Edges, Edge{
-				From: EndpointID(ep.EndpointName, ns.Name),
-				To:   NamespaceID(ns.Name),
-				Kind: EdgeContainment,
-				Line: ep.Line,
-			})
-		}
+	for _, ep := range idx.endpointsByName {
+		g.Edges = append(g.Edges, Edge{
+			From: EndpointID(ep.Name, ep.Namespace),
+			To:   NamespaceID(ep.Namespace),
+			Kind: EdgeContainment,
+			Line: ep.Line,
+		})
 	}
 
 	// A worker instantiated twice in one namespace is one node, so only its
