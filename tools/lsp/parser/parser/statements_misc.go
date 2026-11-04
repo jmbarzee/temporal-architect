@@ -17,8 +17,8 @@ func parseSetStmt(p *Parser) (ast.Statement, error) {
 		return nil, err
 	}
 
-	if p.current.Type == token.NEWLINE {
-		p.advance()
+	if err := p.endLine("set " + name.Literal); err != nil {
+		return nil, err
 	}
 
 	return &ast.SetStmt{
@@ -37,8 +37,8 @@ func parseUnsetStmt(p *Parser) (ast.Statement, error) {
 		return nil, err
 	}
 
-	if p.current.Type == token.NEWLINE {
-		p.advance()
+	if err := p.endLine("unset " + name.Literal); err != nil {
+		return nil, err
 	}
 
 	return &ast.UnsetStmt{
@@ -93,8 +93,8 @@ func parseCloseStmt(p *Parser) (ast.Statement, error) {
 		p.advance()
 	}
 
-	if p.current.Type == token.NEWLINE {
-		p.advance()
+	if err := p.endLine("close"); err != nil {
+		return nil, err
 	}
 
 	return &ast.CloseStmt{
@@ -109,8 +109,8 @@ func parseBreakStmt(p *Parser) (ast.Statement, error) {
 	pos := ast.Pos{Line: p.current.Line, Column: p.current.Column}
 	p.advance() // consume BREAK
 
-	if p.current.Type == token.NEWLINE {
-		p.advance()
+	if err := p.endLine("break"); err != nil {
+		return nil, err
 	}
 
 	return &ast.BreakStmt{Pos: pos}, nil
@@ -121,8 +121,8 @@ func parseContinueStmt(p *Parser) (ast.Statement, error) {
 	pos := ast.Pos{Line: p.current.Line, Column: p.current.Column}
 	p.advance() // consume CONTINUE
 
-	if p.current.Type == token.NEWLINE {
-		p.advance()
+	if err := p.endLine("continue"); err != nil {
+		return nil, err
 	}
 
 	return &ast.ContinueStmt{Pos: pos}, nil

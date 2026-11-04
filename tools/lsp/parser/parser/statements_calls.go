@@ -40,8 +40,8 @@ func parseCallParts(p *Parser, optCtx OptionsContext) (*callParts, error) {
 		result = res
 	}
 
-	if p.current.Type == token.NEWLINE {
-		p.advance()
+	if err := p.endLine("a call"); err != nil {
+		return nil, err
 	}
 
 	options, err := p.parseOptionalOptionsLine(optCtx)

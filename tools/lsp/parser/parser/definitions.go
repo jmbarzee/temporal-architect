@@ -69,59 +69,61 @@ func parseWorkflowDef(p *Parser) (ast.Definition, error) {
 	var updates []*ast.UpdateDecl
 	var firstSend ast.Statement
 
+	// A failed declaration line, like a failed statement, is left out when
+	// collecting errors (see recoverLine).
+	depth := p.depth
 declLoop:
 	for {
 		// Skip blank lines and comments between declarations.
 		p.skipBlankLinesAndComments()
+		start := p.current
 
+		var err error
+		send := false
 		switch p.current.Type {
 		case token.SIGNAL:
 			// `signal IDENT` then `.` is a send — the body's first statement,
 			// which ends this region; `(` or `:` is a handler declaration.
-			pos := ast.Pos{Line: p.current.Line, Column: p.current.Column}
-			p.advance() // consume SIGNAL
-			name, err := p.expect(token.IDENT)
-			if err != nil {
-				return nil, err
-			}
-			if p.current.Type == token.DOT {
-				firstSend, err = parseSignalSendRest(p, pos, name)
-				if err != nil {
-					return nil, err
-				}
-				if err := p.checkMisplacedAddress(firstSend); err != nil {
-					return nil, err
-				}
+			var sig *ast.SignalDecl
+			sig, firstSend, send, err = parseSignalDeclOrSend(p)
+			if err == nil && send {
 				break declLoop
 			}
-			sig, err := parseSignalDeclRest(p, pos, name)
-			if err != nil {
-				return nil, err
+			if err == nil {
+				signals = append(signals, sig)
 			}
-			signals = append(signals, sig)
 		case token.ID_SCHEME:
-			return nil, p.misplacedIDScheme()
+			err = p.misplacedIDScheme()
 		case token.QUERY:
-			q, err := parseQueryDecl(p)
-			if err != nil {
-				return nil, err
+			var q *ast.QueryDecl
+			if q, err = parseQueryDecl(p); err == nil {
+				queries = append(queries, q)
 			}
-			queries = append(queries, q)
 		case token.UPDATE:
-			u, err := parseUpdateDecl(p)
-			if err != nil {
-				return nil, err
+			var u *ast.UpdateDecl
+			if u, err = parseUpdateDecl(p); err == nil {
+				updates = append(updates, u)
 			}
-			updates = append(updates, u)
 		default:
 			break declLoop
 		}
+		if err != nil {
+			if err := p.recoverLine(err, start, depth); err != nil {
+				return nil, err
+			}
+			if send || p.depth < depth {
+				break declLoop // a failed send is the body's first statement
+			}
+		}
 	}
 
-	// Parse workflow body.
-	body, err := p.parseBodyAs(bodyWorkflow)
-	if err != nil {
-		return nil, err
+	// Parse workflow body, unless a failed line consumed its end.
+	var body []ast.Statement
+	if p.depth == depth {
+		body, err = p.parseBodyAs(bodyWorkflow)
+		if err != nil {
+			return nil, err
+		}
 	}
 	if firstSend != nil {
 		body = append([]ast.Statement{firstSend}, body...)
@@ -233,6 +235,30 @@ func (p *Parser) parseHeadOptions(ctx OptionsContext, isHead func(token.Token) b
 	p.advance() // consume the leading keyword
 	opts, err := p.parseOptionsBlock(ctx)
 	return opts, nil, err
+}
+
+// parseSignalDeclOrSend parses a `signal` line at the head of a workflow body:
+// a handler declaration, or, when a `.` follows the name, a send that is the
+// body's first statement. send reports which one the line is.
+func parseSignalDeclOrSend(p *Parser) (sig *ast.SignalDecl, firstSend ast.Statement, send bool, err error) {
+	pos := ast.Pos{Line: p.current.Line, Column: p.current.Column}
+	p.advance() // consume SIGNAL
+	name, err := p.expect(token.IDENT)
+	if err != nil {
+		return nil, nil, false, err
+	}
+	if p.current.Type == token.DOT {
+		firstSend, err = parseSignalSendRest(p, pos, name)
+		if err == nil {
+			err = p.checkMisplacedAddress(firstSend)
+		}
+		if err != nil {
+			return nil, nil, true, err
+		}
+		return nil, firstSend, true, nil
+	}
+	sig, err = parseSignalDeclRest(p, pos, name)
+	return sig, nil, false, err
 }
 
 // parseSignalDeclRest parses a signal declaration after its `signal` keyword and
@@ -383,6 +409,7 @@ func parseStateBlock(p *Parser) (*ast.StateBlock, error) {
 
 	block := &ast.StateBlock{Pos: pos}
 
+	depth := p.depth
 	for p.current.Type != token.DEDENT && p.current.Type != token.EOF {
 		if p.current.Type == token.NEWLINE {
 			p.advance()
@@ -397,9 +424,17 @@ func parseStateBlock(p *Parser) (*ast.StateBlock, error) {
 		}
 
 		if p.current.Type == token.CONDITION {
+			start := p.current
 			cond, err := parseConditionDecl(p)
 			if err != nil {
-				return nil, err
+				// A failed line is left out when collecting (see recoverLine).
+				if err := p.recoverLine(err, start, depth); err != nil {
+					return nil, err
+				}
+				if p.depth < depth {
+					return block, nil
+				}
+				continue
 			}
 			block.Conditions = append(block.Conditions, cond)
 		} else {
@@ -431,8 +466,8 @@ func parseConditionDecl(p *Parser) (*ast.ConditionDecl, error) {
 		return nil, err
 	}
 
-	if p.current.Type == token.NEWLINE {
-		p.advance()
+	if err := p.endLine("condition " + name.Literal); err != nil {
+		return nil, err
 	}
 
 	return &ast.ConditionDecl{

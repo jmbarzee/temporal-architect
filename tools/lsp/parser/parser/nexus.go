@@ -90,8 +90,8 @@ func parseAsyncOperation(p *Parser) (*ast.NexusOperation, error) {
 		return nil, err
 	}
 
-	if p.current.Type == token.NEWLINE {
-		p.advance()
+	if err := p.endLine("an async operation"); err != nil {
+		return nil, err
 	}
 
 	return &ast.NexusOperation{
@@ -225,8 +225,8 @@ func parseNexusCallInner(p *Parser, pos ast.Pos, detach bool) (ast.Statement, er
 		}
 	}
 
-	if p.current.Type == token.NEWLINE {
-		p.advance()
+	if err := p.endLine("a nexus call"); err != nil {
+		return nil, err
 	}
 
 	options, err := p.parseOptionalOptionsLine(OptionsContextNexusCall)
@@ -289,8 +289,8 @@ func parseWorkflowCallOrNexus(p *Parser) (ast.Statement, error) {
 		}
 	}
 
-	if p.current.Type == token.NEWLINE {
-		p.advance()
+	if err := p.endLine("a call"); err != nil {
+		return nil, err
 	}
 
 	options, err := p.parseOptionalOptionsLine(p.workflowStartContext())
