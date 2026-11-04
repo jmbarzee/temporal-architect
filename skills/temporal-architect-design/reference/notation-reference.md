@@ -36,7 +36,7 @@ A quick reference; the grammar itself is `twf spec` (`twf spec --list` for secti
 | `worker name:` | Worker type set; `nexus service Name` inside registers a service |
 | `namespace name:` | Deployment: instantiates workers and `nexus endpoint Name`s with options |
 | `package Name` | Package clause — first line of a file ([packages.md](../topics/packages.md)) |
-| `import "full/module/path"` / `import alias "path"` | Import a package, referenced by its leaf name (trailing `/vN` stripped) or the alias |
+| `import "full/module/path"` / `import alias "path"` | Import the package with exactly that path, referenced by the path's assumed name (last element, trailing `/vN` dropped) or the alias |
 | `pkg.Name` | Qualified reference into an imported package — e.g. `activity billing.ChargeCard`, `nexus Ep billing.PaymentService.Charge`. Same-package refs stay bare; endpoints are never qualified |
 
 Namespace and endpoint names — including the endpoint in every Nexus call — are `deploy_name`s: hyphens and `{param}` template parameters allowed (`twf spec tokens-and-keywords`).

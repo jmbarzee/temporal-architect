@@ -18,7 +18,7 @@ worker orderWorker:
     activity payments.ChargeCard
 ```
 
-A clause-less file is the implicit default package, so single-package designs need none of this. Import paths, leaf names, `/vN` stripping, and aliases: [packages topic](../topics/packages.md) and `twf spec packages-and-imports`; resolution errors: [common-errors.md](./common-errors.md#packages-imports-and-external-references).
+A clause-less file is the implicit default package, so single-package designs need none of this. Modules, import paths, assumed names, `/vN` stripping, and aliases: [packages topic](../topics/packages.md) and `twf spec packages-and-imports`; resolution errors: [common-errors.md](./common-errors.md#packages-imports-and-external-references).
 
 ## Impl-link header
 

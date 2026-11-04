@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/module"
 )
 
 // ErrorKind classifies a resolve error for structured handling.
@@ -161,6 +162,25 @@ const (
 	// ErrPackageNameMismatch: a declared package name other than its path's
 	// assumed name, when that name is usable.
 	ErrPackageNameMismatch
+
+	// --- Import resolution by path (issue #232) ---
+
+	// ErrInvalidImportPath: an import path that is not a valid path (or is a
+	// local one).
+	ErrInvalidImportPath
+	// ErrSelfImport: a package importing its own path.
+	ErrSelfImport
+	// ErrImportNeedsAlias: an import with no alias whose path's assumed name
+	// cannot be a package name.
+	ErrImportNeedsAlias
+	// ErrDuplicateImportName: an import qualifier that is the package's own
+	// name, or is already bound to a different path.
+	ErrDuplicateImportName
+	// ErrImportNotLoaded: a path whose package is on disk but not among the
+	// inputs; treated as external. Warning severity.
+	ErrImportNotLoaded
+	// ErrImportNotFound: a path under a known module with no such package.
+	ErrImportNotFound
 )
 
 // ResolveError represents a resolution error with position info.
@@ -179,6 +199,10 @@ type ResolveError struct {
 	// engineering the file from Name. Empty when the merge left the enclosing
 	// node's SourceFile unstamped (e.g. a raw single-file parse).
 	File string
+	// Qualifier is the package qualifier as written, for an undefined
+	// reference into another package (`fabric.Setup`); empty for a bare or
+	// self-qualified one.
+	Qualifier string
 }
 
 func (e *ResolveError) Error() string {
@@ -283,6 +307,18 @@ func (k ErrorKind) String() string {
 		return "DUPLICATE_PACKAGE"
 	case ErrPackageNameMismatch:
 		return "PACKAGE_NAME_MISMATCH"
+	case ErrInvalidImportPath:
+		return "INVALID_IMPORT_PATH"
+	case ErrSelfImport:
+		return "SELF_IMPORT"
+	case ErrImportNeedsAlias:
+		return "IMPORT_NEEDS_ALIAS"
+	case ErrDuplicateImportName:
+		return "DUPLICATE_IMPORT_NAME"
+	case ErrImportNotLoaded:
+		return "IMPORT_NOT_LOADED"
+	case ErrImportNotFound:
+		return "IMPORT_NOT_FOUND"
 	}
 	return "UNKNOWN"
 }
@@ -312,55 +348,30 @@ func effPkg(defPkg, filePkg string) string {
 	return filePkg
 }
 
-// leafName is the package name a qualified reference uses for an import path.
-// It is the last "/"-separated segment, except that a trailing Go-style version
-// segment ("v" followed by one or more digits, e.g. "/v2") is stripped and the
-// preceding segment used instead — Go's importPathToAssumedName rule. So
-// `import "acme/billing"` and `import "acme/billing/v2"` both resolve to
-// "billing". A path with no "/" (or whose only meaningful segment is a version)
-// is returned as-is.
-func leafName(path string) string {
-	i := strings.LastIndexByte(path, '/')
-	if i < 0 {
-		return path
-	}
-	last := path[i+1:]
-	if isVersionSegment(last) {
-		// Strip the trailing /vN and use the preceding segment when one exists.
-		if j := strings.LastIndexByte(path[:i], '/'); j >= 0 {
-			return path[j+1 : i]
-		}
-		return path[:i]
-	}
-	return last
-}
-
-// isVersionSegment reports whether s is a Go-style module version segment: the
-// letter "v" followed by one or more decimal digits (v1, v2, v10). Such a
-// trailing segment is stripped in leaf-name derivation.
-func isVersionSegment(s string) bool {
-	if len(s) < 2 || s[0] != 'v' {
-		return false
-	}
-	for i := 1; i < len(s); i++ {
-		if s[i] < '0' || s[i] > '9' {
-			return false
-		}
-	}
-	return true
-}
-
 // importBinding is one qualifier→target-package binding derived from an import
 // declaration, scoped to the package the import was declared in.
 type importBinding struct {
-	qualifier string // alias, or the path's leaf when no alias
-	targetPkg string // the leaf package name this qualifier resolves to
-	path      string // the import path as written, for self-consistent diagnostics
-	external  bool   // true when targetPkg is absent from the parsed tree
-	used      bool   // set once a reference resolves through this qualifier
-	line      int
-	column    int
-	file      string // base name of the file this import was declared in (#136)
+	qualifier string // alias, or the path's assumed name when no alias
+	targetPkg string // the identity of the package the path names
+	path      string // the import path as written
+	external  bool   // the path names a package outside the run (5.3, 5.5)
+	// sink marks a failed import's qualifier: references through it resolve
+	// silently as external, and it is never reported unused.
+	sink bool
+	// warning is the external import's diagnostic, reported at every line
+	// binding this qualifier; it subsumes UNUSED_IMPORT.
+	warning *ResolveError
+	// failure is a failed lookup's error (IMPORT_NOT_FOUND), reported at every
+	// line binding this qualifier to this path.
+	failure *ResolveError
+	used    bool      // set once a reference resolves through this qualifier
+	lines   []lineRef // every import line binding this qualifier to this path
+}
+
+// lineRef is one import line's position and file (#136).
+type lineRef struct {
+	line, column int
+	file         string
 }
 
 // ---------------------------------------------------------------------------
@@ -380,9 +391,21 @@ type state struct {
 	nexusServices map[pkgKey]*ast.NexusServiceDef
 	allEndpoints  map[string]*ast.NamespaceEndpoint
 	packages      map[string]bool
-	bindings      map[string]map[string]*importBinding // ownPkg → qualifier → binding
-	imports       []*importBinding                     // ordered, for end-of-run diagnostics
-	errs          []*ResolveError
+	// names maps a package identity to its declared name; paths maps a kept
+	// package's import path to its identity; byName maps a declared name to
+	// the identity of a package with no path (a virtual source's, or an
+	// unstamped AST's), which an import still reaches by its assumed name.
+	names    map[string]string
+	paths    map[string]string
+	pathOf   map[string]string // identity → import path
+	moduleOf map[string]string // identity → module path
+	byName   map[string]string
+	// noQualifier lists, per package, the failed import lines that formed no
+	// qualifier, for QUALIFIED_REF_WITHOUT_IMPORT to name.
+	noQualifier map[string][]lineRef
+	bindings    map[string]map[string]*importBinding // ownPkg → qualifier → binding
+	imports     []*importBinding                     // ordered, for end-of-run diagnostics
+	errs        []*ResolveError
 }
 
 // Resolve walks the AST, linking calls to their definitions. Resolution keys by
@@ -400,7 +423,21 @@ func Resolve(file *ast.File) []*ResolveError {
 		nexusServices: map[pkgKey]*ast.NexusServiceDef{},
 		allEndpoints:  map[string]*ast.NamespaceEndpoint{},
 		packages:      map[string]bool{},
+		names:         map[string]string{},
+		paths:         map[string]string{},
+		pathOf:        map[string]string{},
+		moduleOf:      map[string]string{},
+		byName:        map[string]string{},
+		noQualifier:   map[string][]lineRef{},
 		bindings:      map[string]map[string]*importBinding{},
+	}
+	for _, p := range file.Packages {
+		s.names[p.ID] = p.Name
+		s.moduleOf[p.ID] = p.Module
+		if p.Path != "" {
+			s.paths[p.Path] = p.ID
+			s.pathOf[p.ID] = p.Path
+		}
 	}
 
 	// Pass 1: collect definitions keyed by (package, name), duplicate-detecting
@@ -409,23 +446,23 @@ func Resolve(file *ast.File) []*ResolveError {
 		switch d := def.(type) {
 		case *ast.WorkflowDef:
 			p := effPkg(ast.PackageIDOf(d, nil), s.filePkg)
-			s.packages[p] = true
+			s.notePackage(p, d.Package)
 			collectInto(s.workflows, pkgKey{p, d.Name}, d, "workflow", ErrDuplicateWorkflow, d.Line, d.Column, d.SourceFile, &s.errs)
 		case *ast.ActivityDef:
 			p := effPkg(ast.PackageIDOf(d, nil), s.filePkg)
-			s.packages[p] = true
+			s.notePackage(p, d.Package)
 			collectInto(s.activities, pkgKey{p, d.Name}, d, "activity", ErrDuplicateActivity, d.Line, d.Column, d.SourceFile, &s.errs)
 		case *ast.WorkerDef:
 			p := effPkg(ast.PackageIDOf(d, nil), s.filePkg)
-			s.packages[p] = true
+			s.notePackage(p, d.Package)
 			collectInto(s.workers, pkgKey{p, d.Name}, d, "worker", ErrDuplicateWorker, d.Line, d.Column, d.SourceFile, &s.errs)
 		case *ast.NamespaceDef:
 			p := effPkg(ast.PackageIDOf(d, nil), s.filePkg)
-			s.packages[p] = true
+			s.notePackage(p, d.Package)
 			collectInto(s.namespaces, pkgKey{p, d.Name}, d, "namespace", ErrDuplicateNamespace, d.Line, d.Column, d.SourceFile, &s.errs)
 		case *ast.NexusServiceDef:
 			p := effPkg(ast.PackageIDOf(d, nil), s.filePkg)
-			s.packages[p] = true
+			s.notePackage(p, d.Package)
 			collectInto(s.nexusServices, pkgKey{p, d.Name}, d, "nexus service", ErrDuplicateNexusService, d.Line, d.Column, d.SourceFile, &s.errs)
 		}
 	}
@@ -505,30 +542,13 @@ func Resolve(file *ast.File) []*ResolveError {
 		}
 	}
 
-	// Build per-package import binding tables. A qualifier is the alias when
-	// present, otherwise the path's leaf; the target package is the leaf; the
-	// import is external when that package is absent from the tree.
+	// Build per-package import binding tables, checking each import line in
+	// order (spec 14): a valid path, not the package's own, a usable qualifier,
+	// not bound to another path; then the path resolves to the kept package
+	// with exactly that path, or is external. A failed line binds nothing, but
+	// its qualifier becomes a sink so references through it stay quiet.
 	for _, imp := range file.Imports {
-		p := effPkg(ast.ImportPackageIDOf(imp, nil), s.filePkg)
-		leaf := leafName(imp.Path)
-		q := imp.Alias
-		if q == "" {
-			q = leaf
-		}
-		b := &importBinding{
-			qualifier: q,
-			targetPkg: leaf,
-			path:      imp.Path,
-			external:  !s.packages[leaf],
-			line:      imp.Line,
-			column:    imp.Column,
-			file:      imp.SourceFile,
-		}
-		if s.bindings[p] == nil {
-			s.bindings[p] = map[string]*importBinding{}
-		}
-		s.bindings[p][q] = b
-		s.imports = append(s.imports, b)
+		s.bindImport(file, imp)
 	}
 
 	// Continue to Pass 2 even if there are duplicate definition errors — this
@@ -676,32 +696,28 @@ func Resolve(file *ast.File) []*ResolveError {
 		}
 	}
 
-	// End-of-run import diagnostics. An external import is reported as
-	// "treated as external"; a resolved import that was never referenced is
-	// reported as unused. (An external import subsumes the unused signal — the
-	// external warning is the more informative one.)
+	// End-of-run import diagnostics: an external import's warning at every
+	// line binding it (subsuming UNUSED_IMPORT), else UNUSED_IMPORT at every
+	// line of a qualifier no file of the package used. Sinks report nothing.
 	for _, b := range s.imports {
-		switch {
-		case b.external:
-			s.errs = append(s.errs, &ResolveError{
-				Msg:      fmt.Sprintf("import %q is unresolved (no package %q in the tree); treated as external", b.path, b.targetPkg),
-				Severity: "warning",
-				Line:     b.line,
-				Column:   b.column,
-				Kind:     ErrUnresolvedImport,
-				Name:     b.qualifier,
-				File:     b.file,
-			})
-		case !b.used:
-			s.errs = append(s.errs, &ResolveError{
-				Msg:      fmt.Sprintf("unused import: %q is never referenced", b.qualifier),
-				Severity: "warning",
-				Line:     b.line,
-				Column:   b.column,
-				Kind:     ErrUnusedImport,
-				Name:     b.qualifier,
-				File:     b.file,
-			})
+		for _, l := range b.lines {
+			switch {
+			case b.sink:
+			case b.warning != nil:
+				w := *b.warning
+				w.Line, w.Column, w.File = l.line, l.column, l.file
+				s.errs = append(s.errs, &w)
+			case !b.used:
+				s.errs = append(s.errs, &ResolveError{
+					Msg:      fmt.Sprintf("unused import: %q is never referenced", b.qualifier),
+					Severity: "warning",
+					Line:     l.line,
+					Column:   l.column,
+					Kind:     ErrUnusedImport,
+					Name:     b.qualifier,
+					File:     l.file,
+				})
+			}
 		}
 	}
 
@@ -715,6 +731,162 @@ func Resolve(file *ast.File) []*ResolveError {
 	return s.errs
 }
 
+// notePackage records that package identity p, declared as name, holds a
+// definition. A package with no path (a virtual source's, or one an unstamped
+// AST names by its declared name) is reachable by name.
+func (s *state) notePackage(p, name string) {
+	s.packages[p] = true
+	if p == "" {
+		return
+	}
+	if _, ok := s.names[p]; !ok {
+		if name == "" {
+			name = p
+		}
+		s.names[p] = name
+	}
+	if s.pathOf[p] == "" {
+		s.byName[s.names[p]] = p
+	}
+}
+
+// packageLabel names a package in a message: "package <name>", with its path
+// when another package shares the name, or "the default package".
+func (s *state) packageLabel(id string) string {
+	if id == "" {
+		return "the default package"
+	}
+	name := s.names[id]
+	for other, n := range s.names {
+		if other != id && n == name {
+			return "package " + name + " (" + id + ")"
+		}
+	}
+	return "package " + name
+}
+
+// bind records b as package x's binding for its qualifier.
+func (s *state) bind(x string, b *importBinding) {
+	if s.bindings[x] == nil {
+		s.bindings[x] = map[string]*importBinding{}
+	}
+	s.bindings[x][b.qualifier] = b
+	s.imports = append(s.imports, b)
+}
+
+// bindImport checks one import line of its package, in spec 14's order, and
+// binds its qualifier. The first failing check reports and the line fails.
+func (s *state) bindImport(file *ast.File, imp *ast.ImportDecl) {
+	x := effPkg(ast.ImportPackageIDOf(imp, nil), s.filePkg)
+	own := s.names[x]
+	p := imp.Path
+	at := lineRef{imp.Line, imp.Column, imp.SourceFile}
+	qual := imp.Alias
+	if qual == "" {
+		if an := module.AssumedName(p); module.Usable(an) {
+			qual = an
+		}
+	}
+	report := func(kind ErrorKind, severity, msg string) {
+		name := qual
+		if name == "" {
+			name = p
+		}
+		s.errs = append(s.errs, &ResolveError{Msg: msg, Severity: severity, Line: at.line, Column: at.column, Kind: kind, Name: name, File: at.file})
+	}
+	// fail reports a failed line; its qualifier, if it formed one and it is
+	// not already bound, becomes a sink.
+	fail := func(kind ErrorKind, msg string) {
+		report(kind, "", msg)
+		switch {
+		case qual == "":
+			s.noQualifier[x] = append(s.noQualifier[x], at)
+		case qual == own || s.bindings[x][qual] != nil:
+		default:
+			s.bind(x, &importBinding{qualifier: qual, path: p, sink: true, lines: []lineRef{at}})
+		}
+	}
+	aliasHint := func() string {
+		if imp.Alias != "" {
+			return fmt.Sprintf("use a different alias for %q", p)
+		}
+		return fmt.Sprintf("alias %q", p)
+	}
+
+	if module.IsLocal(p) {
+		example := "example.com/x"
+		if m := s.moduleOf[x]; m != "" {
+			example = m + "/…"
+		}
+		fail(ErrInvalidImportPath, fmt.Sprintf("invalid import path %q: %q is a local import path; use a module path such as %q", p, p, example))
+		return
+	}
+	if err := module.CheckPath(p); err != nil {
+		fail(ErrInvalidImportPath, fmt.Sprintf("invalid import path %q: %v", p, err))
+		return
+	}
+	if path := s.pathOf[x]; path != "" && path == p {
+		fail(ErrSelfImport, fmt.Sprintf("package %s imports itself", p))
+		return
+	}
+	if qual == "" {
+		fail(ErrImportNeedsAlias, fmt.Sprintf("import %q needs an alias: its assumed name %s cannot be a package name", p, module.AssumedName(p)))
+		return
+	}
+	if own != "" && qual == own {
+		report(ErrDuplicateImportName, "", fmt.Sprintf("import name %s is this package's own name; %s", qual, aliasHint()))
+		return
+	}
+	if b := s.bindings[x][qual]; b != nil {
+		if b.path == p {
+			b.lines = append(b.lines, at) // the same binding again
+			if b.failure != nil {
+				f := *b.failure
+				f.Line, f.Column, f.File = at.line, at.column, at.file
+				s.errs = append(s.errs, &f)
+			}
+			return
+		}
+		first := b.lines[0]
+		report(ErrDuplicateImportName, "", fmt.Sprintf("import name %s is already bound to %q in %s (%s:%d); %s", qual, b.path, s.packageLabel(x), first.file, first.line, aliasHint()))
+		return
+	}
+
+	b := &importBinding{qualifier: qual, path: p, lines: []lineRef{at}}
+	out, looked := file.ImportOutcomes[imp]
+	switch {
+	case s.paths[p] != "":
+		b.targetPkg = s.paths[p]
+	case looked && out.Kind == ast.ImportSink:
+		b.sink = true
+	case looked && out.Kind == ast.ImportNotFound:
+		report(ErrImportNotFound, "", fmt.Sprintf("import %q: %s", p, out.Detail))
+		b.failure = s.errs[len(s.errs)-1]
+		b.sink = true
+	case looked && out.Kind == ast.ImportNotLoaded:
+		b.external = true
+		b.warning = &ResolveError{Msg: fmt.Sprintf("import %q is not among the inputs; %s; treated as external", p, out.Detail), Severity: "warning", Kind: ErrImportNotLoaded, Name: qual}
+	case s.byName[module.AssumedName(p)] != "":
+		// A package with no path, reached by its name.
+		b.targetPkg = s.byName[module.AssumedName(p)]
+	default:
+		b.external = true
+		msg := fmt.Sprintf("import %q is unresolved (no package %q in the tree); treated as external", p, module.AssumedName(p))
+		var elsewhere []string
+		for id, name := range s.names {
+			if name == module.AssumedName(p) && s.pathOf[id] != "" {
+				elsewhere = append(elsewhere, s.pathOf[id])
+			}
+		}
+		if len(elsewhere) > 0 {
+			slices.Sort(elsewhere)
+			msg += fmt.Sprintf(" (package %s is at %s)", module.AssumedName(p), strings.Join(elsewhere, ", "))
+		}
+		b.warning = &ResolveError{Msg: msg, Severity: "warning", Kind: ErrUnresolvedImport, Name: qual}
+	}
+	s.bind(x, b)
+}
+
 // readOperationMentions reads a two-segment worker entry `nexus service Svc.Op`
 // as an operation of a same-package service rather than a package-qualified
 // service, when that is the only sensible reading: the qualifier is not the
@@ -726,7 +898,7 @@ func Resolve(file *ast.File) []*ResolveError {
 func (s *state) readOperationMentions(w *ast.WorkerDef, wPkg string) {
 	for i := range w.Services {
 		ref := &w.Services[i]
-		if ref.Package == "" || ref.Package == wPkg || s.bindings[wPkg][ref.Package] != nil {
+		if ref.Package == "" || ref.Package == s.names[wPkg] || s.bindings[wPkg][ref.Package] != nil {
 			continue
 		}
 		svc, found := s.nexusServices[pkgKey{wPkg, ref.Package}]
@@ -781,15 +953,23 @@ func hasOperation(svc *ast.NexusServiceDef, op string) bool {
 //   - anything else → QUALIFIED_REF_WITHOUT_IMPORT error; ok is false so the
 //     caller leaves the reference unresolved without a second diagnostic.
 func (s *state) resolveQualifier(ownPkg, q string, line, column int, file string) (targetPkg string, external, ok bool) {
-	if q == "" || q == ownPkg {
+	if q == "" || (ownPkg != "" && q == s.names[ownPkg]) {
 		return ownPkg, false, true
 	}
 	if b := s.bindings[ownPkg][q]; b != nil {
 		b.used = true
-		return b.targetPkg, b.external, true
+		return b.targetPkg, b.external || b.sink, true
+	}
+	msg := fmt.Sprintf("qualified reference uses package %q with no matching import in %s", q, s.packageLabel(ownPkg))
+	if lines := s.noQualifier[ownPkg]; len(lines) > 0 {
+		var at []string
+		for _, l := range lines {
+			at = append(at, fmt.Sprintf("%s:%d", l.file, l.line))
+		}
+		msg += fmt.Sprintf(" (the import at %s binds no qualifier)", strings.Join(at, ", "))
 	}
 	s.errs = append(s.errs, &ResolveError{
-		Msg:    fmt.Sprintf("qualified reference uses package %q with no matching import in package %q", q, ownPkg),
+		Msg:    msg,
 		Line:   line,
 		Column: column,
 		Kind:   ErrQualifiedRefWithoutImport,
@@ -1033,7 +1213,10 @@ func (c *resolveCtx) resolveTypeSend(s *ast.SignalSendStmt) {
 	}
 	wf, found := c.s.workflows[pkgKey{targetPkg, h.Type.Name}]
 	if !found {
-		c.errorf(ErrUndefinedWorkflow, h.Pos, h.Type.Name, "undefined workflow: %s", h.Type.Name)
+		e := c.errorf(ErrUndefinedWorkflow, h.Pos, h.Type.Name, "undefined workflow: %s", h.Type.Name)
+		if targetPkg != c.ownPkg {
+			e.Qualifier = h.Type.Package
+		}
 		return
 	}
 	h.Type.Resolved = wf
@@ -1247,20 +1430,36 @@ func collectInto[T any](m map[pkgKey]T, key pkgKey, def T, kind string, errKind 
 // undefined-reference error.
 func resolvePkgRef[T any](s *state, ownPkg string, ref *ast.Ref[T], defs map[pkgKey]T, kind string, errKind ErrorKind, file string) {
 	targetPkg, external, ok := s.resolveQualifier(ownPkg, ref.Package, ref.Line, ref.Column, file)
-	if !ok || external {
+	if !ok {
+		return
+	}
+	if external {
+		if b := s.bindings[ownPkg][ref.Package]; b != nil {
+			ref.External = b.path
+		}
 		return
 	}
 	if def, found := defs[pkgKey{targetPkg, ref.Name}]; found {
 		ref.Resolved = def
 		return
 	}
+	msg := fmt.Sprintf("undefined %s: %s", kind, ref.Name)
+	qualifier := ""
+	if ref.Package != "" && targetPkg != ownPkg {
+		qualifier = ref.Package
+		msg = fmt.Sprintf("undefined %s: %s.%s", kind, ref.Package, ref.Name)
+		if path := s.pathOf[targetPkg]; path != "" {
+			msg += fmt.Sprintf(" (package %s)", path)
+		}
+	}
 	s.errs = append(s.errs, &ResolveError{
-		Msg:    fmt.Sprintf("undefined %s: %s", kind, ref.Name),
-		Line:   ref.Line,
-		Column: ref.Column,
-		Kind:   errKind,
-		Name:   ref.Name,
-		File:   file,
+		Msg:       msg,
+		Line:      ref.Line,
+		Column:    ref.Column,
+		Kind:      errKind,
+		Name:      ref.Name,
+		File:      file,
+		Qualifier: qualifier,
 	})
 }
 

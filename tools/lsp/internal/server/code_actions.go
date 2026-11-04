@@ -44,6 +44,11 @@ func addMissingDefinitionActions(doc *Document, params *protocol.CodeActionParam
 			continue
 		}
 
+		// A qualified reference's stub would land in this buffer's package,
+		// not the one the qualifier names.
+		if err.Qualifier != "" {
+			continue
+		}
 		var name string
 		var kind string
 		switch err.Kind {

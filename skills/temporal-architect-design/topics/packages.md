@@ -10,7 +10,7 @@ A package groups a directory of `.twf` files so references cross file and direct
 |-----------|----------|
 | A single small design, one directory | A clause-less file (the **implicit default package**) is fine. |
 | Multiple domains (orders, payments, notifications) | One package/directory per domain, mirroring the code layout ([conventions](../reference/twf-conventions.md#package-per-domain-directory)). |
-| Two domains use the same short name (`ChannelJoin`, `CreateNamespace`) | Packages keep both — reference each by its package leaf name; no rename. One worker cannot register both (`WORKER_DUPLICATE_TYPE_NAME`). |
+| Two domains use the same short name (`ChannelJoin`, `CreateNamespace`) | Packages keep both — reference each by its import's qualifier; no rename. One worker cannot register both (`WORKER_DUPLICATE_TYPE_NAME`). |
 | A topology / deployment file wiring domains together | Make it its own package (e.g. `deploy`) that `import`s the domains it deploys. |
 | A service genuinely lives in another system / repo | `import` its package; if it isn't in the tree the import is **treated as external**. |
 
@@ -29,12 +29,13 @@ A packaged design needs a `twf.mod` at its root: run `twf mod init <module path>
 ```twf
 import "github.com/acme/shop/payments"                # referenced as: payments
 import billing "github.com/acme/shop/billing"         # referenced as: billing
-import billingv2 "github.com/acme/shop/billing/v2"    # strips to leaf billing too → aliased billingv2 to avoid the clash
+import billingv2 "github.com/acme/shop/billing/v2"    # assumed name billing too → aliased billingv2 to avoid the clash
 ```
 
 - The string is the package's **full import path** (module path + directory).
-- Reference the package by its **leaf name** — the last path segment, except a trailing `/vN` is stripped and the preceding segment used (`.../billing/v2` → `billing`), Go's `importPathToAssumedName` rule.
-- Alias (`import alias "path"`) only to disambiguate a leaf clash — canonically v1 and v2 of one package. The alias renames only the **local** reference; the target is always the version-stripped leaf.
+- An import reaches **only the package with exactly that path** — a typo under your own module is `IMPORT_NOT_FOUND`, not a silent external.
+- Reference the package by the path's **assumed name** — the last element, a trailing `/vN` dropped (`.../billing/v2` → `billing`).
+- Alias (`import alias "path"`) when two imports would share a qualifier — two `fabric` packages at different paths, or v1 and v2 of one package — or when the assumed name cannot be a name (`library-temporal-kube`). The alias renames only the **local** reference.
 
 ### Qualified reference
 
@@ -50,7 +51,7 @@ Nexus mirrors Temporal's registries, so its three reference kinds qualify differ
 | Kind | Scope | Qualification |
 |------|-------|---------------|
 | **Endpoint** (`Gateway`) | Flat-global (cluster-global registry) | **Never qualified.** A cross-package duplicate endpoint name is still an error. |
-| **Service** (`payments.PaymentService`) | Package-scoped | **Qualified cross-package** by leaf name (or alias); bare within its own package. |
+| **Service** (`payments.PaymentService`) | Package-scoped | **Qualified cross-package** by the import's qualifier (or alias); bare within its own package. |
 | **Operation** (`Charge`) | Member of its service | **Never independently qualified** — the trailing `.Op` on its service. |
 
 To reach a service in another package, define the endpoint locally (it is part of *your* deployment topology) and qualify + import the service.

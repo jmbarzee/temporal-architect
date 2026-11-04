@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strings"
 
 	"github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf/internal/cmdutil"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf/internal/command/chunks"
@@ -89,9 +90,52 @@ func printJSON(file *ast.File, diags []pipeline.Diagnostic, g *graph.Graph) int 
 	return 0
 }
 
+// nodeText renders a node id for humans: a hosted node as its label and its
+// deployment, rebuilt from containment (`fabric.Setup @ worker w / namespace
+// ns`); a worker, namespace or endpoint as its kind and name. Ids are opaque,
+// so nothing is parsed out of them.
+func nodeText(g *graph.Graph, byID map[string]*graph.Node, workerOf, namespaceOf map[string]string, id string) string {
+	n := byID[id]
+	if n == nil || n.Name == "" {
+		return id
+	}
+	kind, _, _ := strings.Cut(n.Definition, ":")
+	name := func(id string) string {
+		if p := byID[id]; p != nil {
+			return p.Name
+		}
+		return id
+	}
+	switch kind {
+	case graph.KindNamespace:
+		return "namespace " + n.Name
+	case graph.KindWorker, graph.KindNexusEndpoint:
+		text := kind + " " + n.Name
+		if ns, ok := namespaceOf[id]; ok {
+			text += " @ namespace " + name(ns)
+		}
+		return text
+	}
+	text := ast.Label(g.Packages, n.PackageID, n.Name)
+	switch w, ns := workerOf[id], namespaceOf[id]; {
+	case n.Orphan:
+		text += " (orphan)"
+	case w != "" && ns != "":
+		text += " @ worker " + name(w) + " / namespace " + name(ns)
+	}
+	return text
+}
+
 // printText renders the graph in a compact human-readable form.
 // Sections are omitted when empty so the happy-path output stays short.
 func printText(g *graph.Graph) int {
+	byID := make(map[string]*graph.Node, len(g.Nodes))
+	for i := range g.Nodes {
+		byID[g.Nodes[i].ID] = &g.Nodes[i]
+	}
+	workerOf, namespaceOf := g.Ancestors()
+	label := func(id string) string { return nodeText(g, byID, workerOf, namespaceOf, id) }
+
 	fmt.Printf("Deployment graph: %d node(s), %d edge(s), %d coarsened edge(s)\n",
 		g.Summary.Nodes, g.Summary.Edges, g.Summary.CoarsenedEdges)
 	if g.Summary.Unresolved > 0 || g.Summary.Diagnostics > 0 {
@@ -119,10 +163,10 @@ func printText(g *graph.Graph) int {
 		}
 		sort.Strings(sources)
 		for _, src := range sources {
-			fmt.Printf("  %s:\n", src)
+			fmt.Printf("  %s:\n", label(src))
 			for _, e := range bySource[src] {
 				routing := formatRouting(e.Routing)
-				fmt.Printf("    -[%s]-> %s (line %d)%s\n", e.Kind, e.To, e.Line, routing)
+				fmt.Printf("    -[%s]-> %s (line %d)%s\n", e.Kind, label(e.To), e.Line, routing)
 			}
 		}
 		fmt.Println()
@@ -137,7 +181,7 @@ func printText(g *graph.Graph) int {
 		sort.Strings(sources)
 		for _, src := range sources {
 			for _, e := range containmentOnly[src] {
-				fmt.Printf("  %s -> %s\n", src, e.To)
+				fmt.Printf("  %s -> %s\n", label(src), label(e.To))
 			}
 		}
 		fmt.Println()
@@ -146,7 +190,7 @@ func printText(g *graph.Graph) int {
 	if len(g.CoarsenedEdges) > 0 {
 		fmt.Println("Coarsened edges:")
 		for _, ce := range g.CoarsenedEdges {
-			fmt.Printf("  [%s] %s -> %s (weight %d)\n", ce.Tier, ce.From, ce.To, ce.Weight)
+			fmt.Printf("  [%s] %s -> %s (weight %d)\n", ce.Tier, label(ce.From), label(ce.To), ce.Weight)
 		}
 		fmt.Println()
 	}
@@ -154,7 +198,7 @@ func printText(g *graph.Graph) int {
 	if len(g.Unresolved) > 0 {
 		fmt.Println("Unresolved references:")
 		for _, u := range g.Unresolved {
-			fmt.Printf("  %s -> %s (%s, line %d)\n", u.From, u.Name, u.Kind, u.Line)
+			fmt.Printf("  %s -> %s (%s, line %d)\n", label(u.From), u.Name, u.Kind, u.Line)
 		}
 		fmt.Println()
 	}

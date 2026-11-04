@@ -4,14 +4,80 @@
 > (published, but never captured here) are not documented. The v0.11.0 entry covers
 > everything since v0.10.2.
 
-## v0.16.0 - ID Conflict Policies, Worker Families & Nexus Access
+## v0.16.0 - Modules, ID Conflict Policies, Worker Families & Nexus Access
 
-`.twf` moves closer to what Temporal accepts at runtime. A workflow start now
+Packages move into modules: a `twf.mod` gives every package an import path,
+and an import reaches only the package with exactly its path. `.twf` also moves
+closer to what Temporal accepts at runtime. A workflow start now
 knows whether it is a child or a client start and takes the matching ID
 policies. A `{param}` in a worker task queue declares a per-instance worker
 family. Nexus endpoints gain a caller allowlist. Routing and coherence checks
 are scoped to the namespace. Several changes reject designs that used to check
 clean; each is marked below.
+
+### ⚠️ Breaking: packages live in modules (`twf.mod`)
+
+Every file with a `package` clause now needs a `twf.mod` above it, which
+declares the module path of the design below it:
+
+```
+module github.com/acme/shop   # twf.mod, at the design's root
+```
+
+A package is **one directory** of a module, and its **import path** is the
+module path plus that directory: `orders/` is `github.com/acme/shop/orders`.
+A packaged file with no `twf.mod` above it is `PACKAGE_OUTSIDE_MODULE` and is
+ignored. Clause-less designs are unaffected and need no `twf.mod`.
+
+- `twf mod init <module path>` writes the file. The path is required; with no
+  argument it fails and suggests one (from the enclosing module, the design's
+  own imports, or the Git remote). The editor offers the same as a quick fix.
+- The `package` clause is one identifier and must be the file's first clause.
+  It must equal the import path's last element, with a trailing `/vN`
+  dropped (`…/orders/v1` → `package orders`), or `PACKAGE_NAME_MISMATCH`.
+- One directory holds one package. New errors, each reported once with the
+  offending files ignored: `MODULE_FILE_INVALID`, `PACKAGE_OUTSIDE_MODULE`,
+  `DUPLICATE_MODULE`, `PACKAGE_CLAUSE_CONFLICT`, `INVALID_PACKAGE_PATH`,
+  `DUPLICATE_PACKAGE`; `MODULE_FILE_UNKNOWN_DIRECTIVE` is a warning.
+
+### ⚠️ Breaking: imports resolve by exact path
+
+An import now reaches only the package with **exactly** its path — never a
+same-named package elsewhere (#232). Two packages named `fabric` at different
+paths are two packages; alias one to import both. New errors:
+`INVALID_IMPORT_PATH`, `SELF_IMPORT`, `IMPORT_NEEDS_ALIAS`,
+`DUPLICATE_IMPORT_NAME`, and `IMPORT_NOT_FOUND` for a typo under your own
+module (it used to be a silent external). `IMPORT_NOT_LOADED` warns when a
+package is on disk but not among the inputs. A path under no module in the run
+is still `UNRESOLVED_IMPORT`, treated as external.
+
+### ⚠️ Breaking: wire output
+
+- **Node ids carry the package's import path**:
+  `workflow:example.com/demo/fabric/v1.Setup/worker:w/namespace:ns` (was
+  `workflow:fabric.Setup/…`). AST `qualifiedName` follows. Unpackaged ids are
+  unchanged. Treat ids as opaque beyond the kind.
+- New fields: graph nodes `name` and `packageId`; a `packages` table
+  (identity → declared name) on graph, chunks, parse and symbols output; AST
+  definitions `packageId`; symbols `packageId` and `sourceFile`; decompose
+  nodes `label` and `packageId`, chunks `label` and `baseKey`, sections
+  `label`, `labelKind` and `subjects`; graph diagnostics `file`. Decompose
+  `nodes[].name` is now the bare name (`Work`, was `app.Work`); `key` keeps
+  the qualified form.
+- Diagnostics' `file` and definitions' `sourceFile` are the path as the input
+  named the file (`designs/agent/v1/agent.twf`), not its base name. A file
+  named twice is read once; directory walks skip `.*`, `_*`, `testdata` and
+  symlinks. Diagnostics are sorted.
+
+### Migration
+
+1. Move each package into its own directory, named so that the module path
+   plus the directory is the import path its importers write.
+2. At the design's root, run `twf mod init <module path>` (run it with no
+   argument for a suggestion) and commit the `twf.mod`.
+3. Run `twf check .` and fix `PACKAGE_NAME_MISMATCH` and `IMPORT_NOT_FOUND`.
+4. Consumers of the JSON: read `name`, `packageId` and `packages` instead of
+   parsing ids, and match `sourceFile` as a path.
 
 ### ⚠️ Breaking: `TERMINATE_IF_RUNNING` removed; `workflow_id_conflict_policy` and start kinds
 

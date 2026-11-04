@@ -176,7 +176,16 @@ nexusEndpoint:<e>/namespace:<ns>
 
 `/orphan` is a tag suffix marking a definition that has no deployment.
 The leftmost segment (`workflow:<name>`, `worker:<name>`, …) is the
-**definition key** — same key the AST uses.
+**definition key** — same key the AST uses. A packaged workflow, activity,
+nexus service or operation carries its package's **import path** in its
+name: `workflow:example.com/demo/fabric/v1.Setup/worker:w/namespace:ns`.
+
+Ids and definition keys are opaque beyond the kind (the text before the first
+`:`). Read a node's `name` and `packageId` instead, and the graph's `packages`
+table for a package's declared name; for every hosted node but an operation,
+`definition == kind + ":" + packageId + "." + name` (just `kind:name` in the
+default package). Text output names a node by its **label**, `fabric.Setup`,
+with the package's path appended when two packages share a declared name.
 
 **Edge kinds:**
 
@@ -341,6 +350,9 @@ The complete list of `kind` + `code` combinations:
 - `UNRESOLVED_IMPORT`, `UNUSED_IMPORT`, `QUALIFIED_REF_WITHOUT_IMPORT`
   (import/package resolution; `UNRESOLVED_IMPORT` and `UNUSED_IMPORT` are
   warnings)
+- `INVALID_IMPORT_PATH`, `SELF_IMPORT`, `IMPORT_NEEDS_ALIAS`,
+  `DUPLICATE_IMPORT_NAME`, `IMPORT_NOT_FOUND`, `IMPORT_NOT_LOADED` (warning)
+  (imports bind by exact path; see `twf spec packages-and-imports`)
 - `MODULE_FILE_INVALID`, `MODULE_FILE_UNKNOWN_DIRECTIVE` (warning),
   `PACKAGE_OUTSIDE_MODULE`, `DUPLICATE_MODULE`, `PACKAGE_CLAUSE_CONFLICT`,
   `INVALID_PACKAGE_PATH`, `DUPLICATE_PACKAGE`, `PACKAGE_NAME_MISMATCH`

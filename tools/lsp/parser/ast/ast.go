@@ -39,6 +39,9 @@ type Ref[T any] struct {
 	Package  string
 	Name     string
 	Resolved T
+	// External is the import path a qualified reference reaches when that
+	// path names a package outside the run (it stays unresolved). Runtime-only.
+	External string
 }
 
 // File represents a parsed .twf file.
@@ -66,6 +69,34 @@ type File struct {
 	// Packages lists a merged run's kept packages, ordered by identity; the
 	// default package is not listed. Runtime-only.
 	Packages []PackageInfo
+	// ImportOutcomes carries the pipeline's provider lookup for an import
+	// whose path no kept input package has: it needs the disk, which the
+	// resolver never reads. A missing entry means no provider under any known
+	// module. Runtime-only.
+	ImportOutcomes map[*ImportDecl]ImportOutcome
+}
+
+// ImportOutcomeKind is what the provider lookup found for an import path.
+type ImportOutcomeKind int
+
+const (
+	// ImportSink: the provider's files were all excluded (or its module is
+	// broken or lost DUPLICATE_MODULE); the import fails silently, its cause
+	// already reported.
+	ImportSink ImportOutcomeKind = iota + 1
+	// ImportNotLoaded: a provider exists on disk but none of its package
+	// files are inputs.
+	ImportNotLoaded
+	// ImportNotFound: the path lies under a known module that has no such
+	// package.
+	ImportNotFound
+)
+
+// ImportOutcome is one import's provider lookup result. Detail completes the
+// diagnostic message (the directory to pass, or why there is no package).
+type ImportOutcome struct {
+	Kind   ImportOutcomeKind
+	Detail string
 }
 
 // ImportDecl is a single `import [alias] "path"` declaration at file scope.
@@ -150,9 +181,12 @@ func ImportPackageIDOf(imp *ImportDecl, file *File) string {
 }
 
 // PackageInfo is one kept package of a merged run: its identity, its declared
-// name, and its import path ("" for a virtual source's package).
+// name, its import path ("" for a virtual source's package) and its module's
+// path.
 type PackageInfo struct {
 	ID, Name, Path string
+	// Module is the path of the package's module ("" without one).
+	Module string
 }
 
 // SourceFileOf returns the SourceFile stamp of a top-level definition, or ""

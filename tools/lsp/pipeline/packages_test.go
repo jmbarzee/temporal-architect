@@ -34,7 +34,20 @@ func wf(pkg, name string) string {
 func check(t *testing.T, root string) ([]string, []string) {
 	t.Helper()
 	t.Chdir(root)
-	file, diags, err := pipeline.ParseFiles([]string{"."})
+	return checkArgs(t, ".")
+}
+
+// runCheck is check over the given arguments in the current directory,
+// returning the diagnostics only.
+func runCheck(t *testing.T, args ...string) []string {
+	t.Helper()
+	diags, _ := checkArgs(t, args...)
+	return diags
+}
+
+func checkArgs(t *testing.T, args ...string) ([]string, []string) {
+	t.Helper()
+	file, diags, err := pipeline.ParseFiles(args)
 	if err != nil {
 		t.Fatalf("ParseFiles: %v", err)
 	}

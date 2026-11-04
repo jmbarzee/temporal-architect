@@ -275,17 +275,15 @@ func parseSources(sources []source, defaultFile string, x *expander) Result {
 		if p.excluded {
 			continue
 		}
-		pkgSeen[p.file.Package] = true
-		// A package's identity is its declared name for now; its import path
-		// rides along in the packages table.
+		// A package's identity is its import path; a package with none (a
+		// virtual source's) is identified by its declared name.
 		id := p.file.Package
-		if id != "" {
-			switch info := pkgs[id]; {
-			case info == nil:
-				pkgs[id] = &ast.PackageInfo{ID: id, Name: p.file.Package, Path: p.pkgPath}
-			case info.Path != p.pkgPath:
-				info.Path = "" // several directories share the identity
-			}
+		if p.pkgPath != "" {
+			id = p.pkgPath
+		}
+		pkgSeen[id] = true
+		if id != "" && pkgs[id] == nil {
+			pkgs[id] = &ast.PackageInfo{ID: id, Name: p.file.Package, Path: p.pkgPath, Module: p.modPath}
 		}
 
 		// Thread the file's imports into the merged payload, each stamped with
@@ -307,14 +305,25 @@ func parseSources(sources []source, defaultFile string, x *expander) Result {
 	for _, info := range pkgs {
 		merged.Packages = append(merged.Packages, *info)
 	}
+	if x != nil {
+		kept := map[string]bool{}
+		for _, info := range pkgs {
+			if info.Path != "" {
+				kept[info.Path] = true
+			}
+		}
+		merged.ImportOutcomes = x.lookupImports(files, kept)
+	}
 	sort.Slice(merged.Packages, func(i, j int) bool { return merged.Packages[i].ID < merged.Packages[j].ID })
 
-	// Sole package when the whole tree is single-package (every file shares one
-	// package clause, including the all-default case); empty when the merge
-	// spans multiple packages.
+	// The sole package's declared name when the whole run is one package
+	// (counted by identity, so two `fabric` directories are two), including
+	// the all-default case; empty when the merge spans several packages.
 	if len(pkgSeen) == 1 {
-		for pkg := range pkgSeen {
-			merged.Package = pkg
+		for id := range pkgSeen {
+			if info := pkgs[id]; info != nil {
+				merged.Package = info.Name
+			}
 		}
 	}
 

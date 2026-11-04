@@ -24,6 +24,7 @@ type parsed struct {
 	// On-disk sources only (canonical != ""):
 	dir     string // canonical directory
 	root    string // module root, "" outside every module
+	modPath string // the module's path, once its twf.mod parsed
 	pkgPath string // package import path, for a packaged file in a module
 
 	excluded bool
@@ -85,6 +86,7 @@ func (x *expander) exclude(files []*parsed) []*resolver.ResolveError {
 		f := x.mods.file(m.root)
 		spelled := x.spellModFile(m.root, m.first)
 		x.modFilePos[spelled] = m.first.pos
+		x.moduleFirst[m.root] = m.first
 		if f.err != nil {
 			errs = append(errs, &resolver.ResolveError{Msg: f.err.Msg, Line: f.err.Line, Column: 1, Kind: resolver.ErrModuleFileInvalid, File: spelled})
 			for _, p := range m.files {
@@ -93,6 +95,9 @@ func (x *expander) exclude(files []*parsed) []*resolver.ResolveError {
 			continue
 		}
 		modPath[m.root] = f.file.Path
+		for _, p := range m.files {
+			p.modPath = f.file.Path
+		}
 		for _, d := range f.file.Unknown {
 			errs = append(errs, &resolver.ResolveError{
 				Msg: fmt.Sprintf("unknown directive %q in twf.mod; ignored", d.Name), Line: d.Line, Column: 1,
@@ -129,12 +134,20 @@ func (x *expander) exclude(files []*parsed) []*resolver.ResolveError {
 				Line: f.file.PathLine, Column: 1, Kind: resolver.ErrDuplicateModule, Name: mp, File: x.spellModFile(m.root, m.first),
 			})
 			delete(modPath, m.root)
+			x.lostDuplicate[m.root] = true
 			for _, p := range m.files {
 				p.excluded = true
 			}
 			continue
 		}
 		firstRoot[key] = m
+	}
+
+	// The known modules: those holding input files and kept through step 2.
+	for _, m := range mods {
+		if mp, ok := modPath[m.root]; ok {
+			x.known = append(x.known, knownModule{root: m.root, path: mp, first: m.first})
+		}
 	}
 
 	// Package paths for what is left.
