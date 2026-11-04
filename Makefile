@@ -224,7 +224,7 @@ vet:
 
 # ── Docs targets ─────────────────────────────────────────────────────────────
 
-.PHONY: gen-docs check-docs
+.PHONY: gen-docs check-docs check-tabs
 
 ## Regenerate the twf command reference (tools/lsp/cmd/twf/COMMANDS.md) from the
 ## cobra command tree. The binary is the single source of truth for flags/help.
@@ -232,8 +232,13 @@ gen-docs:
 	cd tools/lsp && go run ./cmd/twf gen-docs --out cmd/twf/COMMANDS.md
 	@echo "Regenerated tools/lsp/cmd/twf/COMMANDS.md"
 
-## Fail if the committed command reference has drifted from the command tree.
-check-docs: gen-docs
+## Fail if a tracked .twf file or ```twf Markdown block is not tab-indented.
+check-tabs:
+	go run ./internal/tabify -check
+
+## Fail if the committed command reference has drifted from the command tree,
+## or any TWF is not tab-indented.
+check-docs: gen-docs check-tabs
 	@git diff --exit-code -- tools/lsp/cmd/twf/COMMANDS.md \
 		|| { echo "COMMANDS.md is stale — run 'make gen-docs' and commit the result."; exit 1; }
 

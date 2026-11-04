@@ -2,6 +2,7 @@ package parser
 
 import (
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 
@@ -156,11 +157,24 @@ var temporalKeywords = map[token.TokenType]bool{
 	token.CLOSE:     true,
 }
 
-// ParseFile parses a .twf source string into an AST File.
+// ParseFile parses a .twf source string into an AST File. It stops at the
+// first error. A structural lexer error at or before the parser's error is
+// reported in its place: bad indentation misleads the parser, so the error it
+// causes there would hide the cause.
 func ParseFile(input string) (*ast.File, error) {
 	input = strings.TrimPrefix(input, "\ufeff") // a leading BOM is not text
-	l := lexer.New(input)
-	p := &Parser{lex: l, src: input}
+	p := &Parser{lex: lexer.New(input), src: input}
+	file, err := p.parseFile()
+	if pe, ok := err.(*ParseError); ok && len(p.lexErrors) > 0 {
+		if le := p.lexErrors[0]; le.Line < pe.Line || le.Line == pe.Line && le.Column <= pe.Column {
+			return nil, le
+		}
+	}
+	return file, err
+}
+
+// parseFile is ParseFile's strict parse.
+func (p *Parser) parseFile() (*ast.File, error) {
 	p.advance() // fill current
 	p.advance() // fill peek
 
@@ -294,9 +308,10 @@ func ParseFileAll(input string) (*ast.File, []*ParseError) {
 
 	// Merge structural lexer errors (collected during read-ahead) with the
 	// parser errors, ordered by source position so diagnostics read top-to-bottom.
+	// At one position a lexer error comes first, since it causes the parser's.
 	// Lexer errors carry CodeLexical, which keeps the runaway-truncation bug from
 	// hiding behind a clean `twf check --lenient` exit code.
-	all := append(p.errors, p.lexErrors...)
+	all := append(slices.Clone(p.lexErrors), p.errors...)
 	sort.SliceStable(all, func(i, j int) bool {
 		if all[i].Line != all[j].Line {
 			return all[i].Line < all[j].Line

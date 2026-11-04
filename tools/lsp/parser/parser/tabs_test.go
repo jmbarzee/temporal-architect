@@ -226,3 +226,34 @@ func TestOffStyleBlocksKeepTheirStructure(t *testing.T) {
 		})
 	}
 }
+
+// An indentation error from the lexer is the one reported where it misleads
+// the parser: strict parsing returns it in place of the error it causes, and
+// collecting puts it first at a shared position. A parser error before it
+// still wins.
+func TestIndentationErrorComesFirst(t *testing.T) {
+	for _, tc := range []struct {
+		name, src, msg string
+	}{
+		{"spaces under a tab header", "workflow W(x):\n\tif (x):\n\t  close complete(x)\n", "indentation mixes tabs and spaces"},
+		{"mixed run under options", "workflow W(x):\n\tactivity A(x)\n\t\toptions:\n\t    start_to_close_timeout: 1m\n\tclose complete(x)\n", "indentation mixes tabs and spaces"},
+		{"dedent to no open block", "activity A(d) -> (string):\n        # c\n    work(d)\n", "inconsistent indentation"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := ParseFile(tc.src)
+			pe, ok := err.(*ParseError)
+			if !ok || pe.Code() != CodeLexical || !strings.Contains(pe.Msg, tc.msg) {
+				t.Errorf("strict: got %v, want the %s error %q", err, CodeLexical, tc.msg)
+			}
+			_, errs := ParseFileAll(tc.src)
+			if len(errs) < 2 || errs[0].Code() != CodeLexical || !strings.Contains(errs[0].Msg, tc.msg) {
+				t.Errorf("collecting: got %v, want the %s error %q first, then what it causes", errs, CodeLexical, tc.msg)
+			}
+		})
+	}
+
+	_, err := ParseFile("workflow W():\n\tbreak Missing\n    close complete\n")
+	if pe, ok := err.(*ParseError); !ok || pe.Code() == CodeLexical || pe.Line != 2 {
+		t.Errorf("got %v, want the parser's error on line 2", err)
+	}
+}

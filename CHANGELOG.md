@@ -309,6 +309,9 @@ is now checked against the target's signals.
 - After a failed line, only a failed `if`'s own `else:` is skipped; a further
   `else:` is reported. A bare `await` in an `await one:` case names the token
   after it.
+- A `parse/LEX` error, such as bad indentation or an unterminated string, is
+  listed ahead of the `parse/SYNTAX` error it causes at the same position in
+  `twf check`. The Go API `parser.ParseFile` reports it in place of that error.
 - **LSP:** a bad statement line drops only itself from the editor's outline,
   hover and references; the definition around it and its other statements stay.
 - An undefined workflow, activity, signal or update used as a `promise` /
