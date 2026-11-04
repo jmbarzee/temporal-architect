@@ -228,17 +228,28 @@ func (p *Parser) parseRefNameWithPackage() (pkg, name string, err error) {
 }
 
 // parseOptionalOptionsLine checks for an options block after a call:
-// INDENT OPTIONS COLON NEWLINE INDENT entries DEDENT NEWLINE DEDENT
+// INDENT [comments] OPTIONS COLON NEWLINE INDENT entries DEDENT NEWLINE DEDENT
 // Returns the options block (nil if no options found).
 func (p *Parser) parseOptionalOptionsLine(ctx OptionsContext) (*ast.OptionsBlock, error) {
 	if p.current.Type != token.INDENT {
 		return nil, nil
 	}
-	if p.peek.Type != token.OPTIONS {
+	// Probe without consuming comments that might belong to another statement.
+	// A lexer value copy is safe for this bounded scan: stop on the first
+	// non-comment/newline token, including INDENT/DEDENT. This never pops then
+	// pushes the shared indentation stack, and pending tokens are empty after
+	// a COMMENT. Do not extend this probe across structural tokens.
+	lookahead := *p.lex
+	next := p.peek
+	for next.Type == token.COMMENT || next.Type == token.NEWLINE {
+		next = lookahead.NextToken()
+	}
+	if next.Type != token.OPTIONS {
 		return nil, nil
 	}
-	// Consume INDENT
+	// Consume INDENT and the comments now known to introduce options.
 	p.advance()
+	p.skipBlankLinesAndComments()
 	// Consume OPTIONS
 	p.advance()
 	// Parse the options block (expects COLON, NEWLINE, INDENT, entries, DEDENT)
