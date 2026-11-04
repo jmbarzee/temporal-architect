@@ -204,8 +204,8 @@ Run the MCP server over stdio (parser tools + spec resources)
 
 Run a Model Context Protocol server over stdio.
 
-Exposes the TWF parser as MCP tools (twf_check, twf_parse, twf_symbols,
-twf_graph, twf_graph_chunks, twf_spec_list, twf_spec_get) and the embedded
+Exposes the TWF parser as MCP tools (twf_check, twf_fmt, twf_parse,
+twf_symbols, twf_graph, twf_graph_chunks, twf_spec_list, twf_spec_get) and the embedded
 language specification as MCP resources (twf://spec, twf://spec/<slug>).
 
 This is the agent entry point: point any MCP client (Claude Desktop, Cursor,
