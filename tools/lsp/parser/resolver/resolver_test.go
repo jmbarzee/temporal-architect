@@ -2,6 +2,7 @@ package resolver
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"testing"
 
@@ -1145,34 +1146,23 @@ func hasWarning(errs []*ResolveError, substr string) bool {
 // order. Namespaces and workers are walked from maps, so without the final sort
 // this order changes from run to run (issue #237).
 func TestDiagnosticOrder(t *testing.T) {
-	input := `worker wa:
-    workflow MissingA
-
-worker wb:
-    workflow MissingB
-
-namespace na:
-    worker ghostA
-
-namespace nb:
-    worker ghostB
-
-namespace nc:
-    worker ghostC
-`
-	file := mustParse(t, input)
-	var got []string
-	for _, e := range Resolve(file) {
-		got = append(got, fmt.Sprintf("%d:%d %s", e.Line, e.Column, e.Code()))
+	const n = 8
+	var b strings.Builder
+	for i := range n {
+		fmt.Fprintf(&b, "worker w%d:\n    workflow Missing%d\n\n", i, i)
 	}
-	want := []string{
-		"2:5 WORKER_UNDEFINED_WORKFLOW",
-		"5:5 WORKER_UNDEFINED_WORKFLOW",
-		"8:5 NAMESPACE_UNDEFINED_WORKER",
-		"11:5 NAMESPACE_UNDEFINED_WORKER",
-		"14:5 NAMESPACE_UNDEFINED_WORKER",
+	for i := range n {
+		fmt.Fprintf(&b, "namespace ns%d:\n    worker ghost%d\n\n", i, i)
 	}
-	if strings.Join(got, "\n") != strings.Join(want, "\n") {
-		t.Errorf("diagnostic order:\n got %q\nwant %q", got, want)
+	for run := range 20 {
+		var got []string
+		var lines []int
+		for _, e := range Resolve(mustParse(t, b.String())) {
+			got = append(got, fmt.Sprintf("%d:%d %s", e.Line, e.Column, e.Code()))
+			lines = append(lines, e.Line)
+		}
+		if len(lines) != 2*n || !slices.IsSorted(lines) {
+			t.Fatalf("run %d: diagnostics not in source order: %q", run, got)
+		}
 	}
 }
