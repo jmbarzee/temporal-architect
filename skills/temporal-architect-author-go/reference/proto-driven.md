@@ -80,21 +80,21 @@ service MyService {
 
   rpc CreateThing(CreateThingInput) returns (CreateThingOutput) {
     option (temporal.v1.activity) = {
-      name: "myservice.v1.CreateThing"
+      name: "CreateThing"
       schedule_to_close_timeout: {seconds: 300}
     };
   }
 
   rpc DeployCluster(DeployClusterInput) returns (DeployClusterOutput) {
     option (temporal.v1.workflow) = {
-      name: "myservice.v1.DeployCluster"
+      name: "DeployCluster"
       id: "deploy-cluster-{{.Input.ClusterName}}"
     };
   }
 
   rpc TeardownCluster(TeardownClusterInput) returns (TeardownClusterOutput) {
     option (temporal.v1.workflow) = {
-      name: "myservice.v1.TeardownCluster"
+      name: "TeardownCluster"
       id: "teardown-cluster-{{.Input.ClusterName}}"
     };
     option (.nexus.v1.operation).tags = "activity"; // opt out of Nexus exposure
@@ -107,7 +107,7 @@ message CreateThingInput {
 ```
 
 - `(temporal.v1.service)` sets the task queue for all RPCs in the service.
-- `(temporal.v1.activity)` / `(temporal.v1.workflow)` mark an RPC; set a unique `name` and timeouts. Workflows and activities coexist in one service.
+- `(temporal.v1.activity)` / `(temporal.v1.workflow)` mark an RPC; set `name` (the `.twf` name) and timeouts. Workflows and activities coexist in one service.
 - `(go.field).tags` injects struct tags on the generated Go type (requires `protopatch`).
 - Use `XxxInput` / `XxxOutput` naming — the Temporal ecosystem expects these, not `Request`/`Response`.
 - `(.nexus.v1.operation)` controls Nexus exposure, **default-on, opt-out**: with the Nexus plugins enabled, every `(temporal.v1.workflow)` RPC is a Nexus operation unless tagged `(.nexus.v1.operation).tags = "activity"` (as `TeardownCluster` is). It lives in `nexus.v1`, outside `temporal.v1.*`, so a scan of only `temporal.v1.*` annotations reports the wrong Nexus surface — recover the true surface from the generated Nexus stubs (below).

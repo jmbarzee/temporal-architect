@@ -13,6 +13,8 @@ This skill does not design or author; it routes to the specialists:
 | `temporal-architect-author-go` | Go SDK implementation of a `.twf`. |
 | `temporal-architect-author-infra` | Control-plane provisioning (namespaces, Nexus endpoints, search attributes). Orthogonal to language authoring. |
 
+Every language author follows [reference/author-template.md](reference/author-template.md).
+
 Its job is to protect the main agent's context: keep it on the architecture (workloads, scaling, reliability, availability) and dispatch code-scale authoring to subagents that each see only their chunk. The main agent is not always the design agent — sometimes it is authoring or reverse-engineering.
 
 ---
