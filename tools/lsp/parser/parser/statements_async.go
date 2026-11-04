@@ -82,12 +82,13 @@ func parseTimerTarget(p *Parser) (*ast.TimerTarget, error) {
 }
 
 func parseSignalTarget(p *Parser, allowArrows bool) (*ast.SignalTarget, error) {
+	pos := ast.Pos{Line: p.current.Line, Column: p.current.Column}
 	p.advance() // consume SIGNAL
 	name, err := p.expect(token.IDENT)
 	if err != nil {
 		return nil, err
 	}
-	t := &ast.SignalTarget{Signal: ast.Ref[*ast.SignalDecl]{Name: name.Literal}}
+	t := &ast.SignalTarget{Signal: ast.Ref[*ast.SignalDecl]{Pos: pos, Name: name.Literal}}
 	if allowArrows && p.current.Type == token.ARROW {
 		p.advance()
 		params, err := parseParamBinding(p)
@@ -100,12 +101,13 @@ func parseSignalTarget(p *Parser, allowArrows bool) (*ast.SignalTarget, error) {
 }
 
 func parseUpdateTarget(p *Parser, allowArrows bool) (*ast.UpdateTarget, error) {
+	pos := ast.Pos{Line: p.current.Line, Column: p.current.Column}
 	p.advance() // consume UPDATE
 	name, err := p.expect(token.IDENT)
 	if err != nil {
 		return nil, err
 	}
-	t := &ast.UpdateTarget{Update: ast.Ref[*ast.UpdateDecl]{Name: name.Literal}}
+	t := &ast.UpdateTarget{Update: ast.Ref[*ast.UpdateDecl]{Pos: pos, Name: name.Literal}}
 	if allowArrows && p.current.Type == token.ARROW {
 		p.advance()
 		params, err := parseParamBinding(p)
@@ -118,6 +120,7 @@ func parseUpdateTarget(p *Parser, allowArrows bool) (*ast.UpdateTarget, error) {
 }
 
 func parseActivityTarget(p *Parser, allowArrows bool) (*ast.ActivityTarget, error) {
+	pos := ast.Pos{Line: p.current.Line, Column: p.current.Column}
 	p.advance() // consume ACTIVITY
 	pkg, name, err := p.parseRefNameWithPackage()
 	if err != nil {
@@ -127,7 +130,7 @@ func parseActivityTarget(p *Parser, allowArrows bool) (*ast.ActivityTarget, erro
 	if err != nil {
 		return nil, err
 	}
-	t := &ast.ActivityTarget{Activity: ast.Ref[*ast.ActivityDef]{Package: pkg, Name: name}, Args: args.Literal}
+	t := &ast.ActivityTarget{Activity: ast.Ref[*ast.ActivityDef]{Pos: pos, Package: pkg, Name: name}, Args: args.Literal}
 	if allowArrows && p.current.Type == token.ARROW {
 		p.advance()
 		result, err := p.parseDotQualifiedIdent()
@@ -143,6 +146,7 @@ func parseActivityTarget(p *Parser, allowArrows bool) (*ast.ActivityTarget, erro
 // After an optional DETACH prefix, it branches to either a nexus target
 // (detach nexus ...) or a workflow target (workflow ...).
 func parseWorkflowOrNexusTarget(p *Parser, allowArrows bool, pos ast.Pos) (ast.AsyncTarget, error) {
+	keyword := ast.Pos{Line: p.current.Line, Column: p.current.Column}
 	mode := ast.CallAttached
 	if p.current.Type == token.DETACH {
 		mode = ast.CallDetach
@@ -165,7 +169,7 @@ func parseWorkflowOrNexusTarget(p *Parser, allowArrows bool, pos ast.Pos) (ast.A
 		return nil, err
 	}
 	t := &ast.WorkflowTarget{
-		Workflow: ast.Ref[*ast.WorkflowDef]{Package: pkg, Name: name},
+		Workflow: ast.Ref[*ast.WorkflowDef]{Pos: keyword, Package: pkg, Name: name},
 		Mode:     mode,
 		Start:    p.workflowStartKind(),
 		Args:     args.Literal,
