@@ -19,8 +19,66 @@ import (
 // special-case ILLEGAL at every consumption site: the lexer already recovered to
 // the next line/EOF, giving the parser a clean boundary to resume from.
 func (p *Parser) advance() {
+	switch p.current.Type {
+	case token.INDENT:
+		p.depth++
+	case token.DEDENT:
+		p.depth--
+	}
+	p.prev = p.current.Type
 	p.current = p.peek
 	p.peek = p.scan()
+}
+
+// recoverLine handles a failed line of a block at depth that began at start.
+// Parsing strictly, it returns err. Collecting, it records err, skips the rest
+// of the line and any block indented under it, and returns nil; the parser then
+// stands on the block's next line, its DEDENT, or EOF, or past that DEDENT if
+// the failed line consumed it (p.depth < depth). An `else:` clause after the
+// skipped block belongs to the failed line and is skipped with it.
+func (p *Parser) recoverLine(err error, start token.Token, depth int) error {
+	pe, ok := err.(*ParseError)
+	if !p.collecting || !ok {
+		return err
+	}
+	p.addError(pe)
+	for p.current.Type != token.EOF && p.depth >= depth {
+		if p.depth == depth {
+			if p.current.Type == token.DEDENT {
+				return nil
+			}
+			moved := p.current.Offset != start.Offset
+			lineStart := p.prev == token.NEWLINE || p.prev == token.DEDENT
+			if moved && lineStart && p.current.Type != token.INDENT && p.current.Type != token.ELSE {
+				return nil
+			}
+		}
+		p.advance()
+	}
+	return nil
+}
+
+// endLine ends a statement's line after what: it consumes the NEWLINE, or stops
+// at a trailing comment (kept by the body), a DEDENT, or EOF. Any other token
+// left on the line is an error. Collecting errors, the error is recorded and
+// the rest of the line skipped, so the complete statement before it is kept.
+func (p *Parser) endLine(what string) error {
+	switch p.current.Type {
+	case token.NEWLINE:
+		p.advance()
+	case token.COMMENT, token.DEDENT, token.EOF:
+	default:
+		err := p.errorf("expected the end of the line after %s, got %s (%q)", what, p.current.Type, p.current.Literal)
+		if !p.collecting {
+			return err
+		}
+		p.addError(err.(*ParseError))
+		for p.current.Type != token.NEWLINE && p.current.Type != token.COMMENT && p.current.Type != token.EOF {
+			p.advance()
+		}
+		return p.endLine(what)
+	}
+	return nil
 }
 
 // scan reads the next token from the lexer, recording and skipping any
@@ -130,12 +188,17 @@ func (p *Parser) collectRawUntil(terminators ...token.TokenType) string {
 	for !slices.Contains(terminators, p.current.Type) {
 		switch p.current.Type {
 		case token.NEWLINE, token.COMMENT, token.EOF:
-			return strings.TrimSpace(p.src[start:end])
+			return sourceText(p.src[start:end])
 		}
 		end = p.current.End
 		p.advance()
 	}
-	return strings.TrimSpace(p.src[start:end])
+	return sourceText(p.src[start:end])
+}
+
+// sourceText is a span of source as text: trimmed, with CRLF line ends as "\n".
+func sourceText(span string) string {
+	return strings.ReplaceAll(strings.TrimSpace(span), "\r\n", "\n")
 }
 
 // expectBlock consumes the COLON NEWLINE INDENT sequence that opens an

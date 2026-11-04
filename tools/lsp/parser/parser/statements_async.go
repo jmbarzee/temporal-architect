@@ -32,8 +32,8 @@ func parseSingleAwait(p *Parser, pos ast.Pos) (*ast.AwaitStmt, error) {
 	if err != nil {
 		return nil, err
 	}
-	if p.current.Type == token.NEWLINE {
-		p.advance()
+	if err := p.endLine("an await"); err != nil {
+		return nil, err
 	}
 	return &ast.AwaitStmt{Pos: pos, Target: target}, nil
 }
@@ -337,15 +337,14 @@ func parseAwaitOneCase(p *Parser) (*ast.AwaitOneCase, error) {
 
 	// Handle special "await all:" case before the shared target parser.
 	if p.current.Type == token.AWAIT {
+		if p.peek.Type != token.ALL {
+			return nil, p.errorf("expected 'await all' in await one case, got 'await %s'", p.peek.Literal)
+		}
 		stmt, err := parseAwaitStmt(p)
 		if err != nil {
 			return nil, err
 		}
-		awaitAll, ok := stmt.(*ast.AwaitAllBlock)
-		if !ok {
-			return nil, p.errorf("expected 'await all' in await one case, got %s", stmt)
-		}
-		c.AwaitAll = awaitAll
+		c.AwaitAll = stmt.(*ast.AwaitAllBlock)
 		return c, nil
 	}
 
@@ -417,8 +416,8 @@ func parsePromiseStmt(p *Parser) (ast.Statement, error) {
 		return nil, err
 	}
 
-	if p.current.Type == token.NEWLINE {
-		p.advance()
+	if err := p.endLine("a promise"); err != nil {
+		return nil, err
 	}
 
 	return &ast.PromiseStmt{

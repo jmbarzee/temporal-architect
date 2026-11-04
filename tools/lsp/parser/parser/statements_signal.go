@@ -60,15 +60,11 @@ func parseSignalSendRest(p *Parser, pos ast.Pos, first token.Token) (ast.Stateme
 	if p.current.Type == token.COMMENT {
 		p.advance()
 	}
-	switch p.current.Type {
-	case token.NEWLINE:
-		p.advance()
-	case token.DEDENT, token.EOF:
-	default:
-		if isAddressKey(p.current) {
-			return nil, p.codedErrorf(CodeAddressMisplaced, "an address goes on its own indented line below the send")
-		}
-		return nil, p.errorf("expected NEWLINE after a signal send, got %s (%q)", p.current.Type, p.current.Literal)
+	if isAddressKey(p.current) {
+		return nil, p.codedErrorf(CodeAddressMisplaced, "an address goes on its own indented line below the send")
+	}
+	if err := p.endLine("a signal send"); err != nil {
+		return nil, err
 	}
 
 	address, err := p.parseOptionalAddress()

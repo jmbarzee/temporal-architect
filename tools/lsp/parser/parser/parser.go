@@ -67,6 +67,8 @@ type Parser struct {
 	src     string // the lexer's input, which token offsets index
 	current token.Token
 	peek    token.Token
+	prev    token.TokenType // the type of the token before current
+	depth   int             // INDENTs minus DEDENTs before current
 
 	bodyCtx bodyContext
 
@@ -304,57 +306,27 @@ func ParseFileAll(input string) (*ast.File, []*ParseError) {
 	return file, all
 }
 
-// parseBody parses statements inside an indented block (after INDENT, until DEDENT).
+// parseBody parses statements inside an indented block (after INDENT, until
+// DEDENT). Collecting errors, a failed statement is reported and left out, and
+// the rest of the body still parses (see recoverLine).
 func (p *Parser) parseBody() ([]ast.Statement, error) {
+	depth := p.depth
 	var stmts []ast.Statement
 	for p.current.Type != token.DEDENT && p.current.Type != token.EOF {
 		if p.current.Type == token.NEWLINE {
 			p.advance()
 			continue
 		}
-		if p.current.Type == token.COMMENT {
-			stmts = append(stmts, p.parseComment())
-			continue
-		}
-
-		var parseFn stmtParser
-		var ok bool
-		switch p.bodyCtx {
-		case bodyWorkflow:
-			parseFn, ok = workflowStmtParsers[p.current.Type]
-		case bodyQuery, bodyActivity:
-			if p.current.Type == token.ID_SCHEME {
-				return nil, p.misplacedIDScheme()
-			}
-			// Check for temporal keywords that aren't allowed.
-			if temporalKeywords[p.current.Type] {
-				return nil, p.errorf("%s is not allowed in activity body", p.current.Literal)
-			}
-			parseFn, ok = activityStmtParsers[p.current.Type]
-		}
-
-		if !ok {
-			// In a workflow context a keyword leads no raw statement: one with
-			// no parser here is misplaced, not an expression to pass through.
-			// An activity body is free-form pseudocode.
-			if p.bodyCtx != bodyActivity && p.current.Type.IsKeyword() {
-				return nil, p.misplacedKeyword()
-			}
-			// Fallback to raw statement.
-			stmt, err := parseRawStmt(p)
-			if err != nil {
+		start := p.current
+		stmt, err := p.parseStatement()
+		if err != nil {
+			if err := p.recoverLine(err, start, depth); err != nil {
 				return nil, err
 			}
-			stmts = append(stmts, stmt)
+			if p.depth < depth {
+				return stmts, nil // the failed statement consumed the body's DEDENT
+			}
 			continue
-		}
-
-		stmt, err := parseFn(p)
-		if err != nil {
-			return nil, err
-		}
-		if err := p.checkMisplacedAddress(stmt); err != nil {
-			return nil, err
 		}
 		stmts = append(stmts, stmt)
 	}
@@ -364,4 +336,46 @@ func (p *Parser) parseBody() ([]ast.Statement, error) {
 	}
 
 	return stmts, nil
+}
+
+// parseStatement parses one statement of a body in the body's context.
+func (p *Parser) parseStatement() (ast.Statement, error) {
+	if p.current.Type == token.COMMENT {
+		return p.parseComment(), nil
+	}
+
+	var parseFn stmtParser
+	var ok bool
+	switch p.bodyCtx {
+	case bodyWorkflow:
+		parseFn, ok = workflowStmtParsers[p.current.Type]
+	case bodyQuery, bodyActivity:
+		if p.current.Type == token.ID_SCHEME {
+			return nil, p.misplacedIDScheme()
+		}
+		// Check for temporal keywords that aren't allowed.
+		if temporalKeywords[p.current.Type] {
+			return nil, p.errorf("%s is not allowed in activity body", p.current.Literal)
+		}
+		parseFn, ok = activityStmtParsers[p.current.Type]
+	}
+
+	if !ok {
+		// In a workflow context a keyword leads no raw statement: one with
+		// no parser here is misplaced, not an expression to pass through.
+		// An activity body is free-form pseudocode.
+		if p.bodyCtx != bodyActivity && p.current.Type.IsKeyword() {
+			return nil, p.misplacedKeyword()
+		}
+		return parseRawStmt(p)
+	}
+
+	stmt, err := parseFn(p)
+	if err != nil {
+		return nil, err
+	}
+	if err := p.checkMisplacedAddress(stmt); err != nil {
+		return nil, err
+	}
+	return stmt, nil
 }

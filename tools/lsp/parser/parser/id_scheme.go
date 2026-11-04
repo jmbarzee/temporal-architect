@@ -58,8 +58,8 @@ func (p *Parser) parseOptionalIDScheme(params string) (*ast.IDScheme, error) {
 	if p.current.Type == token.COMMENT {
 		p.advance()
 	}
-	if p.current.Type == token.NEWLINE {
-		p.advance()
+	if err := p.endLine("id_scheme:"); err != nil {
+		return nil, err
 	}
 	return &ast.IDScheme{Pos: pos, Template: tmpl.Literal, Holes: holes}, nil
 }

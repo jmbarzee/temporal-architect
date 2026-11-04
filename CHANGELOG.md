@@ -287,6 +287,15 @@ is now checked against the target's signals.
   comment statement instead of joining the text (#295).
 - An `import` after a definition is a `parse/SYNTAX` error; imports go after
   the `package` clause and before definitions (#299).
+- A statement ends with its line: `break Missing`, `set Ready now` or a `-> r`
+  on a `promise` is a `parse/SYNTAX` error, no longer a statement plus a silent
+  raw line. Only a comment may follow a statement.
+- CRLF files parse: `\r\n` ends a line, and no `\r` reaches raw text, values or
+  comments.
+- A line holding only tabs, or tabs and spaces, is a blank line, as a
+  space-only line already was. A tab between tokens is whitespace.
+- **LSP:** a bad statement line drops only itself from the editor's outline,
+  hover and references; the definition around it and its other statements stay.
 - An undefined workflow, activity, signal or update used as a `promise` /
   `await` target is reported at its name, not at 0:0 (#276).
 - Diagnostics on a reference (`UNDEFINED_*`, `SIGNAL_SEND_UNDEFINED_SIGNAL`,
