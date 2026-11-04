@@ -156,8 +156,8 @@ type validationCtx struct {
 	workers       map[pkgKey]*ast.WorkerDef
 	namespaces    map[pkgKey]*ast.NamespaceDef
 	nexusServices map[pkgKey]*ast.NexusServiceDef
-	// nsDefs is every namespace in definition order, so queue checks that
-	// report per placement run in source order.
+	// nsDefs is every namespace in namespaces, in definition order, so queue
+	// checks that report per placement run in source order.
 	nsDefs []*ast.NamespaceDef
 	errs   []*Error
 }
@@ -168,11 +168,13 @@ func (v *validationCtx) key(def ast.Packaged, name string) pkgKey {
 	return pkgKey{ast.PackageIDOf(def, v.file), name}
 }
 
-// keepFirst sets m[k] to v unless k is already set.
-func keepFirst[V any](m map[pkgKey]V, k pkgKey, v V) {
-	if _, ok := m[k]; !ok {
-		m[k] = v
+// keepFirst sets m[k] to v unless k is already set, and reports whether it did.
+func keepFirst[V any](m map[pkgKey]V, k pkgKey, v V) bool {
+	if _, ok := m[k]; ok {
+		return false
 	}
+	m[k] = v
+	return true
 }
 
 // refKey returns the (package, name) key a worker registration or call-site
@@ -230,8 +232,9 @@ func Validate(file *ast.File) []*Error {
 		case *ast.WorkerDef:
 			keepFirst(v.workers, v.key(d, d.Name), d)
 		case *ast.NamespaceDef:
-			keepFirst(v.namespaces, v.key(d, d.Name), d)
-			v.nsDefs = append(v.nsDefs, d)
+			if keepFirst(v.namespaces, v.key(d, d.Name), d) {
+				v.nsDefs = append(v.nsDefs, d)
+			}
 		case *ast.NexusServiceDef:
 			keepFirst(v.nexusServices, v.key(d, d.Name), d)
 		}
