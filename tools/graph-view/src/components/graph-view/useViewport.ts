@@ -3,10 +3,10 @@
 // Owns the viewport (pan/zoom transform, which follows a pane resize) and the
 // DOM container ref used to measure the canvas, plus two coordination refs the
 // physics loop reads: the one-shot `initialFitDone` guard and the cross-view
-// `pendingCenterRef` request. `fit()` frames a set of nodes; the
-// loop/keyboard/double-click handlers consume the returned
-// `setViewport`/`containerRef` directly until the loop is extracted, and frame
-// against the size `measure()` returns.
+// `pendingCenterRef` request. `fit()` frames a set of nodes; every other
+// framing (the loop's initial fit and centring, search) sets the viewport
+// against the size `measure()` returns, and the keyboard handlers zoom about
+// the centre of `containerRef`.
 
 import React from 'react'
 import { DEFAULT_VIEWPORT, fitToView, followResize } from '../../graph/viewport'

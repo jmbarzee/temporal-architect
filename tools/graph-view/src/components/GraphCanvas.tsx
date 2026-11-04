@@ -9,7 +9,7 @@ import type { BandOverlay } from '../graph/forces'
 import type { ResolvedPhysics } from '../graph/forces'
 import { chargeFor, coreRadiusFor, springFor } from '../graph/simulation'
 import type { Viewport } from '../graph/viewport'
-import { fitToView, screenToWorld, worldToScreen, zoomAt } from '../graph/viewport'
+import { screenToWorld, worldToScreen, zoomAt } from '../graph/viewport'
 import { nodeSizeMul, type NodeScaleParams } from '../graph/node-scale'
 import type { Taxonomy } from '../graph/taxonomy'
 import { useTaxonomy } from './graph-view/useTaxonomy'
@@ -149,6 +149,8 @@ interface GraphCanvasProps {
   onNodeDragMove: (wx: number, wy: number) => void
   onNodeDragEnd: () => void
   onDoubleClickNode: (id: string) => void
+  // Frame every visible node (a double-click on the background).
+  onFitView: () => void
   onHoverNode: (id: string | null) => void
   onSelectNode: (id: string | null) => void
   highlightedNodes: Set<string> | null
@@ -237,7 +239,7 @@ interface DrawData {
 export function GraphCanvas({
   nodes, edges, viewport, onViewportChange,
   onNodeDragStart, onNodeDragMove, onNodeDragEnd,
-  onDoubleClickNode, onHoverNode, onSelectNode,
+  onDoubleClickNode, onFitView, onHoverNode, onSelectNode,
   highlightedNodes, highlightedEdges,
   hoveredNodeId, selectedNodeId, focusedNodeId, searchMatchIds,
   running, forceParams, resolved, overlay, theme, edgeStrokes, edgeOffsets, activeSection, activePushBucket,
@@ -424,9 +426,9 @@ export function GraphCanvas({
     if (node) {
       onDoubleClickNode(node.id)
     } else {
-      onViewportChange(fitToView(nodes, size.w, size.h))
+      onFitView()
     }
-  }, [hitTest, nodes, size, onViewportChange, onDoubleClickNode])
+  }, [hitTest, onFitView, onDoubleClickNode])
 
   // --- Render loop ---
   // Uses a ref for all draw data so the effect only tears down on size change.

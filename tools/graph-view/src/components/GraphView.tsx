@@ -996,6 +996,7 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
             onNodeDragMove={handleNodeDragMove}
             onNodeDragEnd={handleNodeDragEnd}
             onDoubleClickNode={handleDoubleClickNode}
+            onFitView={handleFitToView}
             onHoverNode={handleHoverNode}
             onSelectNode={requestSelect}
             highlightedNodes={highlightedNodes}
