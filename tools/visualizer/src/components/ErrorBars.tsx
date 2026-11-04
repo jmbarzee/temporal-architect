@@ -7,36 +7,8 @@
 import React from 'react'
 import './ErrorBars.css'
 import type { FileError, Diagnostic } from '../types/ast'
+import { partitionByFile } from '../adapter/files'
 
-
-interface Partitioned {
-  shownFileErrors: FileError[]
-  hiddenFileErrors: FileError[]
-  shownDiagnostics: Diagnostic[]
-  hiddenDiagnostics: Diagnostic[]
-}
-
-// Split findings into "shown files" vs "hidden files" by the file filter.
-// File-less diagnostics surface in the shown group so a missing path can't
-// accidentally hide them.
-function partitionByFile(errors: FileError[], diagnostics: Diagnostic[], selectedFiles: ReadonlySet<string>): Partitioned {
-  if (selectedFiles.size === 0) {
-    return { shownFileErrors: errors, hiddenFileErrors: [], shownDiagnostics: diagnostics, hiddenDiagnostics: [] }
-  }
-  const shownFileErrors: FileError[] = []
-  const hiddenFileErrors: FileError[] = []
-  for (const e of errors) {
-    if (selectedFiles.has(e.file)) shownFileErrors.push(e)
-    else hiddenFileErrors.push(e)
-  }
-  const shownDiagnostics: Diagnostic[] = []
-  const hiddenDiagnostics: Diagnostic[] = []
-  for (const d of diagnostics) {
-    if (!d.file || selectedFiles.has(d.file)) shownDiagnostics.push(d)
-    else hiddenDiagnostics.push(d)
-  }
-  return { shownFileErrors, hiddenFileErrors, shownDiagnostics, hiddenDiagnostics }
-}
 
 /**
  * Two independent, collapsed-by-default bars at the bottom of the filter bar:
@@ -45,13 +17,14 @@ function partitionByFile(errors: FileError[], diagnostics: Diagnostic[], selecte
  * it has at least one finding; each has its own scrollable body so a long list
  * never pushes the rest of the toolbar off-screen.
  */
-export function ErrorBars({ errors, diagnostics, selectedFiles }: {
+export function ErrorBars({ errors, diagnostics, selectedFiles, sourceFiles }: {
   errors: FileError[]
   diagnostics: Diagnostic[]
   selectedFiles: ReadonlySet<string>
+  sourceFiles: ReadonlySet<string>
 }) {
   const { shownFileErrors, hiddenFileErrors, shownDiagnostics, hiddenDiagnostics } =
-    partitionByFile(errors, diagnostics, selectedFiles)
+    partitionByFile(errors, diagnostics, selectedFiles, sourceFiles)
 
   const shownErr = shownDiagnostics.filter(d => d.severity === 'error')
   const hiddenErr = hiddenDiagnostics.filter(d => d.severity === 'error')

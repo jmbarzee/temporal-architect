@@ -39,7 +39,8 @@ import type { DecompositionParams } from './protocol'
 import { TreeView, type TreeFocus } from './TreeView'
 import { GroupsModal } from './GroupsModal'
 import { ErrorBars } from './ErrorBars'
-import { useGraphModel, definitionCounts } from '../adapter/useGraphModel'
+import { focusedFiles } from '../adapter/files'
+import { useGraphModel, definitionCounts, sourceFilesOf } from '../adapter/useGraphModel'
 import { initialGroupSelection, nodeGroupsOf, type GroupSelection, type GroupHover } from '../adapter/groups'
 
 interface WorkflowCanvasProps {
@@ -182,7 +183,7 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
   const startingFilter = () => withSelection(
     initialFilter(DEFAULT_TAXONOMY, model.graph),
     SOURCE_FILE_DIMENSION,
-    ast.focusedFile ? new Set([ast.focusedFile]) : new Set<string>(),
+    focusedFiles(ast.focusedFile, sourceFilesOf(ast)),
   )
 
   // Each view's filter, locks and shown axes, the view shown, the search they
@@ -286,10 +287,7 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
   // a user who pinned the files axis still has the axis pinned
   // even if its contents shrink to empty.
   React.useEffect(() => {
-    const allFiles = new Set<string>()
-    for (const def of ast.definitions) {
-      if (def.sourceFile) allFiles.add(def.sourceFile)
-    }
+    const allFiles = sourceFilesOf(ast)
     updateFilters(filter => {
       const pruned = new Set([...selectionFor(filter, SOURCE_FILE_DIMENSION)].filter(f => allFiles.has(f)))
       if (pruned.size === selectionFor(filter, SOURCE_FILE_DIMENSION).size) return filter
@@ -301,6 +299,9 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
   // When the editor's focused file changes, narrow the Tree to it — but
   // only when the Tree's files axis is unpinned, since a pinned
   // user explicitly opted out of tracking.
+  // The source files the focused file names, as one string so the effect
+  // re-runs when they change, not on every new AST.
+  const focusKey = [...focusedFiles(ast.focusedFile, sourceFilesOf(ast))].join('\n')
   const treeFilePinned = lockedFor(linked.state.tree.locks, SOURCE_FILE_DIMENSION)
   const treeShowsFiles = linked.state.tree.axes.includes(SOURCE_FILE_DIMENSION)
   React.useEffect(() => {
@@ -308,14 +309,13 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
     // Do not repopulate an axis the Tree has removed — same reason a switch
     // reconciles only the axes the destination shows.
     if (!treeShowsFiles) return
-    const focused = ast.focusedFile
-    if (!focused) return
-    updateFilter('tree', filter => withSelection(filter, SOURCE_FILE_DIMENSION, new Set([focused])))
+    if (!focusKey) return
+    updateFilter('tree', filter => withSelection(filter, SOURCE_FILE_DIMENSION, new Set(focusKey.split('\n'))))
     // Depends on the file axis's pin, NOT the whole AxisLocks. Widening it to
     // the Map when pins became Maps meant pinning the KIND axis produced a new
     // Map, re-ran this effect, and silently reset the Tree's file selection to
     // the focused file.
-  }, [ast.focusedFile, treeFilePinned, treeShowsFiles, updateFilter])
+  }, [focusKey, treeFilePinned, treeShowsFiles, updateFilter])
 
   // Build lookup maps for definitions (shared by both views)
   const context = React.useMemo<DefinitionContext>(() => {
@@ -493,7 +493,7 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
               keyboard={activeView === 'graph' ? 'global' : 'none'}
               graph={model.graph}
               counts={graphCounts}
-              findings={<ErrorBars errors={model.errors} diagnostics={model.diagnostics} selectedFiles={selectionFor(graphFilter, SOURCE_FILE_DIMENSION)} />}
+              findings={<ErrorBars errors={model.errors} diagnostics={model.diagnostics} selectedFiles={selectionFor(graphFilter, SOURCE_FILE_DIMENSION)} sourceFiles={sourceFilesOf(ast)} />}
               groups={nodeGroups}
               groupsControl={active => (
                 <GroupsModal

@@ -99,6 +99,24 @@ type Packaged interface {
 	PackageName() string
 }
 
+// SourceFileOf returns the SourceFile stamp of a top-level definition, or ""
+// for one the merge left unstamped.
+func SourceFileOf(def Definition) string {
+	switch d := def.(type) {
+	case *WorkflowDef:
+		return d.SourceFile
+	case *ActivityDef:
+		return d.SourceFile
+	case *WorkerDef:
+		return d.SourceFile
+	case *NamespaceDef:
+		return d.SourceFile
+	case *NexusServiceDef:
+		return d.SourceFile
+	}
+	return ""
+}
+
 // QualifiedName encodes a package qualifier INSIDE the name element of a
 // definition key — never as a new colon-segment. The graph's DefKey is
 // `${kind}:${name}` and the visualizer splits it on the FIRST colon (nexus

@@ -6,9 +6,8 @@ import (
 
 // GraphDiagnostics lifts graph-stage warnings into the CLI's
 // Diagnostic wire shape so they share the envelope with parse,
-// resolve, and validate diagnostics. The graph stage doesn't
-// distinguish a "file" because its inputs are the merged AST; the
-// File field is left empty and consumers fall back to line/column.
+// resolve, and validate diagnostics. A graph diagnostic's file is the
+// calling definition's source file.
 func GraphDiagnostics(g *graph.Graph) []Diagnostic {
 	if g == nil {
 		return nil
@@ -19,6 +18,7 @@ func GraphDiagnostics(g *graph.Graph) []Diagnostic {
 			Severity: d.Severity,
 			Kind:     "graph",
 			Code:     d.Code,
+			File:     d.File,
 			Start:    Position{Line: d.Line, Column: 0},
 			End:      Position{Line: d.Line, Column: 0},
 			Message:  d.Message,

@@ -7,6 +7,7 @@ import (
 
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/resolver"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/validator"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/pipeline"
 )
 
 // writeTWF writes content to name under dir and returns its absolute path and
@@ -18,6 +19,11 @@ func writeTWF(t *testing.T, dir, name, content string) (abs, uri string) {
 		t.Fatalf("write %s: %v", abs, err)
 	}
 	return abs, "file://" + abs
+}
+
+// canonical is how a Canonical-mode run spells the file at abs.
+func canonical(abs string) string {
+	return filepath.ToSlash(pipeline.Canonicalize(abs))
 }
 
 func hasKind(errs []*resolver.ResolveError, kind resolver.ErrorKind) bool {
@@ -52,7 +58,7 @@ workflow ChannelJoin(id):
 	_, peerURI := writeTWF(t, dir, "peer.twf", peer)
 
 	store := NewDocumentStore()
-	store.SetRoot(dir)
+	store.SetFolders([]string{dir})
 	doc := store.Open(peerURI, peer)
 
 	if hasKind(doc.ResolveErrs, resolver.ErrUndefinedWorkflow) {
@@ -84,7 +90,7 @@ workflow W():
 	_, soloURI := writeTWF(t, dir, "solo.twf", solo)
 
 	store := NewDocumentStore()
-	store.SetRoot(dir)
+	store.SetFolders([]string{dir})
 	doc := store.Open(soloURI, solo)
 
 	var found *resolver.ResolveError
@@ -151,10 +157,10 @@ workflow Gamma(id):
 	alphaAbs, alphaURI := writeTWF(t, dir, "alpha.twf", alpha)
 	_ = alphaAbs
 	writeTWF(t, dir, "beta.twf", beta)
-	_, gammaURI := writeTWF(t, dir, "gamma.twf", gamma)
+	gammaAbs, gammaURI := writeTWF(t, dir, "gamma.twf", gamma)
 
 	store := NewDocumentStore()
-	store.SetRoot(dir)
+	store.SetFolders([]string{dir})
 
 	// The referencing buffer sees the undefined-workflow error, attributed to
 	// itself.
@@ -169,8 +175,8 @@ workflow Gamma(id):
 	if undef == nil {
 		t.Fatalf("expected UNDEFINED_WORKFLOW on gamma buffer, got %v", gammaDoc.ResolveErrs)
 	}
-	if undef.File != "gamma.twf" {
-		t.Errorf("UNDEFINED_WORKFLOW file = %q, want gamma.twf", undef.File)
+	if want := canonical(gammaAbs); undef.File != want {
+		t.Errorf("UNDEFINED_WORKFLOW file = %q, want %s", undef.File, want)
 	}
 	if undef.Line != 7 {
 		t.Errorf("UNDEFINED_WORKFLOW at line %d, want 7 (the reference site)", undef.Line)
@@ -206,7 +212,7 @@ workflow Main():
 	_, mainURI := writeTWF(t, dir, "main.twf", main)
 
 	store := NewDocumentStore()
-	store.SetRoot(dir)
+	store.SetFolders([]string{dir})
 	doc := store.Open(mainURI, main)
 
 	if len(doc.ResolveErrs) != 0 {
@@ -244,10 +250,10 @@ namespace ns:
 workflow Orphan():
     close complete("ok")
 `
-	_, bufURI := writeTWF(t, dir, "flows.twf", buf)
+	bufAbs, bufURI := writeTWF(t, dir, "flows.twf", buf)
 
 	store := NewDocumentStore()
-	store.SetRoot(dir)
+	store.SetFolders([]string{dir})
 	doc := store.Open(bufURI, buf)
 
 	var found *validator.Error
@@ -259,7 +265,7 @@ workflow Orphan():
 	if found == nil {
 		t.Fatalf("expected UNCOVERED_WORKFLOW for Orphan, got %v", doc.ValidateErrs)
 	}
-	if found.Name != "Orphan" || found.File != "flows.twf" {
+	if found.Name != "Orphan" || found.File != canonical(bufAbs) {
 		t.Errorf("UNCOVERED_WORKFLOW = %s in %s, want Orphan in flows.twf", found.Name, found.File)
 	}
 }
@@ -282,7 +288,7 @@ namespace ns:
 	_, bufURI := writeTWF(t, dir, "flows.twf", buf)
 
 	store := NewDocumentStore()
-	store.SetRoot(dir)
+	store.SetFolders([]string{dir})
 	doc := store.Open(bufURI, buf)
 
 	if hasValidateKind(doc.ValidateErrs, validator.ErrMissingTaskQueue) {
@@ -306,10 +312,165 @@ func TestWorkspaceUnsavedBufferJoinsTree(t *testing.T) {
     close complete(r)
 `
 	store := NewDocumentStore()
-	store.SetRoot(dir)
+	store.SetFolders([]string{dir})
 	doc := store.Open("file://"+filepath.Join(dir, "unsaved.twf"), buf)
 
 	if hasKind(doc.ResolveErrs, resolver.ErrUndefinedWorkflow) {
 		t.Errorf("unsaved buffer did not see its sibling: %v", doc.ResolveErrs)
+	}
+}
+
+// TestWorkspaceWorktreeBufferStaysApart: a buffer under the main checkout's
+// `.claude/worktrees/x`, with only the main checkout open, is outside every
+// folder's walk, so it sees its own directory only — never main's copies.
+func TestWorkspaceWorktreeBufferStaysApart(t *testing.T) {
+	main := t.TempDir()
+	writeTWF(t, main, "flows.twf", "workflow Shared():\n    close complete(\"ok\")\n")
+	wt := filepath.Join(main, ".claude", "worktrees", "x")
+	if err := os.MkdirAll(wt, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	buf := "workflow Shared():\n    close complete(\"ok\")\n"
+	_, uri := writeTWF(t, wt, "flows.twf", buf)
+
+	store := NewDocumentStore()
+	store.SetFolders([]string{main})
+	doc := store.Open(uri, buf)
+	if hasKind(doc.ResolveErrs, resolver.ErrDuplicateWorkflow) {
+		t.Errorf("worktree buffer merged with the main checkout: %v", doc.ResolveErrs)
+	}
+
+	// With the worktree open as its own folder, that folder is its home.
+	store.SetFolders([]string{main, wt})
+	if got := homeFolder([]string{main, wt}, pipeline.Canonicalize(filepath.Join(wt, "flows.twf"))); got != pipeline.Canonicalize(wt) {
+		t.Errorf("home folder = %s, want the worktree", got)
+	}
+}
+
+// TestWorkspaceSameNamedFilesDoNotLeak: two `flows.twf` in two directories are
+// two files; one's error stays on it.
+func TestWorkspaceSameNamedFilesDoNotLeak(t *testing.T) {
+	dir := t.TempDir()
+	for _, sub := range []string{"a", "b"} {
+		if err := os.MkdirAll(filepath.Join(dir, sub), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	writeTWF(t, filepath.Join(dir, "a"), "flows.twf", "workflow A():\n    activity Ghost()\n")
+	buf := "workflow B():\n    close complete(\"ok\")\n"
+	_, uri := writeTWF(t, filepath.Join(dir, "b"), "flows.twf", buf)
+
+	store := NewDocumentStore()
+	store.SetFolders([]string{dir})
+	doc := store.Open(uri, buf)
+	if len(doc.ResolveErrs) != 0 {
+		t.Errorf("a same-named file's error leaked: %v", doc.ResolveErrs)
+	}
+}
+
+// TestWorkspaceUnsavedTextReachesOtherBuffers: an open buffer's unsaved text
+// is what every other buffer's analysis reads.
+func TestWorkspaceUnsavedTextReachesOtherBuffers(t *testing.T) {
+	dir := t.TempDir()
+	_, calleeURI := writeTWF(t, dir, "callee.twf", "workflow Old():\n    close complete(\"ok\")\n")
+	caller := "workflow Caller():\n    workflow Callee() -> r\n    close complete(r)\n"
+	_, callerURI := writeTWF(t, dir, "caller.twf", caller)
+
+	store := NewDocumentStore()
+	store.SetFolders([]string{dir})
+	callerDoc := store.Open(callerURI, caller)
+	if !hasKind(callerDoc.ResolveErrs, resolver.ErrUndefinedWorkflow) {
+		t.Fatalf("expected UNDEFINED_WORKFLOW before the edit, got %v", callerDoc.ResolveErrs)
+	}
+	store.Open(calleeURI, "workflow Callee():\n    close complete(\"ok\")\n")
+	if hasKind(callerDoc.ResolveErrs, resolver.ErrUndefinedWorkflow) {
+		t.Errorf("caller did not see callee's unsaved text: %v", callerDoc.ResolveErrs)
+	}
+	store.Close(calleeURI)
+	if !hasKind(callerDoc.ResolveErrs, resolver.ErrUndefinedWorkflow) {
+		t.Errorf("after close, caller should read callee from disk again: %v", callerDoc.ResolveErrs)
+	}
+}
+
+// TestWorkspaceSymlinkedFolderOneIdentity: a folder opened through a symlink
+// (macOS's /tmp → /private/tmp) and a buffer URI under its target are one
+// file: no duplicates, and the buffer's errors still reach it.
+func TestWorkspaceSymlinkedFolderOneIdentity(t *testing.T) {
+	real := t.TempDir()
+	link := filepath.Join(t.TempDir(), "ws")
+	if err := os.Symlink(real, link); err != nil {
+		t.Skipf("symlink: %v", err)
+	}
+	buf := "workflow W():\n    activity Ghost()\n"
+	_, uri := writeTWF(t, real, "w.twf", buf)
+
+	store := NewDocumentStore()
+	store.SetFolders([]string{link})
+	doc := store.Open(uri, buf)
+	if hasKind(doc.ResolveErrs, resolver.ErrDuplicateWorkflow) {
+		t.Errorf("one file counted twice: %v", doc.ResolveErrs)
+	}
+	if !hasKind(doc.ResolveErrs, resolver.ErrUndefinedActivity) {
+		t.Errorf("buffer lost its own error: %v", doc.ResolveErrs)
+	}
+}
+
+// TestWorkspaceSkippedBufferKeepsSiblings: a buffer under `_x/`, which every
+// walk skips, still merges with its own directory.
+func TestWorkspaceSkippedBufferKeepsSiblings(t *testing.T) {
+	dir := t.TempDir()
+	draft := filepath.Join(dir, "_x")
+	if err := os.MkdirAll(draft, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeTWF(t, draft, "callee.twf", "workflow Callee():\n    close complete(\"ok\")\n")
+	buf := "workflow Caller():\n    workflow Callee() -> r\n    close complete(r)\n"
+	_, uri := writeTWF(t, draft, "caller.twf", buf)
+
+	store := NewDocumentStore()
+	store.SetFolders([]string{dir})
+	doc := store.Open(uri, buf)
+	if hasKind(doc.ResolveErrs, resolver.ErrUndefinedWorkflow) {
+		t.Errorf("skipped buffer lost its siblings: %v", doc.ResolveErrs)
+	}
+}
+
+func TestFileURIToPath(t *testing.T) {
+	tests := []struct {
+		uri     string
+		windows bool
+		want    string
+	}{
+		{"file:///home/u/a%20b.twf", false, "/home/u/a b.twf"},
+		{"file:///c:/Users/u/a.twf", true, `c:\Users\u\a.twf`},
+		{"file:///C%3A/Users/u/a.twf", true, `C:\Users\u\a.twf`},
+		{"file://server/share/a.twf", true, `\\server\share\a.twf`},
+		{"untitled:Untitled-1", false, ""},
+	}
+	for _, tt := range tests {
+		if got := fileURIToPath(tt.uri, tt.windows); got != tt.want {
+			t.Errorf("fileURIToPath(%q, %v) = %q, want %q", tt.uri, tt.windows, got, tt.want)
+		}
+	}
+}
+
+// TestWorkspaceSecondURIKeepsUnsavedText: opening a file under a second URI
+// (through a symlinked folder) loads its disk text, which must not replace the
+// first buffer's unsaved edits in the analysis.
+func TestWorkspaceSecondURIKeepsUnsavedText(t *testing.T) {
+	dir := t.TempDir()
+	link := filepath.Join(t.TempDir(), "ws")
+	if err := os.Symlink(dir, link); err != nil {
+		t.Skipf("symlink: %v", err)
+	}
+	disk := "workflow W():\n    close complete(\"ok\")\n"
+	_, uri := writeTWF(t, dir, "w.twf", disk)
+	store := NewDocumentStore()
+	store.SetFolders([]string{dir})
+	doc := store.Open(uri, disk)
+	store.Update(uri, "workflow W():\n    activity Ghost()\n")
+	store.Open("file://"+filepath.Join(link, "w.twf"), disk)
+	if !hasKind(doc.ResolveErrs, resolver.ErrUndefinedActivity) {
+		t.Errorf("the second URI's disk text replaced the unsaved edit: %v", doc.ResolveErrs)
 	}
 }

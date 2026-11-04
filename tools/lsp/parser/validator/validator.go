@@ -1119,27 +1119,10 @@ func checkUncovered[T ast.Definition](defs map[pkgKey]T, covered map[pkgKey]bool
 				Severity: "warning",
 				Kind:     kind,
 				Name:     key.name,
-				File:     sourceFileOf(node),
+				File:     ast.SourceFileOf(node),
 			})
 		}
 	}
-}
-
-// sourceFileOf returns the SourceFile stamp of a top-level definition.
-func sourceFileOf(def ast.Definition) string {
-	switch d := def.(type) {
-	case *ast.WorkflowDef:
-		return d.SourceFile
-	case *ast.ActivityDef:
-		return d.SourceFile
-	case *ast.WorkerDef:
-		return d.SourceFile
-	case *ast.NamespaceDef:
-		return d.SourceFile
-	case *ast.NexusServiceDef:
-		return d.SourceFile
-	}
-	return ""
 }
 
 // hasNonCommentStmts returns true if the statement slice has at least one

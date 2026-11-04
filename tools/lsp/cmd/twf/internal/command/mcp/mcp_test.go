@@ -167,6 +167,12 @@ func TestInlineSource(t *testing.T) {
 	if !bad.IsError {
 		t.Error("twf_check with no paths and no source should be a tool error")
 	}
+
+	// Both paths and source -> tool error (source used to win silently).
+	both := callTool(t, cs, "twf_check", map[string]any{"source": src, "paths": []string{"x.twf"}})
+	if !both.IsError {
+		t.Error("twf_check with both paths and source should be a tool error")
+	}
 }
 
 func TestSymbolsTool(t *testing.T) {

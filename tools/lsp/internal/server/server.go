@@ -46,10 +46,9 @@ func NewHandler(name, version string) (*protocol.Handler, *DocumentStore) {
 
 func initializeHandler(name, version string, store *DocumentStore) protocol.InitializeFunc {
 	return func(context *glsp.Context, params *protocol.InitializeParams) (any, error) {
-		// Capture the workspace root so analyze can resolve open buffers against
-		// the merged `.twf` tree. An empty/unresolvable root leaves every
-		// document in single-buffer mode.
-		store.SetRoot(workspaceRootFromParams(params))
+		// Capture the workspace folders: a buffer's deepest enclosing folder is
+		// one of its home inputs.
+		store.SetFolders(workspaceFoldersFromParams(params))
 
 		capabilities := protocol.InitializeResult{
 			Capabilities: protocol.ServerCapabilities{

@@ -28,6 +28,12 @@ func testdata(elem ...string) string {
 	return filepath.Join(append([]string{root}, elem...)...)
 }
 
+// spelled is how a diagnostic or sourceFile names a fixture file passed as
+// (or walked under) testdata's absolute path: slash-separated (D9).
+func spelled(elem ...string) string {
+	return filepath.ToSlash(testdata(elem...))
+}
+
 // TestParseFilesProducesStructuredDiagnostics covers the resolve and parse
 // pipelines through ParseFiles, which is the single source of diagnostics
 // for every CLI subcommand. We check the wire-format shape — severity, kind,
@@ -160,8 +166,8 @@ func TestParseFilesAttributesReferenceErrorToReferencingFile(t *testing.T) {
 	if undef == nil {
 		t.Fatalf("no UNDEFINED_WORKFLOW diagnostic; got %d diagnostics: %+v", len(diags), diags)
 	}
-	if undef.File != "gamma.twf" {
-		t.Errorf("UNDEFINED_WORKFLOW file = %q, want gamma.twf (the referencing file)", undef.File)
+	if want := spelled("ambiguous_cross_package_ref", "gamma.twf"); undef.File != want {
+		t.Errorf("UNDEFINED_WORKFLOW file = %q, want %s (the referencing file)", undef.File, want)
 	}
 	if undef.Start.Line != 12 || undef.Start.Column != 5 {
 		t.Errorf("UNDEFINED_WORKFLOW at %d:%d, want 12:5 (the reference site)", undef.Start.Line, undef.Start.Column)
@@ -177,7 +183,7 @@ func TestParseFilesAttributesReferenceErrorToReferencingFile(t *testing.T) {
 		if d.Kind != "resolve" {
 			continue
 		}
-		if d.File == "alpha.twf" || d.File == "beta.twf" {
+		if d.File == spelled("ambiguous_cross_package_ref", "alpha.twf") || d.File == spelled("ambiguous_cross_package_ref", "beta.twf") {
 			t.Errorf("resolve diagnostic mis-attributed to a defining file: %+v", d)
 		}
 		if d.File == "" {
@@ -206,8 +212,8 @@ func TestParseFilesAttributesValidateErrorToCallSiteFile(t *testing.T) {
 	if mismatch == nil {
 		t.Fatalf("no IMPLICIT_ROUTING_MISMATCH diagnostic; got %d diagnostics: %+v", len(diags), diags)
 	}
-	if mismatch.File != "agent.twf" {
-		t.Errorf("IMPLICIT_ROUTING_MISMATCH file = %q, want agent.twf (the calling file)", mismatch.File)
+	if want := spelled("packaged_multi_file_routing_mismatch", "agent", "v1", "agent.twf"); mismatch.File != want {
+		t.Errorf("IMPLICIT_ROUTING_MISMATCH file = %q, want %s (the calling file)", mismatch.File, want)
 	}
 	if mismatch.Start.Line != 10 || mismatch.Start.Column != 5 {
 		t.Errorf("IMPLICIT_ROUTING_MISMATCH at %d:%d, want 10:5 (the call site)", mismatch.Start.Line, mismatch.Start.Column)
@@ -218,7 +224,7 @@ func TestParseFilesAttributesValidateErrorToCallSiteFile(t *testing.T) {
 
 	// The bug pointed the call-site error at kube.twf, the callee's file.
 	for _, d := range diags {
-		if d.Kind == "validate" && d.File == "kube.twf" {
+		if d.Kind == "validate" && strings.HasSuffix(d.File, "/kube.twf") {
 			t.Errorf("validate diagnostic mis-attributed to the callee's file: %+v", d)
 		}
 	}
@@ -555,9 +561,9 @@ func TestPackagedGraphNodesJoinASTDefinitions(t *testing.T) {
 		nodesPerFile[file]++
 	}
 	want := map[string]int{
-		"deploy.twf": 4, // namespace, two workers, nexus endpoint
-		"agent.twf":  4, // workflow, activity, nexus service, nexus operation
-		"kube.twf":   3, // workflow, two activities
+		spelled("packaged_multi_file", "deploy.twf"):                           4, // namespace, two workers, nexus endpoint
+		spelled("packaged_multi_file", "agent", "v1", "agent.twf"):             4, // workflow, activity, nexus service, nexus operation
+		spelled("packaged_multi_file", "lib", "twf", "kube", "v1", "kube.twf"): 3, // workflow, two activities
 	}
 	if !reflect.DeepEqual(nodesPerFile, want) {
 		t.Errorf("graph nodes per source file = %v, want %v", nodesPerFile, want)

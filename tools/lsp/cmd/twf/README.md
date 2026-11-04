@@ -285,13 +285,32 @@ Per command, exactly one of `definitions` / `symbols` / `graph` is present.
 | Field      | Type     | Notes                                                                                            |
 |------------|----------|--------------------------------------------------------------------------------------------------|
 | `severity` | string   | `"error"` or `"warning"`. Exit code is driven by errors only.                                    |
-| `kind`     | string   | `"parse"`, `"resolve"`, or `"validate"`. Identifies the producing pipeline stage.                 |
+| `kind`     | string   | `"parse"`, `"resolve"`, `"validate"`, or `"graph"`. Identifies the producing pipeline stage.       |
 | `code`     | string   | Symbolic, stable identifier within a kind. Adding new codes is non-breaking; renaming is breaking. |
-| `file`     | string   | Source-file basename: the file holding the diagnostic's position. May be empty in multi-file mode when no definition encloses it. |
+| `file`     | string   | The file holding the diagnostic's position, spelled as the input named it (see [File spelling](#file-spelling)). For a graph diagnostic, the file of the definition whose body holds the call. |
 | `start`    | Position | 1-based line/column. Always present.                                                              |
 | `end`      | Position | 1-based line/column. Currently `end == start` for resolve/validate diagnostics; precision will improve over time without changing the wire shape. |
 | `message`  | string   | Human-readable text. Subject to change; pin to `code` for programmatic dispatch.                  |
 | `name`     | string   | Primary entity the diagnostic refers to (the undefined name, the duplicate name, …). Optional.    |
+
+### File spelling
+
+Diagnostics' `file` and definitions' `sourceFile` name a file the way its
+input did: a file argument as given, a file found by walking a directory
+argument as that argument, `/`, and its path below it. Paths are
+slash-separated, with a leading `./`, doubled `/` and `.` elements removed;
+`..` is kept, and a path is absolute only if its argument was. So `twf check .`
+reports `top/top.twf`, and `twf check ../x` reports `../x/a.twf`.
+
+A file named twice — relative and absolute, through a symlink, or by a file
+argument and a directory holding it — is read once, under its first spelling.
+A directory walk skips entries named `.*` or `_*`, directories named
+`testdata`, and symlinks (Go's rules, which keep `.claude/worktrees/` copies
+and editor lock files out); an argument itself is never skipped. Within a
+directory, entries are walked in lexical order.
+
+Diagnostics are ordered by stage (parse, resolve, validate, graph), then by
+their file's input position, line, column, code and message.
 
 ### Diagnostic codes
 

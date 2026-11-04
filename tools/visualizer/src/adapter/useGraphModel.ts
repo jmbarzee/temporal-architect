@@ -18,8 +18,9 @@ import type { Graph } from '@temporal-architect/graph-view'
 // history-derived warnings (e.g. a signal target not present in the sampled
 // histories) become visible — the AST carries no such diagnostics in history mode.
 //
-// Graph findings have no source file or column; they ride through the file-filter
-// partition in the "shown" group (file-less diagnostics are never hidden).
+// A graph diagnostic names the calling definition's file; an unresolved target
+// has none and no column, so it rides through the file-filter partition in the
+// "shown" group (file-less diagnostics are never hidden).
 function graphFindingsToDiagnostics(pg: ParserGraph): Diagnostic[] {
   const out: Diagnostic[] = []
   for (const d of pg.diagnostics) {
@@ -28,6 +29,7 @@ function graphFindingsToDiagnostics(pg: ParserGraph): Diagnostic[] {
       kind: 'graph',
       code: d.code,
       message: d.message,
+      file: d.file,
       name: d.from,
       start: { line: d.line, column: 0 },
       end: { line: d.line, column: 0 },
@@ -90,6 +92,15 @@ export function useGraphModel(ast: TWFFile, parserGraph: ParserGraph): GraphMode
     [ast.diagnostics, parserGraph],
   )
   return { graph, ownerOf, errors, diagnostics }
+}
+
+/** Every file an AST definition names as its source. */
+export function sourceFilesOf(ast: TWFFile): Set<string> {
+  const files = new Set<string>()
+  for (const def of ast.definitions) {
+    if (def.sourceFile) files.add(def.sourceFile)
+  }
+  return files
 }
 
 /**
