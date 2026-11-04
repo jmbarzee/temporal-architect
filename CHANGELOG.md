@@ -303,6 +303,10 @@ is now checked against the target's signals.
 - A `parse/LEX` error, such as bad indentation or an unterminated string, is
   listed ahead of the `parse/SYNTAX` error it causes at the same position in
   `twf check`. The Go API `parser.ParseFile` reports it in place of that error.
+- **LSP:** "Add missing workflow/activity" writes the signature of the call the
+  diagnostic is on: its arguments, and `-> (Result)` when it binds a result.
+  A workflow call, a promise or await target, or a call in a handler or a sync
+  nexus operation used to get an empty `()` stub.
 - **LSP:** a bad statement line drops only itself from the editor's outline,
   hover and references; the definition around it and its other statements stay.
 - An undefined workflow, activity, signal or update used as a `promise` /
