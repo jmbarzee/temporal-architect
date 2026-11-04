@@ -1,7 +1,9 @@
 package lexer
 
 import (
+	"bytes"
 	"fmt"
+	"slices"
 	"strings"
 	"unicode/utf8"
 
@@ -18,7 +20,11 @@ type Lexer struct {
 	last    token.TokenType // last token emitted on this line; NEWLINE before the first
 	pending []token.Token   // queued tokens (INDENT/DEDENT, or a literal behind its escape error)
 
-	indentStack []int // stack of indent levels, starts at [0]
+	indentStack []int // stack of indent widths, starts at [0]
+	indentChar  byte  // ' ' or '\t', fixed by the first indented line; 0 before it
+	indentLine  int   // the line that fixed indentChar
+	indentUnit  int   // a spaces file's first indent width, its tab stop for recovery
+	afterHeader bool  // the line before this one ended in ':', so this one opens a block
 	eofEmitted  bool  // true after first EOF has been emitted
 }
 
@@ -58,9 +64,8 @@ func (l *Lexer) NextToken() token.Token {
 			}
 		}
 
-		// Skip spaces (not newlines) within a line. A tab is whitespace too,
-		// except where it would stand in a line's indentation.
-		l.skipSpaces(l.last != token.NEWLINE)
+		// Skip spaces and tabs (not newlines) within a line.
+		l.skipSpaces()
 
 		if l.pos >= len(l.input) {
 			return l.emitEOF()
@@ -71,6 +76,7 @@ func (l *Lexer) NextToken() token.Token {
 		var tok token.Token
 		switch {
 		case l.newlineAt(l.pos) > 0:
+			l.afterHeader = l.last == token.COLON || l.last == token.TRAILING_COMMENT
 			tok = l.makeToken(token.NEWLINE, "")
 			l.pos += l.newlineAt(l.pos)
 			l.line++
@@ -154,23 +160,14 @@ func (l *Lexer) AllTokens() []token.Token {
 // Returns a token and true if a single token should be returned immediately,
 // or zero-value and false if tokens were queued into pending (or blank line skipped).
 func (l *Lexer) handleIndent() (token.Token, bool) {
-	// Count leading spaces.
-	indent := 0
-	for l.pos < len(l.input) && l.input[l.pos] == ' ' {
-		indent++
-		l.pos++
-		l.col++
-	}
+	start := l.pos
+	end := l.indentEnd(start)
+	l.col += end - start
+	l.pos = end
 
 	// Check for blank line (only spaces and tabs, then newline or EOF).
-	end := l.pos
-	for end < len(l.input) && isSpace(l.input[end]) {
-		end++
-	}
 	if end >= len(l.input) {
 		// EOF after whitespace — emit dedents to 0 (handled by emitEOF).
-		l.col += end - l.pos
-		l.pos = end
 		l.emitDedentsTo(0)
 		return token.Token{}, false
 	}
@@ -181,6 +178,16 @@ func (l *Lexer) handleIndent() (token.Token, bool) {
 		l.col = 1
 		l.atBOL = true
 		return token.Token{}, false
+	}
+
+	run := l.input[start:end]
+	if l.indentChar == 0 && len(run) > 0 {
+		l.indentChar, l.indentLine = run[0], l.line
+		l.indentUnit = len(run) - len(bytes.TrimLeft(run, string(run[0])))
+	}
+	indent, bad := l.measureIndent(run, l.afterHeader)
+	if bad >= 0 {
+		l.pending = append(l.pending, l.indentStyleError(run, start, bad))
 	}
 
 	top := l.indentStack[len(l.indentStack)-1]
@@ -197,6 +204,88 @@ func (l *Lexer) handleIndent() (token.Token, bool) {
 
 	// indent == top: no change
 	return token.Token{}, false
+}
+
+// indentEnd returns the end of the run of spaces and tabs starting at i.
+func (l *Lexer) indentEnd(i int) int {
+	for i < len(l.input) && isSpace(l.input[i]) {
+		i++
+	}
+	return i
+}
+
+// measureIndent returns the width of a line's indentation run, and the index
+// of the run's first character that breaks the file's style, or -1. A file
+// indents with tabs or with spaces, fixed by its first indented line (run[0]
+// stands in before that line is reached). With one character per file, widths
+// order the levels exactly as their whitespace prefixes do, so a tab's display
+// width never matters.
+//
+// A run that breaks the style is placed for recovery, so the rest of the file
+// still parses: at its in-style prefix when that is an open level (a stray
+// character after a line's indentation) and the line does not follow a block
+// header (afterHeader), which needs a deeper one; otherwise where an editor shows
+// it, with a tab stop at a spaces file's first indent width, or every four
+// columns in a tab file. Shown past the current level, it opens one level;
+// otherwise it sits at the deepest open level it reaches.
+func (l *Lexer) measureIndent(run []byte, afterHeader bool) (width, bad int) {
+	style := l.indentChar
+	if style == 0 && len(run) > 0 {
+		style = run[0]
+	}
+	bad = bytes.IndexFunc(run, func(r rune) bool { return byte(r) != style })
+	if bad < 0 {
+		return len(run), -1
+	}
+	if bad > 0 && !afterHeader && slices.Contains(l.indentStack, bad) {
+		return bad, bad
+	}
+	stop := l.indentUnit
+	if style == '\t' || stop == 0 {
+		stop = 4
+	}
+	shown := 0
+	for _, ch := range run {
+		if ch == '\t' {
+			shown += stop - shown%stop
+		} else {
+			shown++
+		}
+	}
+	step := stop
+	if style == '\t' {
+		shown, step = shown/stop, 1
+	}
+	top := l.indentStack[len(l.indentStack)-1]
+	if shown > top {
+		return top + step, bad
+	}
+	for i := len(l.indentStack) - 1; ; i-- {
+		if l.indentStack[i] <= shown {
+			return l.indentStack[i], bad
+		}
+	}
+}
+
+// indentStyleError returns the ILLEGAL for the indentation run starting at
+// offset start, positioned at run[bad], its first character off the file's style.
+func (l *Lexer) indentStyleError(run []byte, start, bad int) token.Token {
+	style, other := "tabs", "spaces"
+	if l.indentChar == ' ' {
+		style, other = other, style
+	}
+	msg := fmt.Sprintf("indented with %s, but this file indents with %s (set by line %d)", other, style, l.indentLine)
+	if bytes.IndexByte(run, l.indentChar) >= 0 {
+		msg = fmt.Sprintf("indentation mixes tabs and spaces; this file indents with %s (set by line %d)", style, l.indentLine)
+	}
+	return token.Token{
+		Type:    token.ILLEGAL,
+		Literal: msg,
+		Line:    l.line,
+		Column:  1 + bad,
+		Offset:  start + bad,
+		End:     start + bad + 1,
+	}
 }
 
 // emitDedentsTo emits DEDENT tokens until the stack top matches the target level.
@@ -261,15 +350,7 @@ func (l *Lexer) opensBlock() bool {
 	top := l.indentStack[len(l.indentStack)-1]
 	for i := l.pos; i < len(l.input); {
 		i += l.newlineAt(i) // skip the newline ending the previous line
-		indent := 0
-		for i < len(l.input) && l.input[i] == ' ' {
-			indent++
-			i++
-		}
-		end := i
-		for end < len(l.input) && isSpace(l.input[end]) {
-			end++
-		}
+		end := l.indentEnd(i)
 		if end >= len(l.input) {
 			return false
 		}
@@ -277,6 +358,7 @@ func (l *Lexer) opensBlock() bool {
 			i = end
 			continue // blank line
 		}
+		indent, _ := l.measureIndent(l.input[i:end], false)
 		return indent > top
 	}
 	return false
@@ -547,9 +629,9 @@ func (l *Lexer) advance() {
 	l.col++
 }
 
-// skipSpaces skips spaces, and tabs too when tabs is set.
-func (l *Lexer) skipSpaces(tabs bool) {
-	for l.pos < len(l.input) && (l.input[l.pos] == ' ' || tabs && l.input[l.pos] == '\t') {
+// skipSpaces skips spaces and tabs.
+func (l *Lexer) skipSpaces() {
+	for l.pos < len(l.input) && isSpace(l.input[l.pos]) {
 		l.advance()
 	}
 }

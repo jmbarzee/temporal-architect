@@ -51,6 +51,7 @@ func initializeHandler(name, version string, store *DocumentStore) protocol.Init
 		// Capture the workspace folders: a buffer's deepest enclosing folder is
 		// one of its home inputs.
 		store.SetFolders(workspaceFoldersFromParams(params))
+		store.SetRelativePatterns(relativePatternSupport(context.Params))
 
 		capabilities := protocol.InitializeResult{
 			Capabilities: protocol.ServerCapabilities{

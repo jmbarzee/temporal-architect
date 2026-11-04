@@ -6,8 +6,10 @@ package modinit
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/module"
@@ -80,7 +82,7 @@ func CheckDir(dir string) error {
 // EnclosingModuleFile returns the twf.mod of the module that a module at dir
 // nests inside, or "".
 func EnclosingModuleFile(dir string) string {
-	d := scanDesign(pipeline.Canonicalize(dir))
+	d := scanDesign(pipeline.Canonicalize(dir), nil)
 	if d.enclosingRoot == "" {
 		return ""
 	}
@@ -91,9 +93,11 @@ func EnclosingModuleFile(dir string) string {
 // the first of the given sources that yields a candidate passing the check —
 // a candidate is skipped if it would give a package file of the design a
 // PACKAGE_NAME_MISMATCH, or a package with a usable declared name an unusable
-// assumed name. Only Imports can yield several.
-func Suggest(dir string, sources []Source) []string {
-	d := scanDesign(pipeline.Canonicalize(dir))
+// assumed name. Only Imports can yield several. overlays maps a canonical
+// `.twf` path to text that replaces the file on disk, or adds it to the walk
+// (an editor's unsaved buffers).
+func Suggest(dir string, sources []Source, overlays map[string]string) []string {
+	d := scanDesign(pipeline.Canonicalize(dir), overlays)
 	for _, src := range sources {
 		var cands []string
 		switch src {
@@ -122,7 +126,7 @@ func Suggest(dir string, sources []Source) []string {
 // Example is the path a local-path error suggests: the suggestion, else a
 // placeholder, else none.
 func Example(dir string) string {
-	if cands := Suggest(dir, AllSources); len(cands) > 0 {
+	if cands := Suggest(dir, AllSources, nil); len(cands) > 0 {
 		return cands[0]
 	}
 	return placeholder(pipeline.Canonicalize(dir))
@@ -187,7 +191,7 @@ type clause struct {
 	recovered bool
 }
 
-func scanDesign(root string) design {
+func scanDesign(root string, overlays map[string]string) design {
 	d := design{root: root, pkgDirs: map[string][]clause{}}
 	if parent := filepath.Dir(root); parent != root {
 		if r, p, err := pipeline.ModuleOf(parent); r != "" {
@@ -197,20 +201,33 @@ func scanDesign(root string) design {
 			}
 		}
 	}
-	files, err := pipeline.ExpandInputs([]string{root})
-	if err != nil {
-		return d
+	// The walk's files in walk order, then overlaid files not on disk.
+	walked, _ := pipeline.ExpandInputs([]string{root})
+	var files []string
+	seen := map[string]bool{}
+	for _, f := range walked {
+		files = append(files, pipeline.Canonicalize(f))
+		seen[files[len(files)-1]] = true
+	}
+	for _, f := range slices.Sorted(maps.Keys(overlays)) {
+		if !seen[f] && pipeline.InWalk(root, f) {
+			files = append(files, f)
+		}
 	}
 	for _, f := range files {
 		dir := filepath.Dir(f)
 		if r, _, _ := pipeline.ModuleOf(dir); r != "" && r != d.enclosingRoot {
 			continue // a nested module's file
 		}
-		data, err := os.ReadFile(f)
-		if err != nil {
-			continue
+		text, ok := overlays[f]
+		if !ok {
+			data, err := os.ReadFile(f)
+			if err != nil {
+				continue
+			}
+			text = string(data)
 		}
-		file, _ := parser.ParseFileAll(string(data))
+		file, _ := parser.ParseFileAll(text)
 		for _, imp := range file.Imports {
 			d.imports = append(d.imports, imp.Path)
 		}

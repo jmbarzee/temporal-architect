@@ -24,13 +24,12 @@ func position(lines []string, line, column int) protocol.Position {
 	}
 }
 
-// lineText is the 1-based line of lines without its terminator, or "" past the
-// end.
+// lineText is the 1-based line of lines, or "" past the end.
 func lineText(lines []string, line int) string {
 	if line < 1 || line > len(lines) {
 		return ""
 	}
-	return strings.TrimSuffix(lines[line-1], "\r")
+	return lines[line-1]
 }
 
 // nameRange is the LSP range of name, spelled at pos in lines.
@@ -52,7 +51,40 @@ func posToRange(lines []string, line, column int) protocol.Range {
 
 // lines is the document's text, split into lines.
 func (d *Document) lines() []string {
-	return strings.Split(d.Content, "\n")
+	return splitLines(d.Content)
+}
+
+// splitLines splits content into lines without their terminators, so a
+// column never counts the `\r` of a `\r\n`.
+func splitLines(content string) []string {
+	lines := strings.Split(content, "\n")
+	for i, l := range lines {
+		lines[i] = strings.TrimSuffix(l, "\r")
+	}
+	return lines
+}
+
+// lineEnding is the line terminator content uses where text is added at its
+// end: `\r\n` if its last line ending is, else `\n`.
+func lineEnding(content string) string {
+	if i := strings.LastIndexByte(content, '\n'); i > 0 && content[i-1] == '\r' {
+		return "\r\n"
+	}
+	return "\n"
+}
+
+// lineOffset is the byte offset in content of the start of 1-based line, or
+// len(content) past the last line.
+func lineOffset(content string, line int) int {
+	off := 0
+	for ; line > 1; line-- {
+		i := strings.IndexByte(content[off:], '\n')
+		if i < 0 {
+			return len(content)
+		}
+		off += i + 1
+	}
+	return off
 }
 
 // spells reports whether lines still hold o's name at o's position.
@@ -119,7 +151,7 @@ func (s *sources) open(file string) source {
 		if src.uri == "" {
 			src.uri = s.closedURI(file)
 			if b, err := os.ReadFile(filepath.FromSlash(file)); err == nil {
-				src.lines = strings.Split(string(b), "\n")
+				src.lines = splitLines(string(b))
 			}
 		}
 	}
@@ -127,12 +159,16 @@ func (s *sources) open(file string) source {
 	return src
 }
 
+func (s *sources) closedURI(file string) string {
+	return closedURI(s.store.Folders(), file)
+}
+
 // closedURI is the URI of a closed file, spelled through the deepest workspace
 // folder it is under as the client spells that folder, not by its canonical
 // path.
-func (s *sources) closedURI(file string) string {
+func closedURI(folders []string, file string) string {
 	uri, depth := pathToURI(file), -1
-	for _, f := range s.store.Folders() {
+	for _, f := range folders {
 		c := filepath.ToSlash(pipeline.Canonicalize(f))
 		if rest, ok := strings.CutPrefix(file, c+"/"); ok && len(c) > depth {
 			uri, depth = pathToURI(strings.TrimSuffix(filepath.ToSlash(f), "/")+"/"+rest), len(c)

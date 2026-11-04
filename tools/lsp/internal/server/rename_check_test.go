@@ -257,3 +257,185 @@ func TestRenameChecksTheWholeRun(t *testing.T) {
 		})
 	}
 }
+
+// familySource holds a namespace family and an endpoint family, the endpoint
+// called by its templated name.
+const familySource = `workflow Caller(wid: string):
+    nexus orders-{org} Orders.Place(wid)
+    close complete()
+
+workflow Child(wid: string):
+    id_scheme: "child-{wid}"
+    close complete()
+
+nexus service Orders:
+    async Place workflow Child
+
+worker W:
+    workflow Caller
+    workflow Child
+    nexus service Orders
+
+namespace prod-{org}:
+    worker W
+        options:
+            task_queue: "q"
+    nexus endpoint orders-{org}
+        options:
+            task_queue: "q"
+`
+
+// TestRenameKeepsTemplateParams: a deployment name's template params make it
+// a family, so a rename that adds, drops or changes them is refused. One that
+// keeps the set renames every reference and leaves a clean file.
+func TestRenameKeepsTemplateParams(t *testing.T) {
+	const changes = "changes the name's template parameters"
+	tests := []struct {
+		kind, src, needle, word, newName string
+		err                              string // "" when the rename is allowed
+	}{
+		// Static to templated.
+		{"namespace", pairSource, "namespace Prod", "Prod", "prod-{org}", changes},
+		{"namespace", pairSource, "namespace Prod", "Prod", "prod_{org}x", changes},
+		{"nexus endpoint", pairSource, "nexus endpoint Orders", "Orders", "orders-{org}", changes},
+		{"nexus endpoint", pairSource, "nexus Orders Orders.Place", "Orders", "orders-{org}", changes},
+
+		// Templated to static.
+		{"namespace", familySource, "namespace prod-{org}", "prod", "prod", changes},
+		{"nexus endpoint", familySource, "nexus endpoint orders-{org}", "orders", "orders", changes},
+		{"nexus endpoint", familySource, "nexus orders-{org} Orders.Place", "orders", "orders", changes},
+
+		// Another param set.
+		{"namespace", familySource, "namespace prod-{org}", "prod", "prod-{region}", changes},
+		{"namespace", familySource, "namespace prod-{org}", "prod", "prod-{org}-{region}", changes},
+		{"nexus endpoint", familySource, "nexus endpoint orders-{org}", "orders", "orders-{tenant}", changes},
+		{"nexus endpoint", familySource, "nexus endpoint orders-{org}", "orders", "orders-{org}-{region}", changes},
+
+		// The same param set.
+		{"namespace", familySource, "namespace prod-{org}", "prod", "production-{org}", ""},
+		{"namespace", familySource, "namespace prod-{org}", "prod", "live-{org}-{org}", ""},
+		{"nexus endpoint", familySource, "nexus endpoint orders-{org}", "orders", "orders-east-{org}", ""},
+		{"nexus endpoint", familySource, "nexus orders-{org} Orders.Place", "orders", "ords_{org}", ""},
+	}
+	before := NewDocumentStore().Open(renameURI, familySource)
+	if len(before.ParseErrs)+len(before.ResolveErrs)+len(before.ValidateErrs) > 0 {
+		t.Fatalf("familySource is not clean: %v %v %v", before.ParseErrs, before.ResolveErrs, before.ValidateErrs)
+	}
+	for _, tt := range tests {
+		t.Run(tt.needle+" to "+tt.newName, func(t *testing.T) {
+			store := NewDocumentStore()
+			store.Open(renameURI, tt.src)
+			edit, err := renameAt(store, renameURI, spotIn(t, tt.src, tt.needle, tt.word), tt.newName)
+			if tt.err != "" {
+				if err == nil || !strings.Contains(err.Error(), tt.err) || edit != nil {
+					t.Errorf("rename = %+v, %v; want no edit and an error containing %q", edit, err, tt.err)
+				}
+				return
+			}
+			if err != nil || edit == nil {
+				t.Fatalf("rename: edit=%v err=%v", edit, err)
+			}
+			renamed := applyEdits(t, tt.src, edit.Changes[renameURI])
+			if strings.Contains(renamed, tt.word+"-{org}") {
+				t.Errorf("an occurrence keeps the old name:\n%s", renamed)
+			}
+			doc := store.Open(renameURI, renamed)
+			if len(doc.ParseErrs)+len(doc.ResolveErrs)+len(doc.ValidateErrs) > 0 {
+				t.Errorf("renamed source is not clean: parse=%v resolve=%v validate=%v\n%s",
+					doc.ParseErrs, doc.ResolveErrs, doc.ValidateErrs, doc.Content)
+			}
+		})
+	}
+}
+
+// callerSource lists two of its namespaces, one static and one a family, in an
+// endpoint's allowed_caller_namespaces, beside one outside the design.
+const callerSource = `workflow Caller(wid: string):
+    nexus orders Orders.Place(wid)
+    close complete()
+
+workflow Child(wid: string):
+    id_scheme: "child-{wid}"
+    close complete()
+
+nexus service Orders:
+    async Place workflow Child
+
+worker C:
+    workflow Caller
+
+worker S:
+    workflow Child
+    nexus service Orders
+
+namespace Shop:
+    worker C
+        options:
+            task_queue: "c"
+
+namespace tenant-{org}:
+    worker C
+        options:
+            task_queue: "t"
+
+namespace Billing:
+    worker S
+        options:
+            task_queue: "s"
+    nexus endpoint orders
+        options:
+            task_queue: "s"
+            allowed_caller_namespaces: ["Shop", "tenant-{org}", "Outside"]
+`
+
+// TestRenameRewritesAllowedCallers: renaming a namespace rewrites the
+// allowed_caller_namespaces entries that name it, inside their quotes, so the
+// endpoint still admits it; references list those entries.
+func TestRenameRewritesAllowedCallers(t *testing.T) {
+	tests := []struct {
+		name, needle, word, old, newName string
+	}{
+		{"static namespace", "namespace Shop", "Shop", "Shop", "Store"},
+		{"static namespace, from its entry", `["Shop"`, "Shop", "Shop", "Store"},
+		{"namespace family", "namespace tenant-{org}", "tenant", "tenant-{org}", "client-{org}"},
+		{"namespace family, from its entry", `["Shop", "tenant-{org}"`, "tenant", "tenant-{org}", "client-{org}"},
+	}
+	before := NewDocumentStore().Open(renameURI, callerSource)
+	if len(before.ParseErrs)+len(before.ResolveErrs)+len(before.ValidateErrs) > 0 {
+		t.Fatalf("callerSource is not clean: %v %v %v", before.ParseErrs, before.ResolveErrs, before.ValidateErrs)
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			store := NewDocumentStore()
+			store.Open(renameURI, callerSource)
+			at := spotIn(t, callerSource, tt.needle, tt.word)
+			refs, err := referencesHandler(store)(nil, &protocol.ReferenceParams{
+				TextDocumentPositionParams: protocol.TextDocumentPositionParams{
+					TextDocument: protocol.TextDocumentIdentifier{URI: renameURI},
+					Position:     at,
+				},
+				Context: protocol.ReferenceContext{IncludeDeclaration: true},
+			})
+			if err != nil || len(refs) != 2 {
+				t.Fatalf("references = %+v, %v; want the declaration and the entry", refs, err)
+			}
+			for _, r := range refs {
+				if got := spelled(callerSource, r.Range); got != tt.old {
+					t.Errorf("reference at %+v spells %q", r.Range, got)
+				}
+			}
+			edit, err := renameAt(store, renameURI, at, tt.newName)
+			if err != nil || edit == nil {
+				t.Fatalf("rename: edit=%v err=%v", edit, err)
+			}
+			got := applyEdits(t, callerSource, edit.Changes[renameURI])
+			if want := strings.ReplaceAll(callerSource, tt.old, tt.newName); got != want {
+				t.Errorf("renamed:\n%s\nwant:\n%s", got, want)
+			}
+			doc := store.Open(renameURI, got)
+			if len(doc.ParseErrs)+len(doc.ResolveErrs)+len(doc.ValidateErrs) > 0 {
+				t.Errorf("renamed source is not clean: parse=%v resolve=%v validate=%v", doc.ParseErrs, doc.ResolveErrs, doc.ValidateErrs)
+			}
+		})
+	}
+}
