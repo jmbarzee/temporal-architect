@@ -105,3 +105,52 @@ func TestFmt(t *testing.T) {
 		t.Error("a missing path exits 0")
 	}
 }
+
+// TestFmtFailures: a file whose levels are unclear, or that cannot be written,
+// is reported on stderr, left as it was and not listed, and the exit is 1; the
+// files after it are still formatted. A symlinked file is rewritten through
+// the link, which stays a link.
+func TestFmtFailures(t *testing.T) {
+	dir := t.TempDir()
+	t.Chdir(dir)
+	unclear := "workflow W(x):\n    if (x):\n        activity A(x)\n      close complete(x)\n"
+	spaced := strings.ReplaceAll(tabbed, "\t", "  ")
+	for name, src := range map[string]string{"a_unclear.twf": unclear, "b_readonly.twf": spaced, "c_ok.twf": spaced, "target.twf.src": spaced} {
+		if err := os.WriteFile(name, []byte(src), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.Chmod("b_readonly.twf", 0o444); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink("target.twf.src", "d_link.twf"); err != nil {
+		t.Skipf("no symlinks: %v", err)
+	}
+	var code int
+	var out string
+	stderr, err := clitest.CaptureStderr(func() {
+		code, out = runFmt(t, "a_unclear.twf", "b_readonly.twf", "c_ok.twf", "d_link.twf")
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if code != 1 || out != "c_ok.twf\nd_link.twf\n" {
+		t.Errorf("exit %d, stdout %q; want exit 1 and the two rewritten files", code, out)
+	}
+	for _, want := range []string{"a_unclear.twf: line 4: ", "b_readonly.twf: not writable"} {
+		if !strings.Contains(stderr, want) {
+			t.Errorf("stderr %q lacks %q", stderr, want)
+		}
+	}
+	for name, want := range map[string]string{"a_unclear.twf": unclear, "b_readonly.twf": spaced, "c_ok.twf": tabbed, "target.twf.src": tabbed} {
+		if data, _ := os.ReadFile(name); string(data) != want {
+			t.Errorf("%s = %q, want %q", name, data, want)
+		}
+	}
+	if fi, err := os.Lstat("d_link.twf"); err != nil || fi.Mode()&os.ModeSymlink == 0 {
+		t.Errorf("d_link.twf is no longer a symlink (%v)", err)
+	}
+	if fi, _ := os.Stat("c_ok.twf"); fi.Mode().Perm() != 0o644 {
+		t.Errorf("c_ok.twf mode %v, want 0644", fi.Mode().Perm())
+	}
+}

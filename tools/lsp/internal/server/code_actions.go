@@ -121,7 +121,7 @@ func convertIndentationActions(doc *Document, params *protocol.CodeActionParams)
 		if !spaceIndented(pe) || !rangesOverlap(params.Range, posToRange(lines, pe.Line, pe.Column)) {
 			continue
 		}
-		edit, ok := indentEdit(doc.Content)
+		edit, ok, _ := indentEdit(doc.Content)
 		if !ok {
 			return nil
 		}

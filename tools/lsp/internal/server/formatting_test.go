@@ -135,7 +135,6 @@ func TestFormatting(t *testing.T) {
 		{"CRLF tab file", crlf(everyKindSource), ""},
 		{"2 spaces", spaced(everyKindSource, 2), everyKindSource},
 		{"CRLF, 2 spaces", crlf(spaced(everyKindSource, 2)), crlf(everyKindSource)},
-		{"trailing lone CR", spaced("workflow W():\n\tclose complete\r", 2), "workflow W():\n\tclose complete\r"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -161,6 +160,26 @@ func TestFormatting(t *testing.T) {
 	}
 }
 
+// documentRange ends where an LSP client puts the end of the document: it
+// counts "\r\n", "\n" and a lone "\r" as line ends, and UTF-16 units.
+func TestDocumentRange(t *testing.T) {
+	for _, tc := range []struct {
+		src  string
+		want protocol.Position
+	}{
+		{"", protocol.Position{}},
+		{"a\nb", protocol.Position{Line: 1, Character: 1}},
+		{"a\r\nbc", protocol.Position{Line: 1, Character: 2}},
+		{"a\r", protocol.Position{Line: 1}},
+		{"a\rb\n", protocol.Position{Line: 2}},
+		{"é😀", protocol.Position{Character: 3}},
+	} {
+		if got := documentRange(tc.src); got.Start != (protocol.Position{}) || got.End != tc.want {
+			t.Errorf("documentRange(%q) = %+v, want 0:0 to %+v", tc.src, got, tc.want)
+		}
+	}
+}
+
 // The server advertises document formatting.
 func TestFormattingCapability(t *testing.T) {
 	result, err := initializeHandler("twf", "test", NewDocumentStore())(&glsp.Context{}, &protocol317.InitializeParams{})
@@ -181,5 +200,23 @@ func TestFormattingCapability(t *testing.T) {
 	}
 	if p := string(got.Capabilities.DocumentFormattingProvider); p == "" || p == "null" || p == "false" {
 		t.Errorf("documentFormattingProvider = %q in %s", p, b)
+	}
+}
+
+// A buffer whose levels are unclear is not formatted: formatting reports the
+// line as an error, and the quick fix is not offered.
+func TestFormattingRefusesAnUnclearLevel(t *testing.T) {
+	src := "workflow W(x):\n    if (x):\n        activity A(x)\n      close complete(x)\n"
+	store := NewDocumentStore()
+	store.Open(renameURI, src)
+	edits, err := formattingHandler(store)(nil, &protocol.DocumentFormattingParams{
+		TextDocument: protocol.TextDocumentIdentifier{URI: renameURI},
+	})
+	if err == nil || !strings.HasPrefix(err.Error(), "line 4: ") || len(edits) != 0 {
+		t.Errorf("formatting = %+v, %v; want no edits and an error naming line 4", edits, err)
+	}
+	all := protocol.Range{End: protocol.Position{Line: 4}}
+	if got := codeActions(t, src, all, "Convert indentation to tabs"); len(got) != 0 {
+		t.Errorf("quick fix offered: %+v", got)
 	}
 }

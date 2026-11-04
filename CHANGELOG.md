@@ -270,8 +270,9 @@ is now checked against the target's signals.
   `TASK_QUEUE_MISMATCH` now carry a position; option value errors point at the
   value.
 - **New: `twf fmt [--check] <file|dir...>`** rewrites `.twf` indentation to
-  tabs, one per level, at the level the parser reads each line at; `--check`
-  lists files that would change and exits non-zero. Indentation only, for now
+  tabs, one per level, reading each line's level by column as an editor shows
+  it; `--check` lists files that would change and exits non-zero. A file whose
+  levels are unclear (a line closing to no open block) is reported and left. Indentation only, for now
   (#337 extends it). The LSP offers it as the quick fix "Convert indentation to
   tabs" and as document formatting; MCP as `twf_fmt`.
 - **Visualizer:** worker families get a cardinality badge; packaged definitions

@@ -91,13 +91,15 @@ Rewrite indentation to tabs; --check to list files that need it
 
 Rewrite TWF files in place into canonical form; a directory expands to the
 .twf files beneath it, as for `twf check`. For now it normalizes indentation
-only: each line is indented with one tab per level, at the level the parser
-reads it at, which fixes every "indented with spaces" error. Nothing but
+only: each line is indented with one tab per level, its level read by column
+as an editor shows it, which fixes every "indented with spaces" error. Nothing but
 leading whitespace changes, and a second run changes nothing. Issue #337
 extends it to full formatting.
 
-Prints each file it rewrites. With --check it rewrites nothing, prints each
-file that would change, and exits non-zero if there is one.
+Prints each file it rewrites. A file whose indentation cannot be read (a line
+that closes to a column no open block has) is reported, left as it is, and
+makes the exit non-zero. With --check it rewrites nothing, prints each file
+that would change, and exits non-zero if there is one.
 
 ```
 twf fmt [flags] <file|dir...>

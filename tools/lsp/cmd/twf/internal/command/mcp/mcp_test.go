@@ -324,7 +324,7 @@ func TestFmtPaths(t *testing.T) {
 	if len(got.Files) != 1 || got.Files[0].Path != spacedPath {
 		t.Fatalf("files = %+v, want only %s", got.Files, spacedPath)
 	}
-	if want := format.Indent(spaced); got.Files[0].Content != want {
+	if want, _ := format.Indent(spaced); got.Files[0].Content != want {
 		t.Errorf("content = %q, want format.Indent of the file: %q", got.Files[0].Content, want)
 	}
 	if want := "workflow W(x):\n\tactivity A(x)\n\tclose complete(x)\n\nactivity A(x):\n\treturn x\n"; got.Files[0].Content != want {
@@ -340,6 +340,32 @@ func TestFmtPaths(t *testing.T) {
 	}
 	if files := string(none["files"]); files != "[]" {
 		t.Errorf("twf_fmt of a tab-indented file: files = %s, want []", files)
+	}
+}
+
+// TestFmtUnclear: a file whose levels are unclear comes back as an error entry
+// naming the line, as `twf fmt` reports it; inline source is a tool error.
+func TestFmtUnclear(t *testing.T) {
+	const unclear = "workflow W(x):\n    if (x):\n        activity A(x)\n      close complete(x)\n"
+	path := filepath.Join(t.TempDir(), "unclear.twf")
+	if err := os.WriteFile(path, []byte(unclear), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cs := connect(t)
+	var got struct {
+		Files []struct {
+			Path, Content, Error string
+		} `json:"files"`
+	}
+	if err := json.Unmarshal([]byte(toolText(t, callTool(t, cs, "twf_fmt", map[string]any{"paths": []string{path}}))), &got); err != nil {
+		t.Fatalf("decode fmt result: %v", err)
+	}
+	if len(got.Files) != 1 || got.Files[0].Path != path || got.Files[0].Content != "" || !strings.HasPrefix(got.Files[0].Error, "line 4: ") {
+		t.Errorf("files = %+v, want one error entry for line 4", got.Files)
+	}
+	res, err := cs.CallTool(context.Background(), &sdk.CallToolParams{Name: "twf_fmt", Arguments: map[string]any{"source": unclear}})
+	if err != nil || !res.IsError {
+		t.Errorf("inline unclear source: %+v, %v; want a tool error", res, err)
 	}
 }
 

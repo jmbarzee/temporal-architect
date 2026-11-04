@@ -129,7 +129,7 @@ func registerTools(s *mcp.Server) {
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "twf_fmt",
 		Title:       "Format TWF files",
-		Description: "Rewrite .twf indentation to tabs, one per level, at the levels the parser reads; for now nothing but indentation changes. It fixes the LEX error \"indented with spaces\": the output parses as the input does, without that error. With source, returns {content, changed}. With paths, returns {files: [{path, content}]}: each file that would change, in order, with its new content; unchanged files are left out. Writes nothing; the content is what `twf fmt` writes.",
+		Description: "Rewrite .twf indentation to tabs, one per level, each line's level read by column as an editor shows it; for now nothing but indentation changes. It fixes the LEX error \"indented with spaces\". With source, returns {content, changed}, or an error when a line closes to a column no open block has. With paths, returns {files: [{path, content} or {path, error}]}: each file that would change, in order, with its new content, or that cannot be formatted, with why; unchanged files are left out. Writes nothing; the content is what `twf fmt` writes.",
 		Annotations: readOnly,
 	}, func(_ context.Context, _ *mcp.CallToolRequest, in fmtInput) (*mcp.CallToolResult, any, error) {
 		return jsonResult(buildFmt(in))
@@ -294,10 +294,12 @@ type fmtFiles struct {
 	Files []fmtFile `json:"files"`
 }
 
-// fmtFile is one file twf_fmt would change, with its new content.
+// fmtFile is one file twf_fmt would change, with its new content, or one it
+// cannot format, with why (as `twf fmt` reports it, leaving the file as is).
 type fmtFile struct {
 	Path    string `json:"path"`
-	Content string `json:"content"`
+	Content string `json:"content,omitempty"`
+	Error   string `json:"error,omitempty"`
 }
 
 // buildFmt mirrors `twf fmt` without writing: the formatted source, or each
@@ -307,7 +309,10 @@ func buildFmt(in fmtInput) ([]byte, error) {
 		return nil, err
 	}
 	if in.Source != nil {
-		out := format.Indent(*in.Source)
+		out, err := format.Indent(*in.Source)
+		if err != nil {
+			return nil, err
+		}
 		return json.MarshalIndent(fmtSource{Content: out, Changed: out != *in.Source}, "", "  ")
 	}
 	paths, err := pipeline.ExpandInputs(in.Paths)
@@ -320,7 +325,10 @@ func buildFmt(in fmtInput) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-		if out := format.Indent(string(src)); out != string(src) {
+		out, err := format.Indent(string(src))
+		if err != nil {
+			res.Files = append(res.Files, fmtFile{Path: path, Error: err.Error()})
+		} else if out != string(src) {
 			res.Files = append(res.Files, fmtFile{Path: path, Content: out})
 		}
 	}

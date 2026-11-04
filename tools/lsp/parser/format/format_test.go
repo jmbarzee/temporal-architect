@@ -36,16 +36,16 @@ func TestIndentRestoresTheTabOriginal(t *testing.T) {
 			t.Fatal(err)
 		}
 		tabs := string(data)
-		if got := Indent(tabs); got != tabs {
-			t.Errorf("%s: a tab-indented file changed", path)
+		if got, err := Indent(tabs); err != nil || got != tabs {
+			t.Errorf("%s: a tab-indented file changed (%v)", path, err)
 		}
 		for _, unit := range []string{"  ", "   ", "    "} {
 			for _, nl := range []string{"\n", "\r\n"} {
 				name := filepath.Base(path) + "/" + strings.ReplaceAll(unit, " ", "s") + strings.ReplaceAll(nl, "\r", `\r`)
 				t.Run(name, func(t *testing.T) {
 					want := strings.ReplaceAll(tabs, "\n", nl)
-					got := Indent(strings.ReplaceAll(spaced(tabs, unit), "\n", nl))
-					if got != want {
+					got, err := Indent(strings.ReplaceAll(spaced(tabs, unit), "\n", nl))
+					if err != nil || got != want {
 						t.Errorf("formatted file differs from the tab original:\n%q\n%q", got, want)
 					}
 				})
@@ -57,9 +57,9 @@ func TestIndentRestoresTheTabOriginal(t *testing.T) {
 func TestIndent(t *testing.T) {
 	for _, tc := range []struct{ name, src, want string }{
 		{
-			name: "spaces after a tab",
-			src:  "workflow W(x):\n\tactivity A(x)\n\t  close complete(x)\n",
-			want: "workflow W(x):\n\tactivity A(x)\n\tclose complete(x)\n",
+			name: "spaces after a tab under a header open its block",
+			src:  "workflow W(x):\n\tif (x):\n\t  activity A(x)\n\tclose complete(x)\n",
+			want: "workflow W(x):\n\tif (x):\n\t\tactivity A(x)\n\tclose complete(x)\n",
 		},
 		{
 			name: "a stray spaces line in a tab file",
@@ -82,9 +82,19 @@ func TestIndent(t *testing.T) {
 			want: "workflow W(x):\n\tactivity A(x,\n\t           y) -> r\n\tclose complete(r)\n",
 		},
 		{
-			name: "a dedent to no open block keeps the level the parser sees",
-			src:  "workflow W(x):\n\t\tactivity A(x)\n\tclose complete(x)\n",
-			want: "workflow W(x):\n\tactivity A(x)\nclose complete(x)\n",
+			name: "levels follow columns, whatever each definition's unit",
+			src:  "workflow W(x):\n  close complete(x)\n\nworkflow V(x):\n    if (x):\n        activity A(x)\n    close complete(x)\n\nactivity A(x):\n  return x\n",
+			want: "workflow W(x):\n\tclose complete(x)\n\nworkflow V(x):\n\tif (x):\n\t\tactivity A(x)\n\tclose complete(x)\n\nactivity A(x):\n\treturn x\n",
+		},
+		{
+			name: "a comment sets no unit and opens no level",
+			src:  "workflow W(x):\n # note\n    activity A(x,\n        y) -> r\n        # deep\n    close complete(r)\n",
+			want: "workflow W(x):\n\t# note\n\tactivity A(x,\n\t\ty) -> r\n\t\t# deep\n\tclose complete(r)\n",
+		},
+		{
+			name: "a two-level jump is one level",
+			src:  "workflow W(x):\n\tif (x):\n\t\t\tactivity A(x)\n\tclose complete(x)\n",
+			want: "workflow W(x):\n\tif (x):\n\t\tactivity A(x)\n\tclose complete(x)\n",
 		},
 		{
 			name: "no trailing newline",
@@ -94,12 +104,12 @@ func TestIndent(t *testing.T) {
 		{"empty", "", ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			got := Indent(tc.src)
-			if got != tc.want {
-				t.Errorf("got %q, want %q", got, tc.want)
+			got, err := Indent(tc.src)
+			if err != nil || got != tc.want {
+				t.Errorf("got %q, %v, want %q", got, err, tc.want)
 			}
-			if again := Indent(got); again != got {
-				t.Errorf("second run gives %q", again)
+			if again, err := Indent(got); err != nil || again != got {
+				t.Errorf("second run gives %q, %v", again, err)
 			}
 			_, errs := parser.ParseFileAll(got)
 			for _, e := range errs {
@@ -114,7 +124,10 @@ func TestIndent(t *testing.T) {
 // Only leading whitespace changes: every line keeps its text after it.
 func TestIndentChangesOnlyLeadingWhitespace(t *testing.T) {
 	src := "workflow W(x):  \n   if (x):\t# c \n         activity A(x, \"  a  \")\n   close complete(x)\t\n"
-	got := Indent(src)
+	got, err := Indent(src)
+	if err != nil {
+		t.Fatal(err)
+	}
 	a, b := strings.Split(src, "\n"), strings.Split(got, "\n")
 	if len(a) != len(b) {
 		t.Fatalf("line count %d, want %d", len(b), len(a))
@@ -122,6 +135,21 @@ func TestIndentChangesOnlyLeadingWhitespace(t *testing.T) {
 	for i := range a {
 		if strings.TrimLeft(a[i], " \t") != strings.TrimLeft(b[i], " \t") {
 			t.Errorf("line %d: %q became %q", i+1, a[i], b[i])
+		}
+	}
+}
+
+// A statement line that closes to a column no open level has is refused: the
+// source comes back unchanged with an error naming the line.
+func TestIndentRefusesAnUnclearLevel(t *testing.T) {
+	for _, src := range []string{
+		"workflow W(x):\n\t\tactivity A(x)\n\tclose complete(x)\n",
+		"workflow W(x):\n\tactivity A(x)\n  close complete(x)\n",
+		"workflow W(x):\n    if (x):\n        activity A(x)\n      close complete(x)\n",
+	} {
+		got, err := Indent(src)
+		if err == nil || !strings.HasPrefix(err.Error(), "line 3: ") && !strings.HasPrefix(err.Error(), "line 4: ") || got != src {
+			t.Errorf("Indent(%q) = %q, %v; want the source back and an error naming the line", src, got, err)
 		}
 	}
 }

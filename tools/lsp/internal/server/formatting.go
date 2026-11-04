@@ -17,32 +17,42 @@ func formattingHandler(store *DocumentStore) protocol.TextDocumentFormattingFunc
 		if !ok {
 			return nil, nil
 		}
-		if edit, ok := indentEdit(doc.Content); ok {
-			return []protocol.TextEdit{edit}, nil
+		edit, ok, err := indentEdit(doc.Content)
+		if !ok {
+			return nil, err
 		}
-		return nil, nil
+		return []protocol.TextEdit{edit}, nil
 	}
 }
 
 // indentEdit is the edit that rewrites content's indentation to tabs: the
 // whole document, replaced with format.Indent of it. ok is false when the
-// indentation is already tabs.
-func indentEdit(content string) (edit protocol.TextEdit, ok bool) {
-	indented := format.Indent(content)
-	if indented == content {
-		return protocol.TextEdit{}, false
+// indentation is already tabs, or when its levels are unclear (err).
+func indentEdit(content string) (edit protocol.TextEdit, ok bool, err error) {
+	indented, err := format.Indent(content)
+	if err != nil || indented == content {
+		return protocol.TextEdit{}, false, err
 	}
-	return protocol.TextEdit{Range: documentRange(content), NewText: indented}, true
+	return protocol.TextEdit{Range: documentRange(content), NewText: indented}, true, nil
 }
 
-// documentRange is the LSP range of all of content. Its end counts the last
-// line whole, so a trailing `\r` that ends no line is inside it.
+// documentRange is the LSP range of all of content, its end placed as an LSP
+// client counts lines: each "\r\n", "\n" or lone "\r" ends one.
 func documentRange(content string) protocol.Range {
-	last := content[strings.LastIndexByte(content, '\n')+1:]
-	return protocol.Range{End: protocol.Position{
-		Line:      uint32(strings.Count(content, "\n")),
-		Character: utf16Len(last),
-	}}
+	var end protocol.Position
+	last := 0
+	for i := 0; i < len(content); i++ {
+		switch {
+		case content[i] == '\r' && i+1 < len(content) && content[i+1] == '\n':
+			i++
+			fallthrough
+		case content[i] == '\n' || content[i] == '\r':
+			end.Line++
+			last = i + 1
+		}
+	}
+	end.Character = utf16Len(content[last:])
+	return protocol.Range{End: end}
 }
 
 // spaceIndented reports whether pe is the lexer's error for a space in a

@@ -111,10 +111,11 @@ Partial parse: 1 workflow(s), 0 activity(s), 1 error(s), 0 warning(s)
 ### `twf fmt`
 
 Rewrite TWF files in place into canonical form; a directory expands as for
-`twf check`. For now it normalizes **indentation only**: one tab per level, at
-the level the parser reads each line at, which fixes every `indented with
-spaces` error. Nothing but leading whitespace changes, and a second run changes
-nothing. Issue #337 extends it to full formatting. The LSP offers the same
+`twf check`. For now it normalizes **indentation only**: one tab per level, each
+line's level read by column as an editor shows it, which fixes every `indented
+with spaces` error. Nothing but leading whitespace changes, and a second run
+changes nothing. A file whose levels are unclear (a line that closes to a
+column no open block has) is reported and left as it is. Issue #337 extends it to full formatting. The LSP offers the same
 rewrite as a quick fix and as document formatting; MCP as `twf_fmt`.
 
 ```bash
@@ -124,7 +125,7 @@ twf fmt --check .        # rewrite nothing; list files that would change
 
 **Exit codes:**
 - `0` - Done (with `--check`: nothing to change)
-- `1` - With `--check`, a file would change; or a path does not exist
+- `1` - With `--check`, a file would change; or a file could not be read, formatted or written; or a path does not exist
 
 ### `twf parse`
 
