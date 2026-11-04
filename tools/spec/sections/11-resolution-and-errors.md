@@ -51,6 +51,7 @@ Common error types:
 - `set`/`unset` on undefined condition
 - Worker references undefined workflow, activity, or nexus service
 - Duplicate worker, namespace, or nexus service definitions
+- Duplicate signal, query, update or condition in one workflow, or operation in one nexus service (`DUPLICATE_SIGNAL`, `DUPLICATE_QUERY`, `DUPLICATE_UPDATE`, `DUPLICATE_CONDITION`, `DUPLICATE_NEXUS_OPERATION`); the first declaration is kept
 - Duplicate nexus endpoint names across namespaces
 - Namespace references undefined worker
 - Worker instantiation missing `task_queue` option

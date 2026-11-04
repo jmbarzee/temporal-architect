@@ -31,7 +31,7 @@ const focusOn = (name: string, type: string, child?: string): TreeFocus =>
 // The host's half of a Show in Tree, as WorkflowCanvas does it: widen the
 // Tree's filter to the target and hand the Tree the focus.
 let show: (target: TreeFocus) => void
-function Host({ active = true }: { active?: boolean }) {
+function Host({ active = true, ast = AST }: { active?: boolean; ast?: TWFFile }) {
   const linked = useLinkedViews({ taxonomy: DEFAULT_TAXONOMY, views: ['tree', 'graph'] as const })
   const [pending, setPending] = React.useState<TreeFocus | null>(null)
   show = target => {
@@ -42,7 +42,7 @@ function Host({ active = true }: { active?: boolean }) {
     <TaxonomyContext.Provider value={DEFAULT_TAXONOMY}>
       <TreeView
         active={active}
-        ast={AST}
+        ast={ast}
         {...linked.of('tree')}
         systemTheme="light"
         pendingFocus={pending}
@@ -204,6 +204,36 @@ describe('Tree scroll alignment', () => {
       const endpoint = container.querySelector<HTMLElement>('.namespace-entry-endpoint')!
       expect(endpoint.textContent).toContain('PaymentsEndpoint')
       expect(lastScrollOf(endpoint)).toBe(block)
+    })
+  }
+})
+
+// A row declared twice in one definition (DUPLICATE_NEXUS_OPERATION,
+// DUPLICATE_ENDPOINT) is its first declaration's, as the resolver keeps it: a
+// Show in Tree scrolls to and lights only the first row of the name.
+describe('Tree reveal of a duplicated row', () => {
+  const DUPLICATES = {
+    definitions: [
+      { type: 'workflowDef', name: 'W', sourceFile: 'a.twf', ...at(1), params: '', body: [] },
+      {
+        type: 'nexusServiceDef', name: 'S', sourceFile: 'a.twf', ...at(4),
+        operations: [{ name: 'Op', opType: 'sync', ...at(5) }, { name: 'Op', opType: 'async', workflowName: 'W', ...at(7) }],
+      },
+      { type: 'namespaceDef', name: 'n', sourceFile: 'a.twf', ...at(9), workers: [], endpoints: [{ endpointName: 'e', ...at(10) }, { endpointName: 'e', ...at(13) }] },
+    ],
+  } as unknown as TWFFile
+
+  for (const [label, focus, selector] of [
+    ['operation', focusOn('S', 'nexusServiceDef', 'Op'), '.block-nexus-operation'],
+    ['endpoint', focusOn('n', 'namespaceDef', 'e'), '.namespace-entry-endpoint'],
+  ] as const) {
+    it(`scrolls to and lights only the first ${label} of a name`, async () => {
+      const { container } = render(<Host ast={DUPLICATES} />)
+      await reveal(focus)
+      const rows = [...container.querySelectorAll(selector)]
+      expect(rows).toHaveLength(2)
+      expect(scrolls.map(s => s.el).filter(el => rows.includes(el))).toEqual([rows[0]])
+      expect(lit(container)).toEqual([rows[0]])
     })
   }
 })

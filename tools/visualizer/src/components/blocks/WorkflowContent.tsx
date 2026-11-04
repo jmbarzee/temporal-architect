@@ -1,9 +1,10 @@
 import React from 'react'
-import type { WorkflowDef, HandlerDecl, Statement, SignalDecl, QueryDecl, UpdateDecl } from '../../types/ast'
+import type { WorkflowDef, HandlerDecl, Statement } from '../../types/ast'
 import { StatementBlock, StatementBody } from './StatementBlock'
 import { THEME, HANDLER_CONFIG, BlockIcon } from '../../theme/temporal-theme'
 import { useToggle } from './useToggle'
 import { HandlerContext } from '../WorkflowCanvas'
+import { handlersOf } from '../definitionMaps'
 import { OptionsSection } from './OptionsSection'
 import './blocks.css'
 
@@ -166,17 +167,7 @@ export function InlineWorkflowBlock({ def }: { def: WorkflowDef }) {
   const signature = `${def.name}(${def.params})${def.returnType ? ` → ${def.returnType}` : ''}`
 
   // Build handler context for signal/query/update resolution within this workflow
-  const handlerContext = React.useMemo<HandlerContext>(() => {
-    const signals = new Map<string, SignalDecl>()
-    const queries = new Map<string, QueryDecl>()
-    const updates = new Map<string, UpdateDecl>()
-
-    for (const s of def.signals || []) signals.set(s.name, s)
-    for (const q of def.queries || []) queries.set(q.name, q)
-    for (const u of def.updates || []) updates.set(u.name, u)
-
-    return { signals, queries, updates }
-  }, [def])
+  const handlerContext = React.useMemo<HandlerContext>(() => handlersOf(def), [def])
 
   return (
     <HandlerContext.Provider value={handlerContext}>

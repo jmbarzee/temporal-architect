@@ -177,11 +177,7 @@ func (x *indexer) stmts(stmts []ast.Statement) {
 			}
 			var decl ast.Node
 			if wf := n.Target(); wf != nil {
-				for _, sig := range wf.Signals {
-					if sig.Name == n.Signal {
-						decl = sig
-					}
-				}
+				decl = wf.Signal(n.Signal)
 			}
 			x.add(n.SignalPos, n.Signal, decl, false)
 		case *ast.NexusCall:

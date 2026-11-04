@@ -22,7 +22,7 @@ func (v *validationCtx) checkIDPolicies(defs []ast.Definition) {
 		switch d := def.(type) {
 		case *ast.WorkflowDef:
 			v.checkDefaultIDPolicies(d)
-			walkWorkflow(d, func(s ast.Statement) {
+			walkWorkflow(d, false, func(s ast.Statement) {
 				if call, ok := s.(*ast.WorkflowCall); ok {
 					v.checkChildStart(call.Workflow.Resolved, call.Options, call, d.SourceFile)
 				}

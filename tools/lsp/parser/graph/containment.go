@@ -59,7 +59,7 @@ func (g *Graph) emitContainment(idx *astIndex) {
 			if !ok || svc == nil {
 				continue
 			}
-			for _, op := range svc.Operations {
+			for _, op := range ast.FirstDeclared(svc.Operations) {
 				opName := nexusOpQualifiedName(svcQName, op.Name)
 				g.Edges = append(g.Edges, Edge{
 					From: HostedID(KindNexusOperation, opName, wd.WorkerName, wd.NamespaceName, false),
