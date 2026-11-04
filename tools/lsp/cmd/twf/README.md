@@ -190,7 +190,8 @@ The leftmost segment (`workflow:<name>`, `worker:<name>`, …) is the
 
 Dispatch edges carry a `routing` object: `{ explicit?: string,
 nexusEndpoint?: string }`. `explicit` is the `task_queue:` literal the
-user wrote on the call site (activity / workflow only); `nexusEndpoint`
+user wrote on the call site, else on the target's `default_options:`
+(activity / workflow only); `nexusEndpoint`
 is the endpoint deployment node ID (nexus only).
 
 **Coarsened edges** project dispatches up to the worker or namespace
