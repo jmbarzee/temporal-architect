@@ -97,15 +97,18 @@ func (s *sources) open(file string) source {
 	return src
 }
 
-// closedURI is the URI of a closed file, spelled through the workspace folder
-// it is under as the client spells that folder, not by its canonical path.
+// closedURI is the URI of a closed file, spelled through the deepest workspace
+// folder it is under as the client spells that folder, not by its canonical
+// path.
 func (s *sources) closedURI(file string) string {
+	uri, depth := pathToURI(file), -1
 	for _, f := range s.store.Folders() {
-		if rest, ok := strings.CutPrefix(file, filepath.ToSlash(pipeline.Canonicalize(f))+"/"); ok {
-			return pathToURI(strings.TrimSuffix(filepath.ToSlash(f), "/") + "/" + rest)
+		c := filepath.ToSlash(pipeline.Canonicalize(f))
+		if rest, ok := strings.CutPrefix(file, c+"/"); ok && len(c) > depth {
+			uri, depth = pathToURI(strings.TrimSuffix(filepath.ToSlash(f), "/")+"/"+rest), len(c)
 		}
 	}
-	return pathToURI(file)
+	return uri
 }
 
 // pathToURI is the `file://` URI of a slash-separated absolute path.
