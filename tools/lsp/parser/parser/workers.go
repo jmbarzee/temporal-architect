@@ -21,8 +21,9 @@ func parseWorkerDef(p *Parser) (ast.Definition, error) {
 	}
 
 	worker := &ast.WorkerDef{
-		Pos:  pos,
-		Name: name.Literal,
+		Pos:     pos,
+		Name:    name.Literal,
+		NamePos: posOf(name),
 	}
 
 	for p.current.Type != token.DEDENT && p.current.Type != token.EOF {
@@ -38,21 +39,20 @@ func parseWorkerDef(p *Parser) (ast.Definition, error) {
 			continue
 
 		case token.WORKFLOW:
-			pos, pkg, name, err := p.parseWorkerRef()
+			pkg, name, err := p.parseWorkerRef()
 			if err != nil {
 				return nil, err
 			}
-			worker.Workflows = append(worker.Workflows, ast.Ref[*ast.WorkflowDef]{Pos: pos, Package: pkg, Name: name})
+			worker.Workflows = append(worker.Workflows, refTo[*ast.WorkflowDef](pkg, name))
 
 		case token.ACTIVITY:
-			pos, pkg, name, err := p.parseWorkerRef()
+			pkg, name, err := p.parseWorkerRef()
 			if err != nil {
 				return nil, err
 			}
-			worker.Activities = append(worker.Activities, ast.Ref[*ast.ActivityDef]{Pos: pos, Package: pkg, Name: name})
+			worker.Activities = append(worker.Activities, refTo[*ast.ActivityDef](pkg, name))
 
 		case token.NEXUS:
-			refPos := ast.Pos{Line: p.current.Line, Column: p.current.Column}
 			p.advance() // consume NEXUS
 			// Expect IDENT "service"
 			if p.current.Type != token.IDENT || p.current.Literal != "service" {
@@ -67,23 +67,19 @@ func parseWorkerDef(p *Parser) (ast.Definition, error) {
 			// registers whole services, so keep the service and record the
 			// operation for the resolver to diagnose; failing here would drop
 			// the whole worker.
-			if svcPkg != "" && p.current.Type == token.DOT {
+			if svcPkg.Literal != "" && p.current.Type == token.DOT {
 				p.advance() // consume DOT
 				op, err := p.expect(token.IDENT)
 				if err != nil {
 					return nil, err
 				}
 				worker.OperationMentions = append(worker.OperationMentions, ast.OperationMention{
-					Pos:          refPos,
+					Pos:          posOf(op),
 					ServiceIndex: len(worker.Services),
 					Op:           op.Literal,
 				})
 			}
-			worker.Services = append(worker.Services, ast.Ref[*ast.NexusServiceDef]{
-				Pos:     refPos,
-				Package: svcPkg,
-				Name:    svcName,
-			})
+			worker.Services = append(worker.Services, refTo[*ast.NexusServiceDef](svcPkg, svcName))
 			if p.current.Type == token.NEWLINE {
 				p.advance()
 			}
@@ -101,18 +97,16 @@ func parseWorkerDef(p *Parser) (ast.Definition, error) {
 }
 
 // parseWorkerRef consumes the current keyword token, expects an optionally
-// package-qualified name ([IDENT.]IDENT), and returns the position, package
-// qualifier (empty when unqualified), and name. Consumes a trailing NEWLINE if
-// present.
-func (p *Parser) parseWorkerRef() (ast.Pos, string, string, error) {
-	pos := ast.Pos{Line: p.current.Line, Column: p.current.Column}
+// package-qualified name ([IDENT.]IDENT), and returns the qualifier (zero when
+// unqualified) and name tokens. Consumes a trailing NEWLINE if present.
+func (p *Parser) parseWorkerRef() (pkg, name token.Token, err error) {
 	p.advance() // consume keyword (WORKFLOW, ACTIVITY, etc.)
-	pkg, name, err := p.parseRefNameWithPackage()
+	pkg, name, err = p.parseRefNameWithPackage()
 	if err != nil {
-		return ast.Pos{}, "", "", err
+		return token.Token{}, token.Token{}, err
 	}
 	if p.current.Type == token.NEWLINE {
 		p.advance()
 	}
-	return pos, pkg, name, nil
+	return pkg, name, nil
 }

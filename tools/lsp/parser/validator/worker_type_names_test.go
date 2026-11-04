@@ -31,22 +31,22 @@ func TestWorkerDuplicateTypeName(t *testing.T) {
 		want    []string
 	}{
 		{"one per kind", []string{"nexus service a.Svc", "nexus service b.Svc", "workflow a.Run", "workflow b.Run", "activity a.Do", "activity b.Do"}, []string{
-			at + `10:5 shared topo.twf: worker shared registers nexus service a.Svc and nexus service b.Svc under one name, "Svc"` + tail,
-			at + `12:5 shared topo.twf: worker shared registers workflow a.Run and workflow b.Run under one name, "Run"` + tail,
-			at + `14:5 shared topo.twf: worker shared registers activity a.Do and activity b.Do under one name, "Do"` + tail,
+			at + `10:21 shared topo.twf: worker shared registers nexus service a.Svc and nexus service b.Svc under one name, "Svc"` + tail,
+			at + `12:16 shared topo.twf: worker shared registers workflow a.Run and workflow b.Run under one name, "Run"` + tail,
+			at + `14:16 shared topo.twf: worker shared registers activity a.Do and activity b.Do under one name, "Do"` + tail,
 		}},
 		{"each later entry", []string{"workflow a.Run", "workflow b.Run", "workflow c.Run"}, []string{
-			at + `10:5 shared topo.twf: worker shared registers workflow a.Run and workflow b.Run under one name, "Run"` + tail,
-			at + `11:5 shared topo.twf: worker shared registers workflow a.Run and workflow c.Run under one name, "Run"` + tail,
+			at + `10:16 shared topo.twf: worker shared registers workflow a.Run and workflow b.Run under one name, "Run"` + tail,
+			at + `11:16 shared topo.twf: worker shared registers workflow a.Run and workflow c.Run under one name, "Run"` + tail,
 		}},
 		{"repeated entry", []string{"workflow a.Run", "activity a.Do", "workflow a.Run"}, []string{
-			at + `11:5 shared topo.twf: worker shared registers workflow a.Run twice; Temporal registers each name once per worker`,
+			at + `11:16 shared topo.twf: worker shared registers workflow a.Run twice; Temporal registers each name once per worker`,
 		}},
 		{"own package, bare and qualified", []string{"workflow Run", "workflow topo.Run"}, []string{
-			at + `10:5 shared topo.twf: worker shared registers workflow topo.Run twice; Temporal registers each name once per worker`,
+			at + `10:19 shared topo.twf: worker shared registers workflow topo.Run twice; Temporal registers each name once per worker`,
 		}},
 		{"own package beside another", []string{"workflow Run", "workflow a.Run"}, []string{
-			at + `10:5 shared topo.twf: worker shared registers workflow topo.Run and workflow a.Run under one name, "Run"` + tail,
+			at + `10:16 shared topo.twf: worker shared registers workflow topo.Run and workflow a.Run under one name, "Run"` + tail,
 		}},
 		{"different kinds", []string{"workflow a.Run", "activity b.Do", "nexus service c.Svc"}, nil},
 		{"unresolved skipped", []string{"workflow ext.Run", "workflow a.Run"}, nil},
