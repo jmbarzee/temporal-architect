@@ -96,7 +96,7 @@ workflow CompensateBooking(flight: string, hotel: string, car: string):
 
 # --- Fan-Out/Fan-In ---
 
-workflow BatchProcessor(items: []Item) -> (BatchResult):
+workflow BatchProcessor(items: list[Item]) -> (BatchResult):
 	await all:
 		for (item in items):
 			activity ProcessBatchItem(item)
@@ -202,7 +202,7 @@ workflow AwaitResourceReady(resourceId: string) -> (Resource):
 activity ValidateRetailOrder(order: Order) -> (ValidateResult):
 	return validate(order)
 
-activity ReserveInventory(items: []Item) -> (Reservation):
+activity ReserveInventory(items: list[Item]) -> (Reservation):
 	return reserve(items)
 
 activity ProcessPayment(payment: Payment) -> (PaymentResult):
@@ -250,7 +250,7 @@ activity CancelCar(carId: string):
 activity ProcessBatchItem(item: Item) -> (ItemResult):
 	return process(item)
 
-activity AggregateResults(results: []ItemResult) -> (AggregateResult):
+activity AggregateResults(results: list[ItemResult]) -> (AggregateResult):
 	return aggregate(results)
 
 activity Ingest(rawData: RawData) -> (IngestedData):

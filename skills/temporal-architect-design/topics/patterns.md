@@ -34,7 +34,7 @@ TWF has no try/catch or compensation stack. Model a failed step as a checked res
 Cap concurrency by fanning out per chunk:
 
 ```twf
-workflow RateLimitedBatch(items: []Item) -> (BatchResult):
+workflow RateLimitedBatch(items: list[Item]) -> (BatchResult):
 	for (batch in chunk(items, 10)):
 		await all:
 			for (item in batch):

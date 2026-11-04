@@ -66,7 +66,7 @@ A clean `twf check` requires none of these, but the design must reason about the
 - `task_queue` is not a Nexus call option — Nexus routing comes from the endpoint. A workflow **ID** is never a call option: a start's ID derives from the child type's `id_scheme:`, if it has one ([child-workflows.md](../topics/child-workflows.md#workflow-id-design)).
 - There is no `cron_schedule` key (rejected as `unknown option key`); recurring starts are Temporal Schedules, platform configuration outside TWF ([timers-scheduling.md](../topics/timers-scheduling.md#schedules-cron-workflows)).
 - **Handler declarations** take their own set: signal and update admit `unfinished_policy` (`abandon` | `warn_and_abandon`, the default); all three admit `description` ([signals-queries-updates.md](../topics/signals-queries-updates.md#handler-options)).
-- **Worker instantiations** in a `namespace` take their own set: `task_queue` (required) and `versioning` (`none` / `build_id` / `deployment`) as the design-level strategy key, plus the SDK union, accepted permissively ([task-queues.md](../topics/task-queues.md#worker-options)).
+- **Worker instantiations** in a `namespace` take their own set: `task_queue` (required) and `versioning` (`none` / `build_id` / `deployment`) as the design-level strategy key, plus the worker options every Tier-1 SDK has ([task-queues.md](../topics/task-queues.md#worker-options)).
 
 ## Definition-level `default_options:`
 

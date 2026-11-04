@@ -47,9 +47,8 @@ func buildSignatureHelp(name, keyword, params, returnType string) *protocol.Sign
 	if params != "" {
 		// Offset within the label where params start: after "keyword name("
 		paramsOffset := len(keyword) + 1 + len(name) + 1 // "keyword name("
-		parts := strings.Split(params, ",")
 		offset := paramsOffset
-		for _, p := range parts {
+		for _, p := range ast.SplitParams(params) {
 			p = strings.TrimSpace(p)
 			// Find the actual position of this param in the label
 			start := strings.Index(label[offset:], p)

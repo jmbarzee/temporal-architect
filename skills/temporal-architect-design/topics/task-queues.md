@@ -17,11 +17,10 @@ Workers group type registrations, task queues route work to them, and namespaces
 
 ### Worker Options
 
-The worker `options:` block is the **union of SDK worker options**, accepted permissively — the parser does no per-language validation. Use it for **strategy and intent**, not numeric ops tuning (exact poller counts and cache TTLs belong in implementation):
+The worker `options:` block names worker behaviours **every Tier-1 SDK** has; each author skill maps them to its SDK. Use it for **strategy and intent**, not numeric ops tuning (exact poller counts and cache TTLs belong in implementation):
 
 - **`task_queue`** (required) — routing; pins the worker pool. A `{param}` makes the instantiation a [per-instance family](#per-instance-worker-families).
 - **`versioning: none | build_id | deployment`** — the pool's worker-versioning strategy, a reliability decision the design should make ([versioning.md](./versioning.md#declaring-the-strategy-in-twf)). Concrete Build IDs / deployment names are deploy-time inputs, not `.twf` content.
-- **`enable_sessions`** — pins a sequence of activities to one worker (host affinity for stateful or resource-bound work); a design call, not tuning.
 - **Concurrency caps and rate limiters** (`max_concurrent_*`, `*_rate_limit`, sticky cache) — ops tuning; set them only when a workload demands it.
 
 Full key list: `twf spec workers-and-namespaces`.
@@ -84,4 +83,3 @@ A `{param}` in a worker's `task_queue` declares many workers, each polling its o
 - **Limits are per instance.** `task_queue_activity_rate_limit` caps each member's queue, not the family.
 - **Authorization is per namespace.** A family worker's credentials reach everything in its namespace. Beside untrusted code (the sandbox case), keep the Temporal worker outside the trust boundary, or put the family in its own namespace behind Nexus.
 - **Give each family its own fixed text.** Spellings with the same fixed text are one family, so `"sandbox-{sandboxId}"` and `"sandbox-{id}"` must register the same type set; two bare families (`"{hostId}"`, `"{podId}"`) collide the same way. A static queue a member could take (`"sandbox-pool"`) draws `TASK_QUEUE_OVERLAP`.
-- **Sessions** (`enable_sessions`, Go only) are the SDK-managed, host-keyed variant, for when the caller need not name the instance.

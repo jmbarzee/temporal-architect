@@ -123,11 +123,11 @@ if errors.As(err, &timeoutErr) && timeoutErr.TimeoutType() == enumspb.TIMEOUT_TY
 - **Set `MaxConcurrentActivityTaskPollers` small and explicit.** Every member's pollers count against the namespace's poller limit, and an autoscaling poller can reach 100 per instance.
 - **`Identity` is per process by default** (the client's `pid@hostname@`), so it is unique per member only when each member is its own process. A host running several members sets `Identity` with the instance key.
 - **The call site sets `TaskQueue`, `ScheduleToStartTimeout` and `StartToCloseTimeout`** (the SDK requires one of StartToClose/ScheduleToClose). A schedule-to-start timeout is not retried; it arrives as a `*temporal.TimeoutError` wrapped in an `ActivityError`, which `errors.As` unwraps.
-- **Sessions** (`EnableSessionWorker`, `workflow.CreateSession`; DSL `enable_sessions`) are the Go-only, SDK-managed, host-keyed variant, for when the caller need not name the instance.
+- **Sessions** (`EnableSessionWorker`, `workflow.CreateSession`) are the Go-only, SDK-managed, host-keyed variant, for when the caller need not name the instance.
 
 ## Worker options → `worker.Options`
 
-The namespace worker's `options:` block carries the SDK-union worker options; map each key onto `worker.Options`:
+The namespace worker's `options:` block carries the worker options every Tier-1 SDK has; map each key onto `worker.Options`:
 
 | TWF worker option | `worker.Options` field | Go type |
 |-------------------|------------------------|---------|
@@ -141,14 +141,11 @@ The namespace worker's `options:` block carries the SDK-union worker options; ma
 | `max_concurrent_nexus_task_pollers` | `MaxConcurrentNexusTaskPollers` | int |
 | `worker_activity_rate_limit` | `WorkerActivitiesPerSecond` | float64 |
 | `task_queue_activity_rate_limit` | `TaskQueueActivitiesPerSecond` | float64 |
-| `worker_local_activity_rate_limit` | `WorkerLocalActivitiesPerSecond` | float64 |
 | `sticky_schedule_to_start_timeout` | `StickyScheduleToStartTimeout` | time.Duration |
-| `heartbeat_throttle_interval` | `MaxHeartbeatThrottleInterval` | time.Duration |
+| `max_heartbeat_throttle_interval` | `MaxHeartbeatThrottleInterval` | time.Duration |
 | `worker_identity` | `Identity` | string |
 | `worker_shutdown_timeout` | `WorkerStopTimeout` | time.Duration |
 | `local_activity_only_mode` | `LocalActivityWorkerOnly` | bool |
-| `enable_sessions` | `EnableSessionWorker` | bool |
-| `max_concurrent_session_executions` | `MaxConcurrentSessionExecutionSize` | int |
 | `max_cached_workflows` | **not** a `worker.Options` field — process-global via `worker.SetStickyWorkflowCacheSize(n)` | int |
 | `versioning` | not 1:1 — see below | enum |
 
@@ -158,17 +155,17 @@ namespace orders:
 		options:
 			task_queue: "orders"
 			max_concurrent_activity_executions: 50
-			enable_sessions: true
+			worker_shutdown_timeout: 30s
 ```
 
 ```go
 w := worker.New(c, "orders", worker.Options{
     MaxConcurrentActivityExecutionSize: 50,
-    EnableSessionWorker:                true,
+    WorkerStopTimeout:                  30 * time.Second,
 })
 ```
 
-A key with no Go `worker.Options` field (another SDK's one-off, accepted by the permissive union) is **dropped — do not invent an API.** The richer versioning model (ramping, per-namespace-vs-per-worker placement) stays deferred — see [#20](https://github.com/jmbarzee/temporal-architect/issues/20).
+The richer versioning model (ramping, per-namespace-vs-per-worker placement) stays deferred — see [#20](https://github.com/jmbarzee/temporal-architect/issues/20).
 
 ### `versioning` (not 1:1)
 
@@ -198,4 +195,4 @@ worker.Options{
 }
 ```
 
-> **Pitfall — mutual exclusion:** worker versioning (`UseBuildIDForVersioning` or `DeploymentOptions.UseVersioning`) **cannot** be enabled together with `EnableSessionWorker`. A `.twf` carrying both `versioning: build_id|deployment` and `enable_sessions: true` cannot map to one `worker.Options` — surface it as a conflict; do not silently pick one.
+> **Pitfall — mutual exclusion:** worker versioning (`UseBuildIDForVersioning` or `DeploymentOptions.UseVersioning`) **cannot** be enabled together with `EnableSessionWorker`. A worker whose `.twf` sets `versioning: build_id|deployment` cannot run sessions.

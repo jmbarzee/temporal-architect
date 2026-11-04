@@ -71,14 +71,13 @@ var activityOptionSchema = map[string]*optionSchema{
 // DSL enum values are bare idents and cannot contain hyphens.
 var versioningStrategies = []string{"none", "build_id", "deployment"}
 
-// workerOptionSchema is the SDK-union of worker options (excluding per-language
-// one-offs). Keys are accepted permissively with no per-language validation —
-// an option missing from one SDK does not gate its inclusion here.
+// workerOptionSchema holds the worker behaviours every Tier-1 SDK has, whatever
+// the SDK calls the field or where it sits; each author skill maps the keys to
+// its SDK.
 var workerOptionSchema = map[string]*optionSchema{
 	"task_queue":                               {valueType: "string"},
 	"worker_activity_rate_limit":               {valueType: "number"},
 	"task_queue_activity_rate_limit":           {valueType: "number"},
-	"worker_local_activity_rate_limit":         {valueType: "number"},
 	"max_concurrent_activity_executions":       {valueType: "number"},
 	"max_concurrent_workflow_task_executions":  {valueType: "number"},
 	"max_concurrent_local_activity_executions": {valueType: "number"},
@@ -88,12 +87,10 @@ var workerOptionSchema = map[string]*optionSchema{
 	"max_concurrent_nexus_task_pollers":        {valueType: "number"},
 	"max_cached_workflows":                     {valueType: "number"},
 	"sticky_schedule_to_start_timeout":         {valueType: "duration"},
-	"heartbeat_throttle_interval":              {valueType: "duration"},
+	"max_heartbeat_throttle_interval":          {valueType: "duration"},
 	"worker_identity":                          {valueType: "string"},
 	"worker_shutdown_timeout":                  {valueType: "duration"},
 	"local_activity_only_mode":                 {valueType: "bool"},
-	"enable_sessions":                          {valueType: "bool"},
-	"max_concurrent_session_executions":        {valueType: "number"},
 	"versioning":                               {valueType: "enum", allowed: versioningStrategies},
 }
 
