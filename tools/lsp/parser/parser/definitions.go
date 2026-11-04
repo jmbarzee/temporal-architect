@@ -312,6 +312,9 @@ func parseUpdateDecl(p *Parser) (*ast.UpdateDecl, error) {
 	if err != nil {
 		return nil, err
 	}
+	if p.current.Type == token.NEWLINE {
+		return nil, &ParseError{Msg: msgAwaitUpdate, Line: pos.Line, Column: pos.Column}
+	}
 
 	params, err := p.expect(token.ARGS)
 	if err != nil {

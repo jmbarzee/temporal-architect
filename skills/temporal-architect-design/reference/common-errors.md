@@ -52,6 +52,9 @@ Parse failures share the code `SYNTAX`; dispatch on the message until categorica
 | Message | Cause | Fix |
 |---------|-------|-----|
 | `<keyword> is not allowed in activity body` | Using a temporal primitive (`workflow`, `activity`, `timer`, `signal`, `await`, etc.) inside an activity definition or query handler | Move it to a workflow — temporal primitives need deterministic replay, which activities lack |
+| `"<keyword>" cannot start a statement` | A body line led by a keyword that begins no statement there: `options:` not under a call, `else:` not after an `if`/`switch`, `condition` outside `state:`, and so on. Activity pseudocode lines cannot start with a keyword either | Put the line where it belongs, or reword the pseudocode |
+| `update arrivals must be awaited: …` / `a timer must be awaited: …` | A bare `update Name` or `timer(d)` line | `await update Name` / `await timer(d)`, or bind it with `promise p <- …` |
+| `<signal\|query\|update> handler <Name> is declared after the workflow body's first statement; …` | A handler declaration below a body statement, or inside a block | Declare handlers above the body's first statement |
 | `expected ( after return type ->` | Return type not parenthesized: `-> Result` | Use `-> (Result)` — return types must be wrapped in parentheses |
 | `expected ( after if` / `expected ( after for` | Missing parentheses around condition/iterator | Use `if (expr):` / `for (x in items):` |
 | `unexpected token <tok> at top level` | Statement or keyword that doesn't start a workflow or activity definition | Ensure all top-level items are `workflow`, `activity`, `worker`, `namespace`, or `nexus service` definitions |

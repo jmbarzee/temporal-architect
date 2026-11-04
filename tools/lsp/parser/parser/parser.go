@@ -63,6 +63,7 @@ const (
 // Parser is a recursive descent parser for .twf files.
 type Parser struct {
 	lex     *lexer.Lexer
+	src     string // the lexer's input, which token offsets index
 	current token.Token
 	peek    token.Token
 
@@ -154,7 +155,7 @@ var temporalKeywords = map[token.TokenType]bool{
 func ParseFile(input string) (*ast.File, error) {
 	input = strings.TrimPrefix(input, "\ufeff") // a leading BOM is not text
 	l := lexer.New(input)
-	p := &Parser{lex: l}
+	p := &Parser{lex: l, src: input}
 	p.advance() // fill current
 	p.advance() // fill peek
 
@@ -214,7 +215,7 @@ func ParseFile(input string) (*ast.File, error) {
 func ParseFileAll(input string) (*ast.File, []*ParseError) {
 	input = strings.TrimPrefix(input, "\ufeff") // a leading BOM is not text
 	l := lexer.New(input)
-	p := &Parser{lex: l, collecting: true}
+	p := &Parser{lex: l, src: input, collecting: true}
 	p.advance() // fill current
 	p.advance() // fill peek
 
@@ -327,6 +328,11 @@ func (p *Parser) parseBody() ([]ast.Statement, error) {
 		}
 
 		if !ok {
+			// A keyword leads no raw statement: one with no parser here is
+			// misplaced, not an expression to pass through.
+			if p.current.Type.IsKeyword() {
+				return nil, p.misplacedKeyword()
+			}
 			// Fallback to raw statement.
 			stmt, err := parseRawStmt(p)
 			if err != nil {

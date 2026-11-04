@@ -257,6 +257,15 @@ is now checked against the target's signals.
   `options:`, a definition header, `nexus endpoint Ep`) no longer breaks the
   parse. A trailing comment on a block header is discarded; elsewhere it stays a
   comment statement (#275).
+- Own-line comments may sit between a call and its `options:` block, below the
+  block, or alone under the call (#301).
+- A keyword-led line that starts no statement, such as `update Missing` or
+  `options:` away from a call, is a `parse/SYNTAX` error in every block. It no
+  longer passes as a raw statement inside `await all:` or below a body's first
+  statement (#291).
+- Raw statements, `return` values and `case` values keep their source text as
+  written: quotes, escapes, parentheses and spacing. A trailing comment stays a
+  comment statement instead of joining the text (#295).
 - An undefined workflow, activity, signal or update used as a `promise` /
   `await` target is reported at its keyword, not at 0:0 (#276).
 - Resolver and validator diagnostics come out sorted by file, position, then

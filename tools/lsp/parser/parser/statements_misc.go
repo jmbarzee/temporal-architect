@@ -1,6 +1,8 @@
 package parser
 
 import (
+	"fmt"
+
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/token"
 )
@@ -139,4 +141,31 @@ func parseRawStmt(p *Parser) (ast.Statement, error) {
 		Pos:  pos,
 		Text: text,
 	}, nil
+}
+
+// msgAwaitUpdate is the error for a bare `update Name` line, wherever in a
+// workflow it stands.
+const msgAwaitUpdate = "update arrivals must be awaited: `await update Name`"
+
+// misplacedKeyword is the error for a body line led by a keyword that starts no
+// statement in the body's context. It names the likely intent where there is
+// one: a handler declared after the body began, or an arrival not awaited.
+func (p *Parser) misplacedKeyword() error {
+	kw := p.current
+	errAt := func(format string, args ...any) error {
+		return &ParseError{Msg: fmt.Sprintf(format, args...), Line: kw.Line, Column: kw.Column}
+	}
+	switch kw.Type {
+	case token.UPDATE, token.QUERY:
+		p.advance() // consume the keyword
+		if p.current.Type == token.IDENT && (p.peek.Type == token.ARGS || p.peek.Type == token.COLON) {
+			return errAt("%s handler %s is declared after the workflow body's first statement; declare handlers before it", kw.Literal, p.current.Literal)
+		}
+		if kw.Type == token.UPDATE {
+			return errAt(msgAwaitUpdate)
+		}
+	case token.TIMER:
+		return errAt("a timer must be awaited: `await timer(duration)`")
+	}
+	return errAt("%q cannot start a statement", kw.Literal)
 }
