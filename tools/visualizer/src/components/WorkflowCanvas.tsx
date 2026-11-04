@@ -110,6 +110,17 @@ export const HandlerContext = React.createContext<HandlerContext>({
   updates: new Map(),
 })
 
+// handlersOf maps a workflow's handlers by name. A name declared twice (a
+// DUPLICATE_* resolve error) is its first declaration's, as the resolver keeps it.
+export function handlersOf(def: WorkflowDef): HandlerContext {
+  const byName = <T extends { name: string }>(decls: T[] | undefined) => {
+    const m = new Map<string, T>()
+    for (const d of decls || []) if (!m.has(d.name)) m.set(d.name, d)
+    return m
+  }
+  return { signals: byName(def.signals), queries: byName(def.queries), updates: byName(def.updates) }
+}
+
 // Reverse reference index for contextual navigation
 export interface CallerRef {
   defName: string

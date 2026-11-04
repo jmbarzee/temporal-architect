@@ -1,11 +1,11 @@
 import React from 'react'
 import { qualifiedNameOf } from '../../types/ast'
-import type { Definition, WorkflowDef, ActivityDef, WorkerDef, WorkerRef, NamespaceDef, NamespaceWorker, NamespaceEndpoint, NexusServiceDef, NexusOperation, SignalDecl, QueryDecl, UpdateDecl } from '../../types/ast'
+import type { Definition, WorkflowDef, ActivityDef, WorkerDef, WorkerRef, NamespaceDef, NamespaceWorker, NamespaceEndpoint, NexusServiceDef, NexusOperation } from '../../types/ast'
 import { StatementBody } from './StatementBlock'
 import { WorkflowContent, InlineWorkflowBlock, SyncBodyBlock } from './WorkflowContent'
 import { BlockIcon } from '../../theme/temporal-theme'
 import { useToggle } from './useToggle'
-import { DefinitionContext, HandlerContext } from '../WorkflowCanvas'
+import { DefinitionContext, HandlerContext, handlersOf } from '../WorkflowCanvas'
 import { ContextualNavButtons } from './ContextualNav'
 import { OptionsSection } from './OptionsSection'
 import './blocks.css'
@@ -57,17 +57,7 @@ function WorkflowDefBlock({ def, controlledExpanded, onToggle }: { def: Workflow
   const toggle = onToggle ?? internalToggle
 
   // Build handler context for this workflow
-  const handlerContext = React.useMemo<HandlerContext>(() => {
-    const signals = new Map<string, SignalDecl>()
-    const queries = new Map<string, QueryDecl>()
-    const updates = new Map<string, UpdateDecl>()
-
-    for (const s of def.signals || []) signals.set(s.name, s)
-    for (const q of def.queries || []) queries.set(q.name, q)
-    for (const u of def.updates || []) updates.set(u.name, u)
-
-    return { signals, queries, updates }
-  }, [def])
+  const handlerContext = React.useMemo<HandlerContext>(() => handlersOf(def), [def])
 
   return (
     <HandlerContext.Provider value={handlerContext}>

@@ -311,6 +311,10 @@ is now checked against the target's signals.
   checks that relate definitions, the graph, decomposition and the visualizer
   all use the first. Checks local to a body still run on every declaration,
   and the `DUPLICATE_*` error on the later one says where the first is.
+- A signal, query, update or condition declared twice in one workflow, or an
+  operation twice in one nexus service, is now an error on the later one
+  (`DUPLICATE_SIGNAL`, `_QUERY`, `_UPDATE`, `_CONDITION`, `_NEXUS_OPERATION`),
+  and the first is kept everywhere, as for definitions.
 - A `DISPATCH_NO_REACHABLE_DEPLOYMENT` names an operation by its own service
   when another service's name prefixes it.
 - **LSP:** rename, references and go-to-definition ranges cover the name, not

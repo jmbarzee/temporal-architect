@@ -29,6 +29,18 @@ const (
 	ErrDuplicateNexusService
 	// ErrDuplicateEndpoint: a nexus endpoint name appears in more than one namespace.
 	ErrDuplicateEndpoint
+	// ErrDuplicateSignal: a signal name appears more than once in a workflow.
+	ErrDuplicateSignal
+	// ErrDuplicateQuery: a query name appears more than once in a workflow.
+	ErrDuplicateQuery
+	// ErrDuplicateUpdate: an update name appears more than once in a workflow.
+	ErrDuplicateUpdate
+	// ErrDuplicateCondition: a condition name appears more than once in a
+	// workflow's state block.
+	ErrDuplicateCondition
+	// ErrDuplicateNexusOperation: an operation name appears more than once in
+	// a nexus service.
+	ErrDuplicateNexusOperation
 
 	// --- Undefined reference errors ---
 
@@ -232,6 +244,16 @@ func (k ErrorKind) String() string {
 		return "DUPLICATE_NEXUS_SERVICE"
 	case ErrDuplicateEndpoint:
 		return "DUPLICATE_ENDPOINT"
+	case ErrDuplicateSignal:
+		return "DUPLICATE_SIGNAL"
+	case ErrDuplicateQuery:
+		return "DUPLICATE_QUERY"
+	case ErrDuplicateUpdate:
+		return "DUPLICATE_UPDATE"
+	case ErrDuplicateCondition:
+		return "DUPLICATE_CONDITION"
+	case ErrDuplicateNexusOperation:
+		return "DUPLICATE_NEXUS_OPERATION"
 	case ErrUndefinedActivity:
 		return "UNDEFINED_ACTIVITY"
 	case ErrUndefinedWorkflow:
@@ -568,25 +590,15 @@ func Resolve(file *ast.File) []*ResolveError {
 		}
 		ownPkg := effPkg(ast.PackageIDOf(wf, nil), s.filePkg)
 
-		signals := make(map[string]*ast.SignalDecl)
-		queries := make(map[string]*ast.QueryDecl)
-		updates := make(map[string]*ast.UpdateDecl)
-		for _, sig := range wf.Signals {
-			signals[sig.Name] = sig
-		}
-		for _, q := range wf.Queries {
-			queries[q.Name] = q
-		}
-		for _, u := range wf.Updates {
-			updates[u.Name] = u
-		}
-
-		conditions := make(map[string]*ast.ConditionDecl)
+		owner := "workflow " + wf.Name
+		signals := collectDecls(wf.Signals, "signal", owner, ErrDuplicateSignal, wf.SourceFile, &s.errs)
+		queries := collectDecls(wf.Queries, "query", owner, ErrDuplicateQuery, wf.SourceFile, &s.errs)
+		updates := collectDecls(wf.Updates, "update", owner, ErrDuplicateUpdate, wf.SourceFile, &s.errs)
+		var stateConditions []*ast.ConditionDecl
 		if wf.State != nil {
-			for _, c := range wf.State.Conditions {
-				conditions[c.Name] = c
-			}
+			stateConditions = wf.State.Conditions
 		}
+		conditions := collectDecls(stateConditions, "condition", owner, ErrDuplicateCondition, wf.SourceFile, &s.errs)
 
 		ctx := &resolveCtx{
 			s:          s,
@@ -623,6 +635,7 @@ func Resolve(file *ast.File) []*ResolveError {
 			continue
 		}
 		svcPkg := effPkg(ast.PackageIDOf(svc, nil), s.filePkg)
+		collectDecls(svc.Operations, "operation", "nexus service "+svc.Name, ErrDuplicateNexusOperation, svc.SourceFile, &s.errs)
 		for _, op := range svc.Operations {
 			switch op.OpType {
 			case ast.NexusOpAsync:
@@ -1229,7 +1242,7 @@ func (c *resolveCtx) resolveTypeSend(s *ast.SignalSendStmt) {
 	}
 	h.Type.Resolved = wf
 
-	if !wf.DeclaresSignal(s.Signal) {
+	if wf.Signal(s.Signal) == nil {
 		c.errorf(ErrUndefinedSignal, s.SignalPos, s.Signal, "signal %q is not declared by workflow %s", s.Signal, wf.Name)
 	}
 	if h.Address != nil && h.Address.ID.Kind == ast.IDLiteral {
@@ -1284,7 +1297,7 @@ func (c *resolveCtx) resolveHandleSend(s *ast.SignalSendStmt) {
 		return
 	}
 
-	if wt.Workflow.Resolved.DeclaresSignal(s.Signal) {
+	if wt.Workflow.Resolved.Signal(s.Signal) != nil {
 		handle.Resolved = promise
 		return
 	}
@@ -1435,6 +1448,31 @@ func collectInto[T ast.Definition](m map[pkgKey]T, key pkgKey, def T, kind strin
 		Name:   key.name,
 		File:   ast.SourceFileOf(def),
 	})
+}
+
+// collectDecls maps the names declared in one definition (owner, e.g.
+// "workflow Order") to their declarations. A name declared twice keeps its
+// first declaration, and each later one gets a duplicate error naming the
+// first's line: a definition's declarations share its file.
+func collectDecls[T ast.Declared](decls []T, kind, owner string, errKind ErrorKind, file string, errs *[]*ResolveError) map[string]T {
+	m := make(map[string]T, len(decls))
+	for _, d := range decls {
+		name := d.DeclName()
+		first, exists := m[name]
+		if !exists {
+			m[name] = d
+			continue
+		}
+		*errs = append(*errs, &ResolveError{
+			Msg:    fmt.Sprintf("duplicate %s in %s: %s (first at line %d)", kind, owner, name, first.NodeLine()),
+			Line:   d.NodeLine(),
+			Column: d.NodeColumn(),
+			Kind:   errKind,
+			Name:   name,
+			File:   file,
+		})
+	}
+	return m
 }
 
 // resolvePkgRef resolves a package-scoped reference (activity / workflow / nexus

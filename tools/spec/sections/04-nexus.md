@@ -97,5 +97,6 @@ checked too.
 
 The resolver validates nexus service definitions:
 - Duplicate nexus service names produce errors
+- An operation name declared twice in one service is `DUPLICATE_NEXUS_OPERATION` on the later declaration; the first is the operation
 - Async operations referencing undefined workflows produce errors
 - Sync operation bodies are resolved like workflow bodies

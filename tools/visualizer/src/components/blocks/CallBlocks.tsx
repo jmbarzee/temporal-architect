@@ -1,6 +1,6 @@
 import React from 'react'
-import type { ActivityCall, WorkflowCall, NexusCall, SignalDecl, QueryDecl, UpdateDecl } from '../../types/ast'
-import { DefinitionContext, HandlerContext } from '../WorkflowCanvas'
+import type { ActivityCall, WorkflowCall, NexusCall } from '../../types/ast'
+import { DefinitionContext, HandlerContext, handlersOf } from '../WorkflowCanvas'
 import { WorkflowContent, InlineWorkflowBlock, SyncBodyBlock } from './WorkflowContent'
 import { useToggle } from './useToggle'
 import { StatementBlock } from './StatementBlock'
@@ -93,17 +93,7 @@ export function WorkflowCallBlock({ stmt }: { stmt: WorkflowCall }) {
 // Provides the target workflow's handler context for inline expansion,
 // so await-signal/update/query blocks resolve against the correct handlers.
 function WorkflowCallHandlerScope({ def, children }: { def: import('../../types/ast').WorkflowDef; children: React.ReactNode }) {
-  const handlerContext = React.useMemo<HandlerContext>(() => {
-    const signals = new Map<string, SignalDecl>()
-    const queries = new Map<string, QueryDecl>()
-    const updates = new Map<string, UpdateDecl>()
-
-    for (const s of def.signals || []) signals.set(s.name, s)
-    for (const q of def.queries || []) queries.set(q.name, q)
-    for (const u of def.updates || []) updates.set(u.name, u)
-
-    return { signals, queries, updates }
-  }, [def])
+  const handlerContext = React.useMemo<HandlerContext>(() => handlersOf(def), [def])
 
   return (
     <HandlerContext.Provider value={handlerContext}>

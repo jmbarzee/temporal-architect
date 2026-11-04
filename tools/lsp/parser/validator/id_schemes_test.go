@@ -89,6 +89,33 @@ workflow Step(doc: Doc):
 	}
 }
 
+// TestParentSendKeptHandlers: a handler declared twice (DUPLICATE_SIGNAL) is
+// its first declaration in parent sends, so the child start in the dropped
+// Kick does not make Coordinator a starter of Step.
+func TestParentSendKeptHandlers(t *testing.T) {
+	file, err := parser.ParseFile(`
+workflow Coordinator(doc: Doc):
+    signal Progress(pct: int):
+        pct = pct
+    signal Kick():
+        pct = 0
+    signal Kick():
+        workflow Step(doc)
+    close complete()
+
+workflow Step(doc: Doc):
+    signal Coordinator.Progress(50)
+        id: parent
+`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resolver.Resolve(file)
+	if errs := Validate(file); !hasKind(errs, ErrNotAParent, "warning") {
+		t.Errorf("want NOT_A_PARENT: only the dropped Kick starts Step; got %v", errs)
+	}
+}
+
 func TestIDSchemeOverlap(t *testing.T) {
 	model := `
 workflow ShipItem(order: Order, item: Item):

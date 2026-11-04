@@ -705,14 +705,14 @@ type caller struct {
 // definition order, checking call routing, endpoint-service linkage, and
 // endpoint caller allowlists.
 //
-// A name declared twice (a DUPLICATE_* resolve error) keeps its first
-// declaration, as the resolver does, and the validator applies one rule to the
-// later ones. Body-local checks, about a body or declaration itself (empty
+// A name declared twice (a DUPLICATE_* resolve error), whether a definition
+// or a handler or operation in one, keeps its first declaration, as the
+// resolver does, and the validator applies one rule to the later ones. Body-local checks, about a body or declaration itself (empty
 // definitions, ID policies on a start), run on every declaration, kept or
 // dropped, so the code the user wrote is still checked. Cross-definition
 // checks, relating one definition to others (routing, linkage, allowlists,
 // parent sends, coherence, overlaps), see only the kept declaration: hence the
-// filter here, keptWorkflows, and nsDefs.
+// filters here (with ast.FirstDeclared), keptWorkflows, and nsDefs.
 func (v *validationCtx) walkAllBodies(defs []ast.Definition) {
 	if len(v.namespaces) == 0 {
 		return
@@ -727,13 +727,13 @@ func (v *validationCtx) walkAllBodies(defs []ast.Definition) {
 			}
 			from := caller{"workflow", key, d.SourceFile}
 			v.walkStatements(d.Body, from)
-			for _, s := range d.Signals {
+			for _, s := range ast.FirstDeclared(d.Signals) {
 				v.walkStatements(s.Body, from)
 			}
-			for _, q := range d.Queries {
+			for _, q := range ast.FirstDeclared(d.Queries) {
 				v.walkStatements(q.Body, from)
 			}
-			for _, u := range d.Updates {
+			for _, u := range ast.FirstDeclared(d.Updates) {
 				v.walkStatements(u.Body, from)
 			}
 		case *ast.NexusServiceDef:
@@ -741,7 +741,7 @@ func (v *validationCtx) walkAllBodies(defs []ast.Definition) {
 			if v.nexusServices[key] != d {
 				continue
 			}
-			for _, op := range d.Operations {
+			for _, op := range ast.FirstDeclared(d.Operations) {
 				if op.OpType == ast.NexusOpSync {
 					v.walkStatements(op.Body, caller{"nexus service", key, d.SourceFile})
 				}
