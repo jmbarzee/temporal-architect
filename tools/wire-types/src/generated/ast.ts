@@ -329,7 +329,6 @@ export interface ActivityTargetJSON {
 export interface WorkflowTargetJSON {
   package?: string;
   name: string;
-  mode: string;
   start: string;
   args?: string;
   result?: string;

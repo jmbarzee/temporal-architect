@@ -1041,7 +1041,6 @@ type ActivityTargetJSON struct {
 type WorkflowTargetJSON struct {
 	Package  string           `json:"package,omitempty"`
 	Name     string           `json:"name"`
-	Mode     string           `json:"mode"`
 	Start    string           `json:"start"`
 	Args     string           `json:"args,omitempty"`
 	Result   string           `json:"result,omitempty"`
@@ -1082,7 +1081,7 @@ func marshalAsyncTarget(target AsyncTarget) AsyncTargetJSON {
 		}
 		at.Activity = aj
 	case *WorkflowTarget:
-		wj := &WorkflowTargetJSON{Package: t.Workflow.Package, Name: t.Workflow.Name, Mode: workflowCallModeString(t.Mode), Start: startKindString(t.Start), Args: t.Args, Result: t.Result}
+		wj := &WorkflowTargetJSON{Package: t.Workflow.Package, Name: t.Workflow.Name, Start: startKindString(t.Start), Args: t.Args, Result: t.Result}
 		if t.Workflow.Resolved != nil {
 			wj.Resolved = &ResolvedRefJSON{Name: t.Workflow.Resolved.Name, Line: t.Workflow.Resolved.Line, Column: t.Workflow.Resolved.Column}
 		}

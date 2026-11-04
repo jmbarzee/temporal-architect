@@ -8,7 +8,7 @@ Which primitive, and where its topic lives. Syntax: [notation-reference.md](./no
 | `workflow` (child) | Multi-step orchestration needing its own retry/failure boundary | [child-workflows.md](../topics/child-workflows.md) |
 | `nexus` | Crossing a namespace or team boundary | [nexus.md](../topics/nexus.md) |
 | `promise` | You need the result later, not immediately | [promises-conditions.md](../topics/promises-conditions.md) |
-| `detach` | Fire-and-forget child or Nexus call — the result can't be observed | [child-workflows.md](../topics/child-workflows.md) |
+| `detach` | Start a child or Nexus call, waiting for the start only — the result can't be observed | [child-workflows.md](../topics/child-workflows.md) |
 | `close continue_as_new` | History grows large (long-running or entity workflows) | [long-running.md](../topics/long-running.md) |
 | `timer` | A durable wait inside workflow logic (survives restarts and replay) | [timers-scheduling.md](../topics/timers-scheduling.md) |
 | timeouts | Bounding activity execution — `start_to_close_timeout`, `heartbeat_timeout` in `options:` | [timers-scheduling.md](../topics/timers-scheduling.md) |
