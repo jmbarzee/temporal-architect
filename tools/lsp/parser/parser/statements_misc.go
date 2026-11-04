@@ -143,9 +143,28 @@ func parseRawStmt(p *Parser) (ast.Statement, error) {
 	}, nil
 }
 
-// msgAwaitUpdate is the error for a bare `update Name` line, wherever in a
-// workflow it stands.
-const msgAwaitUpdate = "update arrivals must be awaited: `await update Name`"
+// bareUpdateError is the error for a bare `update Name` line at pos.
+func (p *Parser) bareUpdateError(pos ast.Pos) error {
+	msg := "update arrivals must be awaited: `await update Name`"
+	if p.inSyncNexus {
+		msg = "a sync nexus operation receives no updates; only a workflow awaits one"
+	}
+	return &ParseError{Msg: msg, Line: pos.Line, Column: pos.Column}
+}
+
+// lateHandlerError is the error for a handler declaration (`signal`, `query` or
+// `update` Name followed by `(` or `:`) among the statements of a body, worded
+// for that body. kw is the declaration's keyword.
+func (p *Parser) lateHandlerError(kw, name token.Token) error {
+	msg := fmt.Sprintf("%s handler %s is declared after the workflow body's first statement; declare handlers before it", kw.Literal, name.Literal)
+	switch {
+	case p.inSyncNexus:
+		msg = fmt.Sprintf("a sync nexus operation declares no %s handlers; declare %s in a workflow", kw.Literal, name.Literal)
+	case p.inHandler:
+		msg = fmt.Sprintf("%s handler %s is declared inside a handler; declare handlers at the top of the workflow body", kw.Literal, name.Literal)
+	}
+	return &ParseError{Msg: msg, Line: kw.Line, Column: kw.Column}
+}
 
 // misplacedKeyword is the error for a body line led by a keyword that starts no
 // statement in the body's context. It names the likely intent where there is
@@ -159,10 +178,10 @@ func (p *Parser) misplacedKeyword() error {
 	case token.UPDATE, token.QUERY:
 		p.advance() // consume the keyword
 		if p.current.Type == token.IDENT && (p.peek.Type == token.ARGS || p.peek.Type == token.COLON) {
-			return errAt("%s handler %s is declared after the workflow body's first statement; declare handlers before it", kw.Literal, p.current.Literal)
+			return p.lateHandlerError(kw, p.current)
 		}
 		if kw.Type == token.UPDATE {
-			return errAt(msgAwaitUpdate)
+			return p.bareUpdateError(ast.Pos{Line: kw.Line, Column: kw.Column})
 		}
 	case token.TIMER:
 		return errAt("a timer must be awaited: `await timer(duration)`")

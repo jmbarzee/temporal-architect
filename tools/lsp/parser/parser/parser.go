@@ -1,9 +1,9 @@
 package parser
 
 import (
-	"strings"
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/lexer"
@@ -56,8 +56,9 @@ type bodyContext int
 
 const (
 	bodyNone     bodyContext = iota
-	bodyWorkflow            // workflow, signal handler, update handler, nexus sync op
-	bodyActivity            // activity, query handler
+	bodyWorkflow             // workflow, signal handler, update handler, nexus sync op
+	bodyQuery                // query handler: the activity statement set, in a workflow
+	bodyActivity             // activity: free-form pseudocode
 )
 
 // Parser is a recursive descent parser for .twf files.
@@ -70,6 +71,7 @@ type Parser struct {
 	bodyCtx bodyContext
 
 	inSyncNexus bool // true while parsing a sync nexus operation body
+	inHandler   bool // true while parsing a signal, query or update handler body
 
 	collecting bool          // true when collecting errors instead of bailing
 	errors     []*ParseError // accumulated errors in collecting mode
@@ -99,23 +101,23 @@ func init() {
 	}
 
 	workflowStmtParsers = map[token.TokenType]stmtParser{
-		token.ACTIVITY:        parseActivityCall,
-		token.WORKFLOW:        parseWorkflowCall,
-		token.SIGNAL:          parseSignalSendStmt,
-		token.ID_SCHEME:       parseMisplacedIDScheme,
-		token.DETACH:          parseWorkflowCallOrNexus,
-		token.NEXUS:           parseNexusCall,
-		token.AWAIT:           parseAwaitStmt, // handles both single await and await blocks
-		token.PROMISE:         parsePromiseStmt,
-		token.SET:             parseSetStmt,
-		token.UNSET:           parseUnsetStmt,
-		token.SWITCH:          parseSwitchBlock,
-		token.IF:              parseIfStmt,
-		token.FOR:             parseForStmt,
-		token.CLOSE:           parseCloseStmt,
-		token.RETURN:          parseReturnStmt,
-		token.BREAK:           parseBreakStmt,
-		token.CONTINUE:        parseContinueStmt,
+		token.ACTIVITY:  parseActivityCall,
+		token.WORKFLOW:  parseWorkflowCall,
+		token.SIGNAL:    parseSignalSendStmt,
+		token.ID_SCHEME: parseMisplacedIDScheme,
+		token.DETACH:    parseWorkflowCallOrNexus,
+		token.NEXUS:     parseNexusCall,
+		token.AWAIT:     parseAwaitStmt, // handles both single await and await blocks
+		token.PROMISE:   parsePromiseStmt,
+		token.SET:       parseSetStmt,
+		token.UNSET:     parseUnsetStmt,
+		token.SWITCH:    parseSwitchBlock,
+		token.IF:        parseIfStmt,
+		token.FOR:       parseForStmt,
+		token.CLOSE:     parseCloseStmt,
+		token.RETURN:    parseReturnStmt,
+		token.BREAK:     parseBreakStmt,
+		token.CONTINUE:  parseContinueStmt,
 	}
 
 	activityStmtParsers = map[token.TokenType]stmtParser{
@@ -130,25 +132,25 @@ func init() {
 
 // temporalKeywords are keywords that are not allowed in activity bodies.
 var temporalKeywords = map[token.TokenType]bool{
-	token.WORKFLOW:        true,
-	token.ACTIVITY:        true,
-	token.SIGNAL:          true,
-	token.QUERY:           true,
-	token.UPDATE:          true,
-	token.DETACH:          true,
-	token.NEXUS:           true,
-	token.SYNC:            true,
-	token.ASYNC:           true,
-	token.PROMISE:         true,
-	token.CONDITION:       true,
-	token.SET:             true,
-	token.UNSET:           true,
-	token.STATE:           true,
-	token.TIMER:           true,
-	token.AWAIT:           true,
-	token.ALL:             true,
-	token.ONE:             true,
-	token.CLOSE:           true,
+	token.WORKFLOW:  true,
+	token.ACTIVITY:  true,
+	token.SIGNAL:    true,
+	token.QUERY:     true,
+	token.UPDATE:    true,
+	token.DETACH:    true,
+	token.NEXUS:     true,
+	token.SYNC:      true,
+	token.ASYNC:     true,
+	token.PROMISE:   true,
+	token.CONDITION: true,
+	token.SET:       true,
+	token.UNSET:     true,
+	token.STATE:     true,
+	token.TIMER:     true,
+	token.AWAIT:     true,
+	token.ALL:       true,
+	token.ONE:       true,
+	token.CLOSE:     true,
 }
 
 // ParseFile parses a .twf source string into an AST File.
@@ -311,14 +313,7 @@ func (p *Parser) parseBody() ([]ast.Statement, error) {
 			continue
 		}
 		if p.current.Type == token.COMMENT {
-			stmts = append(stmts, &ast.Comment{
-				Pos:  ast.Pos{Line: p.current.Line, Column: p.current.Column},
-				Text: p.current.Literal,
-			})
-			p.advance()
-			if p.current.Type == token.NEWLINE {
-				p.advance()
-			}
+			stmts = append(stmts, p.parseComment())
 			continue
 		}
 
@@ -327,7 +322,7 @@ func (p *Parser) parseBody() ([]ast.Statement, error) {
 		switch p.bodyCtx {
 		case bodyWorkflow:
 			parseFn, ok = workflowStmtParsers[p.current.Type]
-		case bodyActivity:
+		case bodyQuery, bodyActivity:
 			if p.current.Type == token.ID_SCHEME {
 				return nil, p.misplacedIDScheme()
 			}
@@ -339,9 +334,10 @@ func (p *Parser) parseBody() ([]ast.Statement, error) {
 		}
 
 		if !ok {
-			// A keyword leads no raw statement: one with no parser here is
-			// misplaced, not an expression to pass through.
-			if p.current.Type.IsKeyword() {
+			// In a workflow context a keyword leads no raw statement: one with
+			// no parser here is misplaced, not an expression to pass through.
+			// An activity body is free-form pseudocode.
+			if p.bodyCtx != bodyActivity && p.current.Type.IsKeyword() {
 				return nil, p.misplacedKeyword()
 			}
 			// Fallback to raw statement.

@@ -48,7 +48,7 @@ func parseWorkflowDef(p *Parser) (ast.Definition, error) {
 	// Optional default_options block, before state:. A definition's defaults are
 	// its external invocation contract, which reads above its internal state:.
 	p.skipBlankLinesAndComments()
-	defaultOptions, err := p.parseDefaultOptions(OptionsContextWorkflowDefaults)
+	defaultOptions, _, err := p.parseDefaultOptions(OptionsContextWorkflowDefaults) // comments were skipped above
 	if err != nil {
 		return nil, err
 	}
@@ -174,7 +174,7 @@ func parseActivityDef(p *Parser) (ast.Definition, error) {
 	}
 
 	// Optional default_options block at the head of the activity body.
-	defaultOptions, err := p.parseDefaultOptions(OptionsContextActivityDefaults)
+	defaultOptions, comments, err := p.parseDefaultOptions(OptionsContextActivityDefaults)
 	if err != nil {
 		return nil, err
 	}
@@ -183,6 +183,7 @@ func parseActivityDef(p *Parser) (ast.Definition, error) {
 	if err != nil {
 		return nil, err
 	}
+	body = append(comments, body...)
 
 	return &ast.ActivityDef{
 		Pos:            pos,
@@ -195,30 +196,43 @@ func parseActivityDef(p *Parser) (ast.Definition, error) {
 }
 
 // parseDefaultOptions parses an optional definition-level `default_options:`
-// block at the head of an activity or workflow definition body. The body INDENT
-// has already been consumed by expectBlock. `default_options` is a
-// soft/contextual keyword — it lexes as an IDENT and is special only here — so
-// it is matched on the literal rather than a dedicated token type. Returns nil
-// when the block is absent. The block reuses the call-option value grammar; ctx
-// selects the definition-defaults key partition (activity vs workflow).
-func (p *Parser) parseDefaultOptions(ctx OptionsContext) (*ast.OptionsBlock, error) {
-	if p.current.Type != token.IDENT || p.current.Literal != "default_options" {
-		return nil, nil
-	}
-	p.advance() // consume `default_options`
-	return p.parseOptionsBlock(ctx)
+// block at the head of an activity or workflow definition body (see
+// parseHeadOptions). `default_options` is a soft/contextual keyword — it lexes
+// as an IDENT and is special only here — so it is matched on the literal rather
+// than a dedicated token type. The block reuses the call-option value grammar;
+// ctx selects the definition-defaults key partition (activity vs workflow).
+func (p *Parser) parseDefaultOptions(ctx OptionsContext) (*ast.OptionsBlock, []ast.Statement, error) {
+	return p.parseHeadOptions(ctx, func(t token.Token) bool {
+		return t.Type == token.IDENT && t.Literal == "default_options"
+	})
 }
 
-// parseHandlerOptions parses an optional options block at the head of a handler
-// body. The body INDENT has already been consumed by expectBlock; if the next
-// token is `options`, the block is parsed and validated against the handler
-// context (the same placement as a state: block at the top of a workflow).
-func (p *Parser) parseHandlerOptions(ctx OptionsContext) (*ast.OptionsBlock, error) {
-	if p.current.Type != token.OPTIONS {
-		return nil, nil
+// parseHandlerOptions parses an optional `options:` block at the head of a
+// handler body (see parseHeadOptions), validated against the handler context
+// (the same placement as a state: block at the top of a workflow).
+func (p *Parser) parseHandlerOptions(ctx OptionsContext) (*ast.OptionsBlock, []ast.Statement, error) {
+	return p.parseHeadOptions(ctx, func(t token.Token) bool { return t.Type == token.OPTIONS })
+}
+
+// parseHeadOptions parses an optional options block, led by a token isHead
+// matches, at the head of a body whose INDENT expectBlock has consumed.
+// Comment lines may sit above the block, which discards them as it does the
+// comments inside it. With no block, it returns them for the body to keep.
+func (p *Parser) parseHeadOptions(ctx OptionsContext, isHead func(token.Token) bool) (*ast.OptionsBlock, []ast.Statement, error) {
+	var comments []ast.Statement
+	for p.current.Type == token.COMMENT || p.current.Type == token.NEWLINE {
+		if p.current.Type == token.COMMENT {
+			comments = append(comments, p.parseComment())
+		} else {
+			p.advance()
+		}
 	}
-	p.advance() // consume OPTIONS
-	return p.parseOptionsBlock(ctx)
+	if !isHead(p.current) {
+		return nil, comments, nil
+	}
+	p.advance() // consume the leading keyword
+	opts, err := p.parseOptionsBlock(ctx)
+	return opts, nil, err
 }
 
 // parseSignalDeclRest parses a signal declaration after its `signal` keyword and
@@ -234,15 +248,16 @@ func parseSignalDeclRest(p *Parser, pos ast.Pos, name token.Token) (*ast.SignalD
 		return nil, err
 	}
 
-	options, err := p.parseHandlerOptions(OptionsContextSignalHandler)
+	options, comments, err := p.parseHandlerOptions(OptionsContextSignalHandler)
 	if err != nil {
 		return nil, err
 	}
 
-	body, err := p.parseBodyAs(bodyWorkflow)
+	body, err := p.parseHandlerBody(bodyWorkflow)
 	if err != nil {
 		return nil, err
 	}
+	body = append(comments, body...)
 
 	return &ast.SignalDecl{
 		Pos:     pos,
@@ -282,16 +297,17 @@ func parseQueryDecl(p *Parser) (*ast.QueryDecl, error) {
 		return nil, err
 	}
 
-	options, err := p.parseHandlerOptions(OptionsContextQueryHandler)
+	options, comments, err := p.parseHandlerOptions(OptionsContextQueryHandler)
 	if err != nil {
 		return nil, err
 	}
 
 	// Query bodies are restricted like activity bodies (no temporal primitives).
-	body, err := p.parseBodyAs(bodyActivity)
+	body, err := p.parseHandlerBody(bodyQuery)
 	if err != nil {
 		return nil, err
 	}
+	body = append(comments, body...)
 
 	return &ast.QueryDecl{
 		Pos:        pos,
@@ -312,8 +328,8 @@ func parseUpdateDecl(p *Parser) (*ast.UpdateDecl, error) {
 	if err != nil {
 		return nil, err
 	}
-	if p.current.Type == token.NEWLINE {
-		return nil, &ParseError{Msg: msgAwaitUpdate, Line: pos.Line, Column: pos.Column}
+	if p.current.Type == token.NEWLINE || p.current.Type == token.COMMENT {
+		return nil, p.bareUpdateError(pos)
 	}
 
 	params, err := p.expect(token.ARGS)
@@ -335,15 +351,16 @@ func parseUpdateDecl(p *Parser) (*ast.UpdateDecl, error) {
 		return nil, err
 	}
 
-	options, err := p.parseHandlerOptions(OptionsContextUpdateHandler)
+	options, comments, err := p.parseHandlerOptions(OptionsContextUpdateHandler)
 	if err != nil {
 		return nil, err
 	}
 
-	body, err := p.parseBodyAs(bodyWorkflow)
+	body, err := p.parseHandlerBody(bodyWorkflow)
 	if err != nil {
 		return nil, err
 	}
+	body = append(comments, body...)
 
 	return &ast.UpdateDecl{
 		Pos:        pos,

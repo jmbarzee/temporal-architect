@@ -167,6 +167,25 @@ func (p *Parser) parseBodyAs(ctx bodyContext) ([]ast.Statement, error) {
 	return body, err
 }
 
+// parseHandlerBody parses a handler body as ctx, marking it as a handler's.
+func (p *Parser) parseHandlerBody(ctx bodyContext) ([]ast.Statement, error) {
+	p.inHandler = true
+	body, err := p.parseBodyAs(ctx)
+	p.inHandler = false
+	return body, err
+}
+
+// parseComment consumes a COMMENT and the NEWLINE ending its line, returning it
+// as a comment statement.
+func (p *Parser) parseComment() *ast.Comment {
+	c := &ast.Comment{Pos: ast.Pos{Line: p.current.Line, Column: p.current.Column}, Text: p.current.Literal}
+	p.advance()
+	if p.current.Type == token.NEWLINE {
+		p.advance()
+	}
+	return c
+}
+
 // skipBlankLinesAndComments consumes any NEWLINE and COMMENT tokens at the current position.
 // This allows comments to appear between declarations without breaking parsing.
 func (p *Parser) skipBlankLinesAndComments() {

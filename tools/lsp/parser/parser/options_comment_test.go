@@ -85,6 +85,83 @@ func TestCommentsAroundOptionsBlock(t *testing.T) {
 	}
 }
 
+// Comment lines may sit above a handler's options: block or a definition's
+// default_options: block. With no block below them, they stay in the body.
+func TestCommentsAboveHeadOptions(t *testing.T) {
+	forms := []struct {
+		name, src, head, entry string
+		parts                  func(*ast.File) (*ast.OptionsBlock, []ast.Statement)
+	}{
+		{"signal handler", "workflow P(x):\n    signal S(v):\n%s        return\n    close complete(x)\n", "        options", `description: "d"`,
+			func(f *ast.File) (*ast.OptionsBlock, []ast.Statement) {
+				s := f.Definitions[0].(*ast.WorkflowDef).Signals[0]
+				return s.Options, s.Body
+			}},
+		{"update handler", "workflow P(x):\n    update U(v) -> (R):\n%s        return v\n    close complete(x)\n", "        options", `description: "d"`,
+			func(f *ast.File) (*ast.OptionsBlock, []ast.Statement) {
+				u := f.Definitions[0].(*ast.WorkflowDef).Updates[0]
+				return u.Options, u.Body
+			}},
+		{"query handler", "workflow P(x):\n    query Q() -> (R):\n%s        return x\n    close complete(x)\n", "        options", `description: "d"`,
+			func(f *ast.File) (*ast.OptionsBlock, []ast.Statement) {
+				q := f.Definitions[0].(*ast.WorkflowDef).Queries[0]
+				return q.Options, q.Body
+			}},
+		{"activity default_options", "activity A(x):\n%s    return x\n", "    default_options", "start_to_close_timeout: 1m",
+			func(f *ast.File) (*ast.OptionsBlock, []ast.Statement) {
+				a := f.Definitions[0].(*ast.ActivityDef)
+				return a.DefaultOptions, a.Body
+			}},
+		{"workflow default_options", "workflow W(x):\n%s    close complete(x)\n", "    default_options", "workflow_run_timeout: 1m",
+			func(f *ast.File) (*ast.OptionsBlock, []ast.Statement) {
+				w := f.Definitions[0].(*ast.WorkflowDef)
+				return w.DefaultOptions, w.Body
+			}},
+	}
+	for _, form := range forms {
+		indent := form.head[:len(form.head)-len(strings.TrimLeft(form.head, " "))]
+		t.Run(form.name+"/above the block", func(t *testing.T) {
+			lines := fmt.Sprintf("%[1]s# one\n\n%[1]s# two\n%[2]s:\n%[1]s    %[3]s\n%[1]s# body\n", indent, form.head, form.entry)
+			file, err := ParseFile(fmt.Sprintf(form.src, lines))
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			opts, body := form.parts(file)
+			if opts == nil || len(opts.Entries) != 1 {
+				t.Errorf("options = %q, want %q", optionEntries(opts), form.entry)
+			}
+			if form.name == "workflow default_options" {
+				return // a workflow body drops the comments at its head, as before
+			}
+			if c, ok := body[0].(*ast.Comment); !ok || c.Text != " body" {
+				t.Errorf("body[0] = %#v, want only the comment below the block", body[0])
+			}
+		})
+		t.Run(form.name+"/no block", func(t *testing.T) {
+			file, err := ParseFile(fmt.Sprintf(form.src, indent+"# one\n"+indent+"# two\n"))
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			opts, body := form.parts(file)
+			if opts != nil {
+				t.Errorf("options = %q, want none", optionEntries(opts))
+			}
+			if form.name == "workflow default_options" {
+				return // a workflow body drops the comments at its head, as before
+			}
+			var got []string
+			for _, s := range body[:2] {
+				if c, ok := s.(*ast.Comment); ok {
+					got = append(got, c.Text)
+				}
+			}
+			if strings.Join(got, ",") != " one, two" {
+				t.Errorf("body = %#v, want the two comments first", body)
+			}
+		})
+	}
+}
+
 // Under a call, a comment still leads only to options: or the end of the call.
 func TestCommentUnderCallThenOtherLine(t *testing.T) {
 	tests := []struct{ name, src, want string }{

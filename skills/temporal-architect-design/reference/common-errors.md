@@ -52,9 +52,11 @@ Parse failures share the code `SYNTAX`; dispatch on the message until categorica
 | Message | Cause | Fix |
 |---------|-------|-----|
 | `<keyword> is not allowed in activity body` | Using a temporal primitive (`workflow`, `activity`, `timer`, `signal`, `await`, etc.) inside an activity definition or query handler | Move it to a workflow — temporal primitives need deterministic replay, which activities lack |
-| `"<keyword>" cannot start a statement` | A body line led by a keyword that begins no statement there: `options:` not under a call, `else:` not after an `if`/`switch`, `condition` outside `state:`, and so on. Activity pseudocode lines cannot start with a keyword either | Put the line where it belongs, or reword the pseudocode |
+| `"<keyword>" cannot start a statement` | In a workflow, handler or nexus operation body, a line led by a keyword that begins no statement there: `options:` not under a call, `else:` not after an `if`/`switch`, `condition` outside `state:`, or a raw line such as `options = {}` or `state.count = 1`. Activity bodies accept such lines as pseudocode | Put the line where it belongs, or rename the variable |
 | `update arrivals must be awaited: …` / `a timer must be awaited: …` | A bare `update Name` or `timer(d)` line | `await update Name` / `await timer(d)`, or bind it with `promise p <- …` |
-| `<signal\|query\|update> handler <Name> is declared after the workflow body's first statement; …` | A handler declaration below a body statement, or inside a block | Declare handlers above the body's first statement |
+| `a sync nexus operation receives no updates; …` | A bare `update Name` line in a sync nexus operation | Await the update in the workflow that handles it |
+| `<signal\|query\|update> handler <Name> is declared after the workflow body's first statement; …` / `… is declared inside a handler; …` | A handler declaration below a body statement, inside a block, or inside another handler | Declare handlers above the workflow body's first statement |
+| `a sync nexus operation declares no <signal\|query\|update> handlers; …` | A handler declaration in a sync nexus operation body | Declare it in a workflow |
 | `import must come before the file's definitions` | An `import` line below a definition | Move the imports up, after the `package` clause |
 | `expected ( after return type ->` | Return type not parenthesized: `-> Result` | Use `-> (Result)` — return types must be wrapped in parentheses |
 | `expected ( after if` / `expected ( after for` | Missing parentheses around condition/iterator | Use `if (expr):` / `for (x in items):` |

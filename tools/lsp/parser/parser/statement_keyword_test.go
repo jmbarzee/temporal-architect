@@ -74,6 +74,62 @@ func TestKeywordLineSameInEveryBlock(t *testing.T) {
 	}
 }
 
+// A keyword-led line with no statement of its own is an error in every
+// workflow context, nested blocks included, and stays a raw statement in an
+// activity body, nested blocks included.
+func TestKeywordLineStrictOnlyInWorkflowContexts(t *testing.T) {
+	strict := []struct{ name, src string }{
+		{"state field in a workflow body", "workflow P(x):\n    activity A(x)\n    state.count = 1\n"},
+		{"options in a workflow body", "workflow P(x):\n    activity A(x)\n    options = {}\n"},
+		{"all in a workflow body", "workflow P(x):\n    all = x\n    close complete(x)\n"},
+		{"complete in a query handler", "workflow P(x):\n    query Q() -> (R):\n        complete = 1\n        return x\n"},
+		{"fail in a query handler's if", "workflow P(x):\n    query Q() -> (R):\n        if (x):\n            fail(x)\n        return x\n"},
+		{"update in await all", "workflow P(x):\n    await all:\n        update Missing\n    close complete(x)\n"},
+		{"complete in a sync nexus operation", "nexus service Svc:\n    sync Op(x) -> (R):\n        complete = 1\n        return x\n"},
+		{"in within a sync nexus operation's for", "nexus service Svc:\n    sync Op(x) -> (R):\n        for (i in x):\n            in parallel, run(i)\n        return x\n"},
+	}
+	for _, tt := range strict {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := ParseFile(tt.src)
+			if pe, ok := err.(*ParseError); !ok || !strings.HasSuffix(pe.Msg, "cannot start a statement") && !strings.HasPrefix(pe.Msg, "update arrivals") {
+				t.Errorf("got %v, want a misplaced-keyword error", err)
+			}
+		})
+	}
+
+	file, err := ParseFile(`activity A(x):
+    fail with X if x is missing
+    complete the transfer
+    in parallel, notify(x)
+    if (x):
+        fail(x)
+    for (i in x):
+        options = load(i)
+        case i
+    switch (x):
+        case 1:
+            as needed, retry(x)
+        else:
+            else fall back
+    return x
+`)
+	if err != nil {
+		t.Fatalf("activity body: unexpected error: %v", err)
+	}
+	var got []string
+	ast.WalkStatements(file.Definitions[0].(*ast.ActivityDef).Body, func(s ast.Statement) bool {
+		if raw, ok := s.(*ast.RawStmt); ok {
+			got = append(got, raw.Text)
+		}
+		return true
+	})
+	want := []string{"fail with X if x is missing", "complete the transfer", "in parallel, notify(x)", "fail(x)",
+		"options = load(i)", "case i", "as needed, retry(x)", "else fall back"}
+	if strings.Join(got, "|") != strings.Join(want, "|") {
+		t.Errorf("activity raw lines = %q, want %q", got, want)
+	}
+}
+
 // The #291 repro, and the handler and arrival errors a misplaced keyword
 // names.
 func TestMisplacedKeywordErrors(t *testing.T) {
@@ -82,6 +138,20 @@ func TestMisplacedKeywordErrors(t *testing.T) {
 			"3:9 update arrivals must be awaited: `await update Name`"},
 		{"update before the first statement", "workflow P(x):\n    update Missing\n    close complete(x)\n",
 			"2:5 update arrivals must be awaited: `await update Name`"},
+		{"update with a comment before the first statement", "workflow P(x):\n    update Missing # note\n    close complete(x)\n",
+			"2:5 update arrivals must be awaited: `await update Name`"},
+		{"signal handler after a statement", "workflow P(x):\n    activity A(x)\n    signal S(v):\n        return\n",
+			"3:5 signal handler S is declared after the workflow body's first statement; declare handlers before it"},
+		{"update handler inside a handler", "workflow P(x):\n    signal S(v):\n        update U(v) -> (R):\n            return v\n",
+			"3:9 update handler U is declared inside a handler; declare handlers at the top of the workflow body"},
+		{"signal handler inside a handler", "workflow P(x):\n    update U(v) -> (R):\n        signal S(v):\n            return\n",
+			"3:9 signal handler S is declared inside a handler; declare handlers at the top of the workflow body"},
+		{"update handler in a sync nexus operation", "nexus service Svc:\n    sync Op(x) -> (R):\n        update U(v) -> (R):\n            return v\n",
+			"3:9 a sync nexus operation declares no update handlers; declare U in a workflow"},
+		{"signal handler in a sync nexus operation", "nexus service Svc:\n    sync Op(x) -> (R):\n        signal S(v):\n            return\n",
+			"3:9 a sync nexus operation declares no signal handlers; declare S in a workflow"},
+		{"bare update in a sync nexus operation", "nexus service Svc:\n    sync Op(x) -> (R):\n        update Missing\n",
+			"3:9 a sync nexus operation receives no updates; only a workflow awaits one"},
 		{"update handler after a statement", "workflow P(x):\n    await all:\n        update U(v) -> (R):\n            return v\n",
 			"3:9 update handler U is declared after the workflow body's first statement; declare handlers before it"},
 		{"query handler after a statement", "workflow P(x):\n    activity A(x)\n    query Q() -> (R):\n        return x\n",
@@ -90,8 +160,8 @@ func TestMisplacedKeywordErrors(t *testing.T) {
 			"3:9 a timer must be awaited: `await timer(duration)`"},
 		{"options without a call", "workflow P(x):\n    await all:\n        options:\n",
 			`3:9 "options" cannot start a statement`},
-		{"keyword in an activity body", "activity A(x):\n    case x\n",
-			`2:5 "case" cannot start a statement`},
+		{"keyword in a query handler", "workflow P(x):\n    query Q() -> (R):\n        complete = 1\n        return x\n",
+			`3:9 "complete" cannot start a statement`},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
