@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/format"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/pipeline"
 	"github.com/jmbarzee/temporal-architect/tools/spec"
 	sdk "github.com/modelcontextprotocol/go-sdk/mcp"
@@ -92,7 +93,7 @@ func TestListTools(t *testing.T) {
 
 	want := []string{
 		"twf_check", "twf_parse", "twf_symbols", "twf_graph",
-		"twf_graph_chunks", "twf_spec_list", "twf_spec_get",
+		"twf_graph_chunks", "twf_fmt", "twf_spec_list", "twf_spec_get",
 	}
 	for _, name := range want {
 		if !got[name] {
@@ -249,6 +250,96 @@ func TestGraphAndChunksTools(t *testing.T) {
 		if _, ok := env["summary"]; !ok {
 			t.Errorf("%s: envelope missing summary", name)
 		}
+	}
+}
+
+// TestFmtSource: twf_fmt on inline source returns it with tab indentation,
+// which twf_check then accepts, and a tab-indented source comes back as is.
+func TestFmtSource(t *testing.T) {
+	cases := []struct {
+		name, src, want string
+	}{
+		{"two spaces", "workflow W(x):\n  if (x):\n    close complete(x)\n", "workflow W(x):\n\tif (x):\n\t\tclose complete(x)\n"},
+		{"CRLF", "workflow W(x):\r\n  if (x):\r\n    close complete(x)\r\n", "workflow W(x):\r\n\tif (x):\r\n\t\tclose complete(x)\r\n"},
+		{"tabs", "workflow W(x):\n\tif (x):\n\t\tclose complete(x)\n", "workflow W(x):\n\tif (x):\n\t\tclose complete(x)\n"},
+	}
+	cs := connect(t)
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var got struct {
+				Content string `json:"content"`
+				Changed bool   `json:"changed"`
+			}
+			if err := json.Unmarshal([]byte(toolText(t, callTool(t, cs, "twf_fmt", map[string]any{"source": tc.src}))), &got); err != nil {
+				t.Fatalf("decode fmt result: %v", err)
+			}
+			if got.Content != tc.want {
+				t.Errorf("content = %q, want %q", got.Content, tc.want)
+			}
+			if got.Changed != (tc.want != tc.src) {
+				t.Errorf("changed = %v, want %v", got.Changed, tc.want != tc.src)
+			}
+			var env pipeline.Envelope
+			if err := json.Unmarshal([]byte(toolText(t, callTool(t, cs, "twf_check", map[string]any{"source": got.Content}))), &env); err != nil {
+				t.Fatalf("decode check envelope: %v", err)
+			}
+			if len(env.Diagnostics) != 0 {
+				t.Errorf("twf_check of the formatted source: %+v, want no diagnostics", env.Diagnostics)
+			}
+		})
+	}
+
+	if bad := callTool(t, cs, "twf_fmt", map[string]any{}); !bad.IsError {
+		t.Error("twf_fmt with no paths and no source should be a tool error")
+	}
+	if both := callTool(t, cs, "twf_fmt", map[string]any{"source": "", "paths": []string{"x.twf"}}); !both.IsError {
+		t.Error("twf_fmt with both paths and source should be a tool error")
+	}
+}
+
+// TestFmtPaths: twf_fmt over a directory lists only the file that would
+// change, with format.Indent of its content (what `twf fmt` writes), and
+// writes nothing.
+func TestFmtPaths(t *testing.T) {
+	const spaced = "workflow W(x):\n    activity A(x)\n    close complete(x)\n\nactivity A(x):\n    return x\n"
+	const tabbed = "workflow V(x):\n\tclose complete(x)\n"
+	dir := t.TempDir()
+	spacedPath, tabbedPath := filepath.Join(dir, "spaced.twf"), filepath.Join(dir, "tabbed.twf")
+	for path, src := range map[string]string{spacedPath: spaced, tabbedPath: tabbed} {
+		if err := os.WriteFile(path, []byte(src), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	cs := connect(t)
+	var got struct {
+		Files []struct {
+			Path    string `json:"path"`
+			Content string `json:"content"`
+		} `json:"files"`
+	}
+	if err := json.Unmarshal([]byte(toolText(t, callTool(t, cs, "twf_fmt", map[string]any{"paths": []string{dir}}))), &got); err != nil {
+		t.Fatalf("decode fmt result: %v", err)
+	}
+	if len(got.Files) != 1 || got.Files[0].Path != spacedPath {
+		t.Fatalf("files = %+v, want only %s", got.Files, spacedPath)
+	}
+	if want := format.Indent(spaced); got.Files[0].Content != want {
+		t.Errorf("content = %q, want format.Indent of the file: %q", got.Files[0].Content, want)
+	}
+	if want := "workflow W(x):\n\tactivity A(x)\n\tclose complete(x)\n\nactivity A(x):\n\treturn x\n"; got.Files[0].Content != want {
+		t.Errorf("content = %q, want %q", got.Files[0].Content, want)
+	}
+	if onDisk, err := os.ReadFile(spacedPath); err != nil || string(onDisk) != spaced {
+		t.Errorf("twf_fmt changed %s on disk: %q, %v", spacedPath, onDisk, err)
+	}
+
+	var none map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(toolText(t, callTool(t, cs, "twf_fmt", map[string]any{"paths": []string{tabbedPath}}))), &none); err != nil {
+		t.Fatalf("decode fmt result: %v", err)
+	}
+	if files := string(none["files"]); files != "[]" {
+		t.Errorf("twf_fmt of a tab-indented file: files = %s, want []", files)
 	}
 }
 
