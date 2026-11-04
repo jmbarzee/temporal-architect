@@ -2,15 +2,15 @@
 
 ```twf
 update ChangePlan(newPlan: string) -> (ChangeResult):
-    options:
-        unfinished_policy: abandon
-        description: "Switches the subscription plan"
-    activity ValidatePlan(newPlan) -> validation
-    if (validation.valid):
-        plan = newPlan
-        return ChangeResult{success: true, plan: plan}
-    else:
-        return ChangeResult{success: false, error: validation.reason}
+	options:
+		unfinished_policy: abandon
+		description: "Switches the subscription plan"
+	activity ValidatePlan(newPlan) -> validation
+	if (validation.valid):
+		plan = newPlan
+		return ChangeResult{success: true, plan: plan}
+	else:
+		return ChangeResult{success: false, error: validation.reason}
 ```
 
 ```go

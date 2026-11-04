@@ -2,8 +2,8 @@
 
 ```twf
 activity ValidateOrder(order: Order) -> (ValidateResult):
-    result = validate(order)
-    return result
+	result = validate(order)
+	return result
 ```
 
 ```go

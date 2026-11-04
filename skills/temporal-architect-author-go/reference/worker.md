@@ -2,14 +2,14 @@
 
 ```twf
 worker orderTypes:
-    workflow ProcessOrder
-    activity ValidateOrder
-    activity ChargePayment
+	workflow ProcessOrder
+	activity ValidateOrder
+	activity ChargePayment
 
 namespace default:
-    worker orderTypes
-        options:
-            task_queue: "orders"
+	worker orderTypes
+		options:
+			task_queue: "orders"
 ```
 
 ```go
@@ -67,31 +67,31 @@ A `{param}` in a worker's `task_queue` is a family: one worker per instance, eac
 
 ```twf
 workflow Agent(task: Task, lease: Lease) -> (ToolOutput):
-    activity RunTool(task.call) -> output
-        options:
-            task_queue: "sandbox-{lease.sandboxId}"
-            schedule_to_start_timeout: 30s
-            start_to_close_timeout: 5m
-    close complete(output)
+	activity RunTool(task.call) -> output
+		options:
+			task_queue: "sandbox-{lease.sandboxId}"
+			schedule_to_start_timeout: 30s
+			start_to_close_timeout: 5m
+	close complete(output)
 
 activity RunTool(call: ToolCall) -> (ToolOutput):
-    return run(call)
+	return run(call)
 
 worker control:
-    workflow Agent
+	workflow Agent
 
 worker sidecar:
-    activity RunTool
+	activity RunTool
 
 namespace aivearium:
-    worker control
-        options:
-            task_queue: "control"
-    worker sidecar
-        options:
-            task_queue: "sandbox-{sandboxId}"
-            worker_identity: "sidecar-{sandboxId}"
-            max_concurrent_activity_task_pollers: 2
+	worker control
+		options:
+			task_queue: "control"
+	worker sidecar
+		options:
+			task_queue: "sandbox-{sandboxId}"
+			worker_identity: "sidecar-{sandboxId}"
+			max_concurrent_activity_task_pollers: 2
 ```
 
 ```go
@@ -154,11 +154,11 @@ The namespace worker's `options:` block carries the SDK-union worker options; ma
 
 ```twf
 namespace orders:
-    worker orderTypes
-        options:
-            task_queue: "orders"
-            max_concurrent_activity_executions: 50
-            enable_sessions: true
+	worker orderTypes
+		options:
+			task_queue: "orders"
+			max_concurrent_activity_executions: 50
+			enable_sessions: true
 ```
 
 ```go

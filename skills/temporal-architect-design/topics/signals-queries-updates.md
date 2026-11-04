@@ -37,16 +37,16 @@ The head of a send is a handle or a workflow type. A child the sender started an
 
 ```twf
 workflow OrderSaga(order: Order) -> (SagaResult):
-    promise pay <- workflow ProcessPayment(order)
-    promise ship <- workflow ShipOrder(order)
+	promise pay <- workflow ProcessPayment(order)
+	promise ship <- workflow ShipOrder(order)
 
-    signal pay.OrderShipped(shipmentId)
+	signal pay.OrderShipped(shipmentId)
 
-    # Sending does not consume the handle; it is still awaitable
-    await all:
-        await pay -> payment
-        await ship -> shipment
-    close complete(SagaResult{payment, shipment})
+	# Sending does not consume the handle; it is still awaitable
+	await all:
+		await pay -> payment
+		await ship -> shipment
+	close complete(SagaResult{payment, shipment})
 ```
 
 - **Statement-only, fire-and-forget.** No `await` or `promise` form and not an `await one` case: a signal returns nothing to bind. The only thing a sender could wait on is the server accepting the send, never the receiver's handler — modeling it would invite the misreading "the target processed my signal."

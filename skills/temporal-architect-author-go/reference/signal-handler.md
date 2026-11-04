@@ -2,9 +2,9 @@
 
 ```twf
 workflow OrderWorkflow(orderId: string) -> (OrderResult):
-    signal PaymentReceived(transactionId: string, amount: decimal):
-        status = "payment_received"
-        lastTransactionId = transactionId
+	signal PaymentReceived(transactionId: string, amount: decimal):
+		status = "payment_received"
+		lastTransactionId = transactionId
 ```
 
 ```go
@@ -41,10 +41,10 @@ func OrderWorkflow(ctx workflow.Context, orderId string) (OrderResult, error) {
 
 ```twf
 signal Cancel():
-    options:
-        unfinished_policy: abandon
-        description: "Cancels the subscription"
-    cancelled = true
+	options:
+		unfinished_policy: abandon
+		description: "Cancels the subscription"
+	cancelled = true
 ```
 
 ```go

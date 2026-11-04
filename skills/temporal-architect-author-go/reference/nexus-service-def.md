@@ -2,8 +2,8 @@
 
 ```twf
 nexus service BillingService:
-    operation ChargePayment(PaymentRequest) -> (PaymentResult)
-    operation RefundPayment(RefundRequest) -> (RefundResult)
+	operation ChargePayment(PaymentRequest) -> (PaymentResult)
+	operation RefundPayment(RefundRequest) -> (RefundResult)
 ```
 
 ```go

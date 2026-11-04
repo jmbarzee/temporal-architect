@@ -6,13 +6,13 @@ Option keys map to Go fields by name (`start_to_close_timeout` → `StartToClose
 
 ```twf
 activity UnreliableService(data) -> result
-    options:
-        start_to_close_timeout: 2m
-        retry_policy:
-            maximum_attempts: 5
-            initial_interval: 1s
-            backoff_coefficient: 2.0
-            maximum_interval: 60s
+	options:
+		start_to_close_timeout: 2m
+		retry_policy:
+			maximum_attempts: 5
+			initial_interval: 1s
+			backoff_coefficient: 2.0
+			maximum_interval: 60s
 ```
 
 ```go
@@ -33,11 +33,11 @@ err := workflow.ExecuteActivity(actCtx, UnreliableService, data).Get(ctx, &resul
 
 ```twf
 workflow ChildWorkflow(input.data) -> childResult
-    options:
-        workflow_execution_timeout: 1h
-        parent_close_policy: REQUEST_CANCEL
-        retry_policy:
-            maximum_attempts: 3
+	options:
+		workflow_execution_timeout: 1h
+		parent_close_policy: REQUEST_CANCEL
+		retry_policy:
+			maximum_attempts: 3
 ```
 
 ```go
@@ -60,8 +60,8 @@ Passed inline to `ExecuteOperation` — no context wrapping. Fields: `ScheduleTo
 
 ```twf
 nexus BillingEndpoint BillingService.ChargePayment(payment) -> paymentResult
-    options:
-        schedule_to_close_timeout: 1h
+	options:
+		schedule_to_close_timeout: 1h
 ```
 
 ```go
@@ -79,25 +79,25 @@ A `default_options:` block on an `activity` or `workflow` definition supplies de
 
 ```twf
 activity ChargeCard(card, amount) -> receipt
-    default_options:
-        start_to_close_timeout: 30s
-        retry_policy:
-            maximum_attempts: 5
+	default_options:
+		start_to_close_timeout: 30s
+		retry_policy:
+			maximum_attempts: 5
 
 workflow FulfillOrder(order) -> (OrderResult):
-    default_options:
-        workflow_execution_timeout: 1h
-    state:
-        condition paid
+	default_options:
+		workflow_execution_timeout: 1h
+	state:
+		condition paid
 
-    # Uses the activity's default_options unchanged.
-    activity ChargeCard(order.card, order.total) -> receipt
+	# Uses the activity's default_options unchanged.
+	activity ChargeCard(order.card, order.total) -> receipt
 
-    # Per-key override; the call-site retry_policy atomic-replaces the default.
-    activity ChargeCard(order.card, order.tip) -> tipReceipt
-        options:
-            retry_policy:
-                maximum_attempts: 1
+	# Per-key override; the call-site retry_policy atomic-replaces the default.
+	activity ChargeCard(order.card, order.tip) -> tipReceipt
+		options:
+			retry_policy:
+				maximum_attempts: 1
 ```
 
 - **Placement**: activity — head of the body; workflow — first body element, before `state:`.
@@ -125,10 +125,10 @@ err = workflow.ExecuteActivity(ctxTip, ChargeCard, order.Card, order.Tip).Get(ct
 
 ```twf
 workflow Cart(customerId: string):
-    id_scheme: "cart-{customerId}"
-    default_options:
-        workflow_id_reuse_policy: ALLOW_DUPLICATE
-        workflow_id_conflict_policy: USE_EXISTING
+	id_scheme: "cart-{customerId}"
+	default_options:
+		workflow_id_reuse_policy: ALLOW_DUPLICATE
+		workflow_id_conflict_policy: USE_EXISTING
 ```
 
 `workflow_id_reuse_policy` → `WorkflowIDReusePolicy` (`enumspb.WORKFLOW_ID_REUSE_POLICY_*`); `workflow_id_conflict_policy` → `WorkflowIDConflictPolicy` (`enumspb.WORKFLOW_ID_CONFLICT_POLICY_*`). Where each lands depends on the start kind:

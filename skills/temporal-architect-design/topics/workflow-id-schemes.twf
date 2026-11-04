@@ -4,92 +4,92 @@
 # --- A schemed workflow: started as a child, signalled by senders that did not start it ---
 
 workflow ShipItem(order: Order, item: Item) -> (Shipment):
-    id_scheme: "ship-{order.id}-{item.id}"
-    signal Shipped(trackingId: string):
-        tracking = trackingId
+	id_scheme: "ship-{order.id}-{item.id}"
+	signal Shipped(trackingId: string):
+		tracking = trackingId
 
-    activity CreateShipment(order, item) -> shipment
-    await signal Shipped
-    signal FulfillOrder.ItemShipped(item.id)
-        id: parent
-    close complete(Shipment{shipment.id, tracking})
+	activity CreateShipment(order, item) -> shipment
+	await signal Shipped
+	signal FulfillOrder.ItemShipped(item.id)
+		id: parent
+	close complete(Shipment{shipment.id, tracking})
 
 # The start writes no ID: ShipItem's follows from (order, item).
 workflow FulfillOrder(order: Order) -> (OrderResult):
-    signal ItemShipped(itemId: string):
-        shipped = shipped + 1
+	signal ItemShipped(itemId: string):
+		shipped = shipped + 1
 
-    await all:
-        for (item in order.items):
-            workflow ShipItem(order, item)
-    close complete(OrderResult{shipped})
+	await all:
+		for (item in order.items):
+			workflow ShipItem(order, item)
+	close complete(OrderResult{shipped})
 
 # --- Constructed: the sender's own names fill the scheme's holes ---
 
 workflow RelayCarrierEvent(event: CarrierEvent):
-    signal ShipItem.Shipped(event.tracking)
-        id: "ship-{event.orderId}-{event.sku}"
+	signal ShipItem.Shipped(event.tracking)
+		id: "ship-{event.orderId}-{event.sku}"
 
 # --- Learned: a variable holds the whole ID; run_id pins one run ---
 
 workflow RedeliverTracking(orderId: string):
-    activity FindStuckShipment(orderId) -> stuck
-    signal ShipItem.Shipped(stuck.tracking)
-        id: stuck.workflowId
-        run_id: stuck.runId
+	activity FindStuckShipment(orderId) -> stuck
+	signal ShipItem.Shipped(stuck.tracking)
+		id: stuck.workflowId
+		run_id: stuck.runId
 
 # --- Start collisions: the scheme makes starts collide; the policies decide what that means ---
 
 # Entity: every starter joins the running one (clients signal-with-start it with each event).
 workflow OrderTracker(orderId: string):
-    id_scheme: "tracker-{orderId}"
-    default_options:
-        workflow_id_conflict_policy: USE_EXISTING
-    signal Delivered():
-        delivered = true
+	id_scheme: "tracker-{orderId}"
+	default_options:
+		workflow_id_conflict_policy: USE_EXISTING
+	signal Delivered():
+		delivered = true
 
-    activity WatchOrder(orderId)
-    await signal Delivered
-    close complete()
+	activity WatchOrder(orderId)
+	await signal Delivered
+	close complete()
 
 # At most once per order: a duplicate start joins a running refund, and is refused after it closes.
 workflow RefundOrder(orderId: string):
-    id_scheme: "refund-{orderId}"
-    default_options:
-        workflow_id_reuse_policy: REJECT_DUPLICATE
-        workflow_id_conflict_policy: USE_EXISTING
-    activity IssueRefund(orderId)
-    close complete()
+	id_scheme: "refund-{orderId}"
+	default_options:
+		workflow_id_reuse_policy: REJECT_DUPLICATE
+		workflow_id_conflict_policy: USE_EXISTING
+	activity IssueRefund(orderId)
+	close complete()
 
 # --- Supporting activities ---
 
 activity CreateShipment(order: Order, item: Item) -> (Shipment):
-    return carrier.create(order, item)
+	return carrier.create(order, item)
 
 activity FindStuckShipment(orderId: string) -> (StuckShipment):
-    return db.findStuck(orderId)
+	return db.findStuck(orderId)
 
 activity WatchOrder(orderId: string):
-    carrier.watch(orderId)
+	carrier.watch(orderId)
 
 activity IssueRefund(orderId: string):
-    payments.refund(orderId)
+	payments.refund(orderId)
 
 # --- Worker and namespace ---
 
 worker fulfillmentWorker:
-    workflow ShipItem
-    workflow FulfillOrder
-    workflow RelayCarrierEvent
-    workflow RedeliverTracking
-    workflow OrderTracker
-    workflow RefundOrder
-    activity CreateShipment
-    activity FindStuckShipment
-    activity WatchOrder
-    activity IssueRefund
+	workflow ShipItem
+	workflow FulfillOrder
+	workflow RelayCarrierEvent
+	workflow RedeliverTracking
+	workflow OrderTracker
+	workflow RefundOrder
+	activity CreateShipment
+	activity FindStuckShipment
+	activity WatchOrder
+	activity IssueRefund
 
 namespace fulfillment:
-    worker fulfillmentWorker
-        options:
-            task_queue: "fulfillment"
+	worker fulfillmentWorker
+		options:
+			task_queue: "fulfillment"

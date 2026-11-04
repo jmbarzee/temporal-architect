@@ -2,8 +2,8 @@
 
 ```twf
 await all:
-    activity ReserveInventory(order) -> inventory
-    nexus BillingEndpoint BillingService.ChargePayment(order.payment) -> payment
+	activity ReserveInventory(order) -> inventory
+	nexus BillingEndpoint BillingService.ChargePayment(order.payment) -> payment
 ```
 
 ```go
@@ -36,8 +36,8 @@ if paymentErr != nil {
 
 ```twf
 await all:
-    for (item in items):
-        activity ProcessBatchItem(item)
+	for (item in items):
+		activity ProcessBatchItem(item)
 ```
 
 ```go

@@ -19,12 +19,12 @@
 
 ```twf
 workflow ProcessWithDeadline(data: Data) -> (Result):
-    await one:
-        activity LongOperation(data) -> result:
-            close complete(Result{success: true, data: result})
-        timer(1h):
-            activity Cleanup(data)
-            close fail(Result{success: false, error: "deadline exceeded"})
+	await one:
+		activity LongOperation(data) -> result:
+			close complete(Result{success: true, data: result})
+		timer(1h):
+			activity Cleanup(data)
+			close fail(Result{success: false, error: "deadline exceeded"})
 ```
 
 > **`await one` does not cancel the loser.** If the timer wins, `LongOperation` keeps running until the workflow run ends — `await one` is "first to complete wins," not "winner cancels the rest." If the loser must actually stop (release a lock, stop billing), add an explicit cancellation/cleanup activity.
