@@ -85,25 +85,25 @@ name anywhere.
 
 ```twf
 workflow Cart(id: string):
-    id_scheme: "cart-{id}"
-    default_options:
-        workflow_id_reuse_policy: ALLOW_DUPLICATE
-        workflow_id_conflict_policy: TERMINATE_EXISTING  # was TERMINATE_IF_RUNNING
-    close complete(id)
+	id_scheme: "cart-{id}"
+	default_options:
+		workflow_id_reuse_policy: ALLOW_DUPLICATE
+		workflow_id_conflict_policy: TERMINATE_EXISTING  # was TERMINATE_IF_RUNNING
+	close complete(id)
 
 nexus service Carts:
-    async Open workflow Cart                    # client start: uses the defaults
-    sync Touch(id: string) -> (string):
-        workflow Cart(id)
-            options:
-                workflow_id_conflict_policy: USE_EXISTING  # client start: may override
-        close complete(id)
+	async Open workflow Cart                    # client start: uses the defaults
+	sync Touch(id: string) -> (string):
+		workflow Cart(id)
+			options:
+				workflow_id_conflict_policy: USE_EXISTING  # client start: may override
+		close complete(id)
 
 workflow Shop(id: string):
-    workflow Cart(id)
-        options:
-            parent_close_policy: ABANDON        # child start: takes no conflict policy
-    close complete(id)
+	workflow Cart(id)
+		options:
+			parent_close_policy: ABANDON        # child start: takes no conflict policy
+	close complete(id)
 ```
 
 - `workflow_id_reuse_policy: TERMINATE_IF_RUNNING` (deprecated in Temporal) is
@@ -138,16 +138,16 @@ start: `"attached" | "detach"` (was `"child" | "detach"`). Wire types add
 
 ```twf
 workflow RunTask(task: Task, lease: Lease) -> (Output):
-    activity RunTool(task.call) -> output
-        options:
-            task_queue: "sandbox-{lease.sandboxId}"   # matches the family by shape
-            schedule_to_start_timeout: 30s
-    close complete(output)
+	activity RunTool(task.call) -> output
+		options:
+			task_queue: "sandbox-{lease.sandboxId}"   # matches the family by shape
+			schedule_to_start_timeout: 30s
+	close complete(output)
 
 namespace aivearium:
-    worker sidecar
-        options:
-            task_queue: "sandbox-{sandboxId}"         # one worker per sandbox
+	worker sidecar
+		options:
+			task_queue: "sandbox-{sandboxId}"         # one worker per sandbox
 ```
 
 - A `{param}` in a worker instantiation's `task_queue` is an **instance
@@ -177,10 +177,10 @@ namespace aivearium:
 
 ```twf
 namespace payments:
-    nexus endpoint PaymentsEndpoint
-        options:
-            task_queue: "payments"
-            allowed_caller_namespaces: ["shop", "tenant-{org}"]
+	nexus endpoint PaymentsEndpoint
+		options:
+			task_queue: "payments"
+			allowed_caller_namespaces: ["shop", "tenant-{org}"]
 ```
 
 - **Breaking:** task-queue coherence also compares Nexus service sets, among

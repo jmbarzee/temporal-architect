@@ -15,17 +15,17 @@ A workflow can signal a child it started and still holds a handle to. The handle
 
 ```twf
 workflow OrderSaga(order: Order) -> (SagaResult):
-    promise pay <- workflow ProcessPayment(order)
-    promise ship <- workflow ShipOrder(order)
+	promise pay <- workflow ProcessPayment(order)
+	promise ship <- workflow ShipOrder(order)
 
-    # Notify the payment workflow that the order has shipped
-    signal pay.OrderShipped(shipmentId)
+	# Notify the payment workflow that the order has shipped
+	signal pay.OrderShipped(shipmentId)
 
-    # Wait for both children to finish
-    await all:
-        await pay -> payment
-        await ship -> shipment
-    close complete(SagaResult{payment, shipment})
+	# Wait for both children to finish
+	await all:
+		await pay -> payment
+		await ship -> shipment
+	close complete(SagaResult{payment, shipment})
 ```
 
 Maps to `ChildWorkflowFuture.SignalChildWorkflow`.
@@ -38,16 +38,16 @@ Any other target — a workflow the sender did not start, or no longer holds —
 
 ```twf
 signal ShipItem.Shipped(event.tracking)
-    id: "ship-{event.orderId}-{event.sku}"   # constructed: mirrors the scheme
+	id: "ship-{event.orderId}-{event.sku}"   # constructed: mirrors the scheme
 signal RateLimiter.Tick()
-    id: "rate-limiter"                       # constant: mirrors the scheme
+	id: "rate-limiter"                       # constant: mirrors the scheme
 signal ShipItem.Shipped("recovered")
-    id: wid                                  # learned: one name holding the whole ID
-    run_id: rid                              # optional, pins the run
+	id: wid                                  # learned: one name holding the whole ID
+	run_id: rid                              # optional, pins the run
 signal Coordinator.Progress(doc.id)
-    id: parent                               # the parent execution
+	id: parent                               # the parent execution
 signal orders.ShipItem.Shipped(t)            # qualified head
-    id: "ship-{o}-{i}"
+	id: "ship-{o}-{i}"
 ```
 
 `id:` takes exactly one of three forms:
