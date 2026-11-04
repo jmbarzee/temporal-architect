@@ -17,7 +17,8 @@ param_list ::= param (',' param)*
 param ::= IDENT ':' type
 return_type ::= '(' type_list ')'  # Always parenthesized
 type_list ::= type (',' type)*
-type ::= IDENT | type '[' type ']' | type '{' ... '}'
+type ::= primitive | IDENT | 'list' '[' type ']' | 'map' '[' 'string' ',' type ']'
+primitive ::= 'string' | 'int' | 'float' | 'bool' | 'decimal' | 'duration' | 'time' | 'bytes' | 'any'
 ```
 
 **Important:** The body opens in a fixed order: an optional `id_scheme:` line, an optional `default_options:` block, the state block, then signal/query/update declarations, then body statements. Each signal/query/update can only be declared once per workflow: a repeat is `DUPLICATE_SIGNAL`, `DUPLICATE_QUERY` or `DUPLICATE_UPDATE` on the later declaration, and the first is the handler. Handler declarations end at the first body statement: a `signal`/`query`/`update` declaration after it is a targeted parse error. (A cross-workflow signal *send* may be the first body statement — see [Tokens and Keywords](./08-tokens-and-keywords.md) for how `signal` is disambiguated.)
@@ -148,3 +149,21 @@ update_decl ::= 'update' IDENT params '->' return_type ':' NEWLINE
 Update handler bodies execute on every arrival of the update. Handlers have access to the full workflow statement set and can return values to the caller.
 
 An optional `options:` block may lead the handler body. Update handler options: `unfinished_policy`, `description`.
+
+## Types
+
+Each author maps these names to its SDK; the parser checks none of them.
+
+| Type | Meaning |
+|------|---------|
+| `int` | 64-bit signed integer |
+| `float` | 64-bit binary floating point |
+| `decimal` | exact base-10 number, never a binary float |
+| `duration` | a span of time, written as a [`DURATION`](./08-tokens-and-keywords.md) literal such as `5m` |
+| `time` | an instant |
+| `bytes` | binary data |
+| `any` | an untyped payload |
+| `list[T]` | an ordered sequence of `T` |
+| `map[string, V]` | `V` keyed by string; keys are strings because payloads serialize to JSON by default |
+
+Any other name is a user-defined type, written in PascalCase. Its shape is inferred from the constructors and field accesses that use it.

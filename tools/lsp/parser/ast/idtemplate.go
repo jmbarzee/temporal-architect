@@ -61,20 +61,27 @@ func isIDPath(path string) bool {
 }
 
 // ParamNames returns the names declared in an opaque parameter list such as
-// "order: Order, item: Item" or "(order: Order)". Commas nested in brackets or braces do not split.
+// "order: Order, item: Item" or "(order: Order)".
 func ParamNames(params string) map[string]bool {
 	names := map[string]bool{}
 	params = strings.TrimSpace(params)
 	if strings.HasPrefix(params, "(") && strings.HasSuffix(params, ")") {
 		params = params[1 : len(params)-1]
 	}
-	depth, start := 0, 0
-	add := func(param string) {
+	for _, param := range SplitParams(params) {
 		name, _, _ := strings.Cut(param, ":")
 		if fields := strings.Fields(name); len(fields) > 0 {
 			names[fields[0]] = true
 		}
 	}
+	return names
+}
+
+// SplitParams splits a parameter list on its top-level commas, so the comma in
+// "m: map[string, V]" stays inside its parameter.
+func SplitParams(params string) []string {
+	var parts []string
+	depth, start := 0, 0
 	for i := 0; i < len(params); i++ {
 		switch params[i] {
 		case '[', '{', '(', '<':
@@ -83,11 +90,10 @@ func ParamNames(params string) map[string]bool {
 			depth--
 		case ',':
 			if depth == 0 {
-				add(params[start:i])
+				parts = append(parts, params[start:i])
 				start = i + 1
 			}
 		}
 	}
-	add(params[start:])
-	return names
+	return append(parts, params[start:])
 }

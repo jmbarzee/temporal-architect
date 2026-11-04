@@ -13,13 +13,16 @@ Collect every constructor site and field access across the `.twf` before definin
 
 A field whose type stays ambiguous gets a `// TODO` and a question to the user. Export every field (uppercase): they cross workflow/activity boundaries via serialization.
 
+The `.twf` type names are defined in `twf spec workflows` (Types). In Go:
+
 | TWF | Go |
 |-----|----|
-| `string` / `int` / `bool` | same |
-| `decimal` | `float64` |
+| `string` / `int` / `bool` / `any` | same |
+| `float` / `decimal` | `float64` |
 | `duration` | `time.Duration` (`5m` → `5*time.Minute`) |
 | `time` | `time.Time` |
-| `[]T` / `Map[K]V` | `[]T` / `map[K]V` |
+| `bytes` | `[]byte` |
+| `list[T]` / `map[string, V]` | `[]T` / `map[string]V` |
 
 ## Dependency types
 
