@@ -345,6 +345,8 @@ is now checked against the target's signals.
   package, workflow or service (a workflow's conditions and promises count as
   one kind), any other endpoint's name, and a name a worker registering the
   renamed type already registers for that kind.
+- **LSP:** rename refuses to add, drop or change a namespace's or endpoint's
+  `{param}` template parameters: that changes the family, not just its name.
 - **MCP:** the `paths` and tool descriptions say each path may be a file or a
   directory.
 - **Visualizer:** "Show in Tree" on a nexus operation or endpoint scrolls to and
