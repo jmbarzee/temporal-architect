@@ -9,10 +9,11 @@ import type { BandOverlay } from '../graph/forces'
 import type { ResolvedPhysics } from '../graph/forces'
 import { chargeFor, coreRadiusFor, springFor } from '../graph/simulation'
 import type { Viewport } from '../graph/viewport'
-import { fitToView, screenToWorld, worldToScreen, zoomAt } from '../graph/viewport'
+import { screenToWorld, worldToScreen, zoomAt } from '../graph/viewport'
 import { nodeSizeMul, type NodeScaleParams } from '../graph/node-scale'
 import type { Taxonomy } from '../graph/taxonomy'
 import { useTaxonomy } from './graph-view/useTaxonomy'
+import { useLatest } from './graph-view/useControllable'
 import type { EdgeStroke, Theme } from '../graph/scheme'
 import { NEUTRAL_STROKE } from '../graph/shapes'
 import { withAlpha } from '../graph/scheme'
@@ -148,6 +149,8 @@ interface GraphCanvasProps {
   onNodeDragMove: (wx: number, wy: number) => void
   onNodeDragEnd: () => void
   onDoubleClickNode: (id: string) => void
+  // Frame every visible node (a double-click on the background).
+  onFitView: () => void
   onHoverNode: (id: string | null) => void
   onSelectNode: (id: string | null) => void
   highlightedNodes: Set<string> | null
@@ -236,7 +239,7 @@ interface DrawData {
 export function GraphCanvas({
   nodes, edges, viewport, onViewportChange,
   onNodeDragStart, onNodeDragMove, onNodeDragEnd,
-  onDoubleClickNode, onHoverNode, onSelectNode,
+  onDoubleClickNode, onFitView, onHoverNode, onSelectNode,
   highlightedNodes, highlightedEdges,
   hoveredNodeId, selectedNodeId, focusedNodeId, searchMatchIds,
   running, forceParams, resolved, overlay, theme, edgeStrokes, edgeOffsets, activeSection, activePushBucket,
@@ -331,14 +334,25 @@ export function GraphCanvas({
   }, [nodes, viewport, nodeScale, taxonomy])
 
   // Mouse handlers
-  const handleWheel = React.useCallback((e: React.WheelEvent) => {
-    e.preventDefault()
-    const rect = e.currentTarget.getBoundingClientRect()
-    const sx = e.clientX - rect.left
-    const sy = e.clientY - rect.top
-    const factor = e.deltaY < 0 ? 1.15 : 0.85
-    onViewportChange(zoomAt(viewport, sx, sy, factor))
-  }, [viewport, onViewportChange])
+  // Wheel zoom listens natively and non-passive: React's root wheel listener
+  // is passive, so its preventDefault cannot keep the page from scrolling.
+  // Registered once; the camera and its setter are read through refs.
+  const viewportRef = useLatest(viewport)
+  const onViewportChangeRef = useLatest(onViewportChange)
+  React.useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault()
+      const rect = canvas.getBoundingClientRect()
+      const sx = e.clientX - rect.left
+      const sy = e.clientY - rect.top
+      const factor = e.deltaY < 0 ? 1.15 : 0.85
+      onViewportChangeRef.current(zoomAt(viewportRef.current, sx, sy, factor))
+    }
+    canvas.addEventListener('wheel', handleWheel, { passive: false })
+    return () => canvas.removeEventListener('wheel', handleWheel)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handlePointerDown = React.useCallback((e: React.PointerEvent) => {
     const rect = e.currentTarget.getBoundingClientRect()
@@ -412,9 +426,9 @@ export function GraphCanvas({
     if (node) {
       onDoubleClickNode(node.id)
     } else {
-      onViewportChange(fitToView(nodes, size.w, size.h))
+      onFitView()
     }
-  }, [hitTest, nodes, size, onViewportChange, onDoubleClickNode])
+  }, [hitTest, onFitView, onDoubleClickNode])
 
   // --- Render loop ---
   // Uses a ref for all draw data so the effect only tears down on size change.
@@ -1073,7 +1087,6 @@ export function GraphCanvas({
       <canvas
         ref={canvasRef}
         style={{ width: size.w, height: size.h }}
-        onWheel={handleWheel}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
