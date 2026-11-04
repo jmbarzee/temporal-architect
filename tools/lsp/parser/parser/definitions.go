@@ -44,6 +44,11 @@ func parseWorkflowDef(p *Parser) (ast.Definition, error) {
 	if err != nil {
 		return nil, err
 	}
+	if p.current.Type == token.INDENT { // indented under id_scheme: or a comment
+		if _, err := p.overIndent(nil); err != nil { // the head drops comments
+			return nil, err
+		}
+	}
 
 	// Optional default_options block, before state:. A definition's defaults are
 	// its external invocation contract, which reads above its internal state:.
@@ -431,7 +436,7 @@ func parseStateBlock(p *Parser) (*ast.StateBlock, error) {
 			continue
 		}
 		if p.current.Type == token.INDENT {
-			if _, err := p.overIndent(); err != nil { // the block drops comments
+			if _, err := p.overIndent(nil); err != nil { // the block drops comments
 				return nil, err
 			}
 			continue

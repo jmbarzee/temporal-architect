@@ -162,13 +162,14 @@ func TestCommentsAboveHeadOptions(t *testing.T) {
 	}
 }
 
-// Under a call, a comment still leads only to options: or the end of the call.
+// Under a call, a line that is neither a comment nor options: is an unexpected
+// indent.
 func TestCommentUnderCallThenOtherLine(t *testing.T) {
 	tests := []struct{ name, src, want string }{
 		{"statement", "workflow P(x):\n    activity A(x)\n        # note\n        activity B(x)\n",
-			`4:9 expected options: or a comment, got ACTIVITY ("activity")`},
+			"4:9 unexpected indent: only comments and one options: block sit under a call"},
 		{"after the block", "workflow P(x):\n    activity A(x)\n        options:\n            start_to_close_timeout: 1m\n        # note\n        activity B(x)\n",
-			`6:9 expected the end of the options block, got ACTIVITY ("activity")`},
+			"6:9 unexpected indent: only comments and one options: block sit under a call"},
 		{"address under a start", "workflow P(x):\n    workflow C(x)\n        # note\n        id: \"x\"\n",
 			"4:9 a workflow start takes no id:; the ID derives from the started type's id_scheme"},
 	}
