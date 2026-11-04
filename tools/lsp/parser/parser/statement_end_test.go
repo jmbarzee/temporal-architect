@@ -147,6 +147,15 @@ func TestAwaitInAwaitOneCase(t *testing.T) {
 	}
 }
 
+// A bare `await` in an await one case names the token after it.
+func TestBareAwaitInAwaitOneCase(t *testing.T) {
+	_, err := ParseFile("workflow W():\n    await one:\n        await\n        timer(1m):\n            break\n")
+	want := "expected 'await all' in await one case, got 'await NEWLINE'"
+	if err == nil || err.(*ParseError).Msg != want || err.(*ParseError).Line != 3 {
+		t.Errorf("got %v, want %q on line 3", err, want)
+	}
+}
+
 // A trailing comment after a short statement stays a comment statement.
 func TestShortStatementKeepsTrailingComment(t *testing.T) {
 	file, err := ParseFile("workflow P(x):\n    for (i in x):\n        break # done\n    close complete(x)\n")

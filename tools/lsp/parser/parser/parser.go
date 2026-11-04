@@ -69,6 +69,7 @@ type Parser struct {
 	peek    token.Token
 	prev    token.TokenType // the type of the token before current
 	depth   int             // INDENTs minus DEDENTs before current
+	elseAt  int             // the offset of the last `else` an if consumed
 
 	bodyCtx bodyContext
 
@@ -315,6 +316,14 @@ func (p *Parser) parseBody() ([]ast.Statement, error) {
 	for p.current.Type != token.DEDENT && p.current.Type != token.EOF {
 		if p.current.Type == token.NEWLINE {
 			p.advance()
+			continue
+		}
+		if p.current.Type == token.INDENT {
+			comments, err := p.overIndent()
+			if err != nil {
+				return nil, err
+			}
+			stmts = append(stmts, comments...)
 			continue
 		}
 		start := p.current

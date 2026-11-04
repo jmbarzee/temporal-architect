@@ -294,6 +294,13 @@ is now checked against the target's signals.
   comments.
 - A line holding only tabs, or tabs and spaces, is a blank line, as a
   space-only line already was. A tab between tokens is whitespace.
+- A line indented under a statement that opens no block (a call with no
+  `options:`, `close`, `set`, a raw line) is a `parse/SYNTAX` `unexpected
+  indent` error, in activity bodies too. It used to pass as a raw statement
+  and end the enclosing body early, so an unrelated error surfaced below it.
+- After a failed line, only a failed `if`'s own `else:` is skipped; a further
+  `else:` is reported. A bare `await` in an `await one:` case names the token
+  after it.
 - **LSP:** a bad statement line drops only itself from the editor's outline,
   hover and references; the definition around it and its other statements stay.
 - An undefined workflow, activity, signal or update used as a `promise` /

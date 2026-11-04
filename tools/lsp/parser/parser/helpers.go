@@ -34,14 +34,15 @@ func (p *Parser) advance() {
 // Parsing strictly, it returns err. Collecting, it records err, skips the rest
 // of the line and any block indented under it, and returns nil; the parser then
 // stands on the block's next line, its DEDENT, or EOF, or past that DEDENT if
-// the failed line consumed it (p.depth < depth). An `else:` clause after the
-// skipped block belongs to the failed line and is skipped with it.
+// the failed line consumed it (p.depth < depth). A failed `if` keeps its one
+// `else:` clause, skipped with it; any further `else:` is the body's next line.
 func (p *Parser) recoverLine(err error, start token.Token, depth int) error {
 	pe, ok := err.(*ParseError)
 	if !p.collecting || !ok {
 		return err
 	}
 	p.addError(pe)
+	elseLeft := start.Type == token.IF && p.elseAt < start.Offset // the failed if's else: is still ahead
 	for p.current.Type != token.EOF && p.depth >= depth {
 		if p.depth == depth {
 			if p.current.Type == token.DEDENT {
@@ -49,13 +50,57 @@ func (p *Parser) recoverLine(err error, start token.Token, depth int) error {
 			}
 			moved := p.current.Offset != start.Offset
 			lineStart := p.prev == token.NEWLINE || p.prev == token.DEDENT
-			if moved && lineStart && p.current.Type != token.INDENT && p.current.Type != token.ELSE {
+			if moved && lineStart && p.current.Type != token.INDENT && (p.current.Type != token.ELSE || !elseLeft) {
 				return nil
+			}
+			if p.current.Type == token.ELSE {
+				elseLeft = false
 			}
 		}
 		p.advance()
 	}
 	return nil
+}
+
+// overIndent handles an INDENT at the start of a body line: a line indented
+// under a statement that opens no block. Comment lines there are kept. Any
+// other line is an "unexpected indent" error; collecting errors, it is recorded
+// and the indented block skipped, leaving the parser on the body's next line.
+func (p *Parser) overIndent() ([]ast.Statement, error) {
+	depth := p.depth
+	p.advance() // consume INDENT
+	var comments []ast.Statement
+lines:
+	for {
+		switch p.current.Type {
+		case token.NEWLINE:
+			p.advance()
+		case token.COMMENT:
+			comments = append(comments, p.parseComment())
+		case token.INDENT:
+			more, err := p.overIndent()
+			comments = append(comments, more...)
+			if err != nil {
+				return comments, err
+			}
+		case token.DEDENT:
+			p.advance()
+			return comments, nil
+		case token.EOF:
+			return comments, nil
+		default:
+			break lines
+		}
+	}
+	err := p.errorf("unexpected indent: the statement above opens no block")
+	if !p.collecting {
+		return comments, err
+	}
+	p.addError(err.(*ParseError))
+	for p.current.Type != token.EOF && p.depth > depth {
+		p.advance()
+	}
+	return comments, nil
 }
 
 // endLine ends a statement's line after what: it consumes the NEWLINE, or stops

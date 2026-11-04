@@ -338,7 +338,11 @@ func parseAwaitOneCase(p *Parser) (*ast.AwaitOneCase, error) {
 	// Handle special "await all:" case before the shared target parser.
 	if p.current.Type == token.AWAIT {
 		if p.peek.Type != token.ALL {
-			return nil, p.errorf("expected 'await all' in await one case, got 'await %s'", p.peek.Literal)
+			got := p.peek.Literal
+			if got == "" {
+				got = p.peek.Type.String()
+			}
+			return nil, p.errorf("expected 'await all' in await one case, got 'await %s'", got)
 		}
 		stmt, err := parseAwaitStmt(p)
 		if err != nil {
