@@ -489,10 +489,17 @@ func (g *Graph) calleeLabel(idx *astIndex, kind, qname string) string {
 			return ast.Label(g.Packages, ast.PackageIDOf(d, idx.file), d.Name)
 		}
 	case KindNexusOperation:
-		for svcQName, svc := range idx.nexusServices {
-			if op, ok := strings.CutPrefix(qname, svcQName+"."); ok {
-				return ast.Label(g.Packages, ast.PackageIDOf(svc, idx.file), nexusOpQualifiedName(svc.Name, op))
+		// The operation's service is the longest qualified name qname extends at
+		// a separator: `p.S.Op` belongs to `p.S`, not to a service `p`.
+		var svc *ast.NexusServiceDef
+		var op string
+		for svcQName, s := range idx.nexusServices {
+			if rest, ok := strings.CutPrefix(qname, svcQName+"."); ok && (svc == nil || len(rest) < len(op)) {
+				svc, op = s, rest
 			}
+		}
+		if svc != nil {
+			return ast.Label(g.Packages, ast.PackageIDOf(svc, idx.file), nexusOpQualifiedName(svc.Name, op))
 		}
 	}
 	return qname

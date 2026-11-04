@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/parser"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/resolver"
 )
@@ -638,4 +639,117 @@ func nodesOfKind(g *Graph, kind string) []string {
 		}
 	}
 	return ids
+}
+
+// TestDuplicateEndpointResolverBinding: the graph draws the endpoint the
+// resolver binds, among the namespaces it keeps by (package, name): the first
+// across packages, and a same-package namespace declared twice keeps its last
+// definition.
+func TestDuplicateEndpointResolverBinding(t *testing.T) {
+	ns := func(pkg, queue string) string {
+		return "package " + pkg + `
+
+namespace n:
+    nexus endpoint e
+        options:
+            task_queue: "` + queue + `"
+`
+	}
+	const caller = `package p1
+
+workflow W():
+    nexus e S.Op()
+    close complete()
+`
+	tests := []struct {
+		name, pkgB, want string
+	}{
+		{"two packages", "p2", "qa"},
+		{"one package", "p1", "qb"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			for range 50 {
+				var inputs []ast.StampInput
+				for _, src := range []string{caller, ns("p1", "qa"), ns(tt.pkgB, "qb")} {
+					file, errs := parser.ParseFileAll(src)
+					if len(errs) > 0 {
+						t.Fatalf("parse: %v", errs[0])
+					}
+					inputs = append(inputs, ast.StampInput{File: file})
+				}
+				file := ast.Stamp(inputs)
+				resolver.Resolve(file)
+				bound := file.Definitions[0].(*ast.WorkflowDef).Body[0].(*ast.NexusCall).Endpoint.Resolved
+				node := findNode(Extract(file), "nexusEndpoint:e/namespace:n")
+				if bound == nil || bound.TaskQueue != tt.want || node == nil || node.Queue != tt.want {
+					t.Fatalf("resolver bound %+v, graph drew %+v; want queue %s", bound, node, tt.want)
+				}
+			}
+		})
+	}
+}
+
+// TestCalleeLabelLongestService: an unreachable operation is named by its own
+// service, the longest qualified name its own extends, though a service `p`
+// in the default package prefixes `p.S` and `p.Svc`, and `p.S` prefixes
+// `p.Svc` but for the separator. The second package named p puts the identity
+// in the label, so a wrong service shows. Repeated so map order cannot pass by
+// luck.
+func TestCalleeLabelLongestService(t *testing.T) {
+	pkgP := `package p
+
+nexus service S:
+    sync Op() -> ():
+        close complete()
+
+nexus service Svc:
+    sync Op() -> ():
+        close complete()
+
+workflow W():
+    nexus e S.Op()
+    nexus e Svc.Op()
+    close complete()
+
+worker w:
+    workflow W
+
+namespace n:
+    worker w
+        options:
+            task_queue: "w"
+    nexus endpoint e
+        options:
+            task_queue: "nobody"
+`
+	defaultP := `nexus service p:
+    sync Run() -> ():
+        close complete()
+`
+	otherP := `package p
+
+workflow X():
+    close complete()
+`
+	unreachable := func(op string) string {
+		return fmt.Sprintf(`DISPATCH_NO_REACHABLE_DEPLOYMENT nexusOperation call to %q routes to task_queue "nobody" in namespace n but no deployment polls it there`, op)
+	}
+	want := []string{unreachable("p.S.Op (p)"), unreachable("p.Svc.Op (p)")}
+	for range 50 {
+		var inputs []ast.StampInput
+		for _, in := range []struct{ src, module string }{{pkgP, ""}, {defaultP, ""}, {otherP, "acme"}} {
+			file, errs := parser.ParseFileAll(in.src)
+			if len(errs) > 0 {
+				t.Fatalf("parse: %v", errs[0])
+			}
+			inputs = append(inputs, ast.StampInput{File: file, Module: in.module, Dir: "p"})
+		}
+		file := ast.Stamp(inputs)
+		resolver.Resolve(file)
+		if got := routed(Extract(file)); !slices.Equal(got, want) {
+			checkRouted(t, got, want)
+			return
+		}
+	}
 }

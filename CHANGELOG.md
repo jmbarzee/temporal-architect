@@ -271,9 +271,11 @@ is now checked against the target's signals.
   edges once (#264), and each of its dispatch, `nexusRoute` and `unresolved`
   entries once, so coarsened edge weights are no longer doubled (#289).
 - An endpoint name declared in several namespaces belongs to its first
-  declaration, by file then position: `DUPLICATE_ENDPOINT` lands on each later
-  one and names the first's namespace, and calls, routing checks and the graph
-  all use the first, on every run (#290).
+  declaration, in definition order (input files in order, then position), as
+  other duplicates do: `DUPLICATE_ENDPOINT` lands on each later one and names
+  the first's namespace, and calls, routing checks and the graph all use the
+  first, on every run (#290). A `DISPATCH_NO_REACHABLE_DEPLOYMENT` names an
+  operation by its own service when another service's name prefixes it.
 - **LSP:** rename, references and go-to-definition ranges cover the name, not
   the statement keyword, so a rename no longer overwrites `workflow` or
   `signal`, and renaming a Nexus endpoint edits the endpoint on a `nexus` call.

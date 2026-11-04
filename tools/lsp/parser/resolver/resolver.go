@@ -465,13 +465,14 @@ func Resolve(file *ast.File) []*ResolveError {
 
 	// Build the flat-global endpoint map across all namespaces. Endpoints are
 	// never package-qualified; a duplicate endpoint name across any two
-	// namespaces (in any package) stays a hard error. Namespaces are walked in
-	// definition order, by file then position, so the first declaration keeps
-	// the name and each later one is the duplicate.
-	byPosition := func(a, b *ast.NamespaceDef) int {
-		return cmp.Or(cmp.Compare(a.SourceFile, b.SourceFile), cmp.Compare(a.Line, b.Line), cmp.Compare(a.Column, b.Column))
-	}
-	for _, ns := range slices.SortedFunc(maps.Values(s.namespaces), byPosition) {
+	// namespaces (in any package) stays a hard error. The namespaces pass 1
+	// keeps are walked in definition order, so the first declaration keeps the
+	// name and each later one is the duplicate.
+	for _, def := range file.Definitions {
+		ns, ok := def.(*ast.NamespaceDef)
+		if !ok || s.namespaces[pkgKey{effPkg(ast.PackageIDOf(ns, nil), s.filePkg), ns.Name}] != ns {
+			continue
+		}
 		for i := range ns.Endpoints {
 			ep := &ns.Endpoints[i]
 			ep.Namespace = ns.Name

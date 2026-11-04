@@ -1,8 +1,6 @@
 package graph
 
 import (
-	"cmp"
-	"maps"
 	"slices"
 
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
@@ -76,6 +74,8 @@ func indexAST(file *ast.File) *astIndex {
 		endpointsByName: map[string]*endpointDeployment{},
 	}
 
+	// kept is the namespace the resolver keeps for each (package, name).
+	kept := map[string]*ast.NamespaceDef{}
 	for _, def := range file.Definitions {
 		switch d := def.(type) {
 		case *ast.WorkflowDef:
@@ -86,18 +86,13 @@ func indexAST(file *ast.File) *astIndex {
 			idx.workers[d.Name] = d
 		case *ast.NamespaceDef:
 			idx.namespaces[d.Name] = d
+			kept[idx.defQName(d, d.Name)] = d
 		case *ast.NexusServiceDef:
 			idx.nexusServices[idx.defQName(d, d.Name)] = d
 		}
 	}
 
-	// Namespaces in definition order, by file then position, so an endpoint
-	// name declared twice (DUPLICATE_ENDPOINT) is its first declaration's, as
-	// the resolver binds it.
-	byPosition := func(a, b *ast.NamespaceDef) int {
-		return cmp.Or(cmp.Compare(a.SourceFile, b.SourceFile), cmp.Compare(a.Line, b.Line), cmp.Compare(a.Column, b.Column))
-	}
-	for _, ns := range slices.SortedFunc(maps.Values(idx.namespaces), byPosition) {
+	for _, ns := range idx.namespaces {
 		for _, nw := range ns.Workers {
 			queue := taskQueue(nw.Options)
 			idx.workerDeployments = append(idx.workerDeployments, workerDeployment{
@@ -109,6 +104,16 @@ func indexAST(file *ast.File) *astIndex {
 				TemplateParams: nw.TemplateParams,
 				worker:         idx.workers[nw.Worker.Name],
 			})
+		}
+	}
+
+	// An endpoint name declared twice (DUPLICATE_ENDPOINT) is its first
+	// declaration's, as the resolver binds it: walk the namespaces it keeps in
+	// definition order.
+	for _, def := range file.Definitions {
+		ns, ok := def.(*ast.NamespaceDef)
+		if !ok || kept[idx.defQName(ns, ns.Name)] != ns {
+			continue
 		}
 		for i := range ns.Endpoints {
 			ep := &ns.Endpoints[i]
