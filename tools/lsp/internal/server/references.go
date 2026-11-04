@@ -1,6 +1,8 @@
 package server
 
 import (
+	"strings"
+
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
 	"github.com/jmbarzee/glsp"
 	protocol "github.com/jmbarzee/glsp/protocol_3_16"
@@ -34,7 +36,7 @@ func referencesHandler(store *DocumentStore) protocol.TextDocumentReferencesFunc
 		for _, ref := range refs {
 			locs = append(locs, protocol.Location{
 				URI:   params.TextDocument.URI,
-				Range: nameRange(ref),
+				Range: nameRange(doc.Content, ref, name),
 			})
 		}
 		return locs, nil
@@ -278,19 +280,41 @@ func matchesAsyncTarget(target ast.AsyncTarget, name, kind string) bool {
 	return false
 }
 
-// nameRange returns an LSP range covering just the name portion of a node.
-func nameRange(node ast.Node) protocol.Range {
-	n, _ := nameOfNode(node)
-	line := uint32(0)
-	if node.NodeLine() > 0 {
-		line = uint32(node.NodeLine() - 1)
-	}
-	col := uint32(0)
-	if node.NodeColumn() > 0 {
-		col = uint32(node.NodeColumn() - 1)
+// nameRange returns an LSP range covering name's token on node's line. Most
+// nodes record only their keyword's column, so the name is found in content as
+// the first whole identifier spelled name at or after that column.
+func nameRange(content string, node ast.Node, name string) protocol.Range {
+	line := max(node.NodeLine()-1, 0)
+	col := max(node.NodeColumn()-1, 0)
+	if lines := strings.Split(content, "\n"); line < len(lines) {
+		if i := identIndex(lines[line], name, col); i >= 0 {
+			col = i
+		}
 	}
 	return protocol.Range{
-		Start: protocol.Position{Line: line, Character: col},
-		End:   protocol.Position{Line: line, Character: col + uint32(len(n))},
+		Start: protocol.Position{Line: uint32(line), Character: uint32(col)},
+		End:   protocol.Position{Line: uint32(line), Character: uint32(col + len(name))},
 	}
+}
+
+// identIndex returns the byte index of the first whole identifier name in text
+// at or after from, or -1.
+func identIndex(text, name string, from int) int {
+	for name != "" && from <= len(text) {
+		i := strings.Index(text[from:], name)
+		if i < 0 {
+			return -1
+		}
+		i += from
+		end := i + len(name)
+		if (i == 0 || !isIdentByte(text[i-1])) && (end == len(text) || !isIdentByte(text[end])) {
+			return i
+		}
+		from = i + 1
+	}
+	return -1
+}
+
+func isIdentByte(b byte) bool {
+	return b == '_' || '0' <= b && b <= '9' || 'a' <= b && b <= 'z' || 'A' <= b && b <= 'Z'
 }

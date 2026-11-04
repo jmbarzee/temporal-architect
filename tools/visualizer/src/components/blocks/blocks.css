@@ -1433,3 +1433,8 @@
   animation: flash-target 1s ease-out;
   border-radius: 8px;
 }
+
+/* A nested row the reveal targets (a nexus operation or endpoint) */
+.block .flash-target {
+  animation: flash-target 1s ease-out;
+}

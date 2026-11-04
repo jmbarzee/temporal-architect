@@ -24,14 +24,6 @@ import (
 // containment relationship was authored.
 func (g *Graph) emitContainment(idx *astIndex) {
 	for _, ns := range idx.namespaces {
-		for _, nw := range ns.Workers {
-			g.Edges = append(g.Edges, Edge{
-				From: WorkerID(nw.Worker.Name, ns.Name),
-				To:   NamespaceID(ns.Name),
-				Kind: EdgeContainment,
-				Line: nw.Line,
-			})
-		}
 		for i := range ns.Endpoints {
 			ep := &ns.Endpoints[i]
 			g.Edges = append(g.Edges, Edge{
@@ -43,18 +35,33 @@ func (g *Graph) emitContainment(idx *astIndex) {
 		}
 	}
 
+	// A worker instantiated twice in one namespace is one node, so only its
+	// first instantiation emits edges.
+	seen := map[string]bool{}
 	for _, wd := range idx.workerDeployments {
+		id := WorkerID(wd.WorkerName, wd.NamespaceName)
+		if seen[id] {
+			continue
+		}
+		seen[id] = true
+		g.Edges = append(g.Edges, Edge{
+			From: id,
+			To:   NamespaceID(wd.NamespaceName),
+			Kind: EdgeContainment,
+			Line: wd.Line,
+		})
 		if wd.worker == nil {
 			continue
 		}
 		emitHostedContainment(g, wd, KindWorkflow, refNamesAndLines(wd.worker.Workflows, idx))
 		emitHostedContainment(g, wd, KindActivity, refNamesAndLines(wd.worker.Activities, idx))
 		emitHostedContainment(g, wd, KindNexusService, refNamesAndLines(wd.worker.Services, idx))
-	}
-
-	for _, svc := range idx.nexusServices {
-		svcQName := idx.defQName(svc.Package, svc.Name)
-		for _, wd := range idx.deploymentsHosting(KindNexusService, svcQName) {
+		for _, r := range wd.worker.Services {
+			svcQName := hostedRefQName(r, idx)
+			svc := idx.nexusServices[svcQName]
+			if svc == nil {
+				continue
+			}
 			for _, op := range svc.Operations {
 				opName := nexusOpQualifiedName(svcQName, op.Name)
 				g.Edges = append(g.Edges, Edge{

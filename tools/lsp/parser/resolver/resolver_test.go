@@ -1,6 +1,8 @@
 package resolver
 
 import (
+	"fmt"
+	"slices"
 	"strings"
 	"testing"
 
@@ -1138,4 +1140,29 @@ func hasWarning(errs []*ResolveError, substr string) bool {
 		}
 	}
 	return false
+}
+
+// TestDiagnosticOrder pins Resolve's output to file, line, column, then code
+// order. Namespaces and workers are walked from maps, so without the final sort
+// this order changes from run to run (issue #237).
+func TestDiagnosticOrder(t *testing.T) {
+	const n = 8
+	var b strings.Builder
+	for i := range n {
+		fmt.Fprintf(&b, "worker w%d:\n    workflow Missing%d\n\n", i, i)
+	}
+	for i := range n {
+		fmt.Fprintf(&b, "namespace ns%d:\n    worker ghost%d\n\n", i, i)
+	}
+	for run := range 20 {
+		var got []string
+		var lines []int
+		for _, e := range Resolve(mustParse(t, b.String())) {
+			got = append(got, fmt.Sprintf("%d:%d %s", e.Line, e.Column, e.Code()))
+			lines = append(lines, e.Line)
+		}
+		if len(lines) != 2*n || !slices.IsSorted(lines) {
+			t.Fatalf("run %d: diagnostics not in source order: %q", run, got)
+		}
+	}
 }
