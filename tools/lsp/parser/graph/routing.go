@@ -224,7 +224,7 @@ func (g *Graph) emitQueuedCall(
 	}
 
 	if !matched {
-		g.addDiagnostic(warningDispatchNoReachable(callerID, calleeKind, calleeName, callerDep.NamespaceName, queue, line))
+		g.addDiagnostic(warningDispatchNoReachable(callerID, calleeKind, g.calleeLabel(idx, calleeKind, calleeName), callerDep.NamespaceName, queue, line))
 	}
 }
 
@@ -282,7 +282,7 @@ func (g *Graph) emitNexusCall(
 	}
 
 	if !matched && ep.Queue != "" {
-		g.addDiagnostic(warningDispatchNoReachable(callerID, KindNexusOperation, opName, ep.Namespace, ep.Queue, line))
+		g.addDiagnostic(warningDispatchNoReachable(callerID, KindNexusOperation, g.calleeLabel(idx, KindNexusOperation, opName), ep.Namespace, ep.Queue, line))
 	}
 }
 
@@ -314,7 +314,7 @@ func (g *Graph) emitAsyncBacking(
 	}
 
 	if !matched && opDep.Queue != "" {
-		g.addDiagnostic(warningDispatchNoReachable(fromID, KindWorkflow, workflowName, opDep.NamespaceName, opDep.Queue, line))
+		g.addDiagnostic(warningDispatchNoReachable(fromID, KindWorkflow, g.calleeLabel(idx, KindWorkflow, workflowName), opDep.NamespaceName, opDep.Queue, line))
 	}
 }
 

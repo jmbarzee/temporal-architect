@@ -10,6 +10,7 @@ package graph
 
 import (
 	"fmt"
+	"strings"
 	"sort"
 
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
@@ -435,6 +436,28 @@ func (g *Graph) addDiagnostic(d Diagnostic) {
 		}
 	}
 	g.Diagnostics = append(g.Diagnostics, d)
+}
+
+// calleeLabel names a dispatch target in a message by its label (ast.Label),
+// never by its qualified name, which carries the package identity.
+func (g *Graph) calleeLabel(idx *astIndex, kind, qname string) string {
+	switch kind {
+	case KindWorkflow:
+		if d := idx.workflows[qname]; d != nil {
+			return ast.Label(g.Packages, ast.PackageIDOf(d, idx.file), d.Name)
+		}
+	case KindActivity:
+		if d := idx.activities[qname]; d != nil {
+			return ast.Label(g.Packages, ast.PackageIDOf(d, idx.file), d.Name)
+		}
+	case KindNexusOperation:
+		for svcQName, svc := range idx.nexusServices {
+			if op, ok := strings.CutPrefix(qname, svcQName+"."); ok {
+				return ast.Label(g.Packages, ast.PackageIDOf(svc, idx.file), nexusOpQualifiedName(svc.Name, op))
+			}
+		}
+	}
+	return qname
 }
 
 func warningDispatchNoReachable(from, calleeKind, calleeName, namespace, queue string, line int) Diagnostic {

@@ -28,7 +28,7 @@ import type {
   ThemeChoice,
 } from '@temporal-architect/graph-view'
 import React from 'react'
-import { DEFAULT_TAXONOMY } from '../adapter/node-types'
+import { DEFAULT_TAXONOMY, nodeTypeForDefType } from '../adapter/node-types'
 import './WorkflowCanvas.css'
 import type { TWFFile, WorkflowDef, ActivityDef, WorkerDef, NamespaceDef, NexusServiceDef, SignalDecl, QueryDecl, UpdateDecl } from '../types/ast'
 import { qualifiedNameOf } from '../types/ast'
@@ -358,10 +358,12 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
     // and centres on the node. A target with no node in the graph is a manual
     // switch.
     if (target === 'graph' && transition.kind === 'focus') {
-      // By definition key — the node's copyKey — not by its display name.
+      // By definition key — the node's copyKey, `${kind}:${qualifiedName}` —
+      // not by its display name. The Tree's type is the definition's
+      // (`workflowDef`); the key's kind is the graph node type's.
       const { name, values } = transition.target
-      const key = `${values[DEF_TYPE_DIMENSION]}:${name}`
-      const node = model.graph.nodes.find(n => n.copyKey === key)
+      const kind = nodeTypeForDefType(values[DEF_TYPE_DIMENSION])
+      const node = kind ? model.graph.nodes.find(n => n.copyKey === `${kind}:${name}`) : undefined
       if (node) focus('graph', node)
       else switchTo('graph')
       setGraphEverShown(true)

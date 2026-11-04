@@ -2,6 +2,7 @@
 // the graph's packages table, never parsed out of the id.
 
 import { displayNameFor, nodeLabel } from '../adapter/build'
+import { nodeTypeForDefType } from '../adapter/node-types'
 import type { ParserGraph, ParserNode } from '../types/parser-graph'
 import { check, equal } from './check'
 
@@ -34,5 +35,10 @@ export function labelChecks(): void {
     const pg = { nodes: [node({ id: 'workflow:top.Main/worker:w/namespace:ns', definition: 'workflow:top.Main', name: 'Main', packageId: 'top' })], packages: { top: { name: 'top' } } } as unknown as ParserGraph
     equal(nodeLabel(pg, 'workflow:top.Main/worker:w/namespace:ns'), 'top.Main')
     equal(nodeLabel(pg, 'missing'), 'missing')
+  })
+  check('a Tree focus maps a definition type to the graph kind of its key', () => {
+    equal(nodeTypeForDefType('workflowDef'), 'workflow')
+    equal(nodeTypeForDefType('nexusServiceDef'), 'nexusService')
+    equal(nodeTypeForDefType('nope'), undefined)
   })
 }

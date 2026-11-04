@@ -364,9 +364,10 @@ func checkTypeNames[T interface {
 			first[r.Name] = at
 			continue
 		}
-		msg := fmt.Sprintf("worker %s registers %s %s and %s %s under one name, %q; Temporal registers types by name, not package, so one worker can hold only one of them", w.Name, kind, ast.QualifiedName(prev.pkg, prev.name), kind, ast.QualifiedName(at.pkg, at.name), r.Name)
+		packages := ast.PackageRefs(v.file)
+		msg := fmt.Sprintf("worker %s registers %s %s and %s %s under one name, %q; Temporal registers types by name, not package, so one worker can hold only one of them", w.Name, kind, ast.Label(packages, prev.pkg, prev.name), kind, ast.Label(packages, at.pkg, at.name), r.Name)
 		if prev == at {
-			msg = fmt.Sprintf("worker %s registers %s %s twice; Temporal registers each name once per worker", w.Name, kind, ast.QualifiedName(at.pkg, at.name))
+			msg = fmt.Sprintf("worker %s registers %s %s twice; Temporal registers each name once per worker", w.Name, kind, ast.Label(packages, at.pkg, at.name))
 		}
 		v.errs = append(v.errs, &Error{
 			Msg:    msg,
@@ -1092,9 +1093,8 @@ func sameSet[K comparable](a, b map[K]bool) bool {
 }
 
 // checkUncovered reports a warning for each definition in defs whose
-// (package, name) key is not present in the covered set. The bare name (never
-// the package-qualified form) is used in the message and Error.Name, keeping
-// single-package diagnostics byte-identical.
+// (package, name) key is not present in the covered set, naming it by its
+// label in the message and by its bare name in Error.Name.
 func checkUncovered[T ast.Definition](defs map[pkgKey]T, covered map[pkgKey]bool, packages map[string]ast.PackageRef, msgFmt string, kind ErrorKind, errs *[]*Error) {
 	for key, node := range defs {
 		if !covered[key] {
