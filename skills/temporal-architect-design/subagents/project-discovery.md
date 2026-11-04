@@ -13,22 +13,23 @@ Inputs:
 - Slice: <paths / domain / entry points>
 - Focus: <what the caller needs>
 
+Read code by the slice's language author: detect the language from its project root,
+then load that author's `reference/discovery.md` (the sibling
+`temporal-architect-author-<lang>` skill) and its forward references read backward
+([Language signals](../reference/reverse-engineering.md#language-signals)). Never
+reconstruct SDK meaning yourself; a language with no author is an open question.
+
 Scan for:
-- build/codegen tooling (Makefile, buf.gen.yaml, //go:generate, protoc plugins) —
-  is the code hand-written or generated, and by what?
+- build/codegen tooling — is the code hand-written or generated, and by what?
 - package layout — where workflows/activities live, proto/ -> gen/ -> lib/ splits
 - Temporal SDK usage — workflow/activity/nexus call sites, signal/query/update handlers
-- registration style — worker.New + Register*, generated RegisterXxx helpers, fx wiring,
-  struct-vs-func activities — including the per-slice shared worker -> task queue ->
-  registered types mapping (record the mapping, not the wiring code)
+- registration — the per-slice shared worker -> task queue -> registered types mapping
+  (record the mapping, not the wiring code)
 - .twf/.tf presence, including .twf `package` / `import` layout and every `twf.mod`
   location — or that none exists while packaged .twf files do (they are all ignored)
 - impl-link comment headers — they point straight at the implementation
 
 Return a COMPACT STRUCTURED SUMMARY — conclusions only, never raw file dumps:
-tooling, layout, SDK usage, registration (with the shared worker -> task queue -> types
-topology mapping), existing .twf (with its `twf.mod`s) and what it covers, impl-links,
-open questions.
-
-For SDK-symbol meaning, delegate to the relevant author skill's reference (e.g.
-author-go references read backward) rather than reconstructing it yourself.
+language and project roots, tooling, layout, SDK usage, registration (with the shared
+worker -> task queue -> types topology mapping), existing .twf (with its `twf.mod`s)
+and what it covers, impl-links, open questions.

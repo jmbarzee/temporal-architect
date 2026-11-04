@@ -51,7 +51,7 @@ w.RegisterWorkflow(BillingChargeWorkflow) // handler workflows must also be regi
 
 The choice is static — the builder function, not runtime conditions.
 
-- **Sync** (`nexus.NewSyncOperation`) — must finish within 10 seconds: short computations, querying/signaling/updating a workflow, direct calls to external services or databases. On handler timeout the caller's Nexus machinery retries until `ScheduleToCloseTimeout`.
+- **Sync** (`nexus.NewSyncOperation`) — must finish within 10 seconds: short computations, querying/signaling/updating a workflow, direct calls to external services or databases, or (experimental) starting a standalone activity with `client.ExecuteActivity`, its activity ID derived from the Nexus request ID. On handler timeout the caller's Nexus machinery retries until `ScheduleToCloseTimeout`.
 - **Async** (`temporalnexus.NewWorkflowRunOperation`) — any duration, when the operation is a Temporal workflow. The caller gets a completion callback; supports cancellation propagation and re-attachment via operation token.
 
 ## Naming contract

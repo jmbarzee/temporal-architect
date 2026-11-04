@@ -17,7 +17,7 @@ The greenfield advice "write before you read the reference docs" inverts here: t
 3. **Fidelity check** — confirm the `.twf` matches what the code does ([Fidelity first](#fidelity-first-then-design-review)).
 4. **Design Review** — only now run the standard [Design Review](../SKILL.md#design-review).
 
-Mirror the code's layout: `twf mod init <module path>` at each code module's root (beside its `go.mod`), with that module's path, so `.twf` import paths match the code's; each domain in its own [package](./twf-conventions.md#package-per-domain-directory), `import` across packages for cross-domain references, and an [impl-link header](./twf-conventions.md#impl-link-header) recording where the implementation lives. `worker` and `namespace` follow [Deployment topology during recovery](#deployment-topology-during-recovery).
+Mirror the code's layout: `twf mod init <module path>` at each code module's [root](#language-signals), with that module's path, so `.twf` import paths match the code's; each domain in its own [package](./twf-conventions.md#package-per-domain-directory), `import` across packages for cross-domain references, and an [impl-link header](./twf-conventions.md#impl-link-header) recording where the implementation lives. `worker` and `namespace` follow [Deployment topology during recovery](#deployment-topology-during-recovery).
 
 ### B1b — Drift (`.twf` exists but is stale)
 
@@ -57,14 +57,25 @@ An `IMPLICIT_ROUTING_MISMATCH` or `EXPLICIT_ROUTING_MISMATCH` means a call canno
 Read for **design structure**, not line-by-line behavior:
 
 - **Entry points first** — client-started, schedule-started, Nexus-operation-backing, and handler-bearing workflows are the roots of the `.twf`.
-- **Follow call sites** — `workflow.ExecuteActivity`, `workflow.ExecuteChildWorkflow`, Nexus operation calls become `activity` / `workflow` / `nexus` calls.
+- **Follow call sites** — activity, child workflow, and Nexus operation calls become `activity` / `workflow` / `nexus` calls.
 - **Keep every workflow-to-workflow edge.** Child workflows, Nexus operations, and signals are the only edges deeper than one level; activities are leaves. Never flatten a child workflow into an activity stub. A signal by ID from workflow code is a type-head send ([workflow-id-schemes.md](../topics/workflow-id-schemes.md)); recover the target's `id_scheme:` from the ID format string its starters use. Where the notation cannot express an edge — a workflow started, signalled, or updated from an activity or client code; an update or cancel sent to another workflow — record it in prose with its `file:line`, so the graph is not read as the complete coupling.
-- **Nexus registration and access** — a Go service registered with only some of its operations (`svc.Register(subset)`), or a narrower Java/Python definition reusing a service name, is a forked contract: model each operation set as its own `nexus service` (same name in different packages if the wire name must be kept; one worker cannot register both — `WORKER_DUPLICATE_TYPE_NAME`). Terraform/`tcld` allowlist entries are namespace IDs (`orders.acct123`); write the `.twf` namespace name (`orders`) in `allowed_caller_namespaces`.
-- **Recover computed queues by how they are built** ([families](../topics/task-queues.md#per-instance-worker-families)). A process that runs `worker.New` on a queue built from an instance key (`"sandbox-"+id`) is a family worker: `task_queue: "sandbox-{sandboxId}"`. A call that builds its `TaskQueue` from data is an interpolated call `task_queue` (`"sandbox-{lease.sandboxId}"`). A queue read whole from data, such as a lease field, is learned (`"{lease.queue}"`) and must name a family; a runtime choice among static queues is static calls under an `if`.
+- **Nexus registration and access** — a service registered with only some of its operations, or a narrower definition reusing a service name, is a forked contract: model each operation set as its own `nexus service` (same name in different packages if the wire name must be kept; one worker cannot register both — `WORKER_DUPLICATE_TYPE_NAME`). Terraform/`tcld` allowlist entries are namespace IDs (`orders.acct123`); write the `.twf` namespace name (`orders`) in `allowed_caller_namespaces`.
+- **Recover computed queues by how they are built** ([families](../topics/task-queues.md#per-instance-worker-families)). A worker started on a queue built from an instance key (`"sandbox-"+id`) is a family worker: `task_queue: "sandbox-{sandboxId}"`. A call that builds its task queue from data is an interpolated call `task_queue` (`"sandbox-{lease.sandboxId}"`). A queue read whole from data, such as a lease field, is learned (`"{lease.queue}"`) and must name a family; a runtime choice among static queues is static calls under an `if`.
 - **Ignore the plumbing** — error wrapping, `context` threading, logging, options structs, retry/timeout boilerplate. Keep only options that express a real decision (a tuned timeout, a capped retry).
-- **Detect parallelism** — `workflow.Go`, `workflow.NewSelector`, futures held and `.Get` later → `await all` / `await one` / `promise`. A `.Get` right after the call is a synchronous call.
+- **Detect parallelism** — concurrent branches joined, a first-of race, and a result held for later are `await all` / `await one` / `promise`; a result taken right after the call is a synchronous call.
 
-**Delegate SDK reading to the author skill** — read its forward (DSL → Go) symbol tables backward. For Go: `temporal-architect-author-go` references (`activity-call.md`, `workflow-call.md`, `await-all.md`, …) and, for generated code, `reference/proto-driven.md` (generated `XxxActivities` iface, `RegisterXxxActivities`, `XxxFuture` → the underlying `activity`/`workflow`).
+## Language signals
+
+Reverse engineering names no SDK; each language author supplies the signals to read its code by, in one file — `temporal-architect-author-<lang>/reference/discovery.md` — under four sections:
+
+| Section | Answers |
+|---------|---------|
+| `## Project roots` | Where a code module begins, the path `twf mod init` takes, and whether it uses Temporal |
+| `## Registration` | Which workers start on which task queue and namespace, and the workflow, activity, and Nexus names each registers |
+| `## Concurrency` | Which forms are `await all`, `await one`, `promise`, a synchronous call |
+| `## Codegen` | How generated code is recognized, and what it maps back to |
+
+**Read backward through the slice's language author**: its discovery file, then its forward (DSL → code) references for each call site. The language is the one whose `## Project roots` match the slice's root ([`@lang`](https://github.com/jmbarzee/temporal-architect/issues/23) will declare it). A slice in a language no author covers is an open question for the user, not a guess.
 
 ## Fidelity first, then Design Review
 

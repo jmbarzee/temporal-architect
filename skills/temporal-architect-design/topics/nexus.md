@@ -51,7 +51,7 @@ The same modes as child workflows:
 
 An endpoint targets one static queue, so a `{param}` in its `task_queue` is `ENDPOINT_TASK_QUEUE_TEMPLATED`, and a [per-instance family](./task-queues.md#per-instance-worker-families) that registers a service is unreachable (`INSTANCE_FAMILY_HOSTS_NEXUS_SERVICE`). Put the service on a static queue in the family's namespace and give it an **async** operation whose workflow calls the family. Activities cannot cross namespaces, so that workflow runs there. A caller in another namespace reaches a family the same way.
 
-A **sync** handler that routes on has no workflow context and a ~10s deadline, and Nexus retries a start that misses it, so its action must be idempotent: a signal whose handler is idempotent, an Update whose ID derives from the Nexus request ID, or (experimental, Go `client.ExecuteActivity`) a standalone activity on the family queue whose activity ID derives from the request ID. Prefer the async operation.
+A **sync** handler that routes on has no workflow context and a ~10s deadline, and Nexus retries a start that misses it, so its action must be idempotent: a signal whose handler is idempotent, an Update whose ID derives from the Nexus request ID, or (experimental) a standalone activity on the family queue whose activity ID derives from the request ID. Prefer the async operation.
 
 ## Resolution
 
