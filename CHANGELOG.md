@@ -258,6 +258,8 @@ is now checked against the target's signals.
   site's file rather than the callee's; `TASK_QUEUE_IDENTICAL` and
   `TASK_QUEUE_MISMATCH` now carry a position; option value errors point at the
   value.
+- **Style:** tabs are the canonical `.twf` indentation, one per level. Spaces
+  stay accepted; one file uses one style (`twf spec indentation`).
 - **Visualizer:** worker families get a cardinality badge; packaged definitions
   get file chips; "Show in Tree" / "Show in Graph" resolve a node to its owning
   definition by qualified name, including nexus operation and endpoint nodes.
@@ -294,6 +296,10 @@ is now checked against the target's signals.
   comments.
 - A line holding only tabs, or tabs and spaces, is a blank line, as a
   space-only line already was. A tab between tokens is whitespace.
+- Tab-indented files parse. A file's first indented line sets its style, tabs
+  or spaces, and indentation that mixes the two, within a line or across
+  lines, is a `parse/LEX` error naming that style. A tab after a line's
+  leading spaces no longer turns the statement into a silent raw line.
 - **LSP:** a bad statement line drops only itself from the editor's outline,
   hover and references; the definition around it and its other statements stay.
 - An undefined workflow, activity, signal or update used as a `promise` /
