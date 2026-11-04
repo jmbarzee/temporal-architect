@@ -58,7 +58,7 @@ var routingKinds = []ErrorKind{ErrExplicitRoutingMismatch, ErrImplicitRoutingMis
 // queue matches it — identical spelling, or the same shape — and the message
 // says which comparison failed.
 func TestExplicitRoutingMatchesShape(t *testing.T) {
-	const at = "error EXPLICIT_ROUTING_MISMATCH 2:5 A : "
+	const at = "error EXPLICIT_ROUTING_MISMATCH 2:2 A : "
 	tests := []struct {
 		call, deploy string
 		want         []string
@@ -134,8 +134,8 @@ namespace ns:
 `
 	const msg = `activity A has task_queue "a-{x.id}" (from its default_options), but no worker polling a queue of that shape in namespace ns registers it`
 	checkRendered(t, render(Validate(resolvedAllowingErrors(t, src)), routingKinds...), []string{
-		"error EXPLICIT_ROUTING_MISMATCH 2:5 A : " + msg,
-		"error EXPLICIT_ROUTING_MISMATCH 3:5 A : " + msg,
+		"error EXPLICIT_ROUTING_MISMATCH 2:2 A : " + msg,
+		"error EXPLICIT_ROUTING_MISMATCH 3:2 A : " + msg,
 	})
 }
 
@@ -143,7 +143,7 @@ namespace ns:
 // placement and needs a placement with the same deploy key. A malformed
 // placement has none to inherit.
 func TestImplicitRoutingByDeployKey(t *testing.T) {
-	const at = "error IMPLICIT_ROUTING_MISMATCH 2:5 Child : "
+	const at = "error IMPLICIT_ROUTING_MISMATCH 2:2 Child : "
 	tests := []struct {
 		parentQ, childQ string
 		want            []string
@@ -217,8 +217,8 @@ namespace ns:
 			task_queue: "sandbox-{id}"
 `
 	checkRendered(t, render(Validate(resolvedAllowingErrors(t, src)), ErrExplicitRoutingMismatch, ErrInstanceQueueNoStartTimeout, ErrMissingTaskQueue), []string{
-		`hint INSTANCE_QUEUE_NO_START_TIMEOUT 2:5 A : activity A routes to the per-instance queue family "sandbox-{id}" in namespace ns with neither schedule_to_start_timeout nor schedule_to_close_timeout: if instances are short-lived, a task for a vanished instance waits until the calling workflow's own timeout or cancellation`,
-		`error EXPLICIT_ROUTING_MISMATCH 5:5 B : activity B has task_queue "nowhere", but no worker on that queue in namespace ns registers it`,
+		`hint INSTANCE_QUEUE_NO_START_TIMEOUT 2:2 A : activity A routes to the per-instance queue family "sandbox-{id}" in namespace ns with neither schedule_to_start_timeout nor schedule_to_close_timeout: if instances are short-lived, a task for a vanished instance waits until the calling workflow's own timeout or cancellation`,
+		`error EXPLICIT_ROUTING_MISMATCH 5:2 B : activity B has task_queue "nowhere", but no worker on that queue in namespace ns registers it`,
 	})
 }
 
@@ -231,7 +231,7 @@ func TestEndpointLinkageBySpelling(t *testing.T) {
 		want               []string
 	}{
 		{"q", "q", nil},
-		{"q-{a.b}", "q-{x}", []string{`error ENDPOINT_SERVICE_LINKAGE 8:5 Ep : nexus endpoint Ep routes to task queue "q-{a.b}" in namespace ns, but no worker on that queue has service Svc`}},
+		{"q-{a.b}", "q-{x}", []string{`error ENDPOINT_SERVICE_LINKAGE 8:2 Ep : nexus endpoint Ep routes to task queue "q-{a.b}" in namespace ns, but no worker on that queue has service Svc`}},
 		{"q-{x}", "q", nil},
 	}
 	for _, tt := range tests {
@@ -272,7 +272,7 @@ namespace ns:
 // TestInstanceQueueNoStartTimeout: an activity call that names its queue and
 // reaches a family hints when nothing bounds its wait for a poller.
 func TestInstanceQueueNoStartTimeout(t *testing.T) {
-	const hint = `hint INSTANCE_QUEUE_NO_START_TIMEOUT 2:5 A : activity A routes to the per-instance queue family "sandbox-{id}" in namespace ns with neither schedule_to_start_timeout nor schedule_to_close_timeout: if instances are short-lived, a task for a vanished instance waits until the calling workflow's own timeout or cancellation`
+	const hint = `hint INSTANCE_QUEUE_NO_START_TIMEOUT 2:2 A : activity A routes to the per-instance queue family "sandbox-{id}" in namespace ns with neither schedule_to_start_timeout nor schedule_to_close_timeout: if instances are short-lived, a task for a vanished instance waits until the calling workflow's own timeout or cancellation`
 	tests := []struct {
 		name               string
 		callOpts, defaults string
@@ -293,13 +293,13 @@ func TestInstanceQueueNoStartTimeout(t *testing.T) {
 	activity A(lease) -> r
 		options:
 			task_queue: "sandbox-{lease.id}"
-            ` + tt.callOpts + `
+			` + tt.callOpts + `
 	close complete(r)
 
 activity A(lease: Lease) -> (Lease):
 	default_options:
 		start_to_close_timeout: 5m
-        ` + tt.defaults + `
+		` + tt.defaults + `
 	return lease
 
 worker ww:
@@ -373,10 +373,10 @@ namespace a:
 	const routing = `activity A has task_queue "q-{lease.id}"%s, but no worker polling a queue of that shape in namespace c registers it`
 	const hint = `activity A routes to the per-instance queue family "q-{x}" in namespace a with neither schedule_to_start_timeout nor schedule_to_close_timeout: if instances are short-lived, a task for a vanished instance waits until the calling workflow's own timeout or cancellation`
 	checkRendered(t, render(Validate(resolvedAllowingErrors(t, src)), ErrExplicitRoutingMismatch, ErrInstanceQueueNoStartTimeout), []string{
-		"error EXPLICIT_ROUTING_MISMATCH 2:5 A : " + fmt.Sprintf(routing, ""),
-		"hint INSTANCE_QUEUE_NO_START_TIMEOUT 2:5 A : " + hint,
-		"error EXPLICIT_ROUTING_MISMATCH 5:5 A : " + fmt.Sprintf(routing, " (from its default_options)"),
-		"hint INSTANCE_QUEUE_NO_START_TIMEOUT 5:5 A : " + hint,
+		"error EXPLICIT_ROUTING_MISMATCH 2:2 A : " + fmt.Sprintf(routing, ""),
+		"hint INSTANCE_QUEUE_NO_START_TIMEOUT 2:2 A : " + hint,
+		"error EXPLICIT_ROUTING_MISMATCH 5:2 A : " + fmt.Sprintf(routing, " (from its default_options)"),
+		"hint INSTANCE_QUEUE_NO_START_TIMEOUT 5:2 A : " + hint,
 	})
 }
 
@@ -450,8 +450,8 @@ namespace ns:
 			task_queue: "sandbox-{c}"
 `,
 			want: []string{
-				`error TASK_QUEUE_MISMATCH 20:5 sandbox-{a} ns.twf: workers aw and bw on task queues "sandbox-{a}" and "sandbox-{b}" in namespace ns have different type sets`,
-				`warning TASK_QUEUE_IDENTICAL 23:5 sandbox-{a} ns.twf: workers aw and aw2 on task queues "sandbox-{a}" and "sandbox-{c}" in namespace ns have identical type sets (redundant)`,
+				`error TASK_QUEUE_MISMATCH 20:2 sandbox-{a} ns.twf: workers aw and bw on task queues "sandbox-{a}" and "sandbox-{b}" in namespace ns have different type sets`,
+				`warning TASK_QUEUE_IDENTICAL 23:2 sandbox-{a} ns.twf: workers aw and aw2 on task queues "sandbox-{a}" and "sandbox-{c}" in namespace ns have identical type sets (redundant)`,
 			},
 		},
 		{
@@ -466,7 +466,7 @@ namespace ns:
 			task_queue: "sandbox-{a}"
 `,
 			want: []string{
-				`warning TASK_QUEUE_IDENTICAL 20:5 sandbox-{a} ns.twf: workers aw and aw2 on task queue "sandbox-{a}" in namespace ns have identical type sets (redundant)`,
+				`warning TASK_QUEUE_IDENTICAL 20:2 sandbox-{a} ns.twf: workers aw and aw2 on task queue "sandbox-{a}" in namespace ns have identical type sets (redundant)`,
 			},
 		},
 		{
@@ -481,7 +481,7 @@ namespace ns:
 			task_queue: "{podId}"
 `,
 			want: []string{
-				`error TASK_QUEUE_MISMATCH 20:5 {hostId} ns.twf: workers aw and bw on task queues "{hostId}" and "{podId}" in namespace ns have different type sets`,
+				`error TASK_QUEUE_MISMATCH 20:2 {hostId} ns.twf: workers aw and bw on task queues "{hostId}" and "{podId}" in namespace ns have different type sets`,
 			},
 		},
 		{
@@ -526,8 +526,8 @@ namespace ns:
 			task_queue: "y"
 `,
 			want: []string{
-				`error TASK_QUEUE_MISMATCH 23:5 z ns.twf: workers aw and bw on task queue "z" in namespace ns have different type sets`,
-				`error TASK_QUEUE_MISMATCH 26:5 y ns.twf: workers aw and bw on task queue "y" in namespace ns have different type sets`,
+				`error TASK_QUEUE_MISMATCH 23:2 z ns.twf: workers aw and bw on task queue "z" in namespace ns have different type sets`,
+				`error TASK_QUEUE_MISMATCH 26:2 y ns.twf: workers aw and bw on task queue "y" in namespace ns have different type sets`,
 			},
 		},
 	}
@@ -549,7 +549,7 @@ func TestTaskQueueOverlap(t *testing.T) {
 		want   []string
 	}{
 		{"static beside a family", []string{"sandbox-{id}", "sandbox-pool"}, []string{
-			`hint TASK_QUEUE_OVERLAP 16:13 ns ns.twf: task_queue "sandbox-pool" of worker w2 and "sandbox-{id}" of worker w1 could name the same queue in namespace ns`,
+			`hint TASK_QUEUE_OVERLAP 16:4 ns ns.twf: task_queue "sandbox-pool" of worker w2 and "sandbox-{id}" of worker w1 could name the same queue in namespace ns`,
 		}},
 		{"a bare family is exempt, first", []string{"{hostId}", "pool-{x}"}, nil},
 		{"a bare family is exempt, second", []string{"pool-{x}", "{hostId}"}, nil},
@@ -558,8 +558,8 @@ func TestTaskQueueOverlap(t *testing.T) {
 		{"disjoint", []string{"sandbox-{a}", "pool"}, nil},
 		{"malformed overlaps nothing", []string{"s{a}{b}", "s{x}"}, nil},
 		{"pairs in source order", []string{"a-{x}", "b-{y}", "b-z", "a-w"}, []string{
-			`hint TASK_QUEUE_OVERLAP 25:13 ns ns.twf: task_queue "b-z" of worker w3 and "b-{y}" of worker w2 could name the same queue in namespace ns`,
-			`hint TASK_QUEUE_OVERLAP 28:13 ns ns.twf: task_queue "a-w" of worker w4 and "a-{x}" of worker w1 could name the same queue in namespace ns`,
+			`hint TASK_QUEUE_OVERLAP 25:4 ns ns.twf: task_queue "b-z" of worker w3 and "b-{y}" of worker w2 could name the same queue in namespace ns`,
+			`hint TASK_QUEUE_OVERLAP 28:4 ns ns.twf: task_queue "a-w" of worker w4 and "a-{x}" of worker w1 could name the same queue in namespace ns`,
 		}},
 	}
 	for _, tt := range tests {
@@ -611,7 +611,7 @@ namespace prod:
 `},
 	))
 	checkRendered(t, render(errs, ErrTaskQueueOverlap), []string{
-		`hint TASK_QUEUE_OVERLAP 12:13 prod alpha.twf: task_queue "s-pool" of worker wb and "s-{id}" of worker wa could name the same queue in namespace prod`,
+		`hint TASK_QUEUE_OVERLAP 12:4 prod alpha.twf: task_queue "s-pool" of worker wb and "s-{id}" of worker wa could name the same queue in namespace prod`,
 	})
 }
 
@@ -663,13 +663,13 @@ namespace ns:
 	const wf = `worker fam hosts workflow A, B on the per-instance queue family %q in namespace ns: if an instance goes away for good, its executions stall until their own timeout; short-lived families should host workflows on a shared queue`
 	const svc = `worker fam registers nexus service Svc on the per-instance queue family %q in namespace ns, but a .twf endpoint targets one static queue, so no endpoint in this design reaches it; put the service on a static queue and route on from an async operation's workflow`
 	checkRendered(t, render(Validate(resolvedAllowingErrors(t, src)), ErrInstanceFamilyHostsWorkflow, ErrInstanceFamilyHostsNexusService, ErrInstanceFamilyVersioned), []string{
-		"warning INSTANCE_FAMILY_HOSTS_NEXUS_SERVICE 29:5 ns ns.twf: " + fmt.Sprintf(svc, "fam-{id}"),
-		"hint INSTANCE_FAMILY_HOSTS_WORKFLOW 29:5 ns ns.twf: " + fmt.Sprintf(wf, "fam-{id}"),
-		`hint INSTANCE_FAMILY_VERSIONED 32:13 ns ns.twf: worker fam in namespace ns is a per-instance family on "fam-{id}" with versioning: build_id; every new instance queue needs its own versioning API call (off by default, not on Cloud)`,
-		"warning INSTANCE_FAMILY_HOSTS_NEXUS_SERVICE 33:5 ns ns.twf: " + fmt.Sprintf(svc, "other-{id}"),
-		"hint INSTANCE_FAMILY_HOSTS_WORKFLOW 33:5 ns ns.twf: " + fmt.Sprintf(wf, "other-{id}"),
-		"warning INSTANCE_FAMILY_HOSTS_NEXUS_SERVICE 37:5 ns ns.twf: " + fmt.Sprintf(svc, "third-{id}"),
-		"hint INSTANCE_FAMILY_HOSTS_WORKFLOW 37:5 ns ns.twf: " + fmt.Sprintf(wf, "third-{id}"),
-		`hint INSTANCE_FAMILY_VERSIONED 40:13 ns ns.twf: worker fam in namespace ns is a per-instance family on "third-{id}" with versioning: deployment; a deployment version accepts at most 100 distinct task queues over its life, so new instance queues are refused once that many have registered`,
+		"warning INSTANCE_FAMILY_HOSTS_NEXUS_SERVICE 29:2 ns ns.twf: " + fmt.Sprintf(svc, "fam-{id}"),
+		"hint INSTANCE_FAMILY_HOSTS_WORKFLOW 29:2 ns ns.twf: " + fmt.Sprintf(wf, "fam-{id}"),
+		`hint INSTANCE_FAMILY_VERSIONED 32:4 ns ns.twf: worker fam in namespace ns is a per-instance family on "fam-{id}" with versioning: build_id; every new instance queue needs its own versioning API call (off by default, not on Cloud)`,
+		"warning INSTANCE_FAMILY_HOSTS_NEXUS_SERVICE 33:2 ns ns.twf: " + fmt.Sprintf(svc, "other-{id}"),
+		"hint INSTANCE_FAMILY_HOSTS_WORKFLOW 33:2 ns ns.twf: " + fmt.Sprintf(wf, "other-{id}"),
+		"warning INSTANCE_FAMILY_HOSTS_NEXUS_SERVICE 37:2 ns ns.twf: " + fmt.Sprintf(svc, "third-{id}"),
+		"hint INSTANCE_FAMILY_HOSTS_WORKFLOW 37:2 ns ns.twf: " + fmt.Sprintf(wf, "third-{id}"),
+		`hint INSTANCE_FAMILY_VERSIONED 40:4 ns ns.twf: worker fam in namespace ns is a per-instance family on "third-{id}" with versioning: deployment; a deployment version accepts at most 100 distinct task queues over its life, so new instance queues are refused once that many have registered`,
 	})
 }

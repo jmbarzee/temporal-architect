@@ -625,7 +625,7 @@ func TestDuplicateDeclarationMeasuresFirst(t *testing.T) {
 workflow W():
 	signal Ping():
 		step()
-` + laterHandler + `    close complete
+` + laterHandler + `	close complete
 
 activity Work():
 	step()
@@ -658,7 +658,7 @@ namespace ns:
 		return out
 	}
 	want := complexity(src("", ""))
-	got := complexity(src("\tsignal Ping():\n"+later, "\tsync Op() -> ():\n"+later+"        close complete()\n"))
+	got := complexity(src("\tsignal Ping():\n"+later, "\tsync Op() -> ():\n"+later+"\t\tclose complete()\n"))
 	for _, k := range []string{graph.DefKey(graph.KindWorkflow, "W"), graph.DefKey(graph.KindNexusOperation, "S.Op")} {
 		if _, ok := want[k]; !ok {
 			t.Fatalf("no node %s", k)
