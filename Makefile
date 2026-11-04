@@ -222,6 +222,20 @@ vet:
 	cd tools/sampler && go vet ./...
 	cd internal/tabify && go vet ./...
 
+# ── Corpus targets ───────────────────────────────────────────────────────────
+# See corpus/README.md. CI runs `make corpus-<sdk>` once per matrix entry.
+
+.PHONY: check-corpus corpus-go
+
+## Check each corpus design on its own
+check-corpus: build-lsp
+	for d in corpus/*/; do $(BIN_DIR)/twf check $$d || exit 1; done
+
+## Check the corpus, then vet and test its Go outputs. The corpus is a user's
+## project, not part of the toolchain workspace, so go.work is off.
+corpus-go: check-corpus
+	cd corpus && GOWORK=off go vet ./... && GOWORK=off go test ./...
+
 # ── Docs targets ─────────────────────────────────────────────────────────────
 
 .PHONY: gen-docs check-docs check-tabs
