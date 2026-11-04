@@ -771,3 +771,78 @@ func TestEmptyListLiteralTokens(t *testing.T) {
 		}
 	}
 }
+
+func TestTrailingComment(t *testing.T) {
+	// A '#' after code on its line is a TRAILING_COMMENT; on a line of its own,
+	// at any indent, it is a COMMENT.
+	input := "a(\n) # one\n# two\n  # three\n"
+	expected := []token.TokenType{
+		token.IDENT, token.ARGS, token.TRAILING_COMMENT, token.NEWLINE,
+		token.COMMENT, token.NEWLINE,
+		token.INDENT, token.COMMENT, token.NEWLINE,
+		token.DEDENT, token.EOF,
+	}
+	l := New(input)
+	for i, exp := range expected {
+		tok := l.NextToken()
+		if tok.Type != exp {
+			t.Fatalf("token[%d]: expected %s, got %s (%q)", i, exp, tok.Type, tok.Literal)
+		}
+	}
+}
+
+func TestStringEscapes(t *testing.T) {
+	tests := map[string]string{
+		`"say \"hi\""`: `say "hi"`,
+		`"a\\b"`:       `a\b`,
+		`"\\"`:         `\`,
+		`"\\\""`:       `\"`,
+	}
+	for input, want := range tests {
+		tok := New(input).NextToken()
+		if tok.Type != token.STRING || tok.Literal != want {
+			t.Errorf("%s: got %s (%q), want STRING %q", input, tok.Type, tok.Literal, want)
+		}
+	}
+}
+
+func TestStringEscapedQuoteAtEndIsUnterminated(t *testing.T) {
+	tok := New(`"abc\"`).NextToken()
+	if tok.Type != token.ILLEGAL || tok.Literal != "unterminated string literal" {
+		t.Fatalf("expected unterminated string, got %s (%q)", tok.Type, tok.Literal)
+	}
+}
+
+func TestStringUnknownEscape(t *testing.T) {
+	// An unknown escape is an ILLEGAL at its backslash, followed by the whole
+	// literal with that backslash kept.
+	l := New(`"a\nb\tc"`)
+	tok := l.NextToken()
+	if tok.Type != token.ILLEGAL || tok.Column != 3 || tok.Literal != `unknown escape \n in string literal (only \" and \\ are escapes)` {
+		t.Fatalf("expected unknown-escape ILLEGAL at col 3, got %s (%q) at col %d", tok.Type, tok.Literal, tok.Column)
+	}
+	tok = l.NextToken()
+	if tok.Type != token.STRING || tok.Literal != `a\nb\tc` || tok.Column != 1 {
+		t.Fatalf(`expected STRING "a\nb\tc" at col 1, got %s (%q) at col %d`, tok.Type, tok.Literal, tok.Column)
+	}
+}
+
+func TestArgsEscapedQuote(t *testing.T) {
+	// An escaped quote inside call arguments does not end the string span, so
+	// the ')' after it stays inside the string. ARGS content stays raw.
+	tok := firstOf(New(`f("a \" ) b", "\\")`), token.ARGS)
+	if tok.Type != token.ARGS || tok.Literal != `"a \" ) b", "\\"` {
+		t.Fatalf("expected the whole group as ARGS, got %s (%q)", tok.Type, tok.Literal)
+	}
+}
+
+func TestArgsUnknownEscape(t *testing.T) {
+	l := New(`f("a\n")`)
+	tok := firstOf(l, token.ARGS)
+	if tok.Type != token.ILLEGAL || tok.Column != 5 {
+		t.Fatalf("expected unknown-escape ILLEGAL at col 5, got %s (%q) at col %d", tok.Type, tok.Literal, tok.Column)
+	}
+	if tok = l.NextToken(); tok.Type != token.ARGS || tok.Literal != `"a\n"` {
+		t.Fatalf("expected ARGS to follow the error, got %s (%q)", tok.Type, tok.Literal)
+	}
+}

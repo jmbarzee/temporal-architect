@@ -22,12 +22,15 @@ func (p *Parser) advance() {
 }
 
 // scan reads the next token from the lexer, recording and skipping any
-// structural token.ILLEGAL tokens (see advance). Centralizing the skip here
-// lets both advance and the deploy-name re-sync path share it.
+// structural token.ILLEGAL tokens (see advance) and skipping trailing comments,
+// which no grammar position accepts. Centralizing the skip here lets both
+// advance and the deploy-name re-sync path share it.
 func (p *Parser) scan() token.Token {
 	tok := p.lex.NextToken()
-	for tok.Type == token.ILLEGAL {
-		p.recordLexError(tok)
+	for tok.Type == token.ILLEGAL || tok.Type == token.TRAILING_COMMENT {
+		if tok.Type == token.ILLEGAL {
+			p.recordLexError(tok)
+		}
 		tok = p.lex.NextToken()
 	}
 	return tok

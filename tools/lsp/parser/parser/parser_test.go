@@ -2791,3 +2791,77 @@ func TestWorkerServiceThirdSegmentKeepsWorker(t *testing.T) {
 		t.Errorf("mentions = %+v, want %+v", w.OperationMentions, want)
 	}
 }
+
+// A trailing comment never stands between a block-opening line and the INDENT
+// that follows it, and is not captured as a statement.
+func TestTrailingCommentBeforeBlock(t *testing.T) {
+	input := `workflow Child(x): # header
+    close complete(x)
+
+workflow Parent(x):
+    workflow Child(x) -> y # trailing comment
+        options: # opens the block
+            workflow_execution_timeout: 1h # value
+    if (y): # condition
+        close complete(y) # inside
+    close complete(y)
+`
+	file, err := ParseFile(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	wf := file.Definitions[1].(*ast.WorkflowDef)
+	if len(wf.Body) != 3 {
+		t.Fatalf("expected 3 body statements, got %d: %+v", len(wf.Body), wf.Body)
+	}
+	call := wf.Body[0].(*ast.WorkflowCall)
+	if got := optionEntries(call.Options); got != "workflow_execution_timeout=1h" {
+		t.Errorf("call-site options = %q, want %q", got, "workflow_execution_timeout=1h")
+	}
+}
+
+// \" and \\ are the only string escapes. A STRING's value is unescaped, and an
+// escaped quote inside call arguments does not end the string.
+func TestStringEscapes(t *testing.T) {
+	input := `workflow W():
+    activity Log("a \" ) b") -> ok
+        options:
+            task_queue: "say \"hi\" \\ bye"
+    close complete()
+`
+	file, err := ParseFile(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	call := file.Definitions[0].(*ast.WorkflowDef).Body[0].(*ast.ActivityCall)
+	if got, want := optionEntries(call.Options), `task_queue=say "hi" \ bye`; got != want {
+		t.Errorf("options = %q, want %q", got, want)
+	}
+}
+
+// Any other escape is a lexical error at its backslash. The literal is still
+// consumed whole, so the rest of the line parses.
+func TestStringUnknownEscapeIsLoud(t *testing.T) {
+	input := `workflow W():
+    activity Log("a\nb") -> ok
+        options:
+            task_queue: "q\tx"
+    close complete()
+`
+	file, errs := ParseFileAll(input)
+	var got []string
+	for _, e := range errs {
+		got = append(got, fmt.Sprintf("%d:%d %s", e.Line, e.Column, e.Msg))
+	}
+	want := []string{
+		`2:20 unknown escape \n in string literal (only \" and \\ are escapes)`,
+		`4:27 unknown escape \t in string literal (only \" and \\ are escapes)`,
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("errors = %q, want %q", got, want)
+	}
+	call := file.Definitions[0].(*ast.WorkflowDef).Body[0].(*ast.ActivityCall)
+	if got, want := optionEntries(call.Options), `task_queue=q\tx`; got != want {
+		t.Errorf("options = %q, want %q", got, want)
+	}
+}

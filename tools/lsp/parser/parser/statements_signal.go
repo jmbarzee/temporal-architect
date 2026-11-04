@@ -56,9 +56,6 @@ func parseSignalSendRest(p *Parser, pos ast.Pos, first token.Token) (ast.Stateme
 		return nil, err
 	}
 
-	if p.current.Type == token.COMMENT {
-		p.advance()
-	}
 	switch p.current.Type {
 	case token.NEWLINE:
 		p.advance()
@@ -207,12 +204,9 @@ func (p *Parser) parseOptionalAddress() (*ast.Address, error) {
 	return addr, nil
 }
 
-// endAddressLine consumes the end of an address line — an optional trailing
-// comment, then NEWLINE — or reports code with msg when anything else follows.
+// endAddressLine consumes the NEWLINE ending an address line, or reports code
+// with msg when anything else follows.
 func (p *Parser) endAddressLine(code, msg string) error {
-	if p.current.Type == token.COMMENT {
-		p.advance()
-	}
 	switch p.current.Type {
 	case token.NEWLINE:
 		p.advance()

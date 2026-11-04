@@ -283,8 +283,8 @@ func (p *Parser) parseOptionEntries(schema map[string]*optionSchema, misplaced m
 	seen := make(map[string]bool)
 
 	for p.current.Type != token.DEDENT && p.current.Type != token.EOF {
-		// Comments may appear anywhere (spec §8): on their own line before, between,
-		// or after entries, or trailing a value on the same line.
+		// Comments may appear anywhere (spec §8), including on their own line
+		// before, between, or after entries.
 		if p.current.Type == token.NEWLINE || p.current.Type == token.COMMENT {
 			p.advance()
 			continue
