@@ -477,3 +477,18 @@ workflow Caller(id):
 		t.Errorf("external versioned ref should be left unresolved, got %v", call.Workflow.Resolved)
 	}
 }
+
+// TestImportsNeverBindByName: packages with no import path are reached by no
+// import, even one whose assumed name is their declared name.
+func TestImportsNeverBindByName(t *testing.T) {
+	file := mustMerge(t, "package orderer\n\nworkflow Run(id):\n    close complete(id)\n",
+		"package app\n\nimport \"acme/orderer\"\n\nworkflow Caller(id):\n    workflow orderer.Run(id) -> r\n    close complete(r)\n")
+	errs := Resolve(file)
+	if len(errs) != 1 || errs[0].Kind != ErrUnresolvedImport {
+		t.Fatalf("want one UNRESOLVED_IMPORT, got %v", errs)
+	}
+	call := file.Definitions[1].(*ast.WorkflowDef).Body[0].(*ast.WorkflowCall)
+	if call.Workflow.Resolved != nil {
+		t.Error("the import bound package orderer by name")
+	}
+}

@@ -556,6 +556,10 @@ func TestBufferNeverBindsImportsByName(t *testing.T) {
 	if got := wf.Body[0].(*ast.WorkflowCall).Workflow.Resolved; got == wf {
 		t.Error("cf.Setup resolved by name to the buffer's own Setup")
 	}
+	// The isolated AST is stamped with the buffer's package path.
+	if wf.PkgID != "example.com/demo/fabric" {
+		t.Errorf("isolated AST identity = %q, want the package path", wf.PkgID)
+	}
 
 	// A non-file buffer has no path at all: the import is external.
 	untitled := store.Open("untitled:Untitled-1", buf)

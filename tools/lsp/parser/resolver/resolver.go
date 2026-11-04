@@ -739,6 +739,16 @@ func (s *state) notePackage(p, name string) {
 	}
 }
 
+// hasPathless reports whether a package declared as name has no import path.
+func (s *state) hasPathless(name string) bool {
+	for id, n := range s.names {
+		if n == name && s.pathOf[id] == "" {
+			return true
+		}
+	}
+	return false
+}
+
 // packageLabel names a package in a message: "package <name>", with its path
 // when another package shares the name, or "the default package".
 func (s *state) packageLabel(id string) string {
@@ -867,6 +877,8 @@ func (s *state) bindImport(file *ast.File, imp *ast.ImportDecl) {
 		if len(elsewhere) > 0 {
 			slices.Sort(elsewhere)
 			msg += fmt.Sprintf(" (package %s is at %s)", module.AssumedName(p), strings.Join(elsewhere, ", "))
+		} else if s.hasPathless(module.AssumedName(p)) {
+			msg += fmt.Sprintf(" (package %s here has no import path)", module.AssumedName(p))
 		}
 		b.warning = &ResolveError{Msg: msg, Severity: "warning", Kind: ErrUnresolvedImport, Name: qual}
 	}

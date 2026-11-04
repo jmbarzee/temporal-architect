@@ -7,6 +7,7 @@ import (
 	"sort"
 
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/module"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/parser"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/resolver"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/validator"
@@ -63,7 +64,8 @@ type Input struct {
 // in a module instead — its package's path is Module, plus "/" and Dir when
 // Dir is set — so in-memory sources (tests, a caller that knows the context)
 // import each other by path. One request's sources are all in a module or
-// none.
+// none. The file-level checks of on-disk inputs (clause conflicts, the name
+// rule) do not run on in-memory sources.
 type Source struct {
 	Name    string
 	Content string
@@ -116,8 +118,13 @@ func ParseSources(req Request) (Result, error) {
 
 	var sources []source
 	for i, v := range req.Virtual {
-		if (v.Module == "") != (req.Virtual[0].Module == "") {
+		switch {
+		case (v.Module == "") != (req.Virtual[0].Module == ""):
 			return Result{}, fmt.Errorf("virtual source %d: sources in a module and sources in none cannot share a run", i)
+		case v.Module == "" && v.Dir != "":
+			return Result{}, fmt.Errorf("virtual source %d: Dir needs a Module", i)
+		case v.Module != "" && module.CheckPath(v.Module) != nil:
+			return Result{}, fmt.Errorf("virtual source %d: invalid module path %q: %v", i, v.Module, module.CheckPath(v.Module))
 		}
 		base := "<source>.twf"
 		if v.Name != "" {
