@@ -74,6 +74,8 @@ func indexAST(file *ast.File) *astIndex {
 		endpointsByName: map[string]*endpointDeployment{},
 	}
 
+	// kept is the namespace the resolver keeps for each (package, name).
+	kept := map[string]*ast.NamespaceDef{}
 	for _, def := range file.Definitions {
 		switch d := def.(type) {
 		case *ast.WorkflowDef:
@@ -84,6 +86,7 @@ func indexAST(file *ast.File) *astIndex {
 			idx.workers[d.Name] = d
 		case *ast.NamespaceDef:
 			idx.namespaces[d.Name] = d
+			kept[idx.defQName(d, d.Name)] = d
 		case *ast.NexusServiceDef:
 			idx.nexusServices[idx.defQName(d, d.Name)] = d
 		}
@@ -102,8 +105,21 @@ func indexAST(file *ast.File) *astIndex {
 				worker:         idx.workers[nw.Worker.Name],
 			})
 		}
+	}
+
+	// An endpoint name declared twice (DUPLICATE_ENDPOINT) is its first
+	// declaration's, as the resolver binds it: walk the namespaces it keeps in
+	// definition order.
+	for _, def := range file.Definitions {
+		ns, ok := def.(*ast.NamespaceDef)
+		if !ok || kept[idx.defQName(ns, ns.Name)] != ns {
+			continue
+		}
 		for i := range ns.Endpoints {
 			ep := &ns.Endpoints[i]
+			if idx.endpointsByName[ep.EndpointName] != nil {
+				continue
+			}
 			queue := taskQueue(ep.Options)
 			idx.endpointsByName[ep.EndpointName] = &endpointDeployment{
 				Name:           ep.EndpointName,

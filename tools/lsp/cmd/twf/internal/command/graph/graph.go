@@ -22,13 +22,13 @@ import (
 func New() *cobra.Command {
 	var jsonOutput bool
 	cmd := cmdutil.Silence(&cobra.Command{
-		Use:   "graph [flags] <file...>",
+		Use:   "graph [flags] <file|dir...>",
 		Short: "Show the resolved deployment graph; --json for envelope output",
 		Long: `Emit the resolved deployment graph of the input files. Nodes are runtime
 deployments; edges are confirmed dispatches between them.
 
-Input: one or more .twf files. To reconstruct a graph from live executions,
-use the sampler (which writes an observed-graph JSON directly).`,
+Input: one or more .twf files or directories. To reconstruct a graph from live
+executions, use the sampler (which writes an observed-graph JSON directly).`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmdutil.CodeToErr(run(args, jsonOutput))
 		},
@@ -43,7 +43,7 @@ use the sampler (which writes an observed-graph JSON directly).`,
 // under --json.
 func run(paths []string, jsonOutput bool) int {
 	if len(paths) == 0 {
-		fmt.Fprintln(os.Stderr, "usage: twf graph [--json] <file...>")
+		fmt.Fprintln(os.Stderr, "usage: twf graph [--json] <file|dir...>")
 		return 1
 	}
 

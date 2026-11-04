@@ -27,7 +27,7 @@ module github.com/acme/shop   # twf.mod, at the design's root
 A package is **one directory** of a module, and its **import path** is the
 module path plus that directory: `orders/` is `github.com/acme/shop/orders`.
 A packaged file with no `twf.mod` above it is `PACKAGE_OUTSIDE_MODULE` and is
-ignored. Clause-less designs are unaffected and need no `twf.mod`.
+ignored; an MCP inline `source` is outside every module. Clause-less designs are unaffected and need no `twf.mod`.
 
 - `twf mod init <module path>` writes the file. The path is required; with no
   argument it fails and suggests one (from the enclosing module, the design's
@@ -49,7 +49,9 @@ paths are two packages; alias one to import both. New errors:
 `DUPLICATE_IMPORT_NAME`, and `IMPORT_NOT_FOUND` for a typo under your own
 module (it used to be a silent external). `IMPORT_NOT_LOADED` warns when a
 package is on disk but not among the inputs. A path under no module in the run
-is still `UNRESOLVED_IMPORT`, treated as external.
+is still `UNRESOLVED_IMPORT`, treated as external. No import binds by package
+name anywhere: an editor buffer with no file has no import path, so its
+imports are external.
 
 ### ⚠️ Breaking: wire output
 
@@ -253,6 +255,8 @@ is now checked against the target's signals.
 
 - `twf check` no longer hangs on a top-level `nexus` call; it reports one
   `parse/SYNTAX` error (#263).
+- The help for `twf check`, `parse`, `graph`, `graph chunks` and `symbols`
+  says each argument may be a file or a directory.
 - A trailing `# comment` on a line that opens a block (a call followed by
   `options:`, a definition header, `nexus endpoint Ep`) no longer breaks the
   parse. A trailing comment on a block header is discarded; elsewhere it stays a
@@ -266,7 +270,15 @@ is now checked against the target's signals.
   that queue. This removes a spurious `DISPATCH_NO_REACHABLE_DEPLOYMENT` and
   draws the missing dispatch edge (#245).
 - A worker instantiated twice in one namespace emits each of its containment
-  edges once (#264).
+  edges once (#264), and each of its dispatch, `nexusRoute` and `unresolved`
+  entries once, so coarsened edge weights are no longer doubled (#289).
+- An endpoint name declared in several namespaces belongs to its first
+  declaration, in definition order (input files in order, then position):
+  `DUPLICATE_ENDPOINT` lands on each later one and names the first's namespace,
+  and calls, routing checks and the graph all use the first, on every run
+  (#290).
+- A `DISPATCH_NO_REACHABLE_DEPLOYMENT` names an operation by its own service
+  when another service's name prefixes it.
 - **LSP:** rename, references and go-to-definition ranges cover the name, not
   the statement keyword, so a rename no longer overwrites `workflow` or
   `signal`, and renaming a Nexus endpoint edits the endpoint on a `nexus` call.
@@ -283,6 +295,10 @@ is now checked against the target's signals.
 - **Design skill:** `common-errors.md` covers the lexer's `LEX` errors
   (unterminated string, unterminated argument list, inconsistent indentation,
   unknown escape) (#105).
+- **Design skill:** wherever a design introduces a `package` clause — the
+  workflow, the package-per-domain convention, reverse engineering — it says to
+  run `twf mod init <module path>` at the design's root and check that root
+  (#309).
 
 ## v0.15.0 - Workflow ID Schemes & Addressed Signal Sends
 

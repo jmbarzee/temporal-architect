@@ -3,8 +3,12 @@ package mcp
 import (
 	"context"
 	"encoding/json"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
+	"github.com/jmbarzee/temporal-architect/tools/lsp/pipeline"
 	"github.com/jmbarzee/temporal-architect/tools/spec"
 	sdk "github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -277,5 +281,74 @@ func TestSpecResources(t *testing.T) {
 	}
 	if mt := read.Contents[0].MIMEType; mt != specMIME {
 		t.Errorf("resource MIME = %q, want %q", mt, specMIME)
+	}
+}
+
+// TestInlineSourceMatchesTheCLI: every tool that takes inline source returns
+// what it returns for the same text saved to a file outside any module (#308),
+// and twf_check's diagnostics and counts are those `twf check` computes.
+func TestInlineSourceMatchesTheCLI(t *testing.T) {
+	const wf = "workflow W(x):\n    close complete(x)\n"
+	const imp = "import cf \"example.com/demo/cluster/fabric\"\n\nworkflow Setup():\n    workflow cf.Setup()\n    close complete(\"ok\")\n"
+	cases := []struct {
+		name, src string
+		codes     string // twf_check's diagnostic codes
+	}{
+		{"empty", "", ""},
+		{"whitespace only", " \n\n   ", ""},
+		{"no package clause", wf, ""},
+		{"package clause", "package orders\n\n" + wf, "PACKAGE_OUTSIDE_MODULE"},
+		{"package clause with an import", "package fabric\n\n" + imp, "PACKAGE_OUTSIDE_MODULE"},
+		{"package clause with an undefined call", "package orders\n\nworkflow W():\n    activity Ghost()\n", "PACKAGE_OUTSIDE_MODULE"},
+		{"package clause with a parse error", "package orders\n\nworkflow W(:\n", "LEX,SYNTAX,PACKAGE_OUTSIDE_MODULE"},
+		{"failed package clause", "package\n\n" + wf, "SYNTAX"},
+		{"no package clause with an import", imp, "UNRESOLVED_IMPORT"},
+	}
+	tools := []string{"twf_check", "twf_parse", "twf_symbols", "twf_graph", "twf_graph_chunks"}
+
+	cs := connect(t)
+	dir := t.TempDir()
+	t.Chdir(dir)
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := os.WriteFile(filepath.Join(dir, "input.twf"), []byte(tc.src), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			for _, tool := range tools {
+				inline := toolText(t, callTool(t, cs, tool, map[string]any{"source": tc.src}))
+				onDisk := toolText(t, callTool(t, cs, tool, map[string]any{"paths": []string{"input.twf"}}))
+				if inline != onDisk {
+					t.Errorf("%s: inline source diverged from the file on disk\ninline:  %s\non disk: %s", tool, inline, onDisk)
+				}
+			}
+
+			// What `twf check input.twf` reports: its diagnostics and counts.
+			file, diags, err := pipeline.ParseFiles([]string{"input.twf"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			want, err := json.Marshal(pipeline.Envelope{Summary: pipeline.Summarize(file, diags), Diagnostics: pipeline.EnsureSlice(diags)})
+			if err != nil {
+				t.Fatal(err)
+			}
+			var env pipeline.Envelope
+			if err := json.Unmarshal([]byte(toolText(t, callTool(t, cs, "twf_check", map[string]any{"source": tc.src}))), &env); err != nil {
+				t.Fatalf("decode check envelope: %v", err)
+			}
+			got, err := json.Marshal(env)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(got) != string(want) {
+				t.Errorf("twf_check on inline source:\n got: %s\ntwf check: %s", got, want)
+			}
+			var codes []string
+			for _, d := range env.Diagnostics {
+				codes = append(codes, d.Code)
+			}
+			if got := strings.Join(codes, ","); got != tc.codes {
+				t.Errorf("codes = %q, want %q", got, tc.codes)
+			}
+		})
 	}
 }

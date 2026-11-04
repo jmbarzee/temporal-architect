@@ -53,18 +53,35 @@ func (d *Document) analyze(folders []string, overlays map[string]string, runs ma
 	d.File = f
 	d.ParseErrs = errs
 
+	// The isolated AST is stamped as the merged run stamps it: a `file:`
+	// buffer in a module gets its package's import path, so even resolved
+	// alone it binds imports only by path.
+	bufPath := uriToPath(d.URI)
+	var canon, modRoot string
+	in := ast.StampInput{File: f}
+	if bufPath != "" {
+		canon = pipeline.Canonicalize(bufPath)
+		in.SourceFile = filepath.ToSlash(canon)
+		var modPath string
+		var err error
+		modRoot, modPath, err = pipeline.ModuleOf(filepath.Dir(canon))
+		if modRoot != "" && err == nil {
+			in.Module = modPath
+			if rel, err := filepath.Rel(modRoot, filepath.Dir(canon)); err == nil && rel != "." {
+				in.Dir = filepath.ToSlash(rel)
+			}
+		}
+	}
 	if len(f.Definitions) > 0 {
-		d.ResolveErrs = resolver.Resolve(f)
-		d.ValidateErrs = validator.Validate(f)
+		isolated := ast.Stamp([]ast.StampInput{in})
+		d.ResolveErrs = resolver.Resolve(isolated)
+		d.ValidateErrs = validator.Validate(isolated)
 	}
 
-	bufPath := uriToPath(d.URI)
 	if bufPath == "" {
 		return
 	}
-	canon := pipeline.Canonicalize(bufPath)
 	var inputs []pipeline.Input
-	modRoot, _, _ := pipeline.ModuleOf(filepath.Dir(canon))
 	if modRoot != "" {
 		inputs = append(inputs, pipeline.Input{Path: modRoot, Kind: pipeline.Tree})
 	}

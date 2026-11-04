@@ -107,10 +107,10 @@ A single Go binary: parser, validator, deployment-graph extractor, and a full LS
 
 | Command | Description |
 |---------|-------------|
-| `twf check <file...>` | Parse and validate `.twf` files, reporting errors |
-| `twf parse <file...>` | Output the AST as JSON (partial AST even with errors) |
-| `twf symbols <file...>` | List workflows and activities with their signatures |
-| `twf graph <file...>` | Emit the resolved deployment graph (nodes are deployments, edges are dispatches) |
+| `twf check <file|dir...>` | Parse and validate `.twf` files, reporting errors |
+| `twf parse <file|dir...>` | Output the AST as JSON (partial AST even with errors) |
+| `twf symbols <file|dir...>` | List workflows and activities with their signatures |
+| `twf graph <file|dir...>` | Emit the resolved deployment graph (nodes are deployments, edges are dispatches) |
 | `twf spec [--list \| <slug>]` | Print the embedded TWF language specification |
 | `twf lsp` | Start the language server over stdio |
 

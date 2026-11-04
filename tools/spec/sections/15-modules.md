@@ -52,8 +52,8 @@ the package is ignored.
 - **Input order** is argument order, then walk order — lexical within each directory.
 - A diagnostic names a file the way its input did: a file argument as given, a walked file as its
   directory argument, `/`, and its path below it.
-- **Virtual sources** (an MCP `source` string, an unsaved editor buffer with no file) have no
-  directory: their package clause needs no module, and they form packages by declared name.
+- An **inline source** (an MCP `source` string) has no directory, so it is in no module: it is
+  checked as a file outside every module, and a package clause is `PACKAGE_OUTSIDE_MODULE`.
 
 ## Ignored Files
 
@@ -62,7 +62,7 @@ Each step works on what the previous ones left:
 0. A file whose package clause fails with no name to recover, or that has a `package` line other
    than its first clause.
 1. `MODULE_FILE_INVALID` — every file of that module.
-   - `PACKAGE_OUTSIDE_MODULE` — an on-disk file with a package clause and no module.
+   - `PACKAGE_OUTSIDE_MODULE` — a file with a package clause and no module.
 2. `DUPLICATE_MODULE` — two module roots holding input files and declaring one module path
    (compared case-insensitively): the later module, by its first input file, is ignored.
 3. `PACKAGE_CLAUSE_CONFLICT` — a directory whose files declare different packages, or mix a
@@ -103,4 +103,6 @@ looks on disk:
   package's path differs from the import's only in case, `did you mean "<that path>"?`. A path under
   no known module is `UNRESOLVED_IMPORT`.
 
-A package with no path (a virtual source's) is reached by its declared name.
+No import ever binds by a package's declared name: it binds only a kept package with exactly its
+path, and any other is external. An unsaved editor buffer with no file has no path, so no import
+reaches it.

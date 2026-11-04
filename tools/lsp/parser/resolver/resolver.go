@@ -144,8 +144,9 @@ const (
 	// ErrModuleFileUnknownDirective: a directive other than `module` in a valid
 	// twf.mod, ignored. Warning severity.
 	ErrModuleFileUnknownDirective
-	// ErrPackageOutsideModule: an on-disk file with a package clause and no
-	// twf.mod above it; the file is excluded.
+	// ErrPackageOutsideModule: a file with a package clause and no twf.mod
+	// above it, or an in-memory source with one in no module; the file is
+	// excluded.
 	ErrPackageOutsideModule
 	// ErrDuplicateModule: a second module root declaring a module path already
 	// in the run; the later module's files are excluded.
@@ -392,14 +393,11 @@ type state struct {
 	allEndpoints  map[string]*ast.NamespaceEndpoint
 	packages      map[string]bool
 	// names maps a package identity to its declared name; paths maps a kept
-	// package's import path to its identity; byName maps a declared name to
-	// the identity of a package with no path (a virtual source's, or an
-	// unstamped AST's), which an import still reaches by its assumed name.
+	// package's import path to its identity. An import binds only by path.
 	names    map[string]string
 	paths    map[string]string
 	pathOf   map[string]string // identity → import path
 	moduleOf map[string]string // identity → module path
-	byName   map[string]string
 	// noQualifier lists, per package, the failed import lines that formed no
 	// qualifier, for QUALIFIED_REF_WITHOUT_IMPORT to name.
 	noQualifier map[string][]lineRef
@@ -427,7 +425,6 @@ func Resolve(file *ast.File) []*ResolveError {
 		paths:         map[string]string{},
 		pathOf:        map[string]string{},
 		moduleOf:      map[string]string{},
-		byName:        map[string]string{},
 		noQualifier:   map[string][]lineRef{},
 		bindings:      map[string]map[string]*importBinding{},
 	}
@@ -469,8 +466,14 @@ func Resolve(file *ast.File) []*ResolveError {
 
 	// Build the flat-global endpoint map across all namespaces. Endpoints are
 	// never package-qualified; a duplicate endpoint name across any two
-	// namespaces (in any package) stays a hard error.
-	for _, ns := range s.namespaces {
+	// namespaces (in any package) stays a hard error. The namespaces pass 1
+	// keeps are walked in definition order, so the first declaration keeps the
+	// name and each later one is the duplicate.
+	for _, def := range file.Definitions {
+		ns, ok := def.(*ast.NamespaceDef)
+		if !ok || s.namespaces[pkgKey{effPkg(ast.PackageIDOf(ns, nil), s.filePkg), ns.Name}] != ns {
+			continue
+		}
 		for i := range ns.Endpoints {
 			ep := &ns.Endpoints[i]
 			ep.Namespace = ns.Name
@@ -496,6 +499,7 @@ func Resolve(file *ast.File) []*ResolveError {
 					Name:   ep.EndpointName,
 					File:   ns.SourceFile,
 				})
+				continue
 			}
 			s.allEndpoints[ep.EndpointName] = ep
 		}
@@ -723,8 +727,7 @@ func Resolve(file *ast.File) []*ResolveError {
 
 	// Namespaces and workers are walked from maps, so sort for an order that
 	// holds run to run; the stable sort keeps same-code errors at one position
-	// in emission order (#237). Which endpoint a DUPLICATE_ENDPOINT lands on,
-	// and the namespaces it names, still follow map order.
+	// in emission order (#237).
 	slices.SortStableFunc(s.errs, func(a, b *ResolveError) int {
 		return cmp.Or(cmp.Compare(a.File, b.File), cmp.Compare(a.Line, b.Line), cmp.Compare(a.Column, b.Column), cmp.Compare(a.Code(), b.Code()))
 	})
@@ -732,22 +735,25 @@ func Resolve(file *ast.File) []*ResolveError {
 }
 
 // notePackage records that package identity p, declared as name, holds a
-// definition. A package with no path (a virtual source's, or one an unstamped
-// AST names by its declared name) is reachable by name.
+// definition.
 func (s *state) notePackage(p, name string) {
 	s.packages[p] = true
-	if p == "" {
-		return
-	}
-	if _, ok := s.names[p]; !ok {
+	if _, ok := s.names[p]; !ok && p != "" {
 		if name == "" {
 			name = p
 		}
 		s.names[p] = name
 	}
-	if s.pathOf[p] == "" {
-		s.byName[s.names[p]] = p
+}
+
+// hasPathless reports whether a package declared as name has no import path.
+func (s *state) hasPathless(name string) bool {
+	for id, n := range s.names {
+		if n == name && s.pathOf[id] == "" {
+			return true
+		}
 	}
+	return false
 }
 
 // packageLabel names a package in a message: "package <name>", with its path
@@ -866,9 +872,6 @@ func (s *state) bindImport(file *ast.File, imp *ast.ImportDecl) {
 	case looked && out.Kind == ast.ImportNotLoaded:
 		b.external = true
 		b.warning = &ResolveError{Msg: fmt.Sprintf("import %q is not among the inputs; %s; treated as external", p, out.Detail), Severity: "warning", Kind: ErrImportNotLoaded, Name: qual}
-	case s.byName[module.AssumedName(p)] != "":
-		// A package with no path, reached by its name.
-		b.targetPkg = s.byName[module.AssumedName(p)]
 	default:
 		b.external = true
 		msg := fmt.Sprintf("import %q is unresolved (no package %q in the tree); treated as external", p, module.AssumedName(p))
@@ -881,6 +884,8 @@ func (s *state) bindImport(file *ast.File, imp *ast.ImportDecl) {
 		if len(elsewhere) > 0 {
 			slices.Sort(elsewhere)
 			msg += fmt.Sprintf(" (package %s is at %s)", module.AssumedName(p), strings.Join(elsewhere, ", "))
+		} else if s.hasPathless(module.AssumedName(p)) {
+			msg += fmt.Sprintf(" (package %s here has no import path)", module.AssumedName(p))
 		}
 		b.warning = &ResolveError{Msg: msg, Severity: "warning", Kind: ErrUnresolvedImport, Name: qual}
 	}

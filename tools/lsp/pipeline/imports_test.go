@@ -1,9 +1,12 @@
 package pipeline_test
 
 import (
+	"encoding/json"
+	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/pipeline"
 )
 
@@ -162,4 +165,108 @@ func TestImportNotFoundAtEveryLine(t *testing.T) {
 	if got := strings.Join(codesOf(diags), ","); got != "IMPORT_NOT_FOUND,IMPORT_NOT_FOUND" {
 		t.Errorf("diagnostics = %q, want IMPORT_NOT_FOUND on both lines", diags)
 	}
+}
+
+// sameLeaf is #232's confusion in one source: package fabric imports a
+// different fabric by path and calls into it. By name the import would bind
+// this package itself, and cf.Setup would resolve to its own Setup.
+const sameLeaf = `package fabric
+
+import cf "example.com/demo/cluster/fabric"
+
+workflow Setup():
+    workflow cf.Setup()
+    close complete("ok")
+`
+
+func TestVirtualSourcesNeverBindByName(t *testing.T) {
+	// The import is external, never this package.
+	res, err := pipeline.ParseSources(pipeline.Request{Virtual: []pipeline.Source{{Name: "input.twf", Content: sameLeaf, Module: "example.com/demo", Dir: "fabric"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.Join(diagCodes(res), ","); got != "UNRESOLVED_IMPORT" {
+		t.Errorf("diagnostics = %v, want only UNRESOLVED_IMPORT", res.Diagnostics)
+	}
+	if calledSetup(res) != nil {
+		t.Error("cf.Setup resolved by name, to the source's own package")
+	}
+
+	// A package named like the import's leaf, at another path: still external.
+	other := "package fabric\n\nworkflow Setup():\n    close complete(\"ok\")\n"
+	top := "package top\n\nimport \"example.com/demo/fabric\"\n\nworkflow Main():\n    workflow fabric.Setup()\n    close complete(\"ok\")\n"
+	res, err = pipeline.ParseSources(pipeline.Request{Virtual: []pipeline.Source{
+		{Name: "f.twf", Content: other, Module: "example.com/demo", Dir: "other"},
+		{Name: "t.twf", Content: top, Module: "example.com/demo", Dir: "top"},
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.Join(diagCodes(res), ","); got != "UNRESOLVED_IMPORT" {
+		t.Errorf("a package was imported by name: %v", res.Diagnostics)
+	}
+
+	// At the import's path, it binds.
+	res, err = pipeline.ParseSources(pipeline.Request{Virtual: []pipeline.Source{
+		{Name: "f.twf", Content: other, Module: "example.com/demo", Dir: "fabric"},
+		{Name: "t.twf", Content: top, Module: "example.com/demo", Dir: "top"},
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res.Diagnostics) != 0 {
+		t.Errorf("with paths, the import binds: %v", res.Diagnostics)
+	}
+	if _, err := pipeline.ParseSources(pipeline.Request{Virtual: []pipeline.Source{{Content: other, Module: "m"}, {Content: top}}}); err == nil {
+		t.Error("sources in a module and in none must not share a run")
+	}
+}
+
+// TestVirtualSourcesOutsideAModuleMatchFiles: in-memory sources in no module
+// report what the same files on disk outside every module do (#308): a package
+// clause is PACKAGE_OUTSIDE_MODULE and drops its file.
+func TestVirtualSourcesOutsideAModuleMatchFiles(t *testing.T) {
+	sources := []pipeline.Source{
+		{Name: "a.twf", Content: "workflow A():\n    activity Ghost()\n"},
+		{Name: "b.twf", Content: "package orders\n\nworkflow B():\n    activity Ghost()\n"},
+		{Name: "c.twf", Content: sameLeaf},
+	}
+	dir := t.TempDir()
+	t.Chdir(dir)
+	var paths []string
+	for _, s := range sources {
+		writeFile(t, filepath.Join(dir, s.Name), s.Content)
+		paths = append(paths, s.Name)
+	}
+
+	res, err := pipeline.ParseSources(pipeline.Request{Virtual: sources})
+	if err != nil {
+		t.Fatal(err)
+	}
+	file, diags, err := pipeline.ParseFiles(paths)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, _ := json.Marshal(pipeline.Envelope{Summary: pipeline.Summarize(res.File, res.Diagnostics), Diagnostics: res.Diagnostics})
+	want, _ := json.Marshal(pipeline.Envelope{Summary: pipeline.Summarize(file, diags), Diagnostics: diags})
+	if string(got) != string(want) {
+		t.Errorf("virtual sources:\n got: %s\nfiles: %s", got, want)
+	}
+	if got := strings.Join(diagCodes(res), ","); got != "UNDEFINED_ACTIVITY,PACKAGE_OUTSIDE_MODULE,PACKAGE_OUTSIDE_MODULE" {
+		t.Errorf("codes = %s", got)
+	}
+}
+
+func diagCodes(res pipeline.Result) []string {
+	var out []string
+	for _, d := range res.Diagnostics {
+		out = append(out, d.Code)
+	}
+	return out
+}
+
+// calledSetup is what the first workflow's `workflow cf.Setup()` resolved to.
+func calledSetup(res pipeline.Result) *ast.WorkflowDef {
+	wf := res.File.Definitions[0].(*ast.WorkflowDef)
+	return wf.Body[0].(*ast.WorkflowCall).Workflow.Resolved
 }

@@ -33,7 +33,7 @@ func (g *Graph) emitNexusRoutes(idx *astIndex) {
 					if ep.templated || ep.Namespace != opDep.NamespaceName || ep.Queue != opDep.Queue {
 						continue
 					}
-					g.Edges = append(g.Edges, Edge{
+					g.addEdge(Edge{
 						From: fromID,
 						To:   EndpointID(ep.Name, ep.Namespace),
 						Kind: EdgeNexusRoute,
