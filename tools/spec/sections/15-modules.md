@@ -52,8 +52,9 @@ the package is ignored.
 - **Input order** is argument order, then walk order — lexical within each directory.
 - A diagnostic names a file the way its input did: a file argument as given, a walked file as its
   directory argument, `/`, and its path below it.
-- An **inline source** (an MCP `source` string) has no directory, so it is in no module: it is
-  checked as a file outside every module, and a package clause is `PACKAGE_OUTSIDE_MODULE`.
+- An **inline source** (an MCP `source` string, an editor buffer with no file) has no directory,
+  so it is in no module: it is checked alone, as a file outside every module, and a package clause
+  is `PACKAGE_OUTSIDE_MODULE`.
 
 ## Ignored Files
 
@@ -105,5 +106,4 @@ looks on disk:
   A path under no known module, even ignoring case, is `UNRESOLVED_IMPORT`.
 
 No import ever binds by a package's declared name: it binds only a kept package with exactly its
-path, and any other is external. An unsaved editor buffer with no file has no path, so no import
-reaches it.
+path, and any other is external.

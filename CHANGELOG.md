@@ -27,7 +27,8 @@ module github.com/acme/shop   # twf.mod, at the design's root
 A package is **one directory** of a module, and its **import path** is the
 module path plus that directory: `orders/` is `github.com/acme/shop/orders`.
 A packaged file with no `twf.mod` above it is `PACKAGE_OUTSIDE_MODULE` and is
-ignored; an MCP inline `source` is outside every module. Clause-less designs are unaffected and need no `twf.mod`.
+ignored; an MCP inline `source` and an editor buffer with no file are outside
+every module. Clause-less designs are unaffected and need no `twf.mod`.
 
 - `twf mod init <module path>` writes the file. The path is required; with no
   argument it fails and suggests one (from the enclosing module, the design's
@@ -50,8 +51,7 @@ paths are two packages; alias one to import both. New errors:
 module (it used to be a silent external). `IMPORT_NOT_LOADED` warns when a
 package is on disk but not among the inputs. A path under no module in the run
 is still `UNRESOLVED_IMPORT`, treated as external. No import binds by package
-name anywhere: an editor buffer with no file has no import path, so its
-imports are external.
+name anywhere.
 
 ### ⚠️ Breaking: wire output
 
@@ -344,6 +344,19 @@ is now checked against the target's signals.
   sends, nexus operations, conditions and promises, and count columns in UTF-16.
   The server watches `.twf` files, and a rename that would edit a closed file
   changed on disk since it was read fails instead (#288, #300).
+- **LSP:** module and import diagnostics land on the files they belong to: a
+  closed sibling's failing import, what silences a sunk import (the excluded
+  file, a broken or duplicate `twf.mod`), excluded files beside the buffer, and
+  the buffer's own `twf.mod` — each once, cleared when no open buffer explains
+  it any longer (#298).
+- **LSP:** the create-`twf.mod` quick fix reads unsaved buffers, and the server
+  watches a `twf.mod` above the workspace folders when the client supports
+  relative patterns (#298).
+- **LSP:** a buffer with no file reports `PACKAGE_OUTSIDE_MODULE` for a
+  `package` clause, as `twf check` and an MCP inline `source` do.
+- **LSP:** an `IMPORT_NOT_FOUND` stopped at a skipped directory (`_x/`,
+  `testdata/`) says to open it as the workspace folder only when that loads the
+  package (#303).
 - **LSP:** diagnostics, document symbols, code actions and semantic tokens
   count columns in UTF-16, so a diagnostic after non-ASCII text such as `"é"`
   lands on its token. A diagnostic runs to the end of its line, a symbol
