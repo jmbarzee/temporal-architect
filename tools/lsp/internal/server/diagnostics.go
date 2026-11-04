@@ -1,6 +1,8 @@
 package server
 
 import (
+	"sort"
+
 	"github.com/jmbarzee/glsp"
 	protocol "github.com/jmbarzee/glsp/protocol_3_16"
 )
@@ -24,48 +26,101 @@ func didChangeHandler(store *DocumentStore) protocol.TextDocumentDidChangeFunc {
 func didCloseHandler(store *DocumentStore) protocol.TextDocumentDidCloseFunc {
 	return func(context *glsp.Context, params *protocol.DidCloseTextDocumentParams) error {
 		store.Close(params.TextDocument.URI)
-		// Clear diagnostics for the closed document.
-		context.Notify(protocol.ServerTextDocumentPublishDiagnostics, protocol.PublishDiagnosticsParams{
-			URI:         params.TextDocument.URI,
-			Diagnostics: []protocol.Diagnostic{},
-		})
 		return publishAll(context, store)
 	}
 }
 
-// publishAll publishes every open document's diagnostics: one buffer's text
-// can change another's.
+// publishAll publishes every URI's diagnostics — one buffer's text can change
+// another's, and an analysis publishes on other files too — then updates the
+// watch on twf.mod files outside the workspace folders.
 func publishAll(context *glsp.Context, store *DocumentStore) error {
-	for _, doc := range store.All() {
-		if err := publishDiagnostics(context, doc); err != nil {
-			return err
-		}
+	for _, p := range store.publications() {
+		context.Notify(protocol.ServerTextDocumentPublishDiagnostics, p)
 	}
+	watchModuleFilesOutsideFolders(context, store)
 	return nil
 }
 
-func publishDiagnostics(context *glsp.Context, doc *Document) error {
-	var diags []protocol.Diagnostic
+// publications returns what to publish. Each diagnostic belongs to a file: a
+// buffer's own to the buffer's identity, its elsewhere ones to theirs. It is
+// published under every open URI with that identity, else under the file's
+// closed URI; a URI's set is the deduplicated union of every open buffer's
+// contributions to it. Every open URI is published, and so is every URI
+// published with diagnostics last time — with none, it is cleared.
+func (s *DocumentStore) publications() []protocol.PublishDiagnosticsParams {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	docs := s.all()
+	sort.Slice(docs, func(i, j int) bool { return docs[i].URI < docs[j].URI })
 
-	for _, pe := range doc.ParseErrs {
-		diags = appendDiag(diags, pe.Line, pe.Column, "", pe.Code(), pe.Msg)
+	open := map[string][]string{} // identity → open URIs
+	for _, d := range docs {
+		if d.sourceFile != "" {
+			open[d.sourceFile] = append(open[d.sourceFile], d.URI)
+		}
 	}
-	for _, re := range doc.ResolveErrs {
-		diags = appendDiag(diags, re.Line, re.Column, re.Severity, re.Code(), re.Msg)
+	type key struct {
+		line, column            int
+		severity, code, message string
 	}
-	for _, ve := range doc.ValidateErrs {
-		diags = appendDiag(diags, ve.Line, ve.Column, ve.Severity, ve.Code(), ve.Msg)
+	sets := map[string][]protocol.Diagnostic{}
+	seen := map[string]map[key]bool{}
+	add := func(uris []string, line, column int, severity, code, msg string) {
+		if severity == "" {
+			severity = "error"
+		}
+		k := key{line, column, severity, code, msg}
+		for _, uri := range uris {
+			if seen[uri] == nil {
+				seen[uri] = map[key]bool{}
+			}
+			if !seen[uri][k] {
+				seen[uri][k] = true
+				sets[uri] = appendDiag(sets[uri], line, column, severity, code, msg)
+			}
+		}
+	}
+	for _, d := range docs {
+		own := []string{d.URI}
+		if d.sourceFile != "" {
+			own = open[d.sourceFile]
+		}
+		if sets[d.URI] == nil {
+			sets[d.URI] = []protocol.Diagnostic{}
+		}
+		for _, e := range d.ParseErrs {
+			add(own, e.Line, e.Column, "", e.Code(), e.Msg)
+		}
+		for _, e := range d.ResolveErrs {
+			add(own, e.Line, e.Column, e.Severity, e.Code(), e.Msg)
+		}
+		for _, e := range d.ValidateErrs {
+			add(own, e.Line, e.Column, e.Severity, e.Code(), e.Msg)
+		}
+		for _, x := range d.elsewhere {
+			uris := open[x.File]
+			if uris == nil {
+				uris = []string{closedURI(s.folders, x.File)}
+			}
+			add(uris, x.Start.Line, x.Start.Column, x.Severity, x.Code, x.Message)
+		}
 	}
 
-	if diags == nil {
-		diags = []protocol.Diagnostic{}
+	for uri := range s.published {
+		if _, ok := sets[uri]; !ok {
+			sets[uri] = []protocol.Diagnostic{}
+		}
 	}
-
-	context.Notify(protocol.ServerTextDocumentPublishDiagnostics, protocol.PublishDiagnosticsParams{
-		URI:         doc.URI,
-		Diagnostics: diags,
-	})
-	return nil
+	s.published = map[string]bool{}
+	out := make([]protocol.PublishDiagnosticsParams, 0, len(sets))
+	for uri, diags := range sets {
+		if len(diags) > 0 {
+			s.published[uri] = true
+		}
+		out = append(out, protocol.PublishDiagnosticsParams{URI: uri, Diagnostics: diags})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].URI < out[j].URI })
+	return out
 }
 
 // appendDiag appends an LSP diagnostic with the parser's symbolic code in the

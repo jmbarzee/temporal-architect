@@ -3,6 +3,7 @@ package server
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
@@ -561,13 +562,19 @@ func TestBufferNeverBindsImportsByName(t *testing.T) {
 		t.Errorf("isolated AST identity = %q, want the package path", wf.PkgID)
 	}
 
-	// A non-file buffer has no path at all: the import is external.
+	// A non-file buffer has no path at all: its isolated AST binds nothing by
+	// name, its clause puts it outside every module, and without a clause its
+	// import is external.
 	untitled := store.Open("untitled:Untitled-1", buf)
 	wf = untitled.File.Definitions[0].(*ast.WorkflowDef)
 	if wf.Body[0].(*ast.WorkflowCall).Workflow.Resolved != nil {
 		t.Error("an untitled buffer bound an import by name")
 	}
-	if !hasKind(untitled.ResolveErrs, resolver.ErrUnresolvedImport) {
-		t.Errorf("want UNRESOLVED_IMPORT, got %v", untitled.ResolveErrs)
+	if len(untitled.ResolveErrs) != 1 || untitled.ResolveErrs[0].Kind != resolver.ErrPackageOutsideModule {
+		t.Errorf("want PACKAGE_OUTSIDE_MODULE, got %v", untitled.ResolveErrs)
+	}
+	clauseless := store.Open("untitled:Untitled-2", strings.TrimPrefix(buf, "package fabric\n\n"))
+	if !hasKind(clauseless.ResolveErrs, resolver.ErrUnresolvedImport) {
+		t.Errorf("want UNRESOLVED_IMPORT, got %v", clauseless.ResolveErrs)
 	}
 }

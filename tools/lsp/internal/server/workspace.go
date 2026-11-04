@@ -2,9 +2,13 @@ package server
 
 import (
 	"net/url"
+	"path"
+	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/resolver"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/validator"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/pipeline"
@@ -90,4 +94,153 @@ func filterToBuffer(res pipeline.Result, buf string) ([]*resolver.ResolveError, 
 		}
 	}
 	return resolveErrs, validateErrs
+}
+
+// Diagnostic codes by their role in moduleDiagnostics.
+var (
+	importCodes = codes(resolver.ErrInvalidImportPath, resolver.ErrSelfImport, resolver.ErrImportNeedsAlias,
+		resolver.ErrDuplicateImportName, resolver.ErrImportNotLoaded, resolver.ErrImportNotFound, resolver.ErrUnresolvedImport)
+	exclusionCodes = codes(resolver.ErrModuleFileInvalid, resolver.ErrPackageOutsideModule, resolver.ErrDuplicateModule,
+		resolver.ErrPackageClauseConflict, resolver.ErrInvalidPackagePath, resolver.ErrDuplicatePackage)
+)
+
+func codeOf(k resolver.ErrorKind) string { return (&resolver.ResolveError{Kind: k}).Code() }
+
+func codes(kinds ...resolver.ErrorKind) map[string]bool {
+	m := map[string]bool{}
+	for _, k := range kinds {
+		m[codeOf(k)] = true
+	}
+	return m
+}
+
+// fileLine is a line of a file, spelled as a Canonical-mode run spells it.
+type fileLine struct {
+	file string
+	line int
+}
+
+// moduleDiagnostics is what the analysis of the buffer buf (as the run spells
+// it), in package pkg and directory dir, publishes on other files, so that
+// every silent import and every exclusion near the buffer has a visible cause:
+//
+//   - the exclusion of every excluded file in dir;
+//   - every diagnostic on the buffer's module's twf.mod, and a broken twf.mod
+//     at dir or at the home folder;
+//   - unless the buffer is excluded: each failing or external import line of
+//     its package, in any of the package's files; each sinking line's cause
+//     set; and the DUPLICATE_MODULE of a module one of them lies under.
+//
+// An excluded file's exclusion is its exclusion diagnostics, or, with none (a
+// failed clause, a lost module), its parse errors.
+func moduleDiagnostics(res pipeline.Result, buf, pkg, dir, modRoot, home string) []pipeline.Diagnostic {
+	modFile := func(root string) string {
+		if root == "" {
+			return ""
+		}
+		return filepath.ToSlash(filepath.Join(root, "twf.mod"))
+	}
+	ownMod := modFile(modRoot)
+	rootMods := map[string]bool{modFile(dir): true, modFile(home): true}
+
+	excluded := res.Excluded[buf]
+	lines := map[fileLine]bool{}
+	causes := map[string]bool{}
+	var paths []string
+	if !excluded {
+		for _, imp := range res.File.Imports {
+			if imp.PkgID != pkg {
+				continue
+			}
+			lines[fileLine{imp.SourceFile, imp.Line}] = true
+			paths = append(paths, strings.ToLower(imp.Path))
+			if o := res.File.ImportOutcomes[imp]; o.Kind == ast.ImportSink {
+				for _, c := range o.Causes {
+					causes[c] = true
+				}
+			}
+		}
+	}
+	importsUnder := func(m string) bool {
+		m = strings.ToLower(m)
+		for _, p := range paths {
+			if p == m || strings.HasPrefix(p, m+"/") {
+				return true
+			}
+		}
+		return false
+	}
+	hasExclusion := map[string]bool{}
+	for _, x := range res.Diagnostics {
+		if exclusionCodes[x.Code] {
+			hasExclusion[x.File] = true
+		}
+	}
+	exclusion := func(x pipeline.Diagnostic) bool {
+		if hasExclusion[x.File] {
+			return exclusionCodes[x.Code]
+		}
+		return x.Kind == "parse"
+	}
+
+	var out []pipeline.Diagnostic
+	for _, x := range res.Diagnostics {
+		switch {
+		case x.File == buf:
+			continue
+		case res.Excluded[x.File] && path.Dir(x.File) == filepath.ToSlash(dir) && exclusion(x):
+		case x.File == ownMod:
+		case rootMods[x.File] && x.Code == codeOf(resolver.ErrModuleFileInvalid):
+		case excluded:
+			continue
+		case x.Kind == "resolve" && importCodes[x.Code] && lines[fileLine{x.File, x.Start.Line}]:
+		case causes[x.File] && exclusion(x):
+		case x.Code == codeOf(resolver.ErrDuplicateModule) && importsUnder(x.Name):
+		default:
+			continue
+		}
+		out = append(out, x)
+	}
+	return out
+}
+
+// editorHints rewords, for the editor, the CLI's hint on an IMPORT_NOT_FOUND
+// that stopped at a directory every walk skips (see skipHint).
+func editorHints(res pipeline.Result, folders []string) {
+	const cli = " (pass it explicitly)"
+	hints := map[fileLine]string{}
+	for _, imp := range res.File.Imports {
+		if o := res.File.ImportOutcomes[imp]; o.Kind == ast.ImportNotFound && o.Skipped != "" {
+			hints[fileLine{imp.SourceFile, imp.Line}] = skipHint(o, imp.SourceFile, folders)
+		}
+	}
+	if len(hints) == 0 {
+		return
+	}
+	notFound := codeOf(resolver.ErrImportNotFound)
+	for _, e := range res.ResolveErrs {
+		if h, ok := hints[fileLine{e.File, e.Line}]; ok && e.Kind == resolver.ErrImportNotFound {
+			e.Msg = strings.Replace(e.Msg, cli, h, 1)
+		}
+	}
+	for i, x := range res.Diagnostics {
+		if h, ok := hints[fileLine{x.File, x.Start.Line}]; ok && x.Code == notFound {
+			res.Diagnostics[i].Message = strings.Replace(x.Message, cli, h, 1)
+		}
+	}
+}
+
+// skipHint is the editor's hint for an import in file that stopped at a
+// skipped directory: open that directory as the workspace folder when that
+// makes it the file's home folder and a package is there to load; move the
+// package out of it when a package is there; else none.
+func skipHint(o ast.ImportOutcome, file string, folders []string) string {
+	skipped := pipeline.Canonicalize(o.Skipped)
+	switch {
+	case !o.SkippedProvides:
+		return ""
+	case homeFolder(append(slices.Clone(folders), skipped), filepath.FromSlash(file)) == skipped:
+		return " (open " + filepath.ToSlash(skipped) + " as the workspace folder)"
+	}
+	return " (move the package out of " + filepath.Base(skipped) + "/ to import it here)"
 }

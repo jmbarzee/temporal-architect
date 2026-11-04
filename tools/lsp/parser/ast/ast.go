@@ -99,6 +99,15 @@ const (
 type ImportOutcome struct {
 	Kind   ImportOutcomeKind
 	Detail string
+	// Causes are a sink's cause set: the files, as the run spells them, whose
+	// exclusion diagnostics explain it — the excluded inputs at the path, or a
+	// broken or lost twf.mod the lookup reached.
+	Causes []string
+	// Skipped is, for an ImportNotFound that stopped at a directory every walk
+	// skips, that directory; SkippedProvides says a walk of it would reach a
+	// directory that provides the path.
+	Skipped         string
+	SkippedProvides bool
 }
 
 // ImportDecl is a single `import [alias] "path"` declaration at file scope.
