@@ -103,7 +103,7 @@ func TestWhitespaceOnlyLinesAreBlank(t *testing.T) {
 	for _, blank := range []string{"", " ", "\t", "\t\t", " \t", "\t ", "    \t  "} {
 		for _, nl := range []string{"\n", "\r\n"} {
 			src := strings.Join([]string{
-				blank, "workflow:", blank, "    a", blank, "    b", blank, "activity", blank, "",
+				blank, "workflow:", blank, "\ta", blank, "\tb", blank, "activity", blank, "",
 			}, nl)
 			t.Run(strings.NewReplacer("\t", `\t`, "\r", `\r`).Replace(blank+nl), func(t *testing.T) {
 				assertTypes(t, src, block)

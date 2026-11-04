@@ -15,14 +15,14 @@ func TestDuplicateOptionKey(t *testing.T) {
 		workflow_id_reuse_policy: ALLOW_DUPLICATE
 		workflow_id_reuse_policy: REJECT_DUPLICATE
 	close complete()
-`, 4, 9},
+`, 4, 3},
 		{"call-site options", `workflow W(a: A):
 	activity Do(a)
 		options:
 			start_to_close_timeout: 1m
 			start_to_close_timeout: 2m
 	close complete()
-`, 5, 13},
+`, 5, 4},
 		{"nested block", `workflow W(a: A):
 	activity Do(a)
 		options:
@@ -30,13 +30,13 @@ func TestDuplicateOptionKey(t *testing.T) {
 				maximum_attempts: 3
 				maximum_attempts: 5
 	close complete()
-`, 6, 17},
+`, 6, 5},
 		{"worker options", `namespace ns:
 	worker w
 		options:
 			task_queue: "a"
 			task_queue: "b"
-`, 5, 13},
+`, 5, 4},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -136,27 +136,27 @@ func TestOptionValueErrorPosition(t *testing.T) {
 	default_options:
 		workflow_id_reuse_policy: TERMINATE_IF_RUNNING
 	close complete()
-`, 35},
+`, 29},
 		{"string for a duration", `workflow W(a: A):
 	default_options:
 		workflow_run_timeout: "1h"
 	close complete()
-`, 31},
+`, 25},
 		{"number for an enum", `workflow W(a: A):
 	default_options:
 		workflow_id_conflict_policy: 3
 	close complete()
-`, 38},
+`, 32},
 		{"bool for a string", `workflow W(a: A):
 	default_options:
 		task_queue: true
 	close complete()
-`, 21},
+`, 15},
 		{"list for a duration", `workflow W(a: A):
 	default_options:
 		workflow_run_timeout: ["1h"]
 	close complete()
-`, 31},
+`, 25},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

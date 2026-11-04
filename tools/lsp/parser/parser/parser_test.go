@@ -2786,7 +2786,7 @@ func TestWorkerServiceThirdSegmentKeepsWorker(t *testing.T) {
 	if len(w.Services) != 2 || w.Services[0].Package != "pkg" || w.Services[0].Name != "Svc" {
 		t.Fatalf("services = %+v", w.Services)
 	}
-	want := []ast.OperationMention{{Pos: ast.Pos{Line: 2, Column: 27}, ServiceIndex: 0, Op: "OpA"}}
+	want := []ast.OperationMention{{Pos: ast.Pos{Line: 2, Column: 24}, ServiceIndex: 0, Op: "OpA"}}
 	if !reflect.DeepEqual(w.OperationMentions, want) {
 		t.Errorf("mentions = %+v, want %+v", w.OperationMentions, want)
 	}
@@ -2857,8 +2857,8 @@ func TestTrailingCommentKeptAsStatement(t *testing.T) {
 		}
 	}
 	want := []string{
-		"*ast.ActivityCall", `comment 2:26 " local activity"`,
-		"*ast.CloseStmt", `comment 3:23 " done"`,
+		"*ast.ActivityCall", `comment 2:23 " local activity"`,
+		"*ast.CloseStmt", `comment 3:20 " done"`,
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("body = %q, want %q", got, want)
@@ -2899,8 +2899,8 @@ func TestStringUnknownEscapeIsLoud(t *testing.T) {
 		got = append(got, fmt.Sprintf("%d:%d %s", e.Line, e.Column, e.Msg))
 	}
 	want := []string{
-		`2:20 unknown escape \n in string literal (only \" and \\ are escapes)`,
-		`4:27 unknown escape \t in string literal (only \" and \\ are escapes)`,
+		`2:17 unknown escape \n in string literal (only \" and \\ are escapes)`,
+		`4:18 unknown escape \t in string literal (only \" and \\ are escapes)`,
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("errors = %q, want %q", got, want)

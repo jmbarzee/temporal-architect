@@ -70,7 +70,7 @@ func TestSingleLevelIndent(t *testing.T) {
 }
 
 func TestNestedIndent(t *testing.T) {
-	input := "a:\n    b:\n        c\n"
+	input := "a:\n\tb:\n\t\tc\n"
 	expected := []token.TokenType{
 		token.IDENT, token.COLON, token.NEWLINE,
 		token.INDENT, token.IDENT, token.COLON, token.NEWLINE,
@@ -87,7 +87,7 @@ func TestNestedIndent(t *testing.T) {
 }
 
 func TestMultiLevelDedent(t *testing.T) {
-	input := "a:\n    b:\n        c\nd\n"
+	input := "a:\n\tb:\n\t\tc\nd\n"
 	expected := []token.TokenType{
 		token.IDENT, token.COLON, token.NEWLINE,
 		token.INDENT, token.IDENT, token.COLON, token.NEWLINE,
@@ -106,7 +106,7 @@ func TestMultiLevelDedent(t *testing.T) {
 }
 
 func TestBlankLineSkipping(t *testing.T) {
-	input := "a:\n    b\n\n    c\n"
+	input := "a:\n\tb\n\n\tc\n"
 	expected := []token.TokenType{
 		token.IDENT, token.COLON, token.NEWLINE,
 		token.INDENT, token.IDENT, token.NEWLINE,
@@ -124,7 +124,7 @@ func TestBlankLineSkipping(t *testing.T) {
 }
 
 func TestBlankLineWithSpacesSkipping(t *testing.T) {
-	input := "a:\n    b\n    \n    c\n"
+	input := "a:\n\tb\n    \n\tc\n"
 	expected := []token.TokenType{
 		token.IDENT, token.COLON, token.NEWLINE,
 		token.INDENT, token.IDENT, token.NEWLINE,
@@ -233,7 +233,7 @@ func TestColon(t *testing.T) {
 }
 
 func TestEOFDedentEmission(t *testing.T) {
-	input := "a:\n    b:\n        c"
+	input := "a:\n\tb:\n\t\tc"
 	expected := []token.TokenType{
 		token.IDENT, token.COLON, token.NEWLINE,
 		token.INDENT, token.IDENT, token.COLON, token.NEWLINE,
@@ -410,7 +410,7 @@ func TestNumberToken(t *testing.T) {
 }
 
 func TestEmitEOFIdempotent(t *testing.T) {
-	input := "a:\n    b"
+	input := "a:\n\tb"
 	l := New(input)
 	_ = l.AllTokens()
 
@@ -427,9 +427,9 @@ func TestEmitEOFIdempotent(t *testing.T) {
 }
 
 func TestInconsistentDedent(t *testing.T) {
-	// Indent stack will be [0, 4] after the indent. Dedenting to column 3
+	// Indent stack will be [0, 2] after the indent. Dedenting to width 1
 	// doesn't match any stack level, so an ILLEGAL token should appear.
-	input := "a:\n    b\n   c\n"
+	input := "a:\n\t\tb\n\tc\n"
 	l := New(input)
 	tokens := l.AllTokens()
 
@@ -775,7 +775,7 @@ func TestEmptyListLiteralTokens(t *testing.T) {
 func TestTrailingComment(t *testing.T) {
 	// A '#' after a block header (a line ending in ':' or opening an indented
 	// block, past blank lines) is a TRAILING_COMMENT; any other is a COMMENT.
-	input := "a(\n) # one\n\n  b # two\n  # three\n  c: # four\n"
+	input := "a(\n) # one\n\n\tb # two\n\t# three\n\tc: # four\n"
 	expected := []token.TokenType{
 		token.IDENT, token.ARGS, token.TRAILING_COMMENT, token.NEWLINE,
 		token.INDENT, token.IDENT, token.COMMENT, token.NEWLINE,
