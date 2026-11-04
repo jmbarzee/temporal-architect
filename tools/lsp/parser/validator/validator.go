@@ -336,10 +336,11 @@ func (v *validationCtx) checkEmptyDefinitions() {
 	}
 }
 
-// checkWorkerTypeNames reports, per worker definition in order, two types of
-// one kind registered under one name from different packages. Temporal keys
-// registrations by name, and a package has no runtime meaning, so one worker
-// holds only one of them. Each collision reports at the later entry.
+// checkWorkerTypeNames reports, per worker definition in order, a name
+// registered twice for one kind: the same entry repeated, or two types from
+// different packages. Temporal keys registrations by name, and a package has
+// no runtime meaning, so one worker holds each name once. Each collision
+// reports at the later entry.
 func (v *validationCtx) checkWorkerTypeNames(defs []ast.Definition) {
 	for _, def := range defs {
 		w, ok := def.(*ast.WorkerDef)
@@ -352,9 +353,9 @@ func (v *validationCtx) checkWorkerTypeNames(defs []ast.Definition) {
 	}
 }
 
-// checkTypeNames reports each of refs whose name an earlier ref of a
-// different type already registers on w. An unresolved ref is skipped: it is
-// external or already reported as undefined.
+// checkTypeNames reports each of refs whose name an earlier ref already
+// registers on w. An unresolved ref is skipped: it is external or already
+// reported as undefined.
 func checkTypeNames[T interface {
 	comparable
 	ast.Packaged
@@ -371,11 +372,12 @@ func checkTypeNames[T interface {
 			first[r.Name] = at
 			continue
 		}
+		msg := fmt.Sprintf("worker %s registers %s %s and %s %s under one name, %q; Temporal registers types by name, not package, so one worker can hold only one of them", w.Name, kind, ast.QualifiedName(prev.pkg, prev.name), kind, ast.QualifiedName(at.pkg, at.name), r.Name)
 		if prev == at {
-			continue
+			msg = fmt.Sprintf("worker %s registers %s %s twice; Temporal registers each name once per worker", w.Name, kind, ast.QualifiedName(at.pkg, at.name))
 		}
 		v.errs = append(v.errs, &Error{
-			Msg:    fmt.Sprintf("worker %s registers %s %s and %s %s under one name, %q; Temporal registers types by name, not package, so one worker can hold only one of them", w.Name, kind, ast.QualifiedName(prev.pkg, prev.name), kind, ast.QualifiedName(at.pkg, at.name), r.Name),
+			Msg:    msg,
 			Line:   r.Line,
 			Column: r.Column,
 			Kind:   ErrWorkerDuplicateTypeName,

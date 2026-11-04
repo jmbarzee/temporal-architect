@@ -24,10 +24,11 @@ in another package. The qualifier is bare for same-package symbols; a qualified 
 imported package that owns the symbol, and an unresolved (external) import makes qualified
 registrations resolve as external.
 
-A worker registers each type under its bare name: Temporal has no packages, and its SDKs key
-registrations by name. Two entries of one kind whose names match but whose packages differ
-(`workflow orders.Run` and `workflow billing.Run`) raise `WORKER_DUPLICATE_TYPE_NAME` at the later
-entry. Put them on workers polling different task queues.
+A worker registers each name once per kind: Temporal has no packages, and its SDKs key
+registrations by name. Two entries of one kind with one name — the same entry repeated, or types
+from different packages (`workflow orders.Run` and `workflow billing.Run`) — raise
+`WORKER_DUPLICATE_TYPE_NAME` at the later entry. Drop a repeat; put same-named types on workers
+polling different task queues.
 
 A `nexus service` entry registers the **whole** service — every operation it declares. A worker
 cannot register part of a service: Temporal workers register services, and Java and Python reject
@@ -350,7 +351,7 @@ The resolver validates workers, namespaces, and nexus definitions:
 - Workers on the same task queue (same deploy key, within a namespace) that both register nexus services but different ones produce errors. Only a worker registering a service polls the queue's Nexus tasks, so a worker registering none is not compared on services; a poller lacking a requested service fails the call with a non-retryable `NotFound`. Like the rest of coherence, this is a steady-state claim — it ignores worker-versioning rollouts
 - Workers on the same task queue (same deploy key, within a namespace) with identical workflow, activity, and service sets produce warnings (redundant)
 - A worker `nexus service` entry naming an operation produces an error (`WORKER_REGISTERS_OPERATION`)
-- A worker registering two workflows, two activities, or two nexus services with one name from different packages produces an error (`WORKER_DUPLICATE_TYPE_NAME`)
+- A worker registering one name twice for a kind — the same workflow, activity, or nexus service repeated, or two from different packages — produces an error (`WORKER_DUPLICATE_TYPE_NAME`)
 - A nexus call originating in a namespace its endpoint's `allowed_caller_namespaces` omits produces an error (`NEXUS_CALLER_NOT_ALLOWED`)
 - Nexus endpoint routing to a task queue where no worker in the endpoint's namespace registers the service produces errors
 - Defined workflows/activities not on any instantiated worker produce warnings (when namespaces exist)

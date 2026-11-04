@@ -20,7 +20,7 @@ nexus service Svc:
 `}
 }
 
-// TestWorkerDuplicateTypeName: a worker holds one type per name and kind, as
+// TestWorkerDuplicateTypeName: a worker registers each name once per kind, as
 // Temporal registers by name; a package qualifier does not tell two apart.
 func TestWorkerDuplicateTypeName(t *testing.T) {
 	const at = "error WORKER_DUPLICATE_TYPE_NAME "
@@ -39,7 +39,12 @@ func TestWorkerDuplicateTypeName(t *testing.T) {
 			at + `10:5 shared topo.twf: worker shared registers workflow a.Run and workflow b.Run under one name, "Run"` + tail,
 			at + `11:5 shared topo.twf: worker shared registers workflow a.Run and workflow c.Run under one name, "Run"` + tail,
 		}},
-		{"own package qualified", []string{"workflow Run", "workflow topo.Run"}, nil},
+		{"repeated entry", []string{"workflow a.Run", "activity a.Do", "workflow a.Run"}, []string{
+			at + `11:5 shared topo.twf: worker shared registers workflow a.Run twice; Temporal registers each name once per worker`,
+		}},
+		{"own package, bare and qualified", []string{"workflow Run", "workflow topo.Run"}, []string{
+			at + `10:5 shared topo.twf: worker shared registers workflow topo.Run twice; Temporal registers each name once per worker`,
+		}},
 		{"own package beside another", []string{"workflow Run", "workflow a.Run"}, []string{
 			at + `10:5 shared topo.twf: worker shared registers workflow topo.Run and workflow a.Run under one name, "Run"` + tail,
 		}},
