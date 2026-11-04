@@ -14,7 +14,7 @@ import { qualifiedNameOf } from '../types/ast'
 import type { CallerRef, NavigationContextType } from './WorkflowCanvas'
 import { NavigationContext } from './WorkflowCanvas'
 import { DefinitionBlock } from './blocks/DefinitionBlock'
-import { FLASH_MS, NO_REVEAL, replayFlash, revealReducer } from './reveal'
+import { FLASH_MS, NO_REVEAL, measureFilterBar, replayFlash, revealReducer, scrollRowIntoView } from './reveal'
 import { ErrorBars } from './ErrorBars'
 import { definitionCounts, sourceFilesOf } from '../adapter/useGraphModel'
 import { DEF_TYPE_ORDER } from '../theme/temporal-theme'
@@ -74,22 +74,33 @@ export function TreeView({
   // The revealed definition, and the nested row it names when that row is the
   // target, lit for FLASH_MS from its latest reveal.
   const [reveal, dispatchReveal] = React.useReducer(revealReducer, NO_REVEAL)
+  const canvasRef = React.useRef<HTMLDivElement>(null)
   React.useEffect(() => {
     const lit = reveal.lit
     if (!lit) return
+    // A repeat reveal of a definition replays its flash; a nested row replays its own.
+    if (lit.repeat && !lit.child) {
+      const row = canvasRef.current?.querySelector('[role="treeitem"].flash-target')
+      if (row) replayFlash(row)
+    }
     const timer = setTimeout(() => dispatchReveal({ type: 'end', nonce: lit.nonce }), FLASH_MS)
     return () => clearTimeout(timer)
   }, [reveal.lit])
 
-  // The sticky FilterBar covers the top of the scroller. Its height pads the
-  // scroll (TreeView.css), so a row lands below the bar, not under it. It is
-  // measured as each row is scrolled to: a reveal may just have shown the
-  // view, and the hidden bar measures zero.
-  const canvasRef = React.useRef<HTMLDivElement>(null)
-  const padBelowBar = React.useCallback(() => {
+  // The sticky FilterBar covers the top of the scroller, and its height pads
+  // every scroll into view (TreeView.css). It is measured as the view is
+  // shown, and again whenever the bar changes size (its rows wrap, a search
+  // or findings open).
+  React.useLayoutEffect(() => {
+    if (active && canvasRef.current) measureFilterBar(canvasRef.current)
+  }, [active])
+  React.useEffect(() => {
     const canvas = canvasRef.current
-    const bar = canvas?.querySelector<HTMLElement>(':scope > .gv-canvas-header')
-    if (canvas && bar) canvas.style.setProperty('--tree-filter-bar-height', `${bar.offsetHeight}px`)
+    const bar = canvas?.querySelector(':scope > .gv-canvas-header')
+    if (!canvas || !bar || typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(() => measureFilterBar(canvas))
+    ro.observe(bar)
+    return () => ro.disconnect()
   }, [])
 
   // Transition indicator: flash header when AST updates. A counter the bar
@@ -364,33 +375,26 @@ export function TreeView({
   // Focus the row at `index` and scroll it into view below the filter bar.
   const focusRow = React.useCallback((index: number, behavior: ScrollBehavior = 'auto') => {
     const row = treeItemRefs.current[index]
-    padBelowBar()
-    row?.focus({ preventScroll: true })
-    row?.scrollIntoView({ behavior, block: 'nearest' })
-  }, [padBelowBar])
+    if (!row) return
+    row.focus({ preventScroll: true })
+    scrollRowIntoView(row, behavior)
+  }, [])
 
   // Reveal the visible definition at `index`: expand, scroll, flash. With a
   // `child`, the nested row of that name scrolls and flashes itself instead.
   const revealAt = React.useCallback((index: number, child?: string) => {
     if (index === -1) return
 
-    padBelowBar()
     const key = defKey(visibleDefinitions[index])
     setExpandedDefs(prev => new Set(prev).add(key))
     setFocusedIndex(index)
     dispatchReveal({ type: 'reveal', key, child })
 
     setTimeout(() => {
-      const row = treeItemRefs.current[index]
-      if (!row) return
-      if (child) {
-        row.focus({ preventScroll: true })
-        return
-      }
-      focusRow(index, 'smooth')
-      replayFlash(row)
+      if (child) treeItemRefs.current[index]?.focus({ preventScroll: true })
+      else focusRow(index, 'smooth')
     }, 50)
-  }, [visibleDefinitions, focusRow, padBelowBar])
+  }, [visibleDefinitions, focusRow])
 
   // Navigate to a definition by bare name+type — the names statements and
   // the reverse reference index carry.

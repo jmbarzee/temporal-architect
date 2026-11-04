@@ -8,7 +8,7 @@ import { useToggle } from './useToggle'
 import { DefinitionContext, HandlerContext } from '../WorkflowCanvas'
 import { ContextualNavButtons } from './ContextualNav'
 import { OptionsSection } from './OptionsSection'
-import { childReveal, replayFlash, type Reveal } from '../reveal'
+import { childReveal, replayFlash, scrollRowIntoView, type Reveal } from '../reveal'
 import './blocks.css'
 
 interface DefinitionBlockProps {
@@ -41,17 +41,18 @@ interface ControlledExpandProps {
   onToggle?: () => void
 }
 
-// A nested row's reveal: scrolls the row into view and replays its flash on
-// each reveal (a new nonce), and names the class that flashes it while lit.
-function useReveal<T extends HTMLElement>(nonce: number | undefined): [React.RefObject<T>, string] {
+// A nested row's reveal: scrolls the row into view on each reveal (a new
+// nonce), replays its flash on a repeat, and names the class that flashes it
+// while lit.
+function useReveal<T extends HTMLElement>(reveal: Reveal | undefined): [React.RefObject<T>, string] {
   const ref = React.useRef<T>(null)
   React.useEffect(() => {
     const el = ref.current
-    if (nonce === undefined || !el) return
-    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-    replayFlash(el)
-  }, [nonce])
-  return [ref, nonce === undefined ? '' : 'flash-target']
+    if (!reveal || !el) return
+    scrollRowIntoView(el, 'smooth')
+    if (reveal.repeat) replayFlash(el)
+  }, [reveal?.nonce]) // eslint-disable-line react-hooks/exhaustive-deps
+  return [ref, reveal ? 'flash-target' : '']
 }
 
 function WorkflowDefBlock({ def, controlledExpanded, onToggle }: { def: WorkflowDef } & ControlledExpandProps) {
@@ -246,7 +247,7 @@ function NamespaceDefBlock({ def, controlledExpanded, onToggle, reveal }: { def:
             <div className="namespace-entry-section">
               <div className="namespace-entry-label">nexus endpoints</div>
               {def.endpoints.map((ep) => (
-                <NamespaceEndpointEntry key={`${ep.line}:${ep.column}`} entry={ep} revealNonce={childReveal(reveal, ep.endpointName)} />
+                <NamespaceEndpointEntry key={`${ep.line}:${ep.column}`} entry={ep} reveal={childReveal(reveal, ep.endpointName)} />
               ))}
             </div>
           )}
@@ -299,10 +300,10 @@ function NamespaceWorkerEntry({ entry }: { entry: NamespaceWorker }) {
   )
 }
 
-function NamespaceEndpointEntry({ entry, revealNonce }: { entry: NamespaceEndpoint; revealNonce?: number }) {
+function NamespaceEndpointEntry({ entry, reveal }: { entry: NamespaceEndpoint; reveal?: Reveal }) {
   const hasOptions = !!entry.options?.entries?.length
   const [expanded, toggle] = useToggle(false, hasOptions)
-  const [ref, flash] = useReveal<HTMLDivElement>(revealNonce)
+  const [ref, flash] = useReveal<HTMLDivElement>(reveal)
 
   return (
     <div ref={ref} className={`namespace-entry namespace-entry-endpoint ${expanded ? 'expanded' : 'collapsed'} ${flash}`}>
@@ -392,7 +393,7 @@ function NexusServiceDefBlock({ def, controlledExpanded, onToggle, reveal }: { d
       {expanded && (
         <div className="block-body">
           {(def.operations || []).map((op) => (
-            <NexusOperationBlock key={`${op.line}:${op.column}`} operation={op} revealNonce={childReveal(reveal, op.name)} />
+            <NexusOperationBlock key={`${op.line}:${op.column}`} operation={op} reveal={childReveal(reveal, op.name)} />
           ))}
         </div>
       )}
@@ -400,7 +401,7 @@ function NexusServiceDefBlock({ def, controlledExpanded, onToggle, reveal }: { d
   )
 }
 
-export function NexusOperationBlock({ operation, revealNonce }: { operation: NexusOperation; revealNonce?: number }) {
+export function NexusOperationBlock({ operation, reveal }: { operation: NexusOperation; reveal?: Reveal }) {
   const context = React.useContext(DefinitionContext)
 
   // For async operations, look up the linked workflow to get params/return and body
@@ -415,7 +416,7 @@ export function NexusOperationBlock({ operation, revealNonce }: { operation: Nex
   const isUnresolved = operation.opType === 'async' && operation.workflowName && !linkedWorkflow
 
   const [expanded, toggle] = useToggle(false, isExpandable)
-  const [ref, flash] = useReveal<HTMLDivElement>(revealNonce)
+  const [ref, flash] = useReveal<HTMLDivElement>(reveal)
 
   // Build signature
   let signature: React.ReactNode

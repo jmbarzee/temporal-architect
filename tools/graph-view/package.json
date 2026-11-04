@@ -42,7 +42,7 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "vitest run --dir src",
+    "test": "vitest run",
     "build:lib": "vite build --config vite.lib.config.ts && node verify/prune-dts.mjs",
     "prepack": "cp ../../LICENSE LICENSE",
     "postpack": "rm -f LICENSE",
