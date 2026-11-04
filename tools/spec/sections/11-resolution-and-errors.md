@@ -57,6 +57,7 @@ Common error types:
 - Nexus endpoint instantiation missing `task_queue` option
 - Workers on same task queue (same deploy key, within a namespace) with different workflow or activity sets, or — among workers that register nexus services — different service sets
 - Worker `nexus service` entry naming an operation (`WORKER_REGISTERS_OPERATION` — a worker registers whole services)
+- Worker registering one name twice for a kind — a repeated entry, or two types from different packages (`WORKER_DUPLICATE_TYPE_NAME` — Temporal registers types by name, not package)
 - Nexus call originating in a namespace its endpoint's `allowed_caller_namespaces` omits (`NEXUS_CALLER_NOT_ALLOWED`)
 - Undefined nexus endpoint (hard error — endpoints are flat-global; a templated reference resolves by full templated name, so a mismatch or a static reference to a templated endpoint lands here)
 - Endpoint template param set not a superset of its owning namespace's (`ENDPOINT_PARAM_NOT_SUPERSET` — otherwise the endpoint's flat-global name collides across the family)
