@@ -74,9 +74,10 @@ func (wg *workGraph) heuristicRoots(file *ast.File) map[string]*Root {
 	// handler-bearing workflows: a signal/query/update handler is an external
 	// entry point into the workflow. Only detectable with an AST.
 	if file != nil {
+		kept := firstDeclarations(file)
 		for _, def := range file.Definitions {
 			wf, ok := def.(*ast.WorkflowDef)
-			if !ok {
+			if !ok || !kept[def] {
 				continue
 			}
 			if len(wf.Signals)+len(wf.Queries)+len(wf.Updates) > 0 {

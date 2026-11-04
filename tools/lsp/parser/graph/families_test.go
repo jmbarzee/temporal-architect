@@ -641,9 +641,92 @@ func nodesOfKind(g *Graph, kind string) []string {
 	return ids
 }
 
+// TestDuplicateFirstDeclaration: a workflow, nexus service, worker or
+// namespace declared twice in one package is its first declaration, as the
+// resolver keeps it: the graph draws the first workflow's calls, the first
+// service's operations, the first worker's registrations, and the first
+// namespace's worker queue and endpoints. Repeated so map order cannot pass by
+// luck.
+func TestDuplicateFirstDeclaration(t *testing.T) {
+	src := `workflow W(x: X):
+    activity A(x) -> r
+    close complete(r)
+
+workflow W(x: X):
+    activity B(x) -> r
+    close complete(r)
+
+activity A(x: X) -> (X):
+    return x
+
+activity B(x: X) -> (X):
+    return x
+
+nexus service S:
+    sync First() -> ():
+        close complete()
+
+nexus service S:
+    sync Second() -> ():
+        close complete()
+
+worker w:
+    workflow W
+    activity A
+    activity B
+    nexus service S
+
+worker w:
+    workflow W
+
+namespace n:
+    worker w
+        options:
+            task_queue: "a"
+    nexus endpoint e1
+        options:
+            task_queue: "a"
+
+namespace n:
+    worker w
+        options:
+            task_queue: "b"
+    nexus endpoint e2
+        options:
+            task_queue: "b"
+`
+	const at = "/worker:w/namespace:n"
+	want := []string{
+		"activityCall workflow:W" + at + " -> activity:A" + at,
+		"nexusRoute nexusOperation:S.First" + at + " -> nexusEndpoint:e1/namespace:n",
+		"node activity:A" + at,
+		"node activity:B" + at,
+		"node nexusEndpoint:e1/namespace:n",
+		"node nexusOperation:S.First" + at,
+		"node worker:w/namespace:n a",
+	}
+	for range 50 {
+		g := extractAllowingErrors(t, src)
+		got := routed(g, EdgeActivityCall, EdgeNexusRoute)
+		for _, n := range g.Nodes {
+			switch defKindOf(n.Definition) {
+			case KindActivity, KindNexusEndpoint, KindNexusOperation:
+				got = append(got, "node "+n.ID)
+			case KindWorker:
+				got = append(got, "node "+n.ID+" "+n.Queue)
+			}
+		}
+		slices.Sort(got)
+		if !slices.Equal(got, want) {
+			checkRouted(t, got, want)
+			return
+		}
+	}
+}
+
 // TestDuplicateEndpointResolverBinding: the graph draws the endpoint the
 // resolver binds, among the namespaces it keeps by (package, name): the first
-// across packages, and a same-package namespace declared twice keeps its last
+// across packages, and a same-package namespace declared twice keeps its first
 // definition.
 func TestDuplicateEndpointResolverBinding(t *testing.T) {
 	ns := func(pkg, queue string) string {
@@ -665,7 +748,7 @@ workflow W():
 		name, pkgB, want string
 	}{
 		{"two packages", "p2", "qa"},
-		{"one package", "p1", "qb"},
+		{"one package", "p1", "qa"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

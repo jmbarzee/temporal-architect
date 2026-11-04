@@ -30,7 +30,7 @@ PLATFORMS := \
 # ── Dev shortcuts ────────────────────────────────────────────────────────────
 # These build for the local platform only.
 
-.PHONY: build clean
+.PHONY: build
 
 ## Build the toolchain for the local platform (binary + the two npm libraries)
 build: build-lsp build-graph-view-lib build-visualizer-lib
@@ -172,7 +172,7 @@ publish-npm-libs:
 
 # ── Test targets ─────────────────────────────────────────────────────────────
 
-.PHONY: test vet typecheck typecheck-visualizer typecheck-graph-view verify-visualizer gates-visualizer buildlib-graph-view check-visualizer
+.PHONY: test vet typecheck typecheck-visualizer typecheck-graph-view typecheck-catalog test-visualizer verify-visualizer
 
 ## Run every typecheck gate
 typecheck: typecheck-graph-view typecheck-visualizer typecheck-catalog
@@ -198,10 +198,14 @@ typecheck-graph-view: tools/graph-view/node_modules/.package-lock.json
 typecheck-catalog: tools/graph-view/node_modules/.package-lock.json
 	cd tools/graph-view && ./node_modules/.bin/tsc --noEmit -p examples/course-catalog/tsconfig.json
 
-## Run the visualizer's verification bundle (pure checks over its adapter, run
-## under node). Not part of `make test`, which is Go-only.
-verify-visualizer: tools/graph-view/node_modules/.package-lock.json
-	cd tools/visualizer && npm run --silent verify
+## Run the unit tests (Vitest, `src/**/*.test.ts`) of the visualizer and the
+## graph-view library. Not part of `make test`, which is Go-only.
+test-visualizer: tools/graph-view/node_modules/.package-lock.json
+	cd tools/graph-view && npm test
+	cd tools/visualizer && npm test
+
+## The visualizer gate CI runs: its unit tests and the library's.
+verify-visualizer: test-visualizer
 
 ## Run Go tests
 # tools/sampler is its own module (resolved against ../lsp via the repo-root

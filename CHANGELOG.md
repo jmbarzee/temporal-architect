@@ -264,6 +264,9 @@ is now checked against the target's signals.
 
 ### Fixes
 
+- With three or more copies of one module, each ignored copy's
+  `DUPLICATE_MODULE` names every other copy, so its message no longer depends
+  on input order (#303).
 - `twf check` no longer hangs on a top-level `nexus` call; it reports one
   `parse/SYNTAX` error (#263).
 - The help for `twf check`, `parse`, `graph`, `graph chunks` and `symbols`
@@ -306,6 +309,13 @@ is now checked against the target's signals.
   `DUPLICATE_ENDPOINT` lands on each later one and names the first's namespace,
   and calls, routing checks and the graph all use the first, on every run
   (#290).
+- A workflow, activity, worker, namespace or nexus service declared twice in
+  one package is likewise its first declaration, not its last: references,
+  checks that relate definitions, the graph, decomposition and the visualizer
+  all use the first. The `DUPLICATE_*` error on the later one says where the
+  first is. Every declaration is still checked for an empty definition, and
+  every workflow, activity and nexus service body for its own problems; a
+  later worker or namespace gets no other checks.
 - A `DISPATCH_NO_REACHABLE_DEPLOYMENT` names an operation by its own service
   when another service's name prefixes it.
 - **LSP:** rename, references and go-to-definition ranges cover the name, not
@@ -339,6 +349,9 @@ is now checked against the target's signals.
   directory.
 - **Visualizer:** "Show in Tree" on a nexus operation or endpoint scrolls to and
   flashes that row, not just the service or namespace that owns it (#249).
+- **Visualizer:** a row the Tree scrolls to ("Show in Tree", in-tree navigation,
+  arrow keys) lands below the sticky filter bar, not under it. A repeat "Show in
+  Tree" on the same row scrolls to it again and restarts its flash (#293).
 - **Visualizer graph view:** wheel zoom no longer logs a passive-listener
   warning per event, and the page behind the canvas no longer scrolls (#212).
   When the pane resizes, for example when a host opens a side panel, the camera

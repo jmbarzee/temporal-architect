@@ -1,6 +1,7 @@
 package pipeline_test
 
 import (
+	"os"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -127,6 +128,135 @@ func TestDuplicateModuleExcludesTheLaterCopy(t *testing.T) {
 	if strings.Join(defs, ",") != "kube/k.twf" {
 		t.Errorf("kept %v, want only kube/k.twf", defs)
 	}
+}
+
+// TestDuplicateModuleIgnoresInputOrder: with three or more copies of one
+// module, a losing copy's message names every other copy, so it reads the same
+// whichever copy comes first, as two editor buffers with different inputs
+// need. Only which copy wins follows input order (spec 15, Ignored Files).
+func TestDuplicateModuleIgnoresInputOrder(t *testing.T) {
+	for _, n := range []int{3, 4} {
+		copies := []string{"c", "a", "d", "b"}[:n]
+		files := map[string]string{}
+		for _, c := range copies {
+			files[c+"/twf.mod"] = "module github.com/m/kube\n"
+			files[c+"/k.twf"] = wf("kube", "K")
+		}
+		t.Chdir(layout(t, files))
+		sorted := append([]string(nil), copies...)
+		sort.Strings(sorted)
+		want := map[string]string{}
+		for _, c := range copies {
+			var others []string
+			for _, o := range sorted {
+				if o != c {
+					others = append(others, o)
+				}
+			}
+			want[c] = c + "/twf.mod:1:1 DUPLICATE_MODULE: module github.com/m/kube is also rooted at " + strings.Join(others, ", ") + "; this copy is ignored"
+		}
+
+		byWinner := map[string][]string{}
+		for _, order := range permutations(copies) {
+			diags := runCheck(t, order...)
+			var gotWant []string
+			for _, c := range order[1:] {
+				gotWant = append(gotWant, want[c])
+			}
+			sort.Strings(diags)
+			sort.Strings(gotWant)
+			if strings.Join(diags, "\n") != strings.Join(gotWant, "\n") {
+				t.Errorf("order %v: diagnostics =\n%s\nwant\n%s", order, strings.Join(diags, "\n"), strings.Join(gotWant, "\n"))
+			}
+			if prev, ok := byWinner[order[0]]; ok && strings.Join(prev, "\n") != strings.Join(diags, "\n") {
+				t.Errorf("order %v: diagnostics differ from another order with the same first copy", order)
+			}
+			byWinner[order[0]] = diags
+		}
+	}
+}
+
+// TestDuplicateModuleOldSiblingUnderSymlinks: walked through a symlinked
+// directory argument or working directory, kube/ still comes before
+// kube-old/ (a directory's own entries in lexical order), so the stale copy
+// loses.
+func TestDuplicateModuleOldSiblingUnderSymlinks(t *testing.T) {
+	root := layout(t, map[string]string{
+		"real/kube-old/twf.mod": "module github.com/m/kube\n",
+		"real/kube-old/k.twf":   wf("kube", "K"),
+		"real/kube/twf.mod":     "module github.com/m/kube\n",
+		"real/kube/k.twf":       wf("kube", "K"),
+	})
+	symlink(t, filepath.Join(root, "real"), filepath.Join(root, "link"))
+	t.Chdir(root)
+	// A twf.mod is spelled from the physical working directory; a root, from
+	// its first input file.
+	want := `real/kube-old/twf.mod:1:1 DUPLICATE_MODULE: module github.com/m/kube is also rooted at link/kube; this copy is ignored`
+	if diags := runCheck(t, "link"); len(diags) != 1 || diags[0] != want {
+		t.Errorf("symlinked argument: diagnostics = %q, want [%q]", diags, want)
+	}
+	t.Chdir(filepath.Join(root, "link"))
+	want = `kube-old/twf.mod:1:1 DUPLICATE_MODULE: module github.com/m/kube is also rooted at kube; this copy is ignored`
+	if diags := runCheck(t, "."); len(diags) != 1 || diags[0] != want {
+		t.Errorf("symlinked working directory: diagnostics = %q, want [%q]", diags, want)
+	}
+}
+
+// TestUpperCaseModuleFileIsNotAModule: only an entry named exactly twf.mod is
+// a module file, so on a case-insensitive disk TWF.MOD is not (spec 15,
+// twf.mod).
+func TestUpperCaseModuleFileIsNotAModule(t *testing.T) {
+	root := layout(t, map[string]string{
+		"TWF.MOD":      "module example.com/demo\n",
+		"fabric/f.twf": wf("fabric", "F"),
+	})
+	if !caseInsensitive(t, root) {
+		t.Skip("disk is case-sensitive")
+	}
+	diags, _ := check(t, root)
+	if len(diags) != 1 || !strings.Contains(diags[0], "PACKAGE_OUTSIDE_MODULE") {
+		t.Errorf("diagnostics = %q, want PACKAGE_OUTSIDE_MODULE", diags)
+	}
+}
+
+// TestCaseSensitiveDiskTwoDirectories: on a case-sensitive disk fabric/ and
+// Fabric/ are two directories, and so a case-only DUPLICATE_PACKAGE.
+func TestCaseSensitiveDiskTwoDirectories(t *testing.T) {
+	root := layout(t, map[string]string{
+		"twf.mod":      "module example.com/demo\n",
+		"fabric/f.twf": wf("fabric", "F"),
+	})
+	if err := os.Mkdir(filepath.Join(root, "Fabric"), 0o755); os.IsExist(err) {
+		t.Skip("disk is case-insensitive")
+	} else if err != nil {
+		t.Fatal(err)
+	}
+	writeFile(t, filepath.Join(root, "Fabric", "g.twf"), wf("Fabric", "G"))
+	diags, defs := check(t, root)
+	want := []string{
+		`Fabric/g.twf:1:1 DUPLICATE_PACKAGE: import path example.com/demo/Fabric is also the path of directory fabric; only Fabric is used`,
+		`fabric/f.twf:1:1 DUPLICATE_PACKAGE: import path example.com/demo/fabric is also the path of directory Fabric; only Fabric is used`,
+	}
+	if strings.Join(diags, "\n") != strings.Join(want, "\n") {
+		t.Errorf("diagnostics =\n%s\nwant\n%s", strings.Join(diags, "\n"), strings.Join(want, "\n"))
+	}
+	if strings.Join(defs, ",") != "Fabric/g.twf" {
+		t.Errorf("kept %v, want the byte-wise first directory", defs)
+	}
+}
+
+func permutations(s []string) [][]string {
+	if len(s) <= 1 {
+		return [][]string{append([]string(nil), s...)}
+	}
+	var out [][]string
+	for i := range s {
+		rest := append(append([]string(nil), s[:i]...), s[i+1:]...)
+		for _, p := range permutations(rest) {
+			out = append(out, append([]string{s[i]}, p...))
+		}
+	}
+	return out
 }
 
 func TestPackageClauseConflict(t *testing.T) {

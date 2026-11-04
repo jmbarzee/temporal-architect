@@ -74,21 +74,23 @@ func indexAST(file *ast.File) *astIndex {
 		endpointsByName: map[string]*endpointDeployment{},
 	}
 
-	// kept is the namespace the resolver keeps for each (package, name).
+	// A name declared twice (a DUPLICATE_* resolve error) is its first
+	// declaration's, as the resolver keeps it. kept is the namespace the
+	// resolver keeps for each (package, name).
 	kept := map[string]*ast.NamespaceDef{}
 	for _, def := range file.Definitions {
 		switch d := def.(type) {
 		case *ast.WorkflowDef:
-			idx.workflows[idx.defQName(d, d.Name)] = d
+			keepFirst(idx.workflows, idx.defQName(d, d.Name), d)
 		case *ast.ActivityDef:
-			idx.activities[idx.defQName(d, d.Name)] = d
+			keepFirst(idx.activities, idx.defQName(d, d.Name), d)
 		case *ast.WorkerDef:
-			idx.workers[d.Name] = d
+			keepFirst(idx.workers, d.Name, d)
 		case *ast.NamespaceDef:
-			idx.namespaces[d.Name] = d
-			kept[idx.defQName(d, d.Name)] = d
+			keepFirst(idx.namespaces, d.Name, d)
+			keepFirst(kept, idx.defQName(d, d.Name), d)
 		case *ast.NexusServiceDef:
-			idx.nexusServices[idx.defQName(d, d.Name)] = d
+			keepFirst(idx.nexusServices, idx.defQName(d, d.Name), d)
 		}
 	}
 
@@ -133,6 +135,13 @@ func indexAST(file *ast.File) *astIndex {
 	}
 
 	return idx
+}
+
+// keepFirst sets m[k] to v unless k is already set.
+func keepFirst[V any](m map[string]V, k string, v V) {
+	if _, ok := m[k]; !ok {
+		m[k] = v
+	}
 }
 
 // defQName is the qualified name of a definition — ast.QualifiedName(effective

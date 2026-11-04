@@ -15,6 +15,8 @@ const (
 // start that carries them. A child start sends the reuse policy only; a client
 // start (a nexus run operation, or a start in a sync nexus operation body)
 // sends both, its own options merged per key over the type's default_options.
+// The checks are body-local, so they run on every declaration, a dropped
+// duplicate's included (see walkAllBodies).
 func (v *validationCtx) checkIDPolicies(defs []ast.Definition) {
 	for _, def := range defs {
 		switch d := def.(type) {

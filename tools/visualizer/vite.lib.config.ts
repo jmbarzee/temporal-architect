@@ -45,8 +45,7 @@ export default defineConfig({
     }),
   ],
   resolve: libraryResolve(__dirname),
-  // Don't copy public/ (dev fixtures, etc.) into the published library — the
-  // standalone build (vite.config.ts) still serves them for `?ast=` testing.
+  // Never copy a public/ directory into the published library.
   publicDir: false,
   build: {
     outDir: 'dist-lib',

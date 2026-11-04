@@ -60,7 +60,11 @@ func (wg *workGraph) computeComplexity(file *ast.File) {
 	if file == nil {
 		return
 	}
+	kept := firstDeclarations(file)
 	for _, def := range file.Definitions {
+		if !kept[def] {
+			continue
+		}
 		switch d := def.(type) {
 		case *ast.WorkflowDef:
 			wn := wg.nodes[graph.DefKey(graph.KindWorkflow, ast.QualifiedName(ast.PackageIDOf(d, file), d.Name))]
@@ -95,6 +99,33 @@ func (wg *workGraph) computeComplexity(file *ast.File) {
 			}
 		}
 	}
+}
+
+// firstDeclarations is the set of file's workflow, activity and nexus service
+// definitions that are the first of their kind, package and name: a name
+// declared twice (a DUPLICATE_* resolve error) is its first declaration's, as
+// the resolver keeps it.
+func firstDeclarations(file *ast.File) map[ast.Definition]bool {
+	kept := map[ast.Definition]bool{}
+	seen := map[string]bool{}
+	for _, def := range file.Definitions {
+		var key string
+		switch d := def.(type) {
+		case *ast.WorkflowDef:
+			key = graph.DefKey(graph.KindWorkflow, ast.QualifiedName(ast.PackageIDOf(d, file), d.Name))
+		case *ast.ActivityDef:
+			key = graph.DefKey(graph.KindActivity, ast.QualifiedName(ast.PackageIDOf(d, file), d.Name))
+		case *ast.NexusServiceDef:
+			key = graph.DefKey(graph.KindNexusService, ast.QualifiedName(ast.PackageIDOf(d, file), d.Name))
+		default:
+			continue
+		}
+		if !seen[key] {
+			seen[key] = true
+			kept[def] = true
+		}
+	}
+	return kept
 }
 
 // calleeKey identifies a call's target for the distinct-callee count: the
