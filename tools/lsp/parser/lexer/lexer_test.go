@@ -490,7 +490,7 @@ func TestColumnAccuracy(t *testing.T) {
 		typ token.TokenType
 		col int
 	}{
-		{token.WORKFLOW, 1},  // "workflow" starts at col 1
+		{token.WORKFLOW, 1}, // "workflow" starts at col 1
 		{token.IDENT, 10},   // "Foo" starts at col 10
 		{token.ARGS, 13},    // "(x)" starts at col 13
 		{token.ARROW, 17},   // "->" starts at col 17

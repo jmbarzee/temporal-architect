@@ -49,8 +49,8 @@ func TestTaskQueuesFixture(t *testing.T) {
 
 	// Specific structural checks against the canonical fixture.
 	cases := []struct {
-		id      string
-		assert  func(t *testing.T, n Node)
+		id     string
+		assert func(t *testing.T, n Node)
 	}{
 		{"namespace:ecommerce", func(t *testing.T, n Node) {
 			if n.Definition != "namespace:ecommerce" {

@@ -10,8 +10,8 @@ package graph
 
 import (
 	"fmt"
-	"strings"
 	"sort"
+	"strings"
 
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
 )

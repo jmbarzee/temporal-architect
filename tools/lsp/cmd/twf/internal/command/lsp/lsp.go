@@ -2,12 +2,12 @@
 package lsp
 
 import (
+	glspServer "github.com/jmbarzee/glsp/server"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf/internal/cmdutil"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/internal/server"
 	"github.com/spf13/cobra"
 	"github.com/tliron/commonlog"
 	_ "github.com/tliron/commonlog/simple"
-	glspServer "github.com/jmbarzee/glsp/server"
 )
 
 // New builds the `lsp` command. Its RunE calls serve, which blocks on RunStdio
