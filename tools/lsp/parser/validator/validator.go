@@ -707,12 +707,14 @@ type caller struct {
 //
 // A name declared twice (a DUPLICATE_* resolve error) keeps its first
 // declaration, as the resolver does, and the validator applies one rule to the
-// later ones. Body-local checks, about a body or declaration itself (empty
-// definitions, ID policies on a start), run on every declaration, kept or
-// dropped, so the code the user wrote is still checked. Cross-definition
-// checks, relating one definition to others (routing, linkage, allowlists,
-// parent sends, coherence, overlaps), see only the kept declaration: hence the
-// filter here, keptWorkflows, and nsDefs.
+// later ones. The empty-definition check runs on every declaration. Body-local
+// checks on a workflow, activity or nexus service body (ID policies on a
+// start) run on every body, kept or dropped, so the code the user wrote is
+// still checked. A dropped worker or namespace gets nothing more: the resolver
+// leaves its refs unresolved, so its placements and registrations are not
+// checked. Cross-definition checks, relating one definition to others
+// (routing, linkage, allowlists, parent sends, coherence, overlaps), see only
+// the kept declaration: hence the filter here, keptWorkflows, and nsDefs.
 func (v *validationCtx) walkAllBodies(defs []ast.Definition) {
 	if len(v.namespaces) == 0 {
 		return
