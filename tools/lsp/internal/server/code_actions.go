@@ -92,6 +92,7 @@ func addMissingDefinitionActions(doc *Document, params *protocol.CodeActionParam
 			}
 
 			def = strings.ReplaceAll(def, "\n    ", "\n"+indentUnit(lines))
+			def = strings.ReplaceAll(def, "\n", lineEnding(doc.Content))
 
 			// Insert at end of file
 			end := position(lines, len(lines), len(lines[len(lines)-1])+1)
@@ -164,11 +165,7 @@ func closeComplete(value string) string {
 // whose lines are lines: from its keyword to its last token, before any
 // comment. An argument list may carry it onto later lines.
 func statementRange(content string, lines []string, pos ast.Pos) protocol.Range {
-	start := 0
-	for _, l := range lines[:min(max(pos.Line-1, 0), len(lines))] {
-		start += len(l) + 1
-	}
-	start = min(start+max(pos.Column-1, 0), len(content))
+	start := min(lineOffset(content, pos.Line)+max(pos.Column-1, 0), len(content))
 	end := start
 	for l := lexer.New(content[start:]); ; {
 		tok := l.NextToken()
