@@ -11,7 +11,7 @@ Code quality belongs in `.claude/skills/dev-cycle/references/review-quality-visu
 - `tools/visualizer/spec/` (all other files) — product patterns, view framework
 - `tools/visualizer/src/` (the host) and `tools/graph-view/src/` (the graph engine) — TypeScript implementation (targets under review)
 - in-flight files in `internal/changes/parser/` — parser changes in flight that may affect data availability
-- All existing files in `internal/changes/visualizer/` — both `*_REVISIONS_*.md` and `CHANGES_*.md` — to avoid re-reporting known gaps or already-addressed issues
+- All existing files in `internal/changes/visualizer/` and `internal/changes/graph-view/` — both `*_REVISIONS_*.md` and `CHANGES_*.md` — to avoid re-reporting known gaps or already-addressed issues
 
 ## Workflow
 
@@ -21,11 +21,11 @@ Briefly scan all spec files and the TypeScript source directory structure. Confi
 
 The engine owns GRAPH_VIEW.md § The model (its shapes), § Layout: Force-Directed Simulation, § Control Panel, § Edge Graduation and § Interaction States; the host owns § Data Flow: Two Views, Two Commands, § Graph Construction, the taxonomy in `adapter/`, and the tree view. Elsewhere the spec names each half inline.
 
-**Standard comparison units** (targets relative to `tools/visualizer/src/`; a `graph-view/` prefix means `tools/graph-view/src/`):
+**Standard comparison units** (targets relative to `tools/visualizer/src/`; a `gv:` prefix means relative to `tools/graph-view/src/`):
 
 | # | Topic | Source (spec) | Target (TypeScript) |
 |---|-------|---------------|---------------------|
-| 1 | Header & filter controls | TREE_VIEW.md §Header and filtering | `components/TreeView.tsx`, `graph-view/components/FilterBar.tsx`, `graph-view/filter/` |
+| 1 | Header & filter controls | TREE_VIEW.md §Header and filtering | `components/TreeView.tsx`, `gv:components/FilterBar.tsx`, `gv:filter/` |
 | 2 | Block rendering & anatomy | TREE_VIEW.md §Block rendering | `components/blocks/`: `DefinitionBlock.tsx`, `StatementBlock.tsx`, every block file, `blocks.css` |
 | 3 | Definition types & color scheme | `PRODUCT.md` §Visual Identity; TREE_VIEW.md §Definition types | `theme/temporal-theme.tsx`, `components/blocks/blocks.css` CSS variables, `adapter/node-types.ts` |
 | 4 | Statement block routing & dispatch | TREE_VIEW.md §Statement types | `components/blocks/StatementBlock.tsx` dispatch logic + every specialized block file |
@@ -34,10 +34,10 @@ The engine owns GRAPH_VIEW.md § The model (its shapes), § Layout: Force-Direct
 | 7 | Workflow content (state, handlers, body sections) | TREE_VIEW.md §Workflow (`workflowDef`) | `components/blocks/WorkflowContent.tsx` |
 | 8 | Keyboard navigation | TREE_VIEW.md §Keyboard Navigation | Key handlers in `components/TreeView.tsx` + block components, focus ring styling |
 | 9 | Cross-reference reverse index & navigation | TREE_VIEW.md §Contextual navigation buttons | `components/blocks/ContextualNav.tsx`, `components/WorkflowCanvas.tsx` |
-| 10 | View framework & tab switching | `VIEW_FRAMEWORK.md` §View Model, §View Transitions, §Unified Filter Bar | `components/WorkflowCanvas.tsx`, `components/TreeView.tsx`, `graph-view/components/GraphView.tsx`, `graph-view/components/graph-view/useLinkedViews.ts`, `graph-view/filter/` |
+| 10 | View framework & tab switching | `VIEW_FRAMEWORK.md` §View Model, §View Transitions, §Unified Filter Bar | `components/WorkflowCanvas.tsx`, `components/TreeView.tsx`, `gv:components/GraphView.tsx`, `gv:components/graph-view/useLinkedViews.ts`, `gv:filter/` |
 | 11 | Error handling & display | TREE_VIEW.md §Error and warning bars; `VIEW_FRAMEWORK.md` §Error Handling | `components/ErrorBars.tsx`, `types/ast.ts` FileError |
-| 12 | Live reload & state preservation | `VIEW_FRAMEWORK.md` §Live Reload | Reload logic in `components/VisualizerHost.tsx`/`components/WorkflowCanvas.tsx` |
-| 13 | Graph view model, layout & interaction (engine) | GRAPH_VIEW.md, the engine's sections | `graph-view/components/` (`GraphView.tsx`, `GraphCanvas.tsx`, `GraphControlPanel.tsx`, `controls/`, `graph-view/`), `graph-view/graph/`, `graph-view/filter/` |
+| 12 | Live reload & state preservation | `VIEW_FRAMEWORK.md` §Live Reload | Reload logic in `components/VisualizerHost.tsx`/`components/WorkflowCanvas.tsx`; `gv:components/graph-view/useSimulation.ts`, `gv:components/graph-view/useViewport.ts` |
+| 13 | Graph view model, layout & interaction (engine) | GRAPH_VIEW.md, the engine's sections | `gv:components/` (`GraphView.tsx`, `GraphCanvas.tsx`, `GraphControlPanel.tsx`, `controls/`), `gv:components/graph-view/`, `gv:graph/`, `gv:filter/` |
 | 14 | Graph construction & taxonomy (host) | GRAPH_VIEW.md, the host's sections; §Decomposition Group Overlay | `adapter/`, `components/GroupsModal.tsx` |
 
 ### Phase 2: Parallel Alignment
@@ -60,15 +60,15 @@ Merge all findings. For each issue:
 - **Severity**: how far the implementation diverges from what the spec claims — a spec that asserts a behavior the code lacks outranks an unbuilt enhancement the spec marks as deferred
 - **Data dependency**: if `blocked`, describe the parser JSON fields required
 
-Drop anything already tracked in existing `internal/changes/visualizer/*_REVISIONS_*.md` or `internal/changes/visualizer/CHANGES_*.md` files.
+Drop anything already tracked in existing `*_REVISIONS_*.md` or `CHANGES_*.md` files under `internal/changes/visualizer/` or `internal/changes/graph-view/`.
 
 ### Phase 4: Group & Prioritize
 
 Group by feature area. Order by severity first, then unblocked work before blocked.
 
-### Phase 5: Write to `internal/changes/visualizer/alignment_REVISIONS_{NNN}.md`
+### Phase 5: Write to `internal/changes/{component}/alignment_REVISIONS_{NNN}.md`
 
-Write the grouped plan to `internal/changes/visualizer/alignment_REVISIONS_{NNN}.md` (create the `internal/changes/visualizer/` directory if needed). Use the sequence number the dispatching agent gave you. If none was given (a human running this directly), use `_001` and increment past any file that already exists.
+Write the grouped plan to `internal/changes/{component}/alignment_REVISIONS_{NNN}.md`, where `{component}` is the one this review was dispatched for — `visualizer` or `graph-view` (create the directory if needed). Use the sequence number the dispatching agent gave you. If none was given (a human running this directly), use `_001` and increment past any file that already exists.
 - `**Source:**` immediately after the H1 — the upstream `CHANGES` path when this review was triggered by a propagation, `—` when it was not. Required; `propagate-changes` dedups on it. See `.claude/skills/dev-cycle/SKILL.md` § REVISIONS file contract.
 - Brief summary: coverage state per spec file, how many features are blocked on parser data
 - One `## Group N: Title` section per group

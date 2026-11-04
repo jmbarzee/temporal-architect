@@ -35,7 +35,7 @@ A qualified reference resolves inside its imported package, so a missing symbol 
 
 ## Parse errors (kind: `parse`)
 
-Parse failures share the code `SYNTAX`; dispatch on the message until categorical parse codes land ([#32](https://github.com/jmbarzee/temporal-architect/issues/32)). The lexer's errors carry `LEX` instead, and `twf check --lenient` still exits 1 on them: the file could not be tokenized.
+Parse failures share the code `SYNTAX`; dispatch on the message until categorical parse codes land ([#32](https://github.com/jmbarzee/temporal-architect/issues/32)). The lexer's structural errors carry `LEX` instead (tagged below), and `twf check --lenient` still exits 1 on them: the file could not be tokenized.
 
 | Message | Cause | Fix |
 |---------|-------|-----|
@@ -48,6 +48,7 @@ Parse failures share the code `SYNTAX`; dispatch on the message until categorica
 | `unexpected OPTIONS in worker block` | `options:` on a worker definition | Move them to the worker's instantiation in a namespace — a worker is a reusable type set; the namespace deploys it |
 | `unterminated string literal` (`LEX`) | A `"…"` string has no closing `"` before its line or the file ends — strings are single-line. Reported at the opening `"` | Close the string on the same line. Parens inside a closed string (`"org is required (bootstrap)"`) are fine |
 | `unterminated argument list` (`LEX`) | A `(…)` group reaches the end of the file with a `(`, `{` or `[` unmatched. Reported at the opening `(` | Add the missing `)`, or balance the inner delimiters |
+| `inconsistent indentation` (`LEX`) | A line dedents to a column no enclosing block is indented at (2 spaces, between blocks at 0 and 4). Reported at the line's first token; often followed by a cascading `SYNTAX` error | Indent the line to match the block it belongs to |
 
 ## Validation diagnostics (kind: `validate`)
 
