@@ -20,7 +20,7 @@ How code outside a running workflow reads it, writes to it, or does both.
 
 ## Signals
 
-A signal handler body may use the full workflow statement set, but should only update state. The **handler runs on every arrival**, whether or not the workflow is awaiting that signal — between any two deterministic steps — and leaves the arrival **pending**. A waiter (`await signal X`, an `await one` / `await all` case, `promise p <- signal X`) takes the oldest pending arrival, or the next if none is pending, and binds its parameters with `->`; the **case body runs once it takes one**, and sees the updated state. In `ApprovalWorkflow`, the `Approved` handler sets `approver_name`; the case body reads it. Exact rules: `twf spec statement-syntax`, "Signal and update arrival".
+A signal handler body may use the full workflow statement set, but should only update state. The **handler runs on every arrival**, whether or not the workflow is awaiting that signal — between any two deterministic steps — and leaves the arrival **pending**. A waiter (`await signal X`, an `await one` case, `promise p <- signal X`) takes the oldest pending arrival, or the next if none is pending, and binds its parameters with `->`; the **case body runs once it takes one**, and sees the updated state. In `ApprovalWorkflow`, the `Approved` handler sets `approver_name`; the case body reads it. Exact rules: `twf spec statement-syntax`, "Signal and update arrival".
 
 So activities, child workflows, and other side effects belong in the case body or main body after the await, never in the handler. State read after the await may already reflect later arrivals; per-arrival data comes from `->`.
 
@@ -69,7 +69,7 @@ Use it to tell one saga child about an event another produced, or to push an eve
 
 An update handler may use the full workflow statement set (activities, child workflows, timers) and **must return a value**. The caller blocks until it returns — including time spent waiting on activities, timers, or state inside the handler. It **cannot `close`**: only the main body ends the workflow. `SubscriptionWorkflow` shows both an immediate mutation (`AddCredits`) and validation by activity before mutating (`ChangePlan`).
 
-Handlers run as coroutines alongside the main body under cooperative scheduling: one piece of workflow code runs at a time. On wake-up the workflow processes pending signals and updates in order, then advances the main body. While a handler blocks, the main body can progress; all of them read and write the same workflow state.
+Handlers run as coroutines alongside the main body under cooperative scheduling: one piece of workflow code runs at a time. On wake-up the workflow processes newly arrived signals and updates in order, then advances the main body. While a handler blocks, the main body can progress; all of them read and write the same workflow state.
 
 Updates can be awaited like signals — `await update ChangeAddress`, or as an `await one` case racing a timer (`ShippingWorkflow`). The caller gets its result when the handler returns, not when a waiter takes the arrival.
 

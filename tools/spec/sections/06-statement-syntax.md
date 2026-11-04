@@ -405,7 +405,7 @@ await one:
 		close fail("timeout")
 ```
 
-The case that completes first "wins" the race, its body executes (if present), and then execution continues after the `await one` block. A case already ready on entry, a pending arrival included, wins; among several, the first listed.
+The case that completes first "wins" the race, its body executes (if present), and then execution continues after the `await one` block. A case already ready on entry, a pending arrival included, wins. Whenever more than one case is ready as the workflow resumes, on entry or later, the first listed wins.
 
 **Lifecycle of non-winning cases:** When one case wins, execution continues after the `await one` block. Operations started by non-winning cases (activities, child workflows, timers) are NOT cancelled — they continue running. These pending operations are cancelled only when the workflow run ends: via `close complete`, `close fail`, `close continue_as_new`, or external cancellation. For child workflows, the `parent_close_policy` option controls behavior at parent completion (TERMINATE, REQUEST_CANCEL, or ABANDON).
 
