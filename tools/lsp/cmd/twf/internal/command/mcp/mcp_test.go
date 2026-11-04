@@ -340,6 +340,8 @@ func TestInlineSourceMatchesTheCLI(t *testing.T) {
 		{"package clause with an import", "package fabric\n\n" + imp, "PACKAGE_OUTSIDE_MODULE"},
 		{"package clause with an undefined call", "package orders\n\nworkflow W():\n    activity Ghost()\n", "PACKAGE_OUTSIDE_MODULE"},
 		{"package clause with a parse error", "package orders\n\nworkflow W(:\n", "LEX,SYNTAX,PACKAGE_OUTSIDE_MODULE"},
+		{"tab-indented", "workflow W(x):\n\tif (x):\n\t\tclose complete(x)\n", ""},
+		{"tab after spaces", "workflow W(x):\n    activity A(x)\n    \tclose complete(x)\n\nactivity A(x):\n    return x\n", "LEX"},
 		{"failed package clause", "package\n\n" + wf, "SYNTAX"},
 		{"no package clause with an import", imp, "UNRESOLVED_IMPORT"},
 	}

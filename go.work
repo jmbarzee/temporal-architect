@@ -4,6 +4,7 @@ toolchain go1.25.11
 
 use (
 	./internal/release/gen-skills-manifest
+	./internal/tabify
 	./test/integration/sampler
 	./tools/lsp
 	./tools/sampler
