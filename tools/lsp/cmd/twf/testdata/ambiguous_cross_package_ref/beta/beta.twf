@@ -1,4 +1,4 @@
 package beta
 
 workflow Process(id):
-    close complete(id)
+	close complete(id)

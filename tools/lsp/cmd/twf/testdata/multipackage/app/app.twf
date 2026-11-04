@@ -3,30 +3,30 @@ package app
 import remote "github.com/elsewhere/remote"
 
 nexus service LocalSvc:
-    async DoLocal workflow Runner
+	async DoLocal workflow Runner
 
 workflow Runner(id):
-    activity Work(id) -> ok
-    close complete(ok)
+	activity Work(id) -> ok
+	close complete(ok)
 
 activity Work(id):
-    pass()
+	pass()
 
 workflow Coordinator(id):
-    nexus Gateway LocalSvc.DoLocal(id) -> a
-    nexus Gateway remote.RemoteSvc.DoRemote(id) -> b
-    close complete(a)
+	nexus Gateway LocalSvc.DoLocal(id) -> a
+	nexus Gateway remote.RemoteSvc.DoRemote(id) -> b
+	close complete(a)
 
 worker appWorker:
-    workflow Runner
-    workflow Coordinator
-    activity Work
-    nexus service LocalSvc
+	workflow Runner
+	workflow Coordinator
+	activity Work
+	nexus service LocalSvc
 
 namespace appNs:
-    worker appWorker
-        options:
-            task_queue: "q"
-    nexus endpoint Gateway
-        options:
-            task_queue: "q"
+	worker appWorker
+		options:
+			task_queue: "q"
+	nexus endpoint Gateway
+		options:
+			task_queue: "q"

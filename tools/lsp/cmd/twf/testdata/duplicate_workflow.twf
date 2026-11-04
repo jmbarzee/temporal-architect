@@ -1,5 +1,5 @@
 workflow Twin(order: Order) -> (Result):
-  return order
+	return order
 
 workflow Twin(order: Order) -> (Result):
-  return order
+	return order
