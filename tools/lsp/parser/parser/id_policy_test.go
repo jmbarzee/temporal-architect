@@ -49,6 +49,11 @@ func TestStartOptionsByKind(t *testing.T) {
 		options:
 			workflow_id_conflict_policy: USE_EXISTING
 `, CodeOptionMisplaced},
+		{"parent_close_policy at a detached child start", `workflow W(a: A):
+	detach workflow T(a)
+		options:
+			parent_close_policy: TERMINATE
+`, CodeOptionMisplaced},
 		{"conflict policy at a child start in a handler", `workflow W(a: A):
 	signal Go():
 		workflow T(a)

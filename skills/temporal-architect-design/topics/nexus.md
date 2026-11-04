@@ -41,7 +41,7 @@ The same modes as child workflows:
 |------|--------|----------|
 | **Synchronous** | `nexus Ep Svc.Op(args) -> result` | Blocks until the operation completes (also `await nexus …`) |
 | **Async (promise)** | `promise p <- nexus Ep Svc.Op(args)` | Continues; `await p -> result` later |
-| **Fire-and-forget** | `detach nexus Ep Svc.Op(args)` | Never waits; a `-> result` is a parse error |
+| **Detached** | `detach nexus Ep Svc.Op(args)` | Waits for the start only; the operation outlives the caller (Detach in `twf spec statement-syntax`) |
 
 **Give every nexus call a deadline** — `schedule_to_close_timeout`, or an `await one` race against a `timer` (`NexusWithTimeout` in the example).
 

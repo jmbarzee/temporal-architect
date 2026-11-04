@@ -1041,7 +1041,6 @@ type ActivityTargetJSON struct {
 type WorkflowTargetJSON struct {
 	Package  string           `json:"package,omitempty"`
 	Name     string           `json:"name"`
-	Mode     string           `json:"mode"`
 	Start    string           `json:"start"`
 	Args     string           `json:"args,omitempty"`
 	Result   string           `json:"result,omitempty"`
@@ -1055,7 +1054,6 @@ type NexusTargetJSON struct {
 	Operation                 string           `json:"operation"`
 	Args                      string           `json:"args,omitempty"`
 	Result                    string           `json:"result,omitempty"`
-	Detach                    bool             `json:"detach,omitempty"`
 	ResolvedEndpoint          *ResolvedRefJSON `json:"resolvedEndpoint,omitempty"`
 	ResolvedEndpointNamespace string           `json:"resolvedEndpointNamespace,omitempty"`
 	ResolvedService           *ResolvedRefJSON `json:"resolvedService,omitempty"`
@@ -1083,7 +1081,7 @@ func marshalAsyncTarget(target AsyncTarget) AsyncTargetJSON {
 		}
 		at.Activity = aj
 	case *WorkflowTarget:
-		wj := &WorkflowTargetJSON{Package: t.Workflow.Package, Name: t.Workflow.Name, Mode: workflowCallModeString(t.Mode), Start: startKindString(t.Start), Args: t.Args, Result: t.Result}
+		wj := &WorkflowTargetJSON{Package: t.Workflow.Package, Name: t.Workflow.Name, Start: startKindString(t.Start), Args: t.Args, Result: t.Result}
 		if t.Workflow.Resolved != nil {
 			wj.Resolved = &ResolvedRefJSON{Name: t.Workflow.Resolved.Name, Line: t.Workflow.Resolved.Line, Column: t.Workflow.Resolved.Column}
 		}
@@ -1096,7 +1094,6 @@ func marshalAsyncTarget(target AsyncTarget) AsyncTargetJSON {
 			Operation:      t.Operation.Name,
 			Args:           t.Args,
 			Result:         t.Result,
-			Detach:         t.Detach,
 		}
 		if t.Endpoint.Resolved != nil {
 			nj.ResolvedEndpoint = &ResolvedRefJSON{Name: t.Endpoint.Resolved.EndpointName, Line: t.Endpoint.Resolved.Line, Column: t.Endpoint.Resolved.Column}

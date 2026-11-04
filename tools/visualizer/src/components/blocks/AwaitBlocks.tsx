@@ -43,14 +43,12 @@ function getAwaitTargetDisplay(
       return { icon: AWAIT_TARGET_THEME.activity.icon, keyword: 'activity', signature: `${sig}${result}`, expandableDef: def, isUnresolved: !def }
     }
     case 'workflow': {
-      const modePrefix = target.workflow!.mode === 'detach' ? 'detach ' : ''
       const sig = `${target.workflow!.name || ''}(${target.workflow!.args || ''})`
       const result = target.workflow!.result ? ` → ${target.workflow!.result}` : ''
       const def = context.workflows.get(target.workflow!.name || '')
-      return { icon: AWAIT_TARGET_THEME.workflow.icon, keyword: `${modePrefix}workflow`, signature: `${sig}${result}`, expandableDef: def, isUnresolved: !def, isClientStart: target.workflow!.start === 'client' }
+      return { icon: AWAIT_TARGET_THEME.workflow.icon, keyword: 'workflow', signature: `${sig}${result}`, expandableDef: def, isUnresolved: !def, isClientStart: target.workflow!.start === 'client' }
     }
     case 'nexus': {
-      const detachPrefix = target.nexus!.detach ? 'detach ' : ''
       const sig = `${target.nexus!.endpoint || ''} ${target.nexus!.service || ''}.${target.nexus!.operation || ''}(${target.nexus!.args || ''})`
       const result = target.nexus!.result ? ` → ${target.nexus!.result}` : ''
       // Look up service and operation from context
@@ -60,12 +58,12 @@ function getAwaitTargetDisplay(
       if (operation?.opType === 'async' && operation.workflowName) {
         const wf = context.workflows.get(operation.workflowName)
         if (wf) {
-          return { icon: AWAIT_TARGET_THEME.nexus.icon, keyword: `${detachPrefix}nexus`, signature: `${sig}${result}`, nexusAsyncWorkflow: wf, isUnresolved }
+          return { icon: AWAIT_TARGET_THEME.nexus.icon, keyword: 'nexus', signature: `${sig}${result}`, nexusAsyncWorkflow: wf, isUnresolved }
         }
       } else if (operation?.opType === 'sync' && operation.body) {
-        return { icon: AWAIT_TARGET_THEME.nexus.icon, keyword: `${detachPrefix}nexus`, signature: `${sig}${result}`, nexusSyncBody: operation.body, isUnresolved }
+        return { icon: AWAIT_TARGET_THEME.nexus.icon, keyword: 'nexus', signature: `${sig}${result}`, nexusSyncBody: operation.body, isUnresolved }
       }
-      return { icon: AWAIT_TARGET_THEME.nexus.icon, keyword: `${detachPrefix}nexus`, signature: `${sig}${result}`, isUnresolved }
+      return { icon: AWAIT_TARGET_THEME.nexus.icon, keyword: 'nexus', signature: `${sig}${result}`, isUnresolved }
     }
     case 'ident': {
       const name = target.ident!.name || ''
@@ -84,15 +82,12 @@ function getAwaitStmtDisplay(
   handlers: { signals: Map<string, any>; updates: Map<string, any> },
 ): { icon: string; keyword: string; signature: string; blockClass: string; expandableDef?: { body?: Statement[] }; nexusAsyncWorkflow?: WorkflowDef; nexusSyncBody?: Statement[]; isUnresolved: boolean; isClientStart?: boolean } {
   const target = getAwaitTargetDisplay(stmt.target, context, handlers)
-  // Detached await targets (workflow or nexus) get dashed border styling
-  const isDetach = (stmt.target.kind === 'workflow' && stmt.target.workflow?.mode === 'detach')
-    || (stmt.target.kind === 'nexus' && stmt.target.nexus?.detach)
   return {
     ...target,
     // Activity/workflow/nexus use SVG icons at block level, not text icons
     icon: (stmt.target.kind === 'activity' || stmt.target.kind === 'workflow' || stmt.target.kind === 'nexus') ? '' : target.icon,
     keyword: target.keyword ? `await ${target.keyword}` : 'await',
-    blockClass: `block-await-stmt block-await-stmt-${stmt.target.kind}${isDetach ? ' block-mode-detach' : ''}`,
+    blockClass: `block-await-stmt block-await-stmt-${stmt.target.kind}`,
   }
 }
 

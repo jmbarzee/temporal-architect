@@ -720,11 +720,6 @@
   border-style: dashed;
 }
 
-/* Detach on await stmt blocks (workflow/nexus targets with fire-and-forget mode) */
-.block-await-stmt.block-mode-detach {
-  border-style: dashed;
-}
-
 /* Nexus Service Definition — heaviest pink */
 .block-nexus-service-def {
   background: var(--block-nexus-service-bg);

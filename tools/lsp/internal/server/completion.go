@@ -92,7 +92,7 @@ func workflowCompletions(file *ast.File, enclosing *ast.WorkflowDef) []protocol.
 		keywordItem("promise", "Declare a non-blocking async operation"),
 		keywordItem("set", "Set a condition to true"),
 		keywordItem("unset", "Unset a condition (set to false)"),
-		keywordItem("detach", "Detach a fire-and-forget workflow"),
+		keywordItem("detach", "Start a workflow or nexus call, waiting for the start only"),
 		keywordItem("nexus", "Call a workflow via Nexus"),
 		keywordItem("timer", "Wait for a duration"),
 		keywordItem("await", "Await a signal or update"),

@@ -29,9 +29,9 @@ func TestWorkflowStartWire(t *testing.T) {
 		if got.Mode != tt.wantMode || got.Start != tt.wantStart {
 			t.Errorf("mode/start = %s/%s, want %s/%s", got.Mode, got.Start, tt.wantMode, tt.wantStart)
 		}
-		target := marshalAsyncTarget(&WorkflowTarget{Mode: tt.mode, Start: tt.start, Workflow: Ref[*WorkflowDef]{Name: "Q"}})
-		if target.Workflow.Mode != tt.wantMode || target.Workflow.Start != tt.wantStart {
-			t.Errorf("target mode/start = %s/%s, want %s/%s", target.Workflow.Mode, target.Workflow.Start, tt.wantMode, tt.wantStart)
+		target := marshalAsyncTarget(&WorkflowTarget{Start: tt.start, Workflow: Ref[*WorkflowDef]{Name: "Q"}})
+		if target.Workflow.Start != tt.wantStart {
+			t.Errorf("target start = %s, want %s", target.Workflow.Start, tt.wantStart)
 		}
 	}
 }
