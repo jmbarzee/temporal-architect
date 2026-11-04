@@ -147,9 +147,9 @@ func TestParseFilesCleanFileYieldsNoErrors(t *testing.T) {
 func TestParseFilesAttributesReferenceErrorToReferencingFile(t *testing.T) {
 	// Explicit file list, in order, mirroring `twf check alpha beta gamma`.
 	paths := []string{
-		testdata("ambiguous_cross_package_ref", "alpha.twf"),
-		testdata("ambiguous_cross_package_ref", "beta.twf"),
-		testdata("ambiguous_cross_package_ref", "gamma.twf"),
+		testdata("ambiguous_cross_package_ref", "alpha", "alpha.twf"),
+		testdata("ambiguous_cross_package_ref", "beta", "beta.twf"),
+		testdata("ambiguous_cross_package_ref", "gamma", "gamma.twf"),
 	}
 	_, diags, err := pipeline.ParseFiles(paths)
 	if err != nil {
@@ -166,7 +166,7 @@ func TestParseFilesAttributesReferenceErrorToReferencingFile(t *testing.T) {
 	if undef == nil {
 		t.Fatalf("no UNDEFINED_WORKFLOW diagnostic; got %d diagnostics: %+v", len(diags), diags)
 	}
-	if want := spelled("ambiguous_cross_package_ref", "gamma.twf"); undef.File != want {
+	if want := spelled("ambiguous_cross_package_ref", "gamma", "gamma.twf"); undef.File != want {
 		t.Errorf("UNDEFINED_WORKFLOW file = %q, want %s (the referencing file)", undef.File, want)
 	}
 	if undef.Start.Line != 12 || undef.Start.Column != 5 {
@@ -183,7 +183,7 @@ func TestParseFilesAttributesReferenceErrorToReferencingFile(t *testing.T) {
 		if d.Kind != "resolve" {
 			continue
 		}
-		if d.File == spelled("ambiguous_cross_package_ref", "alpha.twf") || d.File == spelled("ambiguous_cross_package_ref", "beta.twf") {
+		if d.File == spelled("ambiguous_cross_package_ref", "alpha", "alpha.twf") || d.File == spelled("ambiguous_cross_package_ref", "beta", "beta.twf") {
 			t.Errorf("resolve diagnostic mis-attributed to a defining file: %+v", d)
 		}
 		if d.File == "" {
@@ -561,7 +561,7 @@ func TestPackagedGraphNodesJoinASTDefinitions(t *testing.T) {
 		nodesPerFile[file]++
 	}
 	want := map[string]int{
-		spelled("packaged_multi_file", "deploy.twf"):                           4, // namespace, two workers, nexus endpoint
+		spelled("packaged_multi_file", "deploy", "deploy.twf"):                 4, // namespace, two workers, nexus endpoint
 		spelled("packaged_multi_file", "agent", "v1", "agent.twf"):             4, // workflow, activity, nexus service, nexus operation
 		spelled("packaged_multi_file", "lib", "twf", "kube", "v1", "kube.twf"): 3, // workflow, two activities
 	}

@@ -22,6 +22,7 @@ func codeActionHandler(store *DocumentStore) protocol.TextDocumentCodeActionFunc
 		// Collect all available code actions based on diagnostics and context
 		actions = append(actions, addMissingDefinitionActions(doc, params)...)
 		actions = append(actions, convertReturnToCloseActions(doc, params)...)
+		actions = append(actions, createModuleFileActions(store, doc, params)...)
 
 		// Return as interface slice for JSON encoding
 		result := make([]any, len(actions))

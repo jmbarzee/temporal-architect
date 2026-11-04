@@ -228,6 +228,9 @@ Partial parse: 0 workflow(s), 0 activity(s), 1 error(s), 1 warning(s)
 			}
 			// Run from the file's directory: diagnostics spell the file as given.
 			t.Chdir(t.TempDir())
+			if err := os.WriteFile("twf.mod", []byte("module aivearium\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
 			path := name
 			if err := os.WriteFile(path, []byte(tt.src), 0o644); err != nil {
 				t.Fatal(err)

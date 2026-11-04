@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -34,10 +35,12 @@ type Document struct {
 // intra-file).
 //
 // A `file:` buffer's doc.ResolveErrs and doc.ValidateErrs are those of
-// pipeline.ParseSources over its home inputs — the deepest workspace folder
-// whose walk reaches it, its directory, and the buffer itself — with every open
-// buffer's text overlaid, filtered to the buffer's canonical identity: what
-// `twf check <folder> <dir> <file>` would report once the buffers are saved.
+// pipeline.ParseSources over its home inputs — its module root, the deepest
+// workspace folder whose walk reaches it, its directory, and the buffer itself
+// when that walk skips its name — with every open buffer's text overlaid,
+// filtered to the buffer's canonical identity: what `twf check <module root>
+// <folder> <dir> <file>` would report once the buffers are saved. A buffer
+// whose whole module is excluded also gets that module's error at its 1:1.
 // The merged AST is used only for diagnostics; it never becomes doc.File. If
 // the inputs cannot be read, the buffer keeps its single-buffer diagnostics.
 func (d *Document) analyze(folders []string, overlays map[string]string, runs map[string]analysis) {
@@ -61,7 +64,11 @@ func (d *Document) analyze(folders []string, overlays map[string]string, runs ma
 	}
 	canon := pipeline.Canonicalize(bufPath)
 	var inputs []pipeline.Input
-	if home := homeFolder(folders, canon); home != "" {
+	modRoot, _, _ := pipeline.ModuleOf(filepath.Dir(canon))
+	if modRoot != "" {
+		inputs = append(inputs, pipeline.Input{Path: modRoot, Kind: pipeline.Tree})
+	}
+	if home := homeFolder(folders, canon); home != "" && home != modRoot {
 		inputs = append(inputs, pipeline.Input{Path: home, Kind: pipeline.Tree})
 	}
 	inputs = append(inputs, pipeline.Input{Path: filepath.Dir(canon), Kind: pipeline.Dir})
@@ -81,6 +88,27 @@ func (d *Document) analyze(folders []string, overlays map[string]string, runs ma
 		return
 	}
 	d.ResolveErrs, d.ValidateErrs = filterToBuffer(run.res, filepath.ToSlash(canon))
+	if modRoot != "" {
+		d.ResolveErrs = append(d.ResolveErrs, lostModuleErrs(run.res, modRoot)...)
+	}
+}
+
+// lostModuleErrs copies to the buffer's 1:1 the error that excluded its whole
+// module — its twf.mod's MODULE_FILE_INVALID, or the DUPLICATE_MODULE on it —
+// which is reported on the twf.mod, a file the editor may not show.
+func lostModuleErrs(res pipeline.Result, modRoot string) []*resolver.ResolveError {
+	modFile := filepath.ToSlash(filepath.Join(modRoot, "twf.mod"))
+	var out []*resolver.ResolveError
+	for _, e := range res.ResolveErrs {
+		if e.File != modFile || (e.Kind != resolver.ErrModuleFileInvalid && e.Kind != resolver.ErrDuplicateModule) {
+			continue
+		}
+		c := *e
+		c.Line, c.Column = 1, 1
+		c.Msg = "this file's module is excluded: " + e.Msg + " (twf.mod:" + strconv.Itoa(e.Line) + ")"
+		out = append(out, &c)
+	}
+	return out
 }
 
 // analysis is one ParseSources run, shared by the buffers with its inputs.
@@ -183,6 +211,21 @@ func (s *DocumentStore) reanalyze() {
 	for _, d := range docs {
 		d.analyze(s.folders, overlays, runs)
 	}
+}
+
+// Folders returns the workspace folders. Safe for concurrent use.
+func (s *DocumentStore) Folders() []string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.folders
+}
+
+// Reanalyze re-analyzes every open document, for a change on disk the store
+// did not see (a twf.mod). Safe for concurrent use.
+func (s *DocumentStore) Reanalyze() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.reanalyze()
 }
 
 // All returns every open document.

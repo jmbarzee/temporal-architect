@@ -37,6 +37,8 @@ func NewHandler(name, version string) (*protocol.Handler, *DocumentStore) {
 			TextDocumentFoldingRange:       foldingRangeHandler(store),
 			TextDocumentSignatureHelp:      signatureHelpHandler(store),
 			TextDocumentCodeAction:         codeActionHandler(store),
+			WorkspaceExecuteCommand:        executeCommandHandler(store),
+			WorkspaceDidChangeWatchedFiles: didChangeWatchedFilesHandler(store),
 		},
 		Initialize: initializeHandler(name, version, store),
 	}
@@ -70,6 +72,9 @@ func initializeHandler(name, version string, store *DocumentStore) protocol.Init
 							protocol316.CodeActionKindRefactor,
 						},
 					},
+					ExecuteCommandProvider: &protocol316.ExecuteCommandOptions{
+						Commands: []string{createModuleFileCommand},
+					},
 					SignatureHelpProvider: &protocol316.SignatureHelpOptions{
 						TriggerCharacters: []string{"("},
 					},
@@ -93,6 +98,7 @@ func initializeHandler(name, version string, store *DocumentStore) protocol.Init
 
 func initializedHandler() protocol316.InitializedFunc {
 	return func(context *glsp.Context, params *protocol316.InitializedParams) error {
+		watchModuleFiles(context)
 		return nil
 	}
 }

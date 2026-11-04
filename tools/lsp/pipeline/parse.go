@@ -17,6 +17,8 @@ import (
 type source struct {
 	base    string
 	content string
+	// canonical is an on-disk source's identity; "" for a virtual source.
+	canonical string
 }
 
 // InputKind says how ParseSources expands an Input.
@@ -110,11 +112,13 @@ func ParseSources(req Request) (Result, error) {
 		sources = append(sources, source{base: base, content: v.Content})
 	}
 
+	var x *expander
 	if len(req.Inputs) > 0 {
 		e, err := newExpander(req.Mode, req.Overlays)
 		if err != nil {
 			return Result{}, err
 		}
+		x = e
 		files, err := e.expand(req.Inputs)
 		if err != nil {
 			return Result{}, err
@@ -131,7 +135,7 @@ func ParseSources(req Request) (Result, error) {
 			if err != nil {
 				return Result{}, err
 			}
-			sources = append(sources, source{base: f.spelled, content: content})
+			sources = append(sources, source{base: f.spelled, content: content, canonical: f.canonical})
 		}
 	}
 
@@ -146,7 +150,7 @@ func ParseSources(req Request) (Result, error) {
 		defaultFile = sources[0].base
 	}
 
-	return parseSources(sources, defaultFile), nil
+	return parseSources(sources, defaultFile, x), nil
 }
 
 // ParseFiles reads and parses the given inputs, returning the merged AST and
@@ -236,9 +240,29 @@ func ParseSource(name, content string) (*ast.File, []Diagnostic, error) {
 // stamp and merge definitions, then resolve and validate the merged AST once.
 // defaultFile is the file attribution for a resolve/validate error that
 // carries none.
-func parseSources(sources []source, defaultFile string) Result {
+func parseSources(sources []source, defaultFile string, x *expander) Result {
 	merged := &ast.File{}
 	var diags []Diagnostic
+
+	files := make([]*parsed, len(sources))
+	for i, s := range sources {
+		file, parseErrs := parser.ParseFileAll(s.content)
+		files[i] = &parsed{src: s, pos: i, file: file, errs: parseErrs}
+		for _, e := range parseErrs {
+			diags = append(diags, FromParseError(e, s.base))
+		}
+	}
+
+	// File-level exclusions: an excluded file reports its parse errors and the
+	// reason it was excluded, and takes no part in anything else.
+	var pkgErrs []*resolver.ResolveError
+	if x != nil {
+		pkgErrs = x.exclude(files)
+	} else {
+		for _, p := range files {
+			p.excluded = p.file.ClauseExcluded
+		}
+	}
 
 	// Track the distinct packages seen across all files so the merged
 	// File.Package can be set to the sole package (single-package tree) or
@@ -246,27 +270,24 @@ func parseSources(sources []source, defaultFile string) Result {
 	// stamp, not this field, once multiple packages are present.
 	pkgSeen := map[string]bool{}
 
-	for _, s := range sources {
-		file, parseErrs := parser.ParseFileAll(s.content)
-
-		for _, e := range parseErrs {
-			diags = append(diags, FromParseError(e, s.base))
+	for _, p := range files {
+		if p.excluded {
+			continue
 		}
-
-		pkgSeen[file.Package] = true
+		pkgSeen[p.file.Package] = true
 
 		// Thread the file's imports into the merged payload, each stamped with
 		// its owning package so the resolver can build per-package binding
 		// tables. Runtime-only — never serialized.
-		for _, imp := range file.Imports {
-			imp.Package = file.Package
-			imp.SourceFile = s.base
+		for _, imp := range p.file.Imports {
+			imp.Package = p.file.Package
+			imp.SourceFile = p.src.base
 			merged.Imports = append(merged.Imports, imp)
 		}
 
-		for _, def := range file.Definitions {
-			setSourceFile(def, s.base)
-			setPackage(def, file.Package)
+		for _, def := range p.file.Definitions {
+			setSourceFile(def, p.src.base)
+			setPackage(def, p.file.Package)
 			merged.Definitions = append(merged.Definitions, def)
 		}
 	}
@@ -282,18 +303,24 @@ func parseSources(sources []source, defaultFile string) Result {
 
 	// A resolve or validate error carries the reference-site file (#136,
 	// #238); one with none is attributed to the sole source, if any.
+	// A twf.mod sorts at its module's position, before that module's files.
 	pos := make(map[string]int, len(sources))
 	for i, s := range sources {
-		pos[s.base] = i
+		pos[s.base] = 2*i + 1
+	}
+	if x != nil {
+		for f, p := range x.modFilePos {
+			pos[f] = 2 * p
+		}
 	}
 	filePos := func(f string) int {
 		if p, ok := pos[f]; ok {
 			return p
 		}
-		return len(sources)
+		return 2 * len(sources)
 	}
 
-	resolveErrs := resolver.Resolve(merged)
+	resolveErrs := append(pkgErrs, resolver.Resolve(merged)...)
 	for _, e := range resolveErrs {
 		if e.File == "" {
 			e.File = defaultFile

@@ -1,6 +1,6 @@
 package app
 
-import remote "acme/remote"
+import remote "github.com/elsewhere/remote"
 
 nexus service LocalSvc:
     async DoLocal workflow Runner

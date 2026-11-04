@@ -130,6 +130,37 @@ const (
 	// ErrEndpointTaskQueueTemplated: an endpoint task_queue has a parameter; an
 	// endpoint targets one static queue in its namespace.
 	ErrEndpointTaskQueueTemplated
+
+	// --- Module and package diagnostics (issue #232) ---
+	//
+	// The pipeline reports these before resolution, from the inputs' twf.mod
+	// files and package clauses; each excludes files, except the warning and
+	// the name mismatch.
+
+	// ErrModuleFileInvalid: a twf.mod that cannot be used; its module's files
+	// are excluded.
+	ErrModuleFileInvalid
+	// ErrModuleFileUnknownDirective: a directive other than `module` in a valid
+	// twf.mod, ignored. Warning severity.
+	ErrModuleFileUnknownDirective
+	// ErrPackageOutsideModule: an on-disk file with a package clause and no
+	// twf.mod above it; the file is excluded.
+	ErrPackageOutsideModule
+	// ErrDuplicateModule: a second module root declaring a module path already
+	// in the run; the later module's files are excluded.
+	ErrDuplicateModule
+	// ErrPackageClauseConflict: a directory whose files declare different
+	// packages, or mix a clause with clause-less files; the losers are excluded.
+	ErrPackageClauseConflict
+	// ErrInvalidPackagePath: a package directory whose derived import path is
+	// not a valid path; the package is excluded.
+	ErrInvalidPackagePath
+	// ErrDuplicatePackage: two directories yielding one package path, or two
+	// paths differing only in case; all but one directory are excluded.
+	ErrDuplicatePackage
+	// ErrPackageNameMismatch: a declared package name other than its path's
+	// assumed name, when that name is usable.
+	ErrPackageNameMismatch
 )
 
 // ResolveError represents a resolution error with position info.
@@ -236,6 +267,22 @@ func (k ErrorKind) String() string {
 		return "QUEUE_TEMPLATE_MALFORMED"
 	case ErrEndpointTaskQueueTemplated:
 		return "ENDPOINT_TASK_QUEUE_TEMPLATED"
+	case ErrModuleFileInvalid:
+		return "MODULE_FILE_INVALID"
+	case ErrModuleFileUnknownDirective:
+		return "MODULE_FILE_UNKNOWN_DIRECTIVE"
+	case ErrPackageOutsideModule:
+		return "PACKAGE_OUTSIDE_MODULE"
+	case ErrDuplicateModule:
+		return "DUPLICATE_MODULE"
+	case ErrPackageClauseConflict:
+		return "PACKAGE_CLAUSE_CONFLICT"
+	case ErrInvalidPackagePath:
+		return "INVALID_PACKAGE_PATH"
+	case ErrDuplicatePackage:
+		return "DUPLICATE_PACKAGE"
+	case ErrPackageNameMismatch:
+		return "PACKAGE_NAME_MISMATCH"
 	}
 	return "UNKNOWN"
 }

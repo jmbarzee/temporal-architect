@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"strings"
 	"fmt"
 	"sort"
 
@@ -151,14 +152,22 @@ var temporalKeywords = map[token.TokenType]bool{
 
 // ParseFile parses a .twf source string into an AST File.
 func ParseFile(input string) (*ast.File, error) {
+	input = strings.TrimPrefix(input, "\ufeff") // a leading BOM is not text
 	l := lexer.New(input)
 	p := &Parser{lex: l}
 	p.advance() // fill current
 	p.advance() // fill peek
 
 	file := &ast.File{}
+	sawClause := false // a package clause is recognized only as the first clause
 
 	for p.current.Type != token.EOF {
+		first := !sawClause
+		switch p.current.Type {
+		case token.NEWLINE, token.COMMENT, token.INDENT, token.DEDENT:
+		default:
+			sawClause = true
+		}
 		switch {
 		case p.current.Type == token.NEWLINE:
 			p.advance()
@@ -167,7 +176,7 @@ func ParseFile(input string) (*ast.File, error) {
 			p.advance()
 			continue
 		case p.current.Type == token.PACKAGE:
-			if err := p.parsePackageClause(file); err != nil {
+			if err := p.parsePackageClause(file, first); err != nil {
 				return nil, err
 			}
 		case p.current.Type == token.IMPORT:
@@ -203,15 +212,23 @@ func ParseFile(input string) (*ast.File, error) {
 // possible instead of stopping at the first one. It returns a partial AST
 // (which may have successfully parsed definitions) alongside all parse errors.
 func ParseFileAll(input string) (*ast.File, []*ParseError) {
+	input = strings.TrimPrefix(input, "\ufeff") // a leading BOM is not text
 	l := lexer.New(input)
 	p := &Parser{lex: l, collecting: true}
 	p.advance() // fill current
 	p.advance() // fill peek
 
 	file := &ast.File{}
+	sawClause := false // a package clause is recognized only as the first clause
 
 	for p.current.Type != token.EOF {
 		start := p.current
+		first := !sawClause
+		switch p.current.Type {
+		case token.NEWLINE, token.COMMENT, token.INDENT, token.DEDENT:
+		default:
+			sawClause = true
+		}
 		switch {
 		case p.current.Type == token.NEWLINE:
 			p.advance()
@@ -220,11 +237,12 @@ func ParseFileAll(input string) (*ast.File, []*ParseError) {
 			p.advance()
 			continue
 		case p.current.Type == token.PACKAGE:
-			if err := p.parsePackageClause(file); err != nil {
+			// The clause consumes its own line, so no top-level recovery: that
+			// would skip the import lines after it.
+			if err := p.parsePackageClause(file, first); err != nil {
 				if pe, ok := err.(*ParseError); ok {
 					p.addError(pe)
 				}
-				p.recoverTopLevel(start)
 			}
 			continue
 		case p.current.Type == token.IMPORT:

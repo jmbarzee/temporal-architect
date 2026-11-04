@@ -28,6 +28,13 @@ Diagnostics from `twf check` and `twf parse`. Design-level mistakes are in [anti
 | `QUALIFIED_REF_WITHOUT_IMPORT` | `qualified reference uses package "p" with no matching import in package "q"` | A `p.Name` reference names a package `p` the file never `import`ed | Add `import "…/p"` (or fix the qualifier / alias) |
 | `UNRESOLVED_IMPORT` | `import "github.com/acme/shop/billing/v2" is unresolved (no package "billing" in the tree); treated as external` | An imported package isn't found in the tree — warning, exit 0. The message quotes the **full import path** first, then names the **derived (version-stripped) package** (`.../billing/v2` → `billing`) | None required — the package is treated as external (see below). Fix the path if it was a typo |
 | `UNUSED_IMPORT` | `unused import: "p" is never referenced` | An import that resolved but is never used — warning, exit 0 | Remove the import, or add the qualified reference you intended |
+| `PACKAGE_OUTSIDE_MODULE` | `package fabric is not in a module; run "twf mod init <module path>" …` | A file with a `package` clause has no `twf.mod` above it; the file is ignored | Run `twf mod init <module path>` at the design's root (no argument suggests one) |
+| `PACKAGE_NAME_MISMATCH` | `package clusterfabric must be named fabric, the assumed name of its import path …` | The clause differs from the directory's last path element (a trailing `/vN` dropped) | Rename the clause, or move the directory |
+| `PACKAGE_CLAUSE_CONFLICT` | `directory fabric/v1 holds package fabric (f.twf) and package other (g.twf); g.twf is ignored` | One directory, two packages (or a clause mixed with clause-less files) | One package per directory: move or re-clause the file |
+| `MODULE_FILE_INVALID` | `unknown directive "modul"; expected "module <path>"` | The `twf.mod` cannot be used; its module's files are ignored | Fix the `twf.mod`: exactly one `module <path>` line |
+| `DUPLICATE_MODULE` | `module … is also rooted at …; this copy is ignored` | Two checkouts of one module in the inputs; the later one is ignored | Check only one copy, or remove the stale one |
+| `DUPLICATE_PACKAGE` | `import path … is also the path of directory …; only … is used` | Two directories yield one import path (overlapping modules, or a case-only difference) | Rename or move one directory |
+| `INVALID_PACKAGE_PATH` | `package directory kube (old) has the invalid import path …` | A package directory's name makes an invalid path (spaces, `:`, …) | Rename the directory |
 
 ### Packages, imports, and external references
 

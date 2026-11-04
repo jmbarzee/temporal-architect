@@ -50,6 +50,7 @@ twf [flags]
 * [twf graph](#twf-graph)	 - Show the resolved deployment graph; --json for envelope output
 * [twf lsp](#twf-lsp)	 - Start the language server (stdio)
 * [twf mcp](#twf-mcp)	 - Run the MCP server over stdio (parser tools + spec resources)
+* [twf mod](#twf-mod)	 - Module maintenance
 * [twf parse](#twf-parse)	 - Emit the canonical JSON envelope (AST + diagnostics + summary)
 * [twf spec](#twf-spec)	 - Print the embedded TWF language specification
 * [twf symbols](#twf-symbols)	 - List workflows and activities; --json for envelope output
@@ -191,6 +192,51 @@ twf mcp [flags]
 ### SEE ALSO
 
 * [twf](#twf)	 - Temporal Workflow Format CLI
+
+## twf mod
+
+Module maintenance
+
+### Synopsis
+
+Module maintenance. A twf.mod declares the module path of the design below it; every file with a package clause needs one.
+
+### Options
+
+```
+  -h, --help   help for mod
+```
+
+### SEE ALSO
+
+* [twf](#twf)	 - Temporal Workflow Format CLI
+* [twf mod init](#twf-mod-init)	 - Create twf.mod in the current directory
+
+## twf mod init
+
+Create twf.mod in the current directory
+
+### Synopsis
+
+Create twf.mod in the current directory, declaring the given module path.
+A package's import path is the module path joined with its directory below
+the module root. The path is required; with none, init exits non-zero and
+suggests one from the enclosing module, the design's imports, or the Git
+remote.
+
+```
+twf mod init <module path> [flags]
+```
+
+### Options
+
+```
+  -h, --help   help for init
+```
+
+### SEE ALSO
+
+* [twf mod](#twf-mod)	 - Module maintenance
 
 ## twf parse
 

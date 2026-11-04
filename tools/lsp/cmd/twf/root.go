@@ -8,6 +8,7 @@ import (
 	"github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf/internal/command/graph"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf/internal/command/lsp"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf/internal/command/mcp"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf/internal/command/mod"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf/internal/command/parse"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf/internal/command/spec"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf/internal/command/symbols"
@@ -70,6 +71,7 @@ func newRootCmd(version string) *cobra.Command {
 		symbols.New(),
 		graph.New(),
 		spec.New(),
+		mod.New(),
 		lsp.New(version),
 		mcp.New(version),
 		newVersionCmd(version),

@@ -1,6 +1,6 @@
 # Packages and Imports
 
-> **Example:** [`packages.twf`](./packages.twf)
+> **Example:** [`packages/packages.twf`](./packages/packages.twf), with its [`twf.mod`](./packages/twf.mod)
 
 A package groups a directory of `.twf` files so references cross file and directory boundaries and one short name can live in two domains without colliding. It is a **compile-time symbol grouping with no runtime effect** — unrelated to `namespace`, which is the Temporal deployment construct.
 
@@ -14,11 +14,15 @@ A package groups a directory of `.twf` files so references cross file and direct
 | A topology / deployment file wiring domains together | Make it its own package (e.g. `deploy`) that `import`s the domains it deploys. |
 | A service genuinely lives in another system / repo | `import` its package; if it isn't in the tree the import is **treated as external**. |
 
+## Start with a Module
+
+A packaged design needs a `twf.mod` at its root: run `twf mod init <module path>` there (with no argument it suggests one, from the design's imports or the Git remote). A package's import path is the module path joined with its directory below the root, so each package lives in its own directory: `module github.com/acme/shop` makes `orders/` the package `github.com/acme/shop/orders`. A file with a `package` clause and no `twf.mod` above it is `PACKAGE_OUTSIDE_MODULE` and is ignored. Clause-less files need no module.
+
 ## The Three Constructs
 
 ### `package` clause
 
-`package orders` — at most one per file, before any `import` or definition; every file in a directory shares it. Clause-less files belong to the implicit default package, which is elided from all names and diagnostics.
+`package orders` — one identifier, the file's first clause; every file in a directory shares it. The name must be the import path's last element, with a trailing `/vN` dropped (`…/orders/v1` → `orders`); when that element cannot be a name (`library-temporal-kube`), any name is allowed and importers alias it. Clause-less files belong to the implicit default package, which is elided from all names and diagnostics.
 
 ### `import` declaration
 
@@ -28,7 +32,7 @@ import billing "github.com/acme/shop/billing"         # referenced as: billing
 import billingv2 "github.com/acme/shop/billing/v2"    # strips to leaf billing too → aliased billingv2 to avoid the clash
 ```
 
-- The string is the **full module-prefixed path**, carried verbatim as a future global-lookup key; it is **not enforced** today (a single directory tree is assumed).
+- The string is the package's **full import path** (module path + directory).
 - Reference the package by its **leaf name** — the last path segment, except a trailing `/vN` is stripped and the preceding segment used (`.../billing/v2` → `billing`), Go's `importPathToAssumedName` rule.
 - Alias (`import alias "path"`) only to disambiguate a leaf clash — canonically v1 and v2 of one package. The alias renames only the **local** reference; the target is always the version-stripped leaf.
 
