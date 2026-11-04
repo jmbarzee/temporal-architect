@@ -39,7 +39,7 @@ workflow DeployServices(app: App) -> (DeployResult):
 
 # --- Parallel children ---
 
-workflow ParallelItemBatch(items: []Item) -> (BatchResult):
+workflow ParallelItemBatch(items: list[Item]) -> (BatchResult):
 	await all:
 		for (item in items):
 			workflow ProcessItem(item)
