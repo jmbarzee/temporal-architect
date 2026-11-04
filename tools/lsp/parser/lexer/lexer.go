@@ -24,6 +24,7 @@ type Lexer struct {
 	indentChar  byte  // ' ' or '\t', fixed by the first indented line; 0 before it
 	indentLine  int   // the line that fixed indentChar
 	indentUnit  int   // a spaces file's first indent width, its tab stop for recovery
+	afterHeader bool  // the line before this one ended in ':', so this one opens a block
 	eofEmitted  bool  // true after first EOF has been emitted
 }
 
@@ -75,6 +76,7 @@ func (l *Lexer) NextToken() token.Token {
 		var tok token.Token
 		switch {
 		case l.newlineAt(l.pos) > 0:
+			l.afterHeader = l.last == token.COLON || l.last == token.TRAILING_COMMENT
 			tok = l.makeToken(token.NEWLINE, "")
 			l.pos += l.newlineAt(l.pos)
 			l.line++
@@ -183,7 +185,7 @@ func (l *Lexer) handleIndent() (token.Token, bool) {
 		l.indentChar, l.indentLine = run[0], l.line
 		l.indentUnit = len(run) - len(bytes.TrimLeft(run, string(run[0])))
 	}
-	indent, bad := l.measureIndent(run)
+	indent, bad := l.measureIndent(run, l.afterHeader)
 	if bad >= 0 {
 		l.pending = append(l.pending, l.indentStyleError(run, start, bad))
 	}
@@ -221,11 +223,12 @@ func (l *Lexer) indentEnd(i int) int {
 //
 // A run that breaks the style is placed for recovery, so the rest of the file
 // still parses: at its in-style prefix when that is an open level (a stray
-// character after a line's indentation), and otherwise where an editor shows
+// character after a line's indentation) and the line does not follow a block
+// header (afterHeader), which needs a deeper one; otherwise where an editor shows
 // it, with a tab stop at a spaces file's first indent width, or every four
 // columns in a tab file. Shown past the current level, it opens one level;
 // otherwise it sits at the deepest open level it reaches.
-func (l *Lexer) measureIndent(run []byte) (width, bad int) {
+func (l *Lexer) measureIndent(run []byte, afterHeader bool) (width, bad int) {
 	style := l.indentChar
 	if style == 0 && len(run) > 0 {
 		style = run[0]
@@ -234,7 +237,7 @@ func (l *Lexer) measureIndent(run []byte) (width, bad int) {
 	if bad < 0 {
 		return len(run), -1
 	}
-	if bad > 0 && slices.Contains(l.indentStack, bad) {
+	if bad > 0 && !afterHeader && slices.Contains(l.indentStack, bad) {
 		return bad, bad
 	}
 	stop := l.indentUnit
@@ -355,7 +358,7 @@ func (l *Lexer) opensBlock() bool {
 			i = end
 			continue // blank line
 		}
-		indent, _ := l.measureIndent(l.input[i:end])
+		indent, _ := l.measureIndent(l.input[i:end], false)
 		return indent > top
 	}
 	return false

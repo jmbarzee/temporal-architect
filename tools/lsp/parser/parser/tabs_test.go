@@ -184,6 +184,16 @@ func TestOffStyleBlocksKeepTheirStructure(t *testing.T) {
 			lex:  1, body: []int{2, 1},
 		},
 		{
+			name: "a tab after a block header's indentation",
+			src:  "workflow W(x):\n    if (x):\n    \tclose complete(x)\n    activity A(x)\n\nactivity A(x):\n    return x\n",
+			lex:  1, body: []int{2, 1},
+		},
+		{
+			name: "a tab after a commented block header's indentation, in a tab file",
+			src:  "workflow W(x):\n\tif (x): # c\n\t    close complete(x)\n\tactivity A(x)\n\nactivity A(x):\n\treturn x\n",
+			lex:  1, body: []int{2, 1},
+		},
+		{
 			name: "two spaces and a tab at depth four",
 			src:  "workflow W(x):\n    activity A(x)\n  \tclose complete(x)\n\nactivity A(x):\n    return x\n",
 			lex:  1, body: []int{2, 1},
