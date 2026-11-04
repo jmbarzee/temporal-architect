@@ -1,6 +1,7 @@
 package resolver
 
 import (
+	"cmp"
 	"fmt"
 	"maps"
 	"slices"
@@ -720,6 +721,13 @@ func Resolve(file *ast.File) []*ResolveError {
 		}
 	}
 
+	// Namespaces and workers are walked from maps, so sort for an order that
+	// holds run to run; the stable sort keeps same-code errors at one position
+	// in emission order (#237). Which endpoint a DUPLICATE_ENDPOINT lands on,
+	// and the namespaces it names, still follow map order.
+	slices.SortStableFunc(s.errs, func(a, b *ResolveError) int {
+		return cmp.Or(cmp.Compare(a.File, b.File), cmp.Compare(a.Line, b.Line), cmp.Compare(a.Column, b.Column), cmp.Compare(a.Code(), b.Code()))
+	})
 	return s.errs
 }
 

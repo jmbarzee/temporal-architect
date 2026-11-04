@@ -25,9 +25,10 @@ func definitionHandler(store *DocumentStore) protocol.TextDocumentDefinitionFunc
 			return nil, nil
 		}
 
+		name, _ := nameOfNode(target)
 		return protocol.Location{
 			URI:   params.TextDocument.URI,
-			Range: posToRange(target.NodeLine(), target.NodeColumn()),
+			Range: nameRange(doc.Content, target, name),
 		}, nil
 	}
 }
@@ -42,6 +43,10 @@ func resolvedTarget(node ast.Node) ast.Node {
 	case *ast.WorkflowCall:
 		if n.Workflow.Resolved != nil {
 			return n.Workflow.Resolved
+		}
+	case *ast.SignalSendStmt:
+		if t := n.Target(); t != nil {
+			return t
 		}
 	case *ast.NexusCall:
 		// Prefer service definition as the primary go-to-definition target.

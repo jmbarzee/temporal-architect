@@ -7,7 +7,8 @@ import (
 // emitDispatchEdges walks every runnable body and emits dispatch edges
 // per the resolution rules in README.md § "Dispatch edges":
 //
-//   - activityCall / workflowCall with explicit task_queue: match
+//   - activityCall / workflowCall with explicit task_queue (call site,
+//     else the callee's default_options): match
 //     callee deployments in the caller deployment's namespace whose
 //     queue matches the literal (spec 03).
 //   - activityCall / workflowCall implicit: match callee deployments in
@@ -115,7 +116,7 @@ func (g *Graph) emitActivityCall(
 		})
 		return
 	}
-	g.emitQueuedCall(idx, callerID, callerDep, EdgeActivityCall, KindActivity, idx.defQName(ref.Resolved, ref.Resolved.Name), opts, line)
+	g.emitQueuedCall(idx, callerID, callerDep, EdgeActivityCall, KindActivity, idx.defQName(ref.Resolved, ref.Resolved.Name), opts, ref.Resolved.DefaultOptions, line)
 }
 
 func (g *Graph) emitWorkflowCall(
@@ -128,7 +129,7 @@ func (g *Graph) emitWorkflowCall(
 		})
 		return
 	}
-	g.emitQueuedCall(idx, callerID, callerDep, EdgeWorkflowCall, KindWorkflow, idx.defQName(ref.Resolved, ref.Resolved.Name), opts, line)
+	g.emitQueuedCall(idx, callerID, callerDep, EdgeWorkflowCall, KindWorkflow, idx.defQName(ref.Resolved, ref.Resolved.Name), opts, ref.Resolved.DefaultOptions, line)
 }
 
 // emitSignalSend emits the cross-workflow signal-send edge. Unlike a
@@ -175,10 +176,11 @@ func (g *Graph) emitSignalSend(idx *astIndex, callerID string, callerDep workerD
 // emitQueuedCall implements the shared activity/workflow dispatch
 // resolution. A task queue is scoped to its namespace, so a callee
 // deployment matches only within this caller deployment's namespace.
-// Explicit task_queue: the caller named the queue, so we match callee
-// deployments whose queue matches it (spec 03 § Queue matching).
-// Implicit: the call inherits this caller deployment's queue and matches
-// callee deployments with the same deploy key.
+// Explicit task_queue — on the call site, else in the callee's
+// default_options (defaults), as the validator resolves it: the queue is
+// named, so we match callee deployments whose queue matches it (spec 03
+// § Queue matching). Implicit: the call inherits this caller deployment's
+// queue and matches callee deployments with the same deploy key.
 //
 // When no callee deployment matches, no edge is emitted and a
 // DISPATCH_NO_REACHABLE_DEPLOYMENT diagnostic is added so the consumer
@@ -187,9 +189,12 @@ func (g *Graph) emitSignalSend(idx *astIndex, callerID string, callerDep workerD
 // diagnosed against the literal the user wrote.
 func (g *Graph) emitQueuedCall(
 	idx *astIndex, callerID string, callerDep workerDeployment,
-	edgeKind, calleeKind, calleeName string, opts *ast.OptionsBlock, line int,
+	edgeKind, calleeKind, calleeName string, opts, defaults *ast.OptionsBlock, line int,
 ) {
 	explicit := taskQueue(opts)
+	if explicit == "" {
+		explicit = taskQueue(defaults)
+	}
 	queue, polls := explicit, ast.ParseCallQueue(explicit).Matches
 	if explicit == "" {
 		queue, polls = callerDep.Queue, callerDep.queue.SameKey

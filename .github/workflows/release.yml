@@ -14,8 +14,9 @@ name: Release
 #   _build-artifacts.yml         — visualizer lib + wire-types tarballs
 #   _publish-npm-libs.yml        — publish the two libraries to npm (OIDC + provenance)
 #   _publish-github-release.yml  — checksums + GitHub Release with all assets
+#   _dispatch-dist.yml           — hand off to the dist repo (first run: credential check)
 #
-# This file is thin: declare the dependency graph and pass the dispatch secret.
+# This file is thin: declare the dependency graph and pass the dist-app secret.
 # The toolchain publishes its own libraries (wire-types, visualizer); every
 # end-user consumption model is published from the distribution repo.
 
@@ -35,22 +36,29 @@ jobs:
     with:
       version: ${{ github.ref_name }}
 
+  dist-credential:
+    # Mint the dist-handoff token before anything publishes, so a broken
+    # credential fails the release here rather than after it has shipped.
+    uses: ./.github/workflows/_dispatch-dist.yml
+    secrets:
+      DIST_APP_PRIVATE_KEY: ${{ secrets.DIST_APP_PRIVATE_KEY }}
+
   # ── Build (artifacts the Release ships) ──────────────────────────────────
 
   build-binaries:
-    needs: release-guard
+    needs: [release-guard, dist-credential]
     uses: ./.github/workflows/_build-binaries.yml
     with:
       version: ${{ github.ref_name }}
 
   build-skills-tarball:
-    needs: release-guard
+    needs: [release-guard, dist-credential]
     uses: ./.github/workflows/_build-skills-tarball.yml
     with:
       version: ${{ github.ref_name }}
 
   build-artifacts:
-    needs: release-guard
+    needs: [release-guard, dist-credential]
     uses: ./.github/workflows/_build-artifacts.yml
     with:
       version: ${{ github.ref_name }}
@@ -60,7 +68,7 @@ jobs:
   tag-modules:
     # Fan vX.Y.Z out into path-prefixed module tags for go get/install.
     # Additive — nothing depends on it, so a failure can't break publishing.
-    needs: release-guard
+    needs: [release-guard, dist-credential]
     uses: ./.github/workflows/_tag-modules.yml
     with:
       version: ${{ github.ref_name }}
@@ -94,12 +102,8 @@ jobs:
     # them immediately. Lockstep is automatic: dist stamps the incoming version
     # into its manifests and never tags independently.
     needs: publish-github-release
-    runs-on: ubuntu-latest
-    steps:
-      - name: Dispatch toolchain-release to distribution repo
-        uses: peter-evans/repository-dispatch@v3
-        with:
-          token: ${{ secrets.DIST_DISPATCH_TOKEN }}
-          repository: jmbarzee/temporal-architect-dist
-          event-type: toolchain-release
-          client-payload: '{"version": "${{ github.ref_name }}"}'
+    uses: ./.github/workflows/_dispatch-dist.yml
+    with:
+      version: ${{ github.ref_name }}
+    secrets:
+      DIST_APP_PRIVATE_KEY: ${{ secrets.DIST_APP_PRIVATE_KEY }}

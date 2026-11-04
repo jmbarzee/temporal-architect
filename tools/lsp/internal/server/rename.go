@@ -32,7 +32,7 @@ func renameHandler(store *DocumentStore) protocol.TextDocumentRenameFunc {
 		var edits []protocol.TextEdit
 		for _, ref := range refs {
 			edits = append(edits, protocol.TextEdit{
-				Range:   nameRange(ref),
+				Range:   nameRange(doc.Content, ref, name),
 				NewText: params.NewName,
 			})
 		}
@@ -64,7 +64,7 @@ func prepareRenameHandler(store *DocumentStore) protocol.TextDocumentPrepareRena
 			return nil, nil
 		}
 
-		return nameRange(node), nil
+		return nameRange(doc.Content, node, name), nil
 	}
 }
 
