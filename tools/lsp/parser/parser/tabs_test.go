@@ -31,17 +31,24 @@ activity A(x):
     return x
 `
 
-// tabify re-indents a four-space-indented src with one tab per level.
-func tabify(t *testing.T, src string) string {
+// reindent re-indents src, indented with tabs or four spaces per level, with
+// unit per level.
+func reindent(t *testing.T, src, unit string) string {
 	t.Helper()
 	lines := strings.Split(src, "\n")
 	for i, line := range lines {
-		body := strings.TrimLeft(line, " ")
-		width := len(line) - len(body)
-		if width%4 != 0 {
-			t.Fatalf("line %d is indented %d spaces, not a multiple of four", i+1, width)
+		body := strings.TrimLeft(line, " \t")
+		run := line[:len(line)-len(body)]
+		var level int
+		switch {
+		case strings.Trim(run, "\t") == "":
+			level = len(run)
+		case strings.Trim(run, " ") == "" && len(run)%4 == 0:
+			level = len(run) / 4
+		default:
+			t.Fatalf("line %d is indented %q, not tabs or four spaces per level", i+1, run)
 		}
-		lines[i] = strings.Repeat("\t", width/4) + body
+		lines[i] = strings.Repeat(unit, level) + body
 	}
 	return strings.Join(lines, "\n")
 }
@@ -93,11 +100,13 @@ func TestTabsParseAsSpaces(t *testing.T) {
 		}
 		sources[filepath.Base(path)] = string(data)
 	}
-	for name, spaces := range sources {
+	for name, src := range sources {
 		for _, nl := range []string{"\n", "\r\n"} {
 			t.Run(name+strings.ReplaceAll(nl, "\r", `\r`), func(t *testing.T) {
-				wantFile, wantErrs := ParseFileAll(strings.ReplaceAll(spaces, "\n", nl))
-				gotFile, gotErrs := ParseFileAll(strings.ReplaceAll(tabify(t, spaces), "\n", nl))
+				spaces := strings.ReplaceAll(reindent(t, src, "    "), "\n", nl)
+				tabs := strings.ReplaceAll(reindent(t, src, "\t"), "\n", nl)
+				wantFile, wantErrs := ParseFileAll(spaces)
+				gotFile, gotErrs := ParseFileAll(tabs)
 				want, err := json.Marshal(columnless(t, wantFile))
 				if err != nil {
 					t.Fatal(err)
