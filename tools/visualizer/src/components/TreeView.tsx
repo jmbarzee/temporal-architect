@@ -14,6 +14,7 @@ import { qualifiedNameOf } from '../types/ast'
 import type { CallerRef, NavigationContextType } from './WorkflowCanvas'
 import { NavigationContext } from './WorkflowCanvas'
 import { DefinitionBlock } from './blocks/DefinitionBlock'
+import { FLASH_MS, NO_REVEAL, measureFilterBar, replayFlash, revealReducer, scrollRowIntoView } from './reveal'
 import { ErrorBars } from './ErrorBars'
 import { definitionCounts, sourceFilesOf } from '../adapter/useGraphModel'
 import { DEF_TYPE_ORDER } from '../theme/temporal-theme'
@@ -70,8 +71,37 @@ export function TreeView({
 
   // Track per-definition expand state for keyboard toggle (keyed by def identity)
   const [expandedDefs, setExpandedDefs] = React.useState<Set<string>>(new Set())
-  // The revealed definition, and the nested row it names when that row is the target.
-  const [flash, setFlash] = React.useState<{ key: string; child?: string } | null>(null)
+  // The revealed definition, and the nested row it names when that row is the
+  // target, lit for FLASH_MS from its latest reveal.
+  const [reveal, dispatchReveal] = React.useReducer(revealReducer, NO_REVEAL)
+  const canvasRef = React.useRef<HTMLDivElement>(null)
+  React.useEffect(() => {
+    const lit = reveal.lit
+    if (!lit) return
+    // A repeat reveal of a definition replays its flash; a nested row replays its own.
+    if (lit.repeat && !lit.child) {
+      const row = canvasRef.current?.querySelector('[role="treeitem"].flash-target')
+      if (row) replayFlash(row)
+    }
+    const timer = setTimeout(() => dispatchReveal({ type: 'end', nonce: lit.nonce }), FLASH_MS)
+    return () => clearTimeout(timer)
+  }, [reveal.lit])
+
+  // The sticky FilterBar covers the top of the scroller, and its height pads
+  // every scroll into view (TreeView.css). It is measured as the view is
+  // shown, and again whenever the bar changes size (its rows wrap, a search
+  // or findings open).
+  React.useLayoutEffect(() => {
+    if (active && canvasRef.current) measureFilterBar(canvasRef.current)
+  }, [active])
+  React.useEffect(() => {
+    const canvas = canvasRef.current
+    const bar = canvas?.querySelector(':scope > .gv-canvas-header')
+    if (!canvas || !bar || typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(() => measureFilterBar(canvas))
+    ro.observe(bar)
+    return () => ro.disconnect()
+  }, [])
 
   // Transition indicator: flash header when AST updates. A counter the bar
   // flashes on once per change and puts out itself — a flag the host switched
@@ -342,23 +372,29 @@ export function TreeView({
     })
   }, [])
 
+  // Focus the row at `index` and scroll it into view below the filter bar.
+  const focusRow = React.useCallback((index: number, behavior: ScrollBehavior = 'auto') => {
+    const row = treeItemRefs.current[index]
+    if (!row) return
+    row.focus({ preventScroll: true })
+    scrollRowIntoView(row, behavior)
+  }, [])
+
   // Reveal the visible definition at `index`: expand, scroll, flash. With a
-  // `child`, the nested row of that name scrolls and flashes instead.
+  // `child`, the nested row of that name scrolls and flashes itself instead.
   const revealAt = React.useCallback((index: number, child?: string) => {
     if (index === -1) return
 
     const key = defKey(visibleDefinitions[index])
     setExpandedDefs(prev => new Set(prev).add(key))
     setFocusedIndex(index)
+    dispatchReveal({ type: 'reveal', key, child })
 
     setTimeout(() => {
-      if (!child) treeItemRefs.current[index]?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-      treeItemRefs.current[index]?.focus({ preventScroll: !!child })
+      if (child) treeItemRefs.current[index]?.focus({ preventScroll: true })
+      else focusRow(index, 'smooth')
     }, 50)
-
-    setFlash({ key, child })
-    setTimeout(() => setFlash(null), 1000)
-  }, [visibleDefinitions])
+  }, [visibleDefinitions, focusRow])
 
   // Navigate to a definition by bare name+type — the names statements and
   // the reverse reference index carry.
@@ -399,14 +435,14 @@ export function TreeView({
         e.preventDefault()
         const next = focusedIndex < count - 1 ? focusedIndex + 1 : focusedIndex
         setFocusedIndex(next)
-        treeItemRefs.current[next]?.focus()
+        focusRow(next)
         break
       }
       case 'ArrowUp': {
         e.preventDefault()
         const prev = focusedIndex > 0 ? focusedIndex - 1 : 0
         setFocusedIndex(prev)
-        treeItemRefs.current[prev]?.focus()
+        focusRow(prev)
         break
       }
       case 'ArrowRight': {
@@ -443,14 +479,14 @@ export function TreeView({
       case 'Home': {
         e.preventDefault()
         setFocusedIndex(0)
-        treeItemRefs.current[0]?.focus()
+        focusRow(0)
         break
       }
       case 'End': {
         e.preventDefault()
         const last = count - 1
         setFocusedIndex(last)
-        treeItemRefs.current[last]?.focus()
+        focusRow(last)
         break
       }
       case 'n':
@@ -460,8 +496,7 @@ export function TreeView({
         const forward = e.key === 'n'
         const next = nextMatchIndex(matchIndices, focusedIndex, forward)
         setFocusedIndex(next)
-        treeItemRefs.current[next]?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-        treeItemRefs.current[next]?.focus()
+        focusRow(next, 'smooth')
         break
       }
       case 'Escape': {
@@ -472,7 +507,7 @@ export function TreeView({
         break
       }
     }
-  }, [visibleDefinitions, focusedIndex, expandedDefs, searchActive, toggleSearch, toggleDefExpand, matchIndices])
+  }, [visibleDefinitions, focusedIndex, expandedDefs, searchActive, toggleSearch, toggleDefExpand, matchIndices, focusRow])
 
   // Compute current-match position for the "N of M" indicator (only
   // meaningful when the user has navigated via n/N to land on a match).
@@ -499,7 +534,7 @@ export function TreeView({
 
   return (
     <NavigationContext.Provider value={navigationValue}>
-      <div className="workflow-canvas">
+      <div className="workflow-canvas" ref={canvasRef}>
         <FilterBar
           {...linked}
           systemTheme={systemTheme}
@@ -529,7 +564,7 @@ export function TreeView({
                 const key = defKey(def)
                 const isExpanded = expandedDefs.has(key)
                 const isDimmed = matchSet !== null && !matchSet.has(key)
-                const revealed = flash?.key === key ? flash : undefined
+                const revealed = reveal.lit?.key === key ? reveal.lit : undefined
                 const wrapClass = [
                   revealed && !revealed.child ? 'flash-target' : '',
                   isDimmed ? 'search-dimmed' : '',
@@ -545,7 +580,7 @@ export function TreeView({
                     onFocus={() => setFocusedIndex(i)}
                     className={wrapClass || undefined}
                   >
-                    <DefinitionBlock definition={def} expanded={isExpanded} onToggle={() => toggleDefExpand(key)} revealChild={revealed?.child} />
+                    <DefinitionBlock definition={def} expanded={isExpanded} onToggle={() => toggleDefExpand(key)} reveal={revealed} />
                   </div>
                 )
               })}

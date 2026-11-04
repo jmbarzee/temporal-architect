@@ -4,6 +4,10 @@
   flex: 1;
   overflow: auto;
   background: var(--color-bg-gradient);
+  /* A row scrolled into view (a reveal, keyboard focus) lands below the
+     sticky filter bar, whose height TreeView measures into the variable,
+     with room for the flash's outline. */
+  scroll-padding-top: calc(var(--tree-filter-bar-height, 0px) + 8px);
 }
 
 /* Inner wrapper holds the padding so the sticky filter bar can sit
