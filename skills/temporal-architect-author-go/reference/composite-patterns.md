@@ -10,20 +10,20 @@ An update handler sets a condition that races against a timer in a selector: "ap
 
 ```twf
 workflow HumanReview(docId: string) -> (ReviewResult):
-    state:
-        condition reviewComplete
+	state:
+		condition reviewComplete
 
-    update SubmitReview(decision: string) -> (ReviewResult):
-        result = decision
-        set reviewComplete
-        return ReviewResult{decision: result}
+	update SubmitReview(decision: string) -> (ReviewResult):
+		result = decision
+		set reviewComplete
+		return ReviewResult{decision: result}
 
-    await one:
-        reviewComplete:
-            close complete(ReviewResult{decision: result})
-        timer(48h):
-            activity Escalate(docId)
-            close complete(ReviewResult{decision: "escalated"})
+	await one:
+		reviewComplete:
+			close complete(ReviewResult{decision: result})
+		timer(48h):
+			activity Escalate(docId)
+			close complete(ReviewResult{decision: "escalated"})
 ```
 
 ### Go
@@ -91,19 +91,19 @@ A retention timer races a cancellation signal.
 
 ```twf
 workflow ManageRetention(docId: string, retentionDays: int):
-    state:
-        condition cancelled
+	state:
+		condition cancelled
 
-    signal CancelRetention():
-        set cancelled
+	signal CancelRetention():
+		set cancelled
 
-    await one:
-        cancelled:
-            activity DeleteDocument(docId)
-            close complete
-        timer(retentionDays * 24h):
-            activity DeleteDocument(docId)
-            close complete
+	await one:
+		cancelled:
+			activity DeleteDocument(docId)
+			close complete
+		timer(retentionDays * 24h):
+			activity DeleteDocument(docId)
+			close complete
 ```
 
 The Go race is Pattern 1's, with the signal handled by a looping goroutine ([signal-handler.md](./signal-handler.md)) instead of an update handler. Two things differ:

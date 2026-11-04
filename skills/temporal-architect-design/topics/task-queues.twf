@@ -4,203 +4,203 @@
 # --- Explicit routing + implicit inheritance ---
 
 workflow OrderWorkflow(order: Order) -> (Result):
-    # Implicit: inherits OrderWorkflow's queue ("orders")
-    activity ValidateOrder(order) -> validated
+	# Implicit: inherits OrderWorkflow's queue ("orders")
+	activity ValidateOrder(order) -> validated
 
-    activity ChargePayment(order) -> payment
-        options:
-            task_queue: "payments"
+	activity ChargePayment(order) -> payment
+		options:
+			task_queue: "payments"
 
-    if (order.priority == "express"):
-        activity ShipOrder(order, payment) -> shipment
-            options:
-                task_queue: "shipping-express"
-    else:
-        activity ShipOrder(order, payment) -> shipment
-            options:
-                task_queue: "shipping-standard"
+	if (order.priority == "express"):
+		activity ShipOrder(order, payment) -> shipment
+			options:
+				task_queue: "shipping-express"
+	else:
+		activity ShipOrder(order, payment) -> shipment
+			options:
+				task_queue: "shipping-standard"
 
-    close complete(Result{shipment})
+	close complete(Result{shipment})
 
 # --- Capability-based routing ---
 
 workflow MediaPipeline(media: Media) -> (Result):
-    activity TranscodeVideo(media) -> transcoded
-        options:
-            task_queue: "gpu-transcode"
-            start_to_close_timeout: 10m
+	activity TranscodeVideo(media) -> transcoded
+		options:
+			task_queue: "gpu-transcode"
+			start_to_close_timeout: 10m
 
-    # Implicit: inherits MediaPipeline's queue ("media")
-    activity GenerateThumbnail(transcoded) -> thumb
+	# Implicit: inherits MediaPipeline's queue ("media")
+	activity GenerateThumbnail(transcoded) -> thumb
 
-    close complete(Result{thumb})
+	close complete(Result{thumb})
 
 # --- Activities ---
 
 activity ValidateOrder(order: Order) -> (ValidationResult):
-    return validate(order)
+	return validate(order)
 
 activity ChargePayment(order: Order) -> (Payment):
-    return charge(order)
+	return charge(order)
 
 activity ShipOrder(order: Order, payment: Payment) -> (Shipment):
-    return ship(order)
+	return ship(order)
 
 activity TranscodeVideo(media: Media) -> (TranscodeResult):
-    heartbeat(media.progress)
-    return transcode(media)
+	heartbeat(media.progress)
+	return transcode(media)
 
 activity GenerateThumbnail(video: Video) -> (Thumbnail):
-    return thumbnail(video)
+	return thumbnail(video)
 
 # --- Nexus services (exposed for external callers in other namespaces) ---
 
 nexus service PaymentService:
-    sync CheckPaymentStatus(paymentId: string) -> (PaymentStatus):
-        activity GetPaymentStatus(paymentId) -> status
-        close complete(status)
+	sync CheckPaymentStatus(paymentId: string) -> (PaymentStatus):
+		activity GetPaymentStatus(paymentId) -> status
+		close complete(status)
 
 nexus service AnalyticsService:
-    async TrackEvent workflow TrackEventWorkflow
+	async TrackEvent workflow TrackEventWorkflow
 
 activity GetPaymentStatus(paymentId: string) -> (PaymentStatus):
-    return lookup(paymentId)
+	return lookup(paymentId)
 
 workflow TrackEventWorkflow(event: Event):
-    id_scheme: "event-{event.id}"
-    activity RecordEvent(event)
-    close complete
+	id_scheme: "event-{event.id}"
+	activity RecordEvent(event)
+	close complete
 
 activity RecordEvent(event: Event):
-    record(event)
+	record(event)
 
 # --- Workers ---
 
 worker orderWorker:
-    workflow OrderWorkflow
-    activity ValidateOrder
+	workflow OrderWorkflow
+	activity ValidateOrder
 
 worker paymentWorker:
-    activity ChargePayment
-    activity GetPaymentStatus
-    nexus service PaymentService
+	activity ChargePayment
+	activity GetPaymentStatus
+	nexus service PaymentService
 
 worker analyticsWorker:
-    workflow TrackEventWorkflow
-    activity RecordEvent
-    nexus service AnalyticsService
+	workflow TrackEventWorkflow
+	activity RecordEvent
+	nexus service AnalyticsService
 
 worker expressShipWorker:
-    activity ShipOrder
+	activity ShipOrder
 
 worker standardShipWorker:
-    activity ShipOrder
+	activity ShipOrder
 
 worker realtimeAnalyticsWorker:
-    workflow TrackEventWorkflow
-    activity RecordEvent
+	workflow TrackEventWorkflow
+	activity RecordEvent
 
 worker paymentWorkerSecondary:
-    activity ChargePayment
-    activity GetPaymentStatus
-    nexus service PaymentService
+	activity ChargePayment
+	activity GetPaymentStatus
+	nexus service PaymentService
 
 worker mediaWorker:
-    workflow MediaPipeline
-    activity GenerateThumbnail
+	workflow MediaPipeline
+	activity GenerateThumbnail
 
 worker gpuWorker:
-    activity TranscodeVideo
+	activity TranscodeVideo
 
 # --- Namespaces ---
 
 namespace ecommerce:
-    worker orderWorker
-        options:
-            task_queue: "orders"
-    worker paymentWorker
-        options:
-            task_queue: "payments"
-    worker paymentWorkerSecondary
-        options:
-            task_queue: "payments-secondary"
-    worker expressShipWorker
-        options:
-            task_queue: "shipping-express"
-    worker standardShipWorker
-        options:
-            task_queue: "shipping-standard"
-    nexus endpoint PaymentEndpoint
-        options:
-            task_queue: "payments"
-    worker analyticsWorker
-        options:
-            task_queue: "analytics"
-    worker realtimeAnalyticsWorker
-        options:
-            task_queue: "analytics-realtime"
-    nexus endpoint AnalyticsEndpoint
-        options:
-            task_queue: "analytics"
+	worker orderWorker
+		options:
+			task_queue: "orders"
+	worker paymentWorker
+		options:
+			task_queue: "payments"
+	worker paymentWorkerSecondary
+		options:
+			task_queue: "payments-secondary"
+	worker expressShipWorker
+		options:
+			task_queue: "shipping-express"
+	worker standardShipWorker
+		options:
+			task_queue: "shipping-standard"
+	nexus endpoint PaymentEndpoint
+		options:
+			task_queue: "payments"
+	worker analyticsWorker
+		options:
+			task_queue: "analytics"
+	worker realtimeAnalyticsWorker
+		options:
+			task_queue: "analytics-realtime"
+	nexus endpoint AnalyticsEndpoint
+		options:
+			task_queue: "analytics"
 
 namespace media:
-    worker mediaWorker
-        options:
-            task_queue: "media"
-    worker gpuWorker
-        options:
-            task_queue: "gpu-transcode"
+	worker mediaWorker
+		options:
+			task_queue: "media"
+	worker gpuWorker
+		options:
+			task_queue: "gpu-transcode"
 
 # --- Cross-namespace caller: reaches ecommerce through its Nexus endpoints ---
 
 workflow PartnerCheckout(request: PartnerRequest) -> (PartnerResult):
-    nexus PaymentEndpoint PaymentService.CheckPaymentStatus(request.paymentId) -> status
-    detach nexus AnalyticsEndpoint AnalyticsService.TrackEvent(request.event)
-    close complete(PartnerResult{status: status})
+	nexus PaymentEndpoint PaymentService.CheckPaymentStatus(request.paymentId) -> status
+	detach nexus AnalyticsEndpoint AnalyticsService.TrackEvent(request.event)
+	close complete(PartnerResult{status: status})
 
 worker partnerWorker:
-    workflow PartnerCheckout
+	workflow PartnerCheckout
 
 namespace partner:
-    worker partnerWorker
-        options:
-            task_queue: "partner"
+	worker partnerWorker
+		options:
+			task_queue: "partner"
 
 # --- Per-instance worker family: one sidecar queue per sandbox ---
 
 workflow Sandbox(sandboxId: SandboxId, assets: Assets):
-    id_scheme: "sandbox/{sandboxId}"
-    activity Provision(sandboxId, assets) -> lease
-    close complete
+	id_scheme: "sandbox/{sandboxId}"
+	activity Provision(sandboxId, assets) -> lease
+	close complete
 
 workflow Agent(task: Task, lease: Lease) -> (ToolOutput):
-    # Matches the sidecar family by shape: same fixed text, a parameter in the same place
-    activity RunTool(task.call) -> output
-        options:
-            task_queue: "sandbox-{lease.sandboxId}"
-            schedule_to_start_timeout: 30s
-            start_to_close_timeout: 5m
-    close complete(output)
+	# Matches the sidecar family by shape: same fixed text, a parameter in the same place
+	activity RunTool(task.call) -> output
+		options:
+			task_queue: "sandbox-{lease.sandboxId}"
+			schedule_to_start_timeout: 30s
+			start_to_close_timeout: 5m
+	close complete(output)
 
 activity Provision(sandboxId: SandboxId, assets: Assets) -> (Lease):
-    return provision(sandboxId, assets)
+	return provision(sandboxId, assets)
 
 activity RunTool(call: ToolCall) -> (ToolOutput):
-    return run(call)
+	return run(call)
 
 # Workflows and Provision stay on a shared queue; only the sidecar is per instance
 worker sandboxControl:
-    workflow Sandbox
-    workflow Agent
-    activity Provision
+	workflow Sandbox
+	workflow Agent
+	activity Provision
 
 worker sidecar:
-    activity RunTool
+	activity RunTool
 
 namespace sandboxes:
-    worker sandboxControl
-        options:
-            task_queue: "agents"
-    worker sidecar
-        options:
-            task_queue: "sandbox-{sandboxId}"
+	worker sandboxControl
+		options:
+			task_queue: "agents"
+	worker sidecar
+		options:
+			task_queue: "sandbox-{sandboxId}"

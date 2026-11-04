@@ -10,34 +10,34 @@ import "github.com/acme/payments"
 
 # Same-package service — declared here, referenced bare.
 nexus service OrderService:
-    async PlaceOrder workflow ProcessOrder
+	async PlaceOrder workflow ProcessOrder
 
 workflow ProcessOrder(order):
-    id_scheme: "order-{order.id}"
-    activity ValidateOrder(order) -> checked
-    close complete(checked)
+	id_scheme: "order-{order.id}"
+	activity ValidateOrder(order) -> checked
+	close complete(checked)
 
 activity ValidateOrder(order):
-    pass()
+	pass()
 
 # Checkout calls a same-package service (OrderService, bare) and a cross-package
 # one (payments.PaymentService, qualified) through the same endpoint. Endpoints
 # are flat-global and never carry a package qualifier.
 workflow Checkout(order):
-    nexus Gateway OrderService.PlaceOrder(order) -> placed
-    nexus Gateway payments.PaymentService.Charge(order) -> receipt
-    close complete(placed)
+	nexus Gateway OrderService.PlaceOrder(order) -> placed
+	nexus Gateway payments.PaymentService.Charge(order) -> receipt
+	close complete(placed)
 
 worker orderWorker:
-    workflow ProcessOrder
-    workflow Checkout
-    activity ValidateOrder
-    nexus service OrderService
+	workflow ProcessOrder
+	workflow Checkout
+	activity ValidateOrder
+	nexus service OrderService
 
 namespace orders:
-    worker orderWorker
-        options:
-            task_queue: "orders"
-    nexus endpoint Gateway
-        options:
-            task_queue: "orders"
+	worker orderWorker
+		options:
+			task_queue: "orders"
+	nexus endpoint Gateway
+		options:
+			task_queue: "orders"

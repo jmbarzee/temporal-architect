@@ -18,35 +18,35 @@ Write your architecture in `.twf` and a real parser, language server, and visual
 
 ```twf
 activity ReserveFunds(amount: Money) -> (Hold):
-    reserve(amount)
+	reserve(amount)
 
 activity CaptureFunds(hold: Hold) -> (Receipt):
-    capture(hold)
+	capture(hold)
 
 activity ReleaseFunds(orderId: string):
-    release(orderId)
+	release(orderId)
 
 workflow ChargeOrder(order: Order) -> (Receipt):
-    signal Cancel():
-        activity ReleaseFunds(order.id)
-        close fail("cancelled")
+	signal Cancel():
+		activity ReleaseFunds(order.id)
+		close fail("cancelled")
 
-    activity ReserveFunds(order.amount) -> hold
-        options:
-            start_to_close_timeout: 30s
-    activity CaptureFunds(hold) -> receipt
-    close complete(receipt)
+	activity ReserveFunds(order.amount) -> hold
+		options:
+			start_to_close_timeout: 30s
+	activity CaptureFunds(hold) -> receipt
+	close complete(receipt)
 
 worker billing:
-    workflow ChargeOrder
-    activity ReserveFunds
-    activity CaptureFunds
-    activity ReleaseFunds
+	workflow ChargeOrder
+	activity ReserveFunds
+	activity CaptureFunds
+	activity ReleaseFunds
 
 namespace payments:
-    worker billing
-        options:
-            task_queue: "billing"
+	worker billing
+		options:
+			task_queue: "billing"
 ```
 
 Workflow logic, the worker that hosts it, and the namespace topology — one readable file. Browse full [examples](./examples/) or print the grammar with `twf spec`.

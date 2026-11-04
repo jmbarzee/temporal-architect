@@ -8,159 +8,159 @@
 # --- Adding a step with version flag ---
 
 workflow UnderwritingAddFraudCheck(policy: Policy, enableFraudCheck: bool) -> (PolicyResult):
-    activity ValidatePolicy(policy)
+	activity ValidatePolicy(policy)
 
-    if (enableFraudCheck):
-        activity FraudCheck(policy)
+	if (enableFraudCheck):
+		activity FraudCheck(policy)
 
-    activity BindPolicy(policy) -> binding
-    close complete(PolicyResult{status: "complete"})
+	activity BindPolicy(policy) -> binding
+	close complete(PolicyResult{status: "complete"})
 
 # --- Removing a step with version flag ---
 
 workflow BatchJobRemoveLegacyStep(data: Data, useLegacyStep: bool) -> (Result):
-    activity Step1(data)
+	activity Step1(data)
 
-    if (useLegacyStep):
-        activity LegacyStep(data)
+	if (useLegacyStep):
+		activity LegacyStep(data)
 
-    activity Step2(data)
-    close complete(Result{})
+	activity Step2(data)
+	close complete(Result{})
 
 # --- Changing a step with version flag ---
 
 workflow BatchJobChangeProcessor(data: Data, useImprovedProcessing: bool) -> (Result):
-    activity Step1(data)
+	activity Step1(data)
 
-    if (useImprovedProcessing):
-        activity ImprovedProcessing(data)
-    else:
-        activity OldProcessing(data)
+	if (useImprovedProcessing):
+		activity ImprovedProcessing(data)
+	else:
+		activity OldProcessing(data)
 
-    activity Step3(data)
-    close complete(Result{})
+	activity Step3(data)
+	close complete(Result{})
 
 # --- Reordering activities with version flag ---
 
 workflow BatchJobReorderSteps(data: Data, useNewOrder: bool) -> (Result):
-    activity StepA(data)
+	activity StepA(data)
 
-    if (useNewOrder):
-        activity StepC(data)
-        activity StepB(data)
-    else:
-        activity StepB(data)
-        activity StepC(data)
+	if (useNewOrder):
+		activity StepC(data)
+		activity StepB(data)
+	else:
+		activity StepB(data)
+		activity StepC(data)
 
-    close complete(Result{})
+	close complete(Result{})
 
 # --- Changing activity parameters with version flag ---
 
 workflow EnrichmentChangeParams(data: Data, useEnhancedParams: bool) -> (Result):
-    if (useEnhancedParams):
-        activity EnhancedActivity(data, true) -> result
-    else:
-        activity EnhancedActivity(data) -> result
+	if (useEnhancedParams):
+		activity EnhancedActivity(data, true) -> result
+	else:
+		activity EnhancedActivity(data) -> result
 
-    close complete(Result{result})
+	close complete(Result{result})
 
 # --- Multiple version flags in one workflow ---
 
 workflow UnderwritingMultiFlag(policy: Policy, config: VersionConfig) -> (PolicyResult):
-    activity ValidatePolicy(policy)
+	activity ValidatePolicy(policy)
 
-    if (config.enableFraudCheck):
-        activity FraudCheck(policy)
+	if (config.enableFraudCheck):
+		activity FraudCheck(policy)
 
-    if (config.useImprovedValidation):
-        activity ImprovedValidation(policy)
+	if (config.useImprovedValidation):
+		activity ImprovedValidation(policy)
 
-    activity BindPolicy(policy) -> binding
+	activity BindPolicy(policy) -> binding
 
-    if (config.useLegacyNotify):
-        activity LegacyNotify(policy)
+	if (config.useLegacyNotify):
+		activity LegacyNotify(policy)
 
-    activity FinalizeOrder(policy) -> result
-    close complete(PolicyResult{status: "complete"})
+	activity FinalizeOrder(policy) -> result
+	close complete(PolicyResult{status: "complete"})
 
 # --- Supporting activities ---
 
 activity ValidatePolicy(policy: Policy):
-    validate(policy)
+	validate(policy)
 
 activity FraudCheck(policy: Policy):
-    check_fraud(policy)
+	check_fraud(policy)
 
 activity BindPolicy(policy: Policy) -> (PolicyBinding):
-    return bind(policy)
+	return bind(policy)
 
 activity Step1(data: Data):
-    step1(data)
+	step1(data)
 
 activity Step2(data: Data):
-    step2(data)
+	step2(data)
 
 activity Step3(data: Data):
-    step3(data)
+	step3(data)
 
 activity LegacyStep(data: Data):
-    legacy(data)
+	legacy(data)
 
 activity ImprovedProcessing(data: Data):
-    improved(data)
+	improved(data)
 
 activity OldProcessing(data: Data):
-    old_process(data)
+	old_process(data)
 
 activity StepA(data: Data):
-    step_a(data)
+	step_a(data)
 
 activity StepB(data: Data):
-    step_b(data)
+	step_b(data)
 
 activity StepC(data: Data):
-    step_c(data)
+	step_c(data)
 
 activity EnhancedActivity(data: Data) -> (Result):
-    return enhanced(data)
+	return enhanced(data)
 
 activity ImprovedValidation(policy: Policy):
-    validate_improved(policy)
+	validate_improved(policy)
 
 activity LegacyNotify(policy: Policy):
-    legacy_notify(policy)
+	legacy_notify(policy)
 
 activity FinalizeOrder(policy: Policy) -> (PolicyResult):
-    return finalize(policy)
+	return finalize(policy)
 
 # --- Worker and namespace ---
 
 worker versioningWorker:
-    workflow UnderwritingAddFraudCheck
-    workflow BatchJobRemoveLegacyStep
-    workflow BatchJobChangeProcessor
-    workflow BatchJobReorderSteps
-    workflow EnrichmentChangeParams
-    workflow UnderwritingMultiFlag
-    activity ValidatePolicy
-    activity FraudCheck
-    activity BindPolicy
-    activity Step1
-    activity Step2
-    activity Step3
-    activity LegacyStep
-    activity ImprovedProcessing
-    activity OldProcessing
-    activity StepA
-    activity StepB
-    activity StepC
-    activity EnhancedActivity
-    activity ImprovedValidation
-    activity LegacyNotify
-    activity FinalizeOrder
+	workflow UnderwritingAddFraudCheck
+	workflow BatchJobRemoveLegacyStep
+	workflow BatchJobChangeProcessor
+	workflow BatchJobReorderSteps
+	workflow EnrichmentChangeParams
+	workflow UnderwritingMultiFlag
+	activity ValidatePolicy
+	activity FraudCheck
+	activity BindPolicy
+	activity Step1
+	activity Step2
+	activity Step3
+	activity LegacyStep
+	activity ImprovedProcessing
+	activity OldProcessing
+	activity StepA
+	activity StepB
+	activity StepC
+	activity EnhancedActivity
+	activity ImprovedValidation
+	activity LegacyNotify
+	activity FinalizeOrder
 
 namespace versioning:
-    worker versioningWorker
-        options:
-            task_queue: "versioning"
-            versioning: deployment
+	worker versioningWorker
+		options:
+			task_queue: "versioning"
+			versioning: deployment

@@ -82,13 +82,13 @@ func signatureFor(node ast.Node) string {
 		if len(n.Workflows) > 0 || len(n.Activities) > 0 || len(n.Services) > 0 {
 			var parts []string
 			for _, ref := range n.Workflows {
-				parts = append(parts, fmt.Sprintf("  workflow %s", ref.Name))
+				parts = append(parts, fmt.Sprintf("\tworkflow %s", ref.Name))
 			}
 			for _, ref := range n.Activities {
-				parts = append(parts, fmt.Sprintf("  activity %s", ref.Name))
+				parts = append(parts, fmt.Sprintf("\tactivity %s", ref.Name))
 			}
 			for _, ref := range n.Services {
-				parts = append(parts, fmt.Sprintf("  nexus service %s", ref.Name))
+				parts = append(parts, fmt.Sprintf("\tnexus service %s", ref.Name))
 			}
 			sig += "\n" + strings.Join(parts, "\n")
 		}
@@ -112,18 +112,18 @@ func signatureFor(node ast.Node) string {
 		sig := fmt.Sprintf("worker %s", n.Worker.Name)
 		tq := extractWorkerTaskQueue(n)
 		if tq != "" {
-			sig += fmt.Sprintf("\n  task_queue: %s", tq)
+			sig += fmt.Sprintf("\n\ttask_queue: %s", tq)
 		}
 		if n.Worker.Resolved != nil {
 			var parts []string
 			for _, ref := range n.Worker.Resolved.Workflows {
-				parts = append(parts, fmt.Sprintf("  workflow %s", ref.Name))
+				parts = append(parts, fmt.Sprintf("\tworkflow %s", ref.Name))
 			}
 			for _, ref := range n.Worker.Resolved.Activities {
-				parts = append(parts, fmt.Sprintf("  activity %s", ref.Name))
+				parts = append(parts, fmt.Sprintf("\tactivity %s", ref.Name))
 			}
 			for _, ref := range n.Worker.Resolved.Services {
-				parts = append(parts, fmt.Sprintf("  nexus service %s", ref.Name))
+				parts = append(parts, fmt.Sprintf("\tnexus service %s", ref.Name))
 			}
 			if len(parts) > 0 {
 				sig += "\n" + strings.Join(parts, "\n")
@@ -136,17 +136,17 @@ func signatureFor(node ast.Node) string {
 		for _, w := range n.Workers {
 			tq := extractWorkerTaskQueue(&w)
 			if tq != "" {
-				parts = append(parts, fmt.Sprintf("  worker %s (task_queue: %s)", w.Worker.Name, tq))
+				parts = append(parts, fmt.Sprintf("\tworker %s (task_queue: %s)", w.Worker.Name, tq))
 			} else {
-				parts = append(parts, fmt.Sprintf("  worker %s", w.Worker.Name))
+				parts = append(parts, fmt.Sprintf("\tworker %s", w.Worker.Name))
 			}
 		}
 		for _, ep := range n.Endpoints {
 			tq := extractEndpointTaskQueue(&ep)
 			if tq != "" {
-				parts = append(parts, fmt.Sprintf("  nexus endpoint %s (task_queue: %s)", ep.EndpointName, tq))
+				parts = append(parts, fmt.Sprintf("\tnexus endpoint %s (task_queue: %s)", ep.EndpointName, tq))
 			} else {
-				parts = append(parts, fmt.Sprintf("  nexus endpoint %s", ep.EndpointName))
+				parts = append(parts, fmt.Sprintf("\tnexus endpoint %s", ep.EndpointName))
 			}
 		}
 		if len(parts) > 0 {
@@ -157,7 +157,7 @@ func signatureFor(node ast.Node) string {
 		sig := fmt.Sprintf("nexus endpoint %s", n.EndpointName)
 		tq := extractEndpointTaskQueue(n)
 		if tq != "" {
-			sig += fmt.Sprintf("\n  task_queue: %s", tq)
+			sig += fmt.Sprintf("\n\ttask_queue: %s", tq)
 		}
 		return sig
 	case *ast.NexusCall:
@@ -177,9 +177,9 @@ func signatureFor(node ast.Node) string {
 		var ops []string
 		for _, op := range n.Operations {
 			if op.OpType == ast.NexusOpAsync {
-				ops = append(ops, fmt.Sprintf("  async %s workflow %s", op.Name, op.Workflow.Name))
+				ops = append(ops, fmt.Sprintf("\tasync %s workflow %s", op.Name, op.Workflow.Name))
 			} else {
-				ops = append(ops, fmt.Sprintf("  sync %s(%s) -> (%s)", op.Name, op.Params, op.ReturnType))
+				ops = append(ops, fmt.Sprintf("\tsync %s(%s) -> (%s)", op.Name, op.Params, op.ReturnType))
 			}
 		}
 		sig := fmt.Sprintf("nexus service %s", n.Name)

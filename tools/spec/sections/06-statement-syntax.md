@@ -69,32 +69,32 @@ Query handler options: `description` (string). `unfinished_policy` does not appl
 **Example:**
 ```
 activity ChargePayment(order) -> payment
-    options:
-        task_queue: "payment-workers"
-        start_to_close_timeout: 60s
-        retry_policy:
-            maximum_attempts: 3
-            initial_interval: 1s
-            non_retryable_error_types: ["InvalidInput", "NotFound", "Unauthorized"]
-        priority:
-            priority_key: 1
-            fairness_key: "high"
+	options:
+		task_queue: "payment-workers"
+		start_to_close_timeout: 60s
+		retry_policy:
+			maximum_attempts: 3
+			initial_interval: 1s
+			non_retryable_error_types: ["InvalidInput", "NotFound", "Unauthorized"]
+		priority:
+			priority_key: 1
+			fairness_key: "high"
 ```
 
 Handler declarations may carry an `options:` block at the head of the handler body, before any statements:
 
 ```twf
 signal Cancel():
-    options:
-        unfinished_policy: abandon
-    cancelled = true
+	options:
+		unfinished_policy: abandon
+	cancelled = true
 
 update SubmitJob(job: Job) -> (JobId):
-    options:
-        unfinished_policy: warn_and_abandon
-    activity ValidateJob(job)
-    jobId = uuid()
-    return jobId
+	options:
+		unfinished_policy: warn_and_abandon
+	activity ValidateJob(job)
+	jobId = uuid()
+	return jobId
 ```
 
 ## Definition Default Options
@@ -129,25 +129,25 @@ The async-nexus case needs no grammar change: a workflow started via a Nexus run
 **Example:**
 ```twf
 activity ChargePayment(order: Order) -> (Payment):
-    default_options:
-        task_queue: "payment-workers"
-        start_to_close_timeout: 60s
-        retry_policy:
-            maximum_attempts: 3
-    activity DoCharge(order) -> payment
-    return payment
+	default_options:
+		task_queue: "payment-workers"
+		start_to_close_timeout: 60s
+		retry_policy:
+			maximum_attempts: 3
+	activity DoCharge(order) -> payment
+	return payment
 
 workflow ProcessOrder(order: Order) -> (Result):
-    id_scheme: "order-{order.id}"
-    default_options:
-        workflow_execution_timeout: 1h
-        workflow_id_reuse_policy: REJECT_DUPLICATE
-        workflow_id_conflict_policy: USE_EXISTING
-    state:
-        condition charged
-    activity ChargePayment(order) -> payment
-    set charged
-    close complete(Result{payment})
+	id_scheme: "order-{order.id}"
+	default_options:
+		workflow_execution_timeout: 1h
+		workflow_id_reuse_policy: REJECT_DUPLICATE
+		workflow_id_conflict_policy: USE_EXISTING
+	state:
+		condition charged
+	activity ChargePayment(order) -> payment
+	set charged
+	close complete(Result{payment})
 ```
 
 ## Workflow Call
@@ -192,8 +192,8 @@ Calls a nexus service operation. The three IDENTs are: Endpoint, Service.Operati
 ```
 nexus OrderEndpoint OrderService.PlaceOrder(order) -> result
 nexus OrderEndpoint OrderService.GetStatus(order.id) -> status
-    options:
-        schedule_to_close_timeout: 30s
+	options:
+		schedule_to_close_timeout: 30s
 detach nexus NotificationEndpoint NotificationService.SendEmail(email)
 ```
 
@@ -215,7 +215,7 @@ Addressing forms and their semantics are in [Cross-Workflow Signals](./13-cross-
 
 ```twf
 signal ShipItem.Shipped(event.tracking)
-    id: "ship-{event.orderId}-{event.sku}"
+	id: "ship-{event.orderId}-{event.sku}"
 signal ship.Shipped(t)
 ```
 
@@ -396,9 +396,9 @@ Waits for the FIRST case to complete (races between signals, updates, timers, ac
 **Case bodies are optional.** If a case has no body, the colon is still required. This is useful for consuming signals/results without additional processing:
 ```
 await one:
-    signal Ready:
-    timer(5m):
-        close fail("timeout")
+	signal Ready:
+	timer(5m):
+		close fail("timeout")
 ```
 
 The case that completes first "wins" the race, its body executes (if present), and then execution continues after the `await one` block.

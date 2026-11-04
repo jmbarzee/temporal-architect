@@ -2,9 +2,9 @@
 
 ```twf
 query GetStatus() -> (string):
-    options:
-        description: "Current order status"
-    return status
+	options:
+		description: "Current order status"
+	return status
 ```
 
 ```go

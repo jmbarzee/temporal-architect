@@ -8,168 +8,168 @@
 # --- Basic linear workflow: renewal processing ---
 
 workflow RenewalProcessing(renewal: Renewal) -> (RenewalResult):
-    activity ValidateRenewalRequest(renewal) -> validated
-    if (validated.success == false):
-        close fail(RenewalResult{status: "invalid"})
+	activity ValidateRenewalRequest(renewal) -> validated
+	if (validated.success == false):
+		close fail(RenewalResult{status: "invalid"})
 
-    activity ChargeRenewalPayment(renewal.payment) -> payment
-    activity ActivateRenewedPlan(renewal)
+	activity ChargeRenewalPayment(renewal.payment) -> payment
+	activity ActivateRenewedPlan(renewal)
 
-    close complete(RenewalResult{status: "completed", paymentId: payment.id})
+	close complete(RenewalResult{status: "completed", paymentId: payment.id})
 
 # --- Workflow with timer: scheduled reminder cadence ---
 
 workflow ReminderWorkflow(userId: string):
-    activity SendFirstReminder(userId)
+	activity SendFirstReminder(userId)
 
-    await timer(24h)
+	await timer(24h)
 
-    activity SendSecondReminder(userId)
+	activity SendSecondReminder(userId)
 
-    await timer(48h)
+	await timer(48h)
 
-    activity SendFinalReminder(userId)
-    close complete
+	activity SendFinalReminder(userId)
+	close complete
 
 # --- Workflow with signals: leave-of-absence approval ---
 
 workflow LeaveRequestApproval(request: LeaveRequest) -> (Decision):
-    signal Approved(approver: string):
-        approved = true
-        approverName = approver
+	signal Approved(approver: string):
+		approved = true
+		approverName = approver
 
-    signal Rejected(approver: string, reason: string):
-        rejected = true
-        rejectReason = reason
+	signal Rejected(approver: string, reason: string):
+		rejected = true
+		rejectReason = reason
 
-    approved = false
-    rejected = false
-    approverName = ""
-    rejectReason = ""
+	approved = false
+	rejected = false
+	approverName = ""
+	rejectReason = ""
 
-    activity NotifyManagers(request)
+	activity NotifyManagers(request)
 
-    await one:
-        signal Approved:
-            close complete(Decision{status: "approved", approver: approverName})
-        signal Rejected:
-            close fail(Decision{status: "rejected", reason: rejectReason})
-        timer(1h):
-            close complete(Decision{status: "timeout"})
+	await one:
+		signal Approved:
+			close complete(Decision{status: "approved", approver: approverName})
+		signal Rejected:
+			close fail(Decision{status: "rejected", reason: rejectReason})
+		timer(1h):
+			close complete(Decision{status: "timeout"})
 
 # --- Workflow with query: status flow ---
 
 workflow StatusWorkflow(orderId: string) -> (OrderResult):
-    query GetStatus() -> (string):
-        return status
+	query GetStatus() -> (string):
+		return status
 
-    status = "pending"
-    activity StartProcessing(orderId)
+	status = "pending"
+	activity StartProcessing(orderId)
 
-    status = "processing"
-    activity ProcessItems(orderId)
+	status = "processing"
+	activity ProcessItems(orderId)
 
-    status = "completed"
-    close complete(OrderResult{status: status, orderId: orderId})
+	status = "completed"
+	close complete(OrderResult{status: status, orderId: orderId})
 
 # --- Complex workflow for testing continue-as-new, conditions, and updates ---
 
 workflow SubscriptionManager(userId: string, sub: Subscription):
-    state:
-        condition renewed
+	state:
+		condition renewed
 
-    update RenewSubscription(payment: Payment) -> (RenewResult):
-        activity ValidatePayment(payment) -> validation
-        if (validation.ok):
-            set renewed
-            return RenewResult{accepted: true}
-        else:
-            return RenewResult{accepted: false, reason: validation.error}
+	update RenewSubscription(payment: Payment) -> (RenewResult):
+		activity ValidatePayment(payment) -> validation
+		if (validation.ok):
+			set renewed
+			return RenewResult{accepted: true}
+		else:
+			return RenewResult{accepted: false, reason: validation.error}
 
-    query GetSubscription() -> (Subscription):
-        return sub
+	query GetSubscription() -> (Subscription):
+		return sub
 
-    for:
-        await one:
-            renewed:
-                activity ExtendSubscription(userId, sub) -> sub
-                unset renewed
-            timer(30d):
-                activity SendExpirationWarning(userId)
-                await one:
-                    renewed:
-                        activity ExtendSubscription(userId, sub) -> sub
-                        unset renewed
-                    timer(7d):
-                        activity CancelSubscription(userId)
-                        close complete
+	for:
+		await one:
+			renewed:
+				activity ExtendSubscription(userId, sub) -> sub
+				unset renewed
+			timer(30d):
+				activity SendExpirationWarning(userId)
+				await one:
+					renewed:
+						activity ExtendSubscription(userId, sub) -> sub
+						unset renewed
+					timer(7d):
+						activity CancelSubscription(userId)
+						close complete
 
-        close continue_as_new(userId, sub)
+		close continue_as_new(userId, sub)
 
 # --- Supporting activities ---
 
 activity ValidateRenewalRequest(renewal: Renewal) -> (ValidationResult):
-    return validate(renewal)
+	return validate(renewal)
 
 activity ChargeRenewalPayment(payment: Payment) -> (PaymentResult):
-    return charge(payment)
+	return charge(payment)
 
 activity ActivateRenewedPlan(renewal: Renewal):
-    activate(renewal)
+	activate(renewal)
 
 activity SendFirstReminder(userId: string):
-    remind(userId, "first")
+	remind(userId, "first")
 
 activity SendSecondReminder(userId: string):
-    remind(userId, "second")
+	remind(userId, "second")
 
 activity SendFinalReminder(userId: string):
-    remind(userId, "final")
+	remind(userId, "final")
 
 activity NotifyManagers(request: LeaveRequest):
-    notify(request.managers)
+	notify(request.managers)
 
 activity StartProcessing(orderId: string):
-    start(orderId)
+	start(orderId)
 
 activity ProcessItems(orderId: string):
-    process(orderId)
+	process(orderId)
 
 activity ValidatePayment(payment: Payment) -> (PaymentValidation):
-    return validate(payment)
+	return validate(payment)
 
 activity ExtendSubscription(userId: string, sub: Subscription) -> (Subscription):
-    return extend(userId, sub)
+	return extend(userId, sub)
 
 activity SendExpirationWarning(userId: string):
-    warn(userId)
+	warn(userId)
 
 activity CancelSubscription(userId: string):
-    cancel(userId)
+	cancel(userId)
 
 # --- Worker and namespace ---
 
 worker testingWorker:
-    workflow RenewalProcessing
-    workflow ReminderWorkflow
-    workflow LeaveRequestApproval
-    workflow StatusWorkflow
-    workflow SubscriptionManager
-    activity ValidateRenewalRequest
-    activity ChargeRenewalPayment
-    activity ActivateRenewedPlan
-    activity SendFirstReminder
-    activity SendSecondReminder
-    activity SendFinalReminder
-    activity NotifyManagers
-    activity StartProcessing
-    activity ProcessItems
-    activity ValidatePayment
-    activity ExtendSubscription
-    activity SendExpirationWarning
-    activity CancelSubscription
+	workflow RenewalProcessing
+	workflow ReminderWorkflow
+	workflow LeaveRequestApproval
+	workflow StatusWorkflow
+	workflow SubscriptionManager
+	activity ValidateRenewalRequest
+	activity ChargeRenewalPayment
+	activity ActivateRenewedPlan
+	activity SendFirstReminder
+	activity SendSecondReminder
+	activity SendFinalReminder
+	activity NotifyManagers
+	activity StartProcessing
+	activity ProcessItems
+	activity ValidatePayment
+	activity ExtendSubscription
+	activity SendExpirationWarning
+	activity CancelSubscription
 
 namespace testing:
-    worker testingWorker
-        options:
-            task_queue: "testing"
+	worker testingWorker
+		options:
+			task_queue: "testing"

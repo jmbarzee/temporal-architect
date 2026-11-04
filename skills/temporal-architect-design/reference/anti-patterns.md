@@ -10,16 +10,16 @@
 
 ```twf
 workflow ReindexCatalog(cursor: Cursor):
-    pageCount = 0
-    for:
-        activity FetchPage(cursor) -> page
-        activity IndexItems(page.items)
-        cursor = page.next
-        pageCount = pageCount + 1
-        if (cursor == null):
-            close complete
-        if (pageCount >= 500):
-            close continue_as_new(cursor)
+	pageCount = 0
+	for:
+		activity FetchPage(cursor) -> page
+		activity IndexItems(page.items)
+		cursor = page.next
+		pageCount = pageCount + 1
+		if (cursor == null):
+			close complete
+		if (pageCount >= 500):
+			close continue_as_new(cursor)
 ```
 
 ### Wrapper Workflow
@@ -32,10 +32,10 @@ workflow ReindexCatalog(cursor: Cursor):
 
 ```pseudo
 workflow ProcessOrder(order):
-    activity ValidateOrder(order) -> validated
-    workflow FulfillOrder(validated) -> fulfillment
-    workflow NotifyStakeholders(order, fulfillment)
-    close complete(OrderResult{fulfillment})
+	activity ValidateOrder(order) -> validated
+	workflow FulfillOrder(validated) -> fulfillment
+	workflow NotifyStakeholders(order, fulfillment)
+	close complete(OrderResult{fulfillment})
 ```
 
 ### Large Payloads in Workflow State
@@ -62,12 +62,12 @@ workflow ProcessOrder(order):
 
 ```pseudo
 update SetShippingAddress(address: Address) -> (Result):
-    activity ValidateAddress(address) -> validation
-    if (validation.valid):
-        shippingAddress = address
-        return Result{ok: true}
-    else:
-        return Result{ok: false, error: validation.reason}
+	activity ValidateAddress(address) -> validation
+	if (validation.valid):
+		shippingAddress = address
+		return Result{ok: true}
+	else:
+		return Result{ok: false, error: validation.reason}
 ```
 
 ### Detach When You Need the Result

@@ -1,32 +1,32 @@
 workflow OrderFulfillment(orderId: string) -> (OrderResult):
-    signal PaymentReceived(transactionId: string, amount: decimal):
-        paymentStatus = "received"
-        paymentAmount = amount
+	signal PaymentReceived(transactionId: string, amount: decimal):
+		paymentStatus = "received"
+		paymentAmount = amount
 
-    query GetStatus() -> (OrderStatus):
-        return OrderStatus{phase: currentPhase, paid: paymentStatus}
+	query GetStatus() -> (OrderStatus):
+		return OrderStatus{phase: currentPhase, paid: paymentStatus}
 
-    update ChangeAddress(addr: Address) -> (UpdateResult):
-        shippingAddress = addr
-        return UpdateResult{ok: true}
+	update ChangeAddress(addr: Address) -> (UpdateResult):
+		shippingAddress = addr
+		return UpdateResult{ok: true}
 
-    activity GetOrder(orderId) -> order
+	activity GetOrder(orderId) -> order
 
-    if (order.priority == "high"):
-        activity ExpediteOrder(order)
-    else:
-        activity StandardProcessing(order)
+	if (order.priority == "high"):
+		activity ExpediteOrder(order)
+	else:
+		activity StandardProcessing(order)
 
-    await all:
-        activity ReserveInventory(order) -> inventory
-        activity ProcessPayment(order) -> payment
+	await all:
+		activity ReserveInventory(order) -> inventory
+		activity ProcessPayment(order) -> payment
 
-    hint signal PaymentReceived
-    workflow ShipOrder(order) -> shipResult
-    return OrderResult{status: "completed"}
+	hint signal PaymentReceived
+	workflow ShipOrder(order) -> shipResult
+	return OrderResult{status: "completed"}
 
 workflow ShipOrder(order: Order) -> (ShipResult):
-    activity CreateShipment(order) -> shipment
-        options:
-            start_to_close_timeout: 30s
-    return shipment
+	activity CreateShipment(order) -> shipment
+		options:
+			start_to_close_timeout: 30s
+	return shipment

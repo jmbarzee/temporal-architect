@@ -32,10 +32,10 @@ sync_operation  ::= 'sync' IDENT params '->' return_type ':' NEWLINE
 **Example:**
 ```
 nexus service OrderService:
-    async PlaceOrder workflow ProcessOrder
-    sync GetStatus(orderId: string) -> (Status):
-        activity FetchStatus(orderId) -> status
-        close complete(status)
+	async PlaceOrder workflow ProcessOrder
+	sync GetStatus(orderId: string) -> (Status):
+		activity FetchStatus(orderId) -> status
+		close complete(status)
 ```
 
 ## Nexus Qualification Table

@@ -4,99 +4,99 @@
 # --- Long-running activity with heartbeat ---
 
 activity ProcessLargeFile(fileId: string) -> (ProcessResult):
-    file = download(fileId)
-    total = len(file.chunks)
-    for (i in file.chunks):
-        process(i)
-        heartbeat(progress: {current: i, total: total})
-    return ProcessResult{success: true}
+	file = download(fileId)
+	total = len(file.chunks)
+	for (i in file.chunks):
+		process(i)
+		heartbeat(progress: {current: i, total: total})
+	return ProcessResult{success: true}
 
 # --- Resumable activity using heartbeat details ---
 
 activity ResumableProcess(batchId: string) -> (BatchResult):
-    startIndex = get_heartbeat_details().index or 0
-    items = getItems(batchId)
-    for (i in range(startIndex, len(items))):
-        process(items[i])
-        heartbeat(index: i + 1)
-    return BatchResult{processed: len(items)}
+	startIndex = get_heartbeat_details().index or 0
+	items = getItems(batchId)
+	for (i in range(startIndex, len(items))):
+		process(items[i])
+		heartbeat(index: i + 1)
+	return BatchResult{processed: len(items)}
 
 # --- Async completion activity (human approval) ---
 
 activity RequestHumanApproval(request: ApprovalRequest) -> (ApprovalResult):
-    taskToken = get_activity_task_token()
-    createTicket(title: request.title, callback_token: taskToken)
-    do_not_complete()
+	taskToken = get_activity_task_token()
+	createTicket(title: request.title, callback_token: taskToken)
+	do_not_complete()
 
 # --- Notification activity ---
 
 activity NotifyRequestCreated(request: Request):
-    send_notification(request)
+	send_notification(request)
 
 # --- Execute approved action ---
 
 activity ExecuteApprovedAction(request: Request):
-    execute(request)
+	execute(request)
 
 # --- Workflow using async activity with timeout ---
 
 workflow PublishApprovalWorkflow(request: Request) -> (Decision):
-    activity NotifyRequestCreated(request)
+	activity NotifyRequestCreated(request)
 
-    activity RequestHumanApproval(request) -> result
-        options:
-            start_to_close_timeout: 7d
+	activity RequestHumanApproval(request) -> result
+		options:
+			start_to_close_timeout: 7d
 
-    if (result.approved):
-        activity ExecuteApprovedAction(request)
+	if (result.approved):
+		activity ExecuteApprovedAction(request)
 
-    close complete(Decision{approved: result.approved})
+	close complete(Decision{approved: result.approved})
 
 # --- Workflow with various timeout configurations ---
 
 workflow LargeFileIngestion(data: Data) -> (Result):
-    activity QuickLookup(data.id) -> result1
-        options:
-            start_to_close_timeout: 30s
+	activity QuickLookup(data.id) -> result1
+		options:
+			start_to_close_timeout: 30s
 
-    activity ProcessLargeFile(data.fileId) -> result2
-        options:
-            start_to_close_timeout: 2h
-            heartbeat_timeout: 30s
+	activity ProcessLargeFile(data.fileId) -> result2
+		options:
+			start_to_close_timeout: 2h
+			heartbeat_timeout: 30s
 
-    activity UnreliableService(data) -> result3
-        options:
-            start_to_close_timeout: 2m
-            retry_policy:
-                maximum_attempts: 5
-                initial_interval: 1s
-                backoff_coefficient: 2.0
-                maximum_interval: 60s
+	activity UnreliableService(data) -> result3
+		options:
+			start_to_close_timeout: 2m
+			retry_policy:
+				maximum_attempts: 5
+				initial_interval: 1s
+				backoff_coefficient: 2.0
+				maximum_interval: 60s
 
-    close complete(Result{result1, result2, result3})
+	close complete(Result{result1, result2, result3})
 
 # --- Supporting activities ---
 
 activity QuickLookup(id: string) -> (LookupResult):
-    return db.lookup(id)
+	return db.lookup(id)
 
 activity UnreliableService(data: Data) -> (ServiceResult):
-    return external_api.call(data)
+	return external_api.call(data)
 
 # --- Worker and namespace ---
 
 worker activitiesAdvancedWorker:
-    workflow PublishApprovalWorkflow
-    workflow LargeFileIngestion
-    activity ProcessLargeFile
-    activity ResumableProcess
-    activity RequestHumanApproval
-    activity NotifyRequestCreated
-    activity ExecuteApprovedAction
-    activity QuickLookup
-    activity UnreliableService
+	workflow PublishApprovalWorkflow
+	workflow LargeFileIngestion
+	activity ProcessLargeFile
+	activity ResumableProcess
+	activity RequestHumanApproval
+	activity NotifyRequestCreated
+	activity ExecuteApprovedAction
+	activity QuickLookup
+	activity UnreliableService
 
 namespace activitiesAdvanced:
-    worker activitiesAdvancedWorker
-        options:
-            task_queue: "activities-advanced"
+	worker activitiesAdvancedWorker
+		options:
+			task_queue: "activities-advanced"

@@ -150,3 +150,29 @@ func TestAddMissingDefinitionOnTabs(t *testing.T) {
 		t.Errorf("result does not parse: %v\n%s", doc.ParseErrs, got)
 	}
 }
+
+// Hover signatures indent their member lines with tabs.
+func TestHoverIndentsWithTabs(t *testing.T) {
+	store := NewDocumentStore()
+	store.Open(renameURI, everyKindSource)
+	for _, tt := range []struct {
+		line int
+		word string
+		want string
+	}{
+		{56, "Prod", "namespace Prod\n\tworker W (task_queue: q)\n\tnexus endpoint Orders (task_queue: q)"},
+		{57, "W", "worker W\n\ttask_queue: q\n\tworkflow Parent\n"},
+	} {
+		at := protocol.TextDocumentPositionParams{
+			TextDocument: protocol.TextDocumentIdentifier{URI: renameURI},
+			Position:     wordAt(t, everyKindSource, tt.line, tt.word, 0),
+		}
+		hover, err := hoverHandler(store)(nil, &protocol.HoverParams{TextDocumentPositionParams: at})
+		if err != nil || hover == nil {
+			t.Fatalf("hover on %s: hover=%v err=%v", tt.word, hover, err)
+		}
+		if v := hover.Contents.(protocol.MarkupContent).Value; !strings.Contains(v, tt.want) {
+			t.Errorf("hover on %s = %q, want it to hold %q", tt.word, v, tt.want)
+		}
+	}
+}

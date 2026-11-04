@@ -32,12 +32,12 @@ if err := payFuture.Get(ctx, &payment); err != nil {
 
 ```twf
 signal ShipItem.Shipped(event.tracking)
-    id: "ship-{event.orderId}-{event.sku}"
+	id: "ship-{event.orderId}-{event.sku}"
 signal ShipItem.Shipped(stuck.tracking)
-    id: stuck.workflowId
-    run_id: stuck.runId
+	id: stuck.workflowId
+	run_id: stuck.runId
 signal FulfillOrder.ItemShipped(item.id)
-    id: parent
+	id: parent
 ```
 
 ```go

@@ -40,11 +40,11 @@ its own worker and task queue.
 **Example:**
 ```
 worker orderTypes:
-    workflow ProcessOrder
-    workflow CancelOrder
-    activity ChargePayment
-    activity SendNotification
-    nexus service OrderService
+	workflow ProcessOrder
+	workflow CancelOrder
+	activity ChargePayment
+	activity SendNotification
+	nexus service OrderService
 ```
 
 ## Namespace Definitions
@@ -77,22 +77,22 @@ Each worker instantiation inside a namespace requires a `task_queue` option. Nex
 **Example:**
 ```
 namespace orders:
-    worker orderTypes
-        options:
-            task_queue: "orderProcessing"
-            max_concurrent_activity_executions: 50
-    nexus endpoint OrderEndpoint
-        options:
-            task_queue: "orderProcessing"
+	worker orderTypes
+		options:
+			task_queue: "orderProcessing"
+			max_concurrent_activity_executions: 50
+	nexus endpoint OrderEndpoint
+		options:
+			task_queue: "orderProcessing"
 ```
 
 The same worker type set can be instantiated in multiple namespaces with different options:
 
 ```
 namespace staging:
-    worker orderTypes
-        options:
-            task_queue: "staging-orders"
+	worker orderTypes
+		options:
+			task_queue: "staging-orders"
 ```
 
 ## Parameterized namespaces and endpoints
@@ -104,12 +104,12 @@ created dynamically at runtime. TWF models a family inline: a `{param}` template
 
 ```
 namespace fabric-shard-{org}:
-    worker shardTypes
-        options:
-            task_queue: "bootstrap"
-    nexus endpoint fabric-shard-{org}-BootstrapShard
-        options:
-            task_queue: "bootstrap"
+	worker shardTypes
+		options:
+			task_queue: "bootstrap"
+	nexus endpoint fabric-shard-{org}-BootstrapShard
+		options:
+			task_queue: "bootstrap"
 ```
 
 The semantics are **design-altitude**, not runtime string substitution:
@@ -142,19 +142,19 @@ per-region fleet.
 
 ```
 namespace aivearium:
-    worker sidecar
-        options:
-            task_queue: "sandbox-{sandboxId}"
+	worker sidecar
+		options:
+			task_queue: "sandbox-{sandboxId}"
 ```
 
 A caller names a member with its own data, matched by shape (see [Queue matching](#queue-matching)):
 
 ```
 activity RunTool(task.call) -> output
-    options:
-        task_queue: "sandbox-{lease.sandboxId}"
-        schedule_to_start_timeout: 30s
-        start_to_close_timeout: 5m
+	options:
+		task_queue: "sandbox-{lease.sandboxId}"
+		schedule_to_start_timeout: 30s
+		start_to_close_timeout: 5m
 ```
 
 - **An annotation, never bound.** Like a name parameter, an instance parameter marks cardinality.
@@ -214,9 +214,9 @@ carry a `pkg.` qualifier that names a symbol declared in another package.
 
 ```
 worker sharedTypes:
-    workflow orders.ProcessOrder
-    activity billing.ChargeCard
-    nexus service orders.OrderService
+	workflow orders.ProcessOrder
+	activity billing.ChargeCard
+	nexus service orders.OrderService
 ```
 
 The natural home for such a worker is a dedicated **topology package** — a file that `import`s each
@@ -230,14 +230,14 @@ import "github.com/acme/orders"
 import "github.com/acme/billing"
 
 worker sharedTypes:
-    workflow orders.ProcessOrder
-    activity billing.ChargeCard
-    nexus service orders.OrderService
+	workflow orders.ProcessOrder
+	activity billing.ChargeCard
+	nexus service orders.OrderService
 
 namespace production:
-    worker sharedTypes
-        options:
-            task_queue: "shared"
+	worker sharedTypes
+		options:
+			task_queue: "shared"
 ```
 
 Two consequences follow:
