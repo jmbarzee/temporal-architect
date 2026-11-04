@@ -47,6 +47,49 @@ bad tag publishes nothing. It fails the release if:
 `make release` mirrors the on-main check locally, but the CI guard is
 authoritative (a hand-pushed tag is still caught there).
 
+Alongside the guard, `dist-credential` mints the dist-handoff token (below), so
+a broken credential also publishes nothing. Fix it, then re-run the workflow.
+
+## The dist handoff
+
+The release's last job, `dispatch-dist` (`_dispatch-dist.yml`), sends a
+`toolchain-release` repository_dispatch to `jmbarzee/temporal-architect-dist`,
+which opens dist's manifest-bump PR. It authenticates as a GitHub App, minting
+a short-lived installation token per run, so no credential expires.
+
+One-time setup:
+
+1. Create an app at <https://github.com/settings/apps/new>: any name,
+   homepage `https://github.com/jmbarzee/temporal-architect`, **Webhook →
+   Active** unchecked, **Repository permissions → Contents: Read and write**
+   (nothing else), installable **Only on this account**.
+2. On the app's page, note the **Client ID** and **Generate a private key**
+   (downloads a `.pem`).
+3. **Install App** → `jmbarzee` → **Only select repositories** →
+   `temporal-architect-dist`.
+4. Store both on this repo, then delete the `.pem`:
+
+   ```bash
+   gh variable set DIST_APP_CLIENT_ID --repo jmbarzee/temporal-architect --body <client-id>
+   gh secret set DIST_APP_PRIVATE_KEY --repo jmbarzee/temporal-architect < <key>.pem
+   ```
+
+To rotate the key, generate a new one (step 2), re-run the `gh secret set`
+line, then delete the old key on the app's page.
+
+Check the credential without releasing (mints a token, dispatches nothing):
+
+```bash
+gh workflow run _dispatch-dist.yml --repo jmbarzee/temporal-architect
+```
+
+If `dispatch-dist` fails after the Release is out, re-run that job, or open
+the bump PR from dist directly:
+
+```bash
+gh workflow run prepare-release.yml --repo jmbarzee/temporal-architect-dist -f version=vX.Y.Z
+```
+
 ## Verifying a release
 
 After the workflow runs for `vX.Y.Z`:
@@ -56,4 +99,4 @@ After the workflow runs for `vX.Y.Z`:
 2. The GitHub Release `vX.Y.Z` exists with the twf binary + skills tarballs.
 3. `tools/spec/vX.Y.Z` and `tools/lsp/vX.Y.Z` tags exist at the release commit,
    and `go install …/tools/lsp/cmd/twf@vX.Y.Z` prints `X.Y.Z`.
-4. The dist repo received the `toolchain-release` dispatch.
+4. The dist repo opened its `release/vX.Y.Z` manifest-bump PR.
