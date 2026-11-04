@@ -132,3 +132,21 @@ func TestConvertReturnToCloseOnTabs(t *testing.T) {
 		t.Errorf("result does not parse: %v", doc.ParseErrs)
 	}
 }
+
+// On a tab-indented file, the added stub is indented with tabs and the result
+// parses.
+func TestAddMissingDefinitionOnTabs(t *testing.T) {
+	src := "workflow W():\n\tif (x):\n\t\tactivity Missing(x) -> r\n\tclose complete\n"
+	at := protocol.Position{Line: 2, Character: 2}
+	actions := codeActions(t, src, protocol.Range{Start: at, End: at}, "Add missing activity 'Missing'")
+	if len(actions) != 1 {
+		t.Fatalf("want one action, got %+v", actions)
+	}
+	got := applyEdits(t, src, actions[0].Edit.Changes[renameURI])
+	if !strings.HasSuffix(got, ":\n\t# TODO: implement\n\treturn result\n") {
+		t.Errorf("stub not indented with tabs:\n%q", got)
+	}
+	if doc := NewDocumentStore().Open(renameURI, got); len(doc.ParseErrs) > 0 {
+		t.Errorf("result does not parse: %v\n%s", doc.ParseErrs, got)
+	}
+}
