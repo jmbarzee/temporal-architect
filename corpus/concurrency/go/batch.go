@@ -56,9 +56,22 @@ func Batch(ctx workflow.Context, items []string) (Report, error) {
 		return Report{}, err
 	}
 
-	// await one: the Ack case is listed first, so a pending arrival wins over the timer.
-	if _, err := workflow.AwaitWithTimeout(ctx, time.Hour, func() bool { return acks > 0 }); err != nil {
+	// await one: Ack is listed first, so it wins a tie with the timer. A signal
+	// in the timer's workflow task reaches its handler only after this
+	// coroutine resumes, so yield once before reading acks.
+	timerCtx, cancelTimer := workflow.WithCancel(ctx)
+	timer := workflow.NewTimer(timerCtx, time.Hour)
+	if err := workflow.Await(ctx, func() bool { return acks > 0 || timer.IsReady() }); err != nil {
 		return Report{}, err
+	}
+	yielded := false
+	workflow.Go(ctx, func(workflow.Context) { yielded = true })
+	if err := workflow.Await(ctx, func() bool { return yielded }); err != nil {
+		return Report{}, err
+	}
+	if acks > 0 {
+		acks--
+		cancelTimer()
 	}
 
 	return Report{Count: count, Audited: audited, Status: status}, nil

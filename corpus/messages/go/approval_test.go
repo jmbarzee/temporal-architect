@@ -13,25 +13,29 @@ func TestApproval(t *testing.T) {
 	env := s.NewTestWorkflowEnvironment()
 	RegisterApprovalTypes(env)
 
+	// Approve arrives before anything waits for it, and stays pending.
+	env.RegisterDelayedCallback(func() {
+		env.SignalWorkflow(ApproveSignal, ApproveArgs{Approver: "Grace"})
+	}, 30*time.Second)
 	env.RegisterDelayedCallback(func() {
 		env.SignalWorkflow(OpenSignal, nil)
 	}, time.Minute)
-	env.RegisterDelayedCallback(func() {
-		env.SignalWorkflow(ApproveSignal, ApproveArgs{Approver: "Grace"})
-	}, 2*time.Minute)
 	env.RegisterDelayedCallback(func() {
 		status, err := env.QueryWorkflow(StatusQuery)
 		require.NoError(t, err)
 		var got string
 		require.NoError(t, status.Get(&got))
-		require.Equal(t, "approved", got)
+		require.Equal(t, "open", got)
 
 		env.UpdateWorkflow(ReviewUpdate, "review-1", &testsuite.TestUpdateCallback{
-			OnReject:   func(err error) { t.Fatalf("update rejected: %v", err) },
-			OnAccept:   func() {},
-			OnComplete: func(result interface{}, err error) { require.NoError(t, err) },
+			OnReject: func(err error) { t.Fatalf("update rejected: %v", err) },
+			OnAccept: func() {},
+			OnComplete: func(result interface{}, err error) {
+				require.NoError(t, err)
+				require.Equal(t, "reviewed", result)
+			},
 		}, "LGTM")
-	}, 3*time.Minute)
+	}, 2*time.Minute)
 
 	env.ExecuteWorkflow(Approval, "access")
 

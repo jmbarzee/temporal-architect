@@ -1,4 +1,4 @@
-package continue_as_new
+package continueasnew
 
 import (
 	"context"

@@ -31,4 +31,4 @@ make corpus-go    # twf check every design, then go vet and go test the Go outpu
 
 1. Author each design into `<design>/<sdk>/`, with its project file at the corpus root.
 2. Add a `corpus-<sdk>` target to the [Makefile](../Makefile) that depends on `check-corpus`, then builds and tests those outputs.
-3. Add `<sdk>` to the `corpus` job's matrix in [ci.yml](../.github/workflows/ci.yml), with a setup step if the runner lacks its toolchain.
+3. Add `<sdk>` to the `corpus` job's matrix in [ci.yml](../.github/workflows/ci.yml), with a setup step if the runner lacks its toolchain. No test needs a Temporal server today; an SDK whose tests do adds `temporalio/setup-temporal` as a step gated on `matrix.sdk`.
