@@ -4,10 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 
 	"github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf/internal/command/symbols"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/decompose"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/format"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/graph"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/pipeline"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -32,17 +34,33 @@ type chunksInput struct {
 	By       []string `json:"by,omitempty" jsonschema:"Division strategy bias for over-ceiling chunks: any of tree, nexus, worker, namespace, service, subtree. Empty means all applicable."`
 }
 
-// resolveInput parses from inline source or from the given files and
-// directories. It errors unless exactly one is supplied. A source is supplied
-// when present, even empty: an empty source is an empty file.
-func resolveInput(paths []string, src *string) (*ast.File, []pipeline.Diagnostic, error) {
+// fmtInput is twf_fmt's filesInput: the same choice, described for formatting.
+type fmtInput struct {
+	Paths  []string `json:"paths,omitempty" jsonschema:"One or more .twf files or directories to format (a directory expands to the .twf files beneath it), resolved on the local filesystem where this server runs. Nothing is written. Provide this or source, not both."`
+	Source *string  `json:"source,omitempty" jsonschema:"Inline TWF source to format instead of reading from disk (e.g. an unsaved editor buffer). Provide this or paths, not both."`
+}
+
+// checkInput errors unless exactly one of paths and source is supplied. A
+// source is supplied when present, even empty: an empty source is an empty
+// file.
+func checkInput(paths []string, src *string) error {
 	switch {
 	case src != nil && len(paths) > 0:
-		return nil, nil, fmt.Errorf("provide either paths or source, not both")
-	case src != nil:
+		return fmt.Errorf("provide either paths or source, not both")
+	case src == nil && len(paths) == 0:
+		return fmt.Errorf("provide either paths or source")
+	}
+	return nil
+}
+
+// resolveInput parses from inline source or from the given files and
+// directories, whichever checkInput accepts.
+func resolveInput(paths []string, src *string) (*ast.File, []pipeline.Diagnostic, error) {
+	if err := checkInput(paths, src); err != nil {
+		return nil, nil, err
+	}
+	if src != nil {
 		return pipeline.ParseSource("input.twf", *src)
-	case len(paths) == 0:
-		return nil, nil, fmt.Errorf("provide either paths or source")
 	}
 	return pipeline.ParseFiles(paths)
 }
@@ -106,6 +124,15 @@ func registerTools(s *mcp.Server) {
 		Annotations: readOnly,
 	}, func(_ context.Context, _ *mcp.CallToolRequest, in chunksInput) (*mcp.CallToolResult, any, error) {
 		return jsonResult(buildChunks(in))
+	})
+
+	mcp.AddTool(s, &mcp.Tool{
+		Name:        "twf_fmt",
+		Title:       "Format TWF files",
+		Description: "Rewrite .twf indentation to tabs, one per level, at the levels the parser reads; for now nothing but indentation changes. It fixes the LEX error \"indented with spaces\": the output parses as the input does, without that error. With source, returns {content, changed}. With paths, returns {files: [{path, content}]}: each file that would change, in order, with its new content; unchanged files are left out. Writes nothing; the content is what `twf fmt` writes.",
+		Annotations: readOnly,
+	}, func(_ context.Context, _ *mcp.CallToolRequest, in fmtInput) (*mcp.CallToolResult, any, error) {
+		return jsonResult(buildFmt(in))
 	})
 
 	mcp.AddTool(s, &mcp.Tool{
@@ -254,4 +281,48 @@ func buildChunks(in chunksInput) ([]byte, error) {
 		Chunks:      res,
 	}
 	return json.MarshalIndent(env, "", "  ")
+}
+
+// fmtSource is twf_fmt's result for inline source.
+type fmtSource struct {
+	Content string `json:"content"`
+	Changed bool   `json:"changed"`
+}
+
+// fmtFiles is twf_fmt's result for paths: the files `twf fmt` would rewrite.
+type fmtFiles struct {
+	Files []fmtFile `json:"files"`
+}
+
+// fmtFile is one file twf_fmt would change, with its new content.
+type fmtFile struct {
+	Path    string `json:"path"`
+	Content string `json:"content"`
+}
+
+// buildFmt mirrors `twf fmt` without writing: the formatted source, or each
+// expanded file that format.Indent changes.
+func buildFmt(in fmtInput) ([]byte, error) {
+	if err := checkInput(in.Paths, in.Source); err != nil {
+		return nil, err
+	}
+	if in.Source != nil {
+		out := format.Indent(*in.Source)
+		return json.MarshalIndent(fmtSource{Content: out, Changed: out != *in.Source}, "", "  ")
+	}
+	paths, err := pipeline.ExpandInputs(in.Paths)
+	if err != nil {
+		return nil, err
+	}
+	res := fmtFiles{Files: []fmtFile{}}
+	for _, path := range paths {
+		src, err := os.ReadFile(path)
+		if err != nil {
+			return nil, err
+		}
+		if out := format.Indent(string(src)); out != string(src) {
+			res.Files = append(res.Files, fmtFile{Path: path, Content: out})
+		}
+	}
+	return json.MarshalIndent(res, "", "  ")
 }

@@ -25,9 +25,10 @@ import (
 const instructions = `twf exposes the TWF (Temporal Workflow Format) toolchain over MCP.
 
 Tools wrap the parser: validate and inspect .twf design files (check, parse,
-symbols, graph, decomposition) and read the embedded language spec. The design
-tools take .twf files or directories, resolved on the local filesystem where
-this server runs, or inline source.
+symbols, graph, decomposition), format their indentation (fmt, which returns
+the new text and writes nothing), and read the embedded language spec. The
+design tools take .twf files or directories, resolved on the local filesystem
+where this server runs, or inline source.
 
 Resources expose the TWF language specification (twf://spec and
 twf://spec/<slug>) as markdown — consult them before authoring .twf.`

@@ -506,6 +506,7 @@ runs; a directory expands to the `.twf` files beneath it — **or** inline
 | `twf_symbols` | `twf symbols --json` |
 | `twf_graph` | `twf graph --json` |
 | `twf_graph_chunks` | `twf graph chunks --json` (with `ceiling`/`floor`/`maxDepth`/`by` knobs) |
+| `twf_fmt` | `twf fmt`, without writing: `{content, changed}` for `source`; `{files: [{path, content}]}` for `paths`, listing only the files that would change |
 | `twf_spec_list` | `twf spec --list` |
 | `twf_spec_get` | `twf spec <slug>` |
 
