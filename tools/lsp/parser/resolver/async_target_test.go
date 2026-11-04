@@ -6,8 +6,7 @@ import (
 )
 
 // TestAsyncTargetUndefinedPosition: an undefined reference in an async target
-// is reported at the target's keyword, as a synchronous call is at its own
-// (#276).
+// is reported at its name, as a synchronous call's is (#276, #288).
 func TestAsyncTargetUndefinedPosition(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -15,11 +14,11 @@ func TestAsyncTargetUndefinedPosition(t *testing.T) {
 		kind   ErrorKind
 		column int
 	}{
-		{"promise workflow", "promise p <- workflow Missing(x)", ErrUndefinedWorkflow, 18},
-		{"promise activity", "promise p <- activity Missing(x)", ErrUndefinedActivity, 18},
-		{"promise signal", "promise p <- signal Missing", ErrUndefinedSignal, 18},
-		{"await workflow", "await workflow Missing(x)", ErrUndefinedWorkflow, 11},
-		{"await update", "await update Missing", ErrUndefinedUpdate, 11},
+		{"promise workflow", "promise p <- workflow Missing(x)", ErrUndefinedWorkflow, 27},
+		{"promise activity", "promise p <- activity Missing(x)", ErrUndefinedActivity, 27},
+		{"promise signal", "promise p <- signal Missing", ErrUndefinedSignal, 25},
+		{"await workflow", "await workflow Missing(x)", ErrUndefinedWorkflow, 20},
+		{"await update", "await update Missing", ErrUndefinedUpdate, 18},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

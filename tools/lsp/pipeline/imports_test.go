@@ -50,7 +50,7 @@ func TestImportsBindByExactPath(t *testing.T) {
 
 	root = layout(t, importDesign(`import "example.com/demo/cluster/fabric/v1"`, "    workflow fabric.Setup()\n"))
 	diags, _ = check(t, root)
-	want := `top/top.twf:5:5 UNDEFINED_WORKFLOW: undefined workflow: fabric.Setup (package example.com/demo/cluster/fabric/v1)`
+	want := `top/top.twf:5:21 UNDEFINED_WORKFLOW: undefined workflow: fabric.Setup (package example.com/demo/cluster/fabric/v1)`
 	if len(diags) != 1 || diags[0] != want {
 		t.Errorf("diagnostics = %q, want [%q]", diags, want)
 	}

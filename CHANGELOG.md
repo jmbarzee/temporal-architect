@@ -212,6 +212,17 @@ written. Any other backslash escape
 (`"\n"`, `"\d"`), accepted before, is now a `parse/LEX` error, which
 `twf check --lenient` does not excuse (#106).
 
+### ⚠️ Breaking: keyword-led raw lines in workflow bodies
+
+In a workflow body, a signal, query or update handler, a nexus operation body,
+and every block nested in them, a line led by a keyword that starts no
+statement is a `parse/SYNTAX` error. Raw lines that passed before now fail:
+`options = …`, `all = …` or `state.count = 1` in a workflow body, `complete = 1`
+in a query handler (rename the variable); a bare `timer(d)` or `update Name`
+(write `await timer(d)`, `await update Name`); pseudocode such as
+`fail with X` in a handler or nexus operation. Activity bodies stay free-form
+pseudocode, so `fail with X if …` still parses there (#291).
+
 ### ⚠️ Breaking: routing is namespace-scoped
 
 A task queue belongs to its namespace, so routing and endpoint linkage now
@@ -264,8 +275,26 @@ is now checked against the target's signals.
   `options:`, a definition header, `nexus endpoint Ep`) no longer breaks the
   parse. A trailing comment on a block header is discarded; elsewhere it stays a
   comment statement (#275).
+- Own-line comments may sit between a call and its `options:` block, below the
+  block, or alone under the call, and above a handler's `options:` or a
+  definition's `default_options:` block (#301).
+- In workflow contexts, a keyword-led line that starts no statement, such as
+  `update Missing` or `options:` away from a call, is a `parse/SYNTAX` error in
+  every block. It no longer passes as a raw statement inside `await all:` or
+  below a body's first statement (#291).
+- Raw statements, `return` values and `case` values keep their source text as
+  written: quotes, escapes, parentheses and spacing. A trailing comment stays a
+  comment statement instead of joining the text (#295).
+- An `import` after a definition is a `parse/SYNTAX` error; imports go after
+  the `package` clause and before definitions (#299).
 - An undefined workflow, activity, signal or update used as a `promise` /
-  `await` target is reported at its keyword, not at 0:0 (#276).
+  `await` target is reported at its name, not at 0:0 (#276).
+- Diagnostics on a reference (`UNDEFINED_*`, `SIGNAL_SEND_UNDEFINED_SIGNAL`,
+  `NEXUS_ASYNC_UNDEFINED_WORKFLOW`, `NAMESPACE_UNDEFINED_WORKER`,
+  `WORKER_DUPLICATE_TYPE_NAME`, `WORKER_REGISTERS_OPERATION`) point at the
+  referenced name, not the statement keyword; a qualifier's error points at
+  the qualifier. `twf parse` reports a worker entry's `column` at its name in
+  the same way; the shape is unchanged (#288).
 - Resolver and validator diagnostics come out sorted by file, position, then
   code, so the same input gives the same output on every run (#237).
 - Graph dispatch uses the target's `default_options:` `task_queue` when the
@@ -286,6 +315,14 @@ is now checked against the target's signals.
   the statement keyword, so a rename no longer overwrites `workflow` or
   `signal`, and renaming a Nexus endpoint edits the endpoint on a `nexus` call.
   Go-to-definition and hover work on a signal send's type head (#225).
+- **LSP:** rename, references and go-to-definition act on the name under the
+  cursor and match what it resolves to, not its spelling: a name beside a
+  same-spelled token (`nexus Orders Orders.Place`, `signal Child.Child.Go()`,
+  `promise Child <- workflow Child(wid)`) and two packages' same-named
+  declarations stay apart. They reach the workspace's other files, cover signal
+  sends, nexus operations, conditions and promises, and count columns in UTF-16.
+  The server watches `.twf` files, and a rename that would edit a closed file
+  changed on disk since it was read fails instead (#288, #300).
 - **Visualizer:** "Show in Tree" on a nexus operation or endpoint scrolls to and
   flashes that row, not just the service or namespace that owns it (#249).
 - **Visualizer graph view:** wheel zoom no longer logs a passive-listener

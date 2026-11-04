@@ -129,6 +129,7 @@ func (l *Lexer) NextToken() token.Token {
 			tok = l.scanRawText()
 		}
 
+		tok.End = l.pos
 		l.last = tok.Type
 		return tok
 	}
@@ -389,6 +390,7 @@ func (l *Lexer) withEscapeError(tok token.Token, bad *token.Token) token.Token {
 	if bad == nil {
 		return tok
 	}
+	tok.End = l.pos
 	l.pending = append(l.pending, tok)
 	return *bad
 }
@@ -466,12 +468,12 @@ func (l *Lexer) scanDeployName() (token.Token, error) {
 			l.advance() // consume '}'
 		default:
 			// '.', ':', whitespace, '(', newline, EOF, etc. terminate the name.
-			tok.Literal = string(l.input[start:l.pos])
+			tok.Literal, tok.End = string(l.input[start:l.pos]), l.pos
 			return tok, nil
 		}
 	}
 
-	tok.Literal = string(l.input[start:l.pos])
+	tok.Literal, tok.End = string(l.input[start:l.pos]), l.pos
 	return tok, nil
 }
 
@@ -520,6 +522,7 @@ func (l *Lexer) makeToken(tt token.TokenType, literal string) token.Token {
 		Line:    l.line,
 		Column:  l.col,
 		Offset:  l.pos,
+		End:     l.pos,
 	}
 }
 
