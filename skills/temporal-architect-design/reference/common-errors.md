@@ -35,7 +35,7 @@ A qualified reference resolves inside its imported package, so a missing symbol 
 
 ## Parse errors (kind: `parse`)
 
-All parse failures share the code `SYNTAX`; dispatch on the message until categorical parse codes land ([#32](https://github.com/jmbarzee/temporal-architect/issues/32)).
+Parse failures share the code `SYNTAX`; dispatch on the message until categorical parse codes land ([#32](https://github.com/jmbarzee/temporal-architect/issues/32)). The lexer's structural errors carry `LEX` instead (tagged below), and `twf check --lenient` still exits 1 on them: the file could not be tokenized.
 
 | Message | Cause | Fix |
 |---------|-------|-----|
@@ -46,6 +46,9 @@ All parse failures share the code `SYNTAX`; dispatch on the message until catego
 | `unexpected token <tok> in await one case` | Invalid case type inside `await one:` block | Cases must be `signal`, `update`, `timer`, `activity`, `workflow`, an identifier, or `await all` |
 | `definition requires ':' and an indented body` | A bare declaration like `activity Foo(x) -> (R)` with nothing under it; `activity`/`workflow`/`sync` nexus op definitions always need a body. Often followed by a cascading `UNDEFINED_*`. Also raised by a dot in a namespace/endpoint name | Add `:` and an indented body; for a stub, one placeholder statement (`return Foo{}`, `log(...)`) |
 | `unexpected OPTIONS in worker block` | `options:` on a worker definition | Move them to the worker's instantiation in a namespace — a worker is a reusable type set; the namespace deploys it |
+| `unterminated string literal` (`LEX`) | A `"…"` string has no closing `"` before its line or the file ends — strings are single-line. Reported at the opening `"` | Close the string on the same line. Parens inside a closed string (`"org is required (bootstrap)"`) are fine |
+| `unterminated argument list` (`LEX`) | A `(…)` group reaches the end of the file with a `(`, `{` or `[` unmatched. Reported at the opening `(` | Add the missing `)`, or balance the inner delimiters |
+| `inconsistent indentation` (`LEX`) | A line dedents to a column no enclosing block is indented at (2 spaces, between blocks at 0 and 4). Reported at the line's first token; often followed by a cascading `SYNTAX` error | Indent the line to match the block it belongs to |
 
 ## Validation diagnostics (kind: `validate`)
 
