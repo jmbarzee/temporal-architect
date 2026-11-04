@@ -7,7 +7,7 @@ import (
 
 func definitionHandler(store *DocumentStore) protocol.TextDocumentDefinitionFunc {
 	return func(context *glsp.Context, params *protocol.DefinitionParams) (any, error) {
-		occs, at, ok := occurrenceAt(store, params.TextDocument.URI, params.Position)
+		_, occs, at, ok := occurrenceAt(store, params.TextDocument.URI, params.Position)
 		if !ok {
 			return nil, nil
 		}

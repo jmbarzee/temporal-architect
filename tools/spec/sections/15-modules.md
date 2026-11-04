@@ -100,9 +100,10 @@ looks on disk:
 - At the last element, the directory **provides** the package when it holds a non-skipped `.twf`
   file whose first token is `package`. None of its package files among the inputs is
   `IMPORT_NOT_LOADED`; all of them ignored is silent.
-- No provider under a known module is `IMPORT_NOT_FOUND`, naming the reason — and, when a kept
-  package's path differs from the import's only in case, `did you mean "<that path>"?`. A path under
-  no known module is `UNRESOLVED_IMPORT`.
+- No provider under a known module, the module path compared ignoring case, is `IMPORT_NOT_FOUND`,
+  naming the reason (`module path differs in case` when it lies under one only ignoring case) — and,
+  when a kept package's path differs from the import's only in case, `did you mean "<that path>"?`.
+  A path under no known module, even ignoring case, is `UNRESOLVED_IMPORT`.
 
 No import ever binds by a package's declared name: it binds only a kept package with exactly its
 path, and any other is external.

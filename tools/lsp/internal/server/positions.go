@@ -7,22 +7,52 @@ import (
 	"strings"
 
 	protocol "github.com/jmbarzee/glsp/protocol_3_16"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/pipeline"
 )
 
-// nameRange is the LSP range of o's name in lines, the text of o's file. The
-// parser counts columns in bytes; LSP counts UTF-16 code units.
-func nameRange(lines []string, o occurrence) protocol.Range {
-	line := max(o.Line-1, 0)
-	text := ""
-	if line < len(lines) {
-		text = lines[line]
+// The parser counts columns in bytes; LSP counts UTF-16 code units. Every
+// position the server emits goes through position.
+
+// position is the LSP position of a 1-based line and byte column in lines, the
+// text of its file. A column past the end of the line clamps to the end.
+func position(lines []string, line, column int) protocol.Position {
+	text := lineText(lines, line)
+	return protocol.Position{
+		Line:      uint32(max(line-1, 0)),
+		Character: utf16Len(text[:min(max(column-1, 0), len(text))]),
 	}
-	start := utf16Len(text[:min(max(o.Column-1, 0), len(text))])
-	return protocol.Range{
-		Start: protocol.Position{Line: uint32(line), Character: start},
-		End:   protocol.Position{Line: uint32(line), Character: start + utf16Len(o.name)},
+}
+
+// lineText is the 1-based line of lines without its terminator, or "" past the
+// end.
+func lineText(lines []string, line int) string {
+	if line < 1 || line > len(lines) {
+		return ""
 	}
+	return strings.TrimSuffix(lines[line-1], "\r")
+}
+
+// nameRange is the LSP range of name, spelled at pos in lines.
+func nameRange(lines []string, pos ast.Pos, name string) protocol.Range {
+	start := position(lines, pos.Line, pos.Column)
+	end := start
+	end.Character += utf16Len(name)
+	return protocol.Range{Start: start, End: end}
+}
+
+// posToRange is the LSP range from a 1-based line and byte column in lines to
+// the end of that line: where a diagnostic, which has no end, is drawn.
+func posToRange(lines []string, line, column int) protocol.Range {
+	start := position(lines, line, column)
+	end := start
+	end.Character = max(start.Character, utf16Len(lineText(lines, line)))
+	return protocol.Range{Start: start, End: end}
+}
+
+// lines is the document's text, split into lines.
+func (d *Document) lines() []string {
+	return strings.Split(d.Content, "\n")
 }
 
 // spells reports whether lines still hold o's name at o's position.
@@ -68,7 +98,7 @@ func newSources(store *DocumentStore, uri string) *sources {
 // the name there: a closed file the run read changed or went away since.
 func (s *sources) location(o occurrence) (loc protocol.Location, ok bool) {
 	src := s.open(o.file)
-	return protocol.Location{URI: src.uri, Range: nameRange(src.lines, o)}, spells(src.lines, o)
+	return protocol.Location{URI: src.uri, Range: nameRange(src.lines, o.Pos, o.name)}, spells(src.lines, o)
 }
 
 // open returns the URI and lines of the source file spelled file.
@@ -79,11 +109,11 @@ func (s *sources) open(file string) source {
 	var src source
 	switch {
 	case s.doc != nil && file == s.doc.sourceFile:
-		src = source{s.uri, strings.Split(s.doc.Content, "\n")}
+		src = source{s.uri, s.doc.lines()}
 	default:
 		for _, d := range s.store.All() {
 			if d.sourceFile != "" && d.sourceFile == file {
-				src = source{d.URI, strings.Split(d.Content, "\n")}
+				src = source{d.URI, d.lines()}
 			}
 		}
 		if src.uri == "" {

@@ -1210,7 +1210,7 @@ workflow Dup():
 	want := []string{
 		`a.twf:10:5 duplicate nexus endpoint name "e": defined in namespace nc and namespace nd`,
 		`a.twf:15:5 duplicate nexus endpoint name "e": defined in namespace nc and namespace nb`,
-		`a.twf:19:1 duplicate workflow definition: Dup`,
+		`a.twf:19:1 duplicate workflow definition: Dup (first at b.twf:11)`,
 		`b.twf:7:5 duplicate nexus endpoint name "e": defined in namespace nc and namespace na`,
 	}
 	for range 50 {
@@ -1230,6 +1230,171 @@ workflow Dup():
 		call := file.Definitions[4].(*ast.WorkflowDef).Body[0].(*ast.NexusCall)
 		if ep := call.Endpoint.Resolved; ep == nil || ep.Namespace != "nc" {
 			t.Fatalf("nexus e resolved to %+v, want the endpoint in namespace nc", ep)
+		}
+	}
+}
+
+// TestDuplicateKeepsFirst: a name declared twice in one package keeps its first
+// declaration, in definition order (input files in order, then position): a
+// reference resolves to it, and the DUPLICATE_* error lands on the later one
+// and says where the first is. b.twf is input before a.twf, so the first is
+// not in the alphabetically first file. Repeated so map order cannot pass by
+// luck.
+func TestDuplicateKeepsFirst(t *testing.T) {
+	caller := func(f *ast.File) *ast.WorkflowDef {
+		for _, d := range f.Definitions {
+			if wf, ok := d.(*ast.WorkflowDef); ok && wf.Name == "Caller" {
+				return wf
+			}
+		}
+		return nil
+	}
+	tests := []struct {
+		kind    string
+		errKind ErrorKind
+		// decl declares X; use references it.
+		decl, use string
+		// resolved is what use's reference resolved to. want is what the first
+		// declaration gives it, when that is not the declaration itself.
+		resolved func(*ast.File) ast.Node
+		want     func(first ast.Definition) ast.Node
+	}{
+		{
+			kind: "workflow", errKind: ErrDuplicateWorkflow,
+			decl: "workflow X():\n    close complete()\n",
+			use:  "workflow Caller():\n    workflow X()\n    close complete()\n",
+			resolved: func(f *ast.File) ast.Node {
+				return caller(f).Body[0].(*ast.WorkflowCall).Workflow.Resolved
+			},
+		},
+		{
+			kind: "activity", errKind: ErrDuplicateActivity,
+			decl: "activity X(x: X) -> (X):\n    return x\n",
+			use:  "workflow Caller(x: X):\n    activity X(x) -> r\n    close complete(r)\n",
+			resolved: func(f *ast.File) ast.Node {
+				return caller(f).Body[0].(*ast.ActivityCall).Activity.Resolved
+			},
+		},
+		{
+			kind: "worker", errKind: ErrDuplicateWorker,
+			decl: "worker X:\n    workflow W\n",
+			use:  "workflow W():\n    close complete()\n\nnamespace n:\n    worker X\n        options:\n            task_queue: \"q\"\n",
+			resolved: func(f *ast.File) ast.Node {
+				return findNamespace(f).Workers[0].Worker.Resolved
+			},
+		},
+		{
+			kind: "nexus service", errKind: ErrDuplicateNexusService,
+			decl: "nexus service X:\n    sync Op() -> ():\n        close complete()\n",
+			use:  "workflow Caller():\n    nexus e X.Op()\n    close complete()\n\nnamespace n:\n    nexus endpoint e\n        options:\n            task_queue: \"q\"\n",
+			resolved: func(f *ast.File) ast.Node {
+				return caller(f).Body[0].(*ast.NexusCall).Service.Resolved
+			},
+		},
+		{
+			// A namespace is referenced through its endpoints.
+			kind: "namespace", errKind: ErrDuplicateNamespace,
+			decl: "namespace X:\n    nexus endpoint e\n        options:\n            task_queue: \"q\"\n",
+			use:  "nexus service S:\n    sync Op() -> ():\n        close complete()\n\nworkflow Caller():\n    nexus e S.Op()\n    close complete()\n",
+			resolved: func(f *ast.File) ast.Node {
+				return caller(f).Body[0].(*ast.NexusCall).Endpoint.Resolved
+			},
+			want: func(first ast.Definition) ast.Node {
+				return &first.(*ast.NamespaceDef).Endpoints[0]
+			},
+		},
+	}
+	type input struct{ src, file string }
+	for _, tt := range tests {
+		useLines := strings.Count(tt.use, "\n")
+		layouts := []struct {
+			name   string
+			inputs []input
+			first  int // index of the first declaration in the merged definitions
+			want   string
+		}{
+			{
+				name:   "one file",
+				inputs: []input{{tt.use + "\n" + tt.decl + "\n" + tt.decl, "a.twf"}},
+				first:  len(mustParse(t, tt.use).Definitions),
+				want:   fmt.Sprintf("a.twf:%d:1 duplicate %s definition: X (first at line %d)", useLines+strings.Count(tt.decl, "\n")+3, tt.kind, useLines+2),
+			},
+			{
+				name:   "two files",
+				inputs: []input{{tt.decl, "b.twf"}, {tt.use + "\n" + tt.decl, "a.twf"}},
+				want:   fmt.Sprintf("a.twf:%d:1 duplicate %s definition: X (first at b.twf:1)", useLines+2, tt.kind),
+			},
+		}
+		for _, l := range layouts {
+			t.Run(tt.kind+"/"+l.name, func(t *testing.T) {
+				for range 50 {
+					var inputs []ast.StampInput
+					for _, in := range l.inputs {
+						inputs = append(inputs, ast.StampInput{File: mustParse(t, in.src), SourceFile: in.file})
+					}
+					file := ast.Stamp(inputs)
+					var got []string
+					for _, e := range Resolve(file) {
+						if e.Kind == tt.errKind {
+							got = append(got, fmt.Sprintf("%s:%d:%d %s", e.File, e.Line, e.Column, e.Msg))
+						}
+					}
+					if !slices.Equal(got, []string{l.want}) {
+						t.Fatalf("duplicates:\n got  %s\n want %s", strings.Join(got, "\n      "), l.want)
+					}
+					first := file.Definitions[l.first]
+					var want ast.Node = first
+					if tt.want != nil {
+						want = tt.want(first)
+					}
+					if got := tt.resolved(file); got != want {
+						t.Fatalf("reference resolved to %+v, want the first declaration's %+v", got, want)
+					}
+				}
+			})
+		}
+	}
+}
+
+// TestDuplicateNamespaceChecksFirst: a namespace declared twice in one package
+// is its first declaration, so the first's workers and endpoints are checked
+// and the later one's are not: the undefined worker and the endpoint name it
+// shares with m are both the first's.
+func TestDuplicateNamespaceChecksFirst(t *testing.T) {
+	src := `namespace m:
+    nexus endpoint e
+        options:
+            task_queue: "q"
+
+namespace n:
+    worker ghost
+        options:
+            task_queue: "q"
+    nexus endpoint e
+        options:
+            task_queue: "q"
+
+namespace n:
+    worker spook
+        options:
+            task_queue: "q"
+    nexus endpoint f
+        options:
+            task_queue: "q"
+`
+	want := []string{
+		`7:12 NAMESPACE_UNDEFINED_WORKER namespace n references undefined worker: ghost`,
+		`10:5 DUPLICATE_ENDPOINT duplicate nexus endpoint name "e": defined in namespace m and namespace n`,
+		`14:1 DUPLICATE_NAMESPACE duplicate namespace definition: n (first at line 6)`,
+	}
+	for range 50 {
+		file := mustParse(t, src)
+		var got []string
+		for _, e := range Resolve(file) {
+			got = append(got, fmt.Sprintf("%d:%d %s %s", e.Line, e.Column, e.Code(), e.Msg))
+		}
+		if !slices.Equal(got, want) {
+			t.Fatalf("errors:\n got  %s\n want %s", strings.Join(got, "\n      "), strings.Join(want, "\n      "))
 		}
 	}
 }

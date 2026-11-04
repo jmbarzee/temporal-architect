@@ -1,7 +1,11 @@
 package server
 
 import (
+	"fmt"
+	"os"
+	"path/filepath"
 	"sort"
+	"strings"
 
 	"github.com/jmbarzee/glsp"
 	protocol "github.com/jmbarzee/glsp/protocol_3_16"
@@ -44,9 +48,10 @@ func publishAll(context *glsp.Context, store *DocumentStore) error {
 // publications returns what to publish. Each diagnostic belongs to a file: a
 // buffer's own to the buffer's identity, its elsewhere ones to theirs. It is
 // published under every open URI with that identity, else under the file's
-// closed URI; a URI's set is the deduplicated union of every open buffer's
-// contributions to it. Every open URI is published, and so is every URI
-// published with diagnostics last time — with none, it is cleared.
+// closed URI, with its range in that file's text; a URI's set is the
+// deduplicated union of every open buffer's contributions to it. Every open
+// URI is published, and so is every URI published with diagnostics last time
+// — with none, it is cleared.
 func (s *DocumentStore) publications() []protocol.PublishDiagnosticsParams {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -60,25 +65,42 @@ func (s *DocumentStore) publications() []protocol.PublishDiagnosticsParams {
 		}
 	}
 	type key struct {
-		line, column            int
-		severity, code, message string
+		rng           protocol.Range
+		severity      protocol.DiagnosticSeverity
+		code, message string
 	}
 	sets := map[string][]protocol.Diagnostic{}
 	seen := map[string]map[key]bool{}
-	add := func(uris []string, line, column int, severity, code, msg string) {
-		if severity == "" {
-			severity = "error"
+	add := func(uris []string, diag protocol.Diagnostic) {
+		k := key{rng: diag.Range, severity: *diag.Severity, message: diag.Message}
+		if diag.Code != nil {
+			k.code = fmt.Sprint(diag.Code.Value)
 		}
-		k := key{line, column, severity, code, msg}
 		for _, uri := range uris {
 			if seen[uri] == nil {
 				seen[uri] = map[key]bool{}
 			}
 			if !seen[uri][k] {
 				seen[uri][k] = true
-				sets[uri] = appendDiag(sets[uri], line, column, severity, code, msg)
+				sets[uri] = append(sets[uri], diag)
 			}
 		}
+	}
+	// The text each elsewhere diagnostic's position counts in: what the run
+	// read, an open buffer's (overlaid) text or the file on disk.
+	texts := map[string][]string{}
+	linesOf := func(file string) []string {
+		if lines, ok := texts[file]; ok {
+			return lines
+		}
+		var lines []string
+		if text, ok := s.overlays[filepath.FromSlash(file)]; ok {
+			lines = strings.Split(text, "\n")
+		} else if b, err := os.ReadFile(filepath.FromSlash(file)); err == nil {
+			lines = strings.Split(string(b), "\n")
+		}
+		texts[file] = lines
+		return lines
 	}
 	for _, d := range docs {
 		own := []string{d.URI}
@@ -88,21 +110,15 @@ func (s *DocumentStore) publications() []protocol.PublishDiagnosticsParams {
 		if sets[d.URI] == nil {
 			sets[d.URI] = []protocol.Diagnostic{}
 		}
-		for _, e := range d.ParseErrs {
-			add(own, e.Line, e.Column, "", e.Code(), e.Msg)
-		}
-		for _, e := range d.ResolveErrs {
-			add(own, e.Line, e.Column, e.Severity, e.Code(), e.Msg)
-		}
-		for _, e := range d.ValidateErrs {
-			add(own, e.Line, e.Column, e.Severity, e.Code(), e.Msg)
+		for _, diag := range diagnostics(d) {
+			add(own, diag)
 		}
 		for _, x := range d.elsewhere {
 			uris := open[x.File]
 			if uris == nil {
 				uris = []string{closedURI(s.folders, x.File)}
 			}
-			add(uris, x.Start.Line, x.Start.Column, x.Severity, x.Code, x.Message)
+			add(uris, appendDiag(nil, linesOf(x.File), x.Start.Line, x.Start.Column, x.Severity, x.Code, x.Message)[0])
 		}
 	}
 
@@ -123,10 +139,26 @@ func (s *DocumentStore) publications() []protocol.PublishDiagnosticsParams {
 	return out
 }
 
+// diagnostics is doc's parse, resolve and validate errors as LSP diagnostics.
+func diagnostics(doc *Document) []protocol.Diagnostic {
+	lines := doc.lines()
+	diags := []protocol.Diagnostic{}
+	for _, pe := range doc.ParseErrs {
+		diags = appendDiag(diags, lines, pe.Line, pe.Column, "", pe.Code(), pe.Msg)
+	}
+	for _, re := range doc.ResolveErrs {
+		diags = appendDiag(diags, lines, re.Line, re.Column, re.Severity, re.Code(), re.Msg)
+	}
+	for _, ve := range doc.ValidateErrs {
+		diags = appendDiag(diags, lines, ve.Line, ve.Column, ve.Severity, ve.Code(), ve.Msg)
+	}
+	return diags
+}
+
 // appendDiag appends an LSP diagnostic with the parser's symbolic code in the
 // LSP `Code` field. Editor clients can use it for hover-help routing,
 // suppress-by-code workflows, and external rule documentation links.
-func appendDiag(diags []protocol.Diagnostic, line, column int, severity, code, msg string) []protocol.Diagnostic {
+func appendDiag(diags []protocol.Diagnostic, lines []string, line, column int, severity, code, msg string) []protocol.Diagnostic {
 	sev := protocol.DiagnosticSeverityError
 	switch severity {
 	case "warning":
@@ -135,7 +167,7 @@ func appendDiag(diags []protocol.Diagnostic, line, column int, severity, code, m
 		sev = protocol.DiagnosticSeverityHint
 	}
 	d := protocol.Diagnostic{
-		Range:    posToRange(line, column),
+		Range:    posToRange(lines, line, column),
 		Severity: ptrTo(sev),
 		Source:   ptrTo("twf"),
 		Message:  msg,
@@ -156,22 +188,5 @@ func lineRange(startLine, endLine int) protocol.Range {
 	return protocol.Range{
 		Start: protocol.Position{Line: s, Character: 0},
 		End:   protocol.Position{Line: e, Character: 0},
-	}
-}
-
-// posToRange converts a 1-based parser position to an LSP 0-based range.
-// We highlight the entire line since we don't have end positions.
-func posToRange(line, column int) protocol.Range {
-	l := uint32(0)
-	if line > 0 {
-		l = uint32(line - 1)
-	}
-	c := uint32(0)
-	if column > 0 {
-		c = uint32(column - 1)
-	}
-	return protocol.Range{
-		Start: protocol.Position{Line: l, Character: c},
-		End:   protocol.Position{Line: l, Character: c + 1000}, // highlight to end of line
 	}
 }

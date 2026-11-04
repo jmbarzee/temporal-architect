@@ -106,11 +106,11 @@ path is `DUPLICATE_IMPORT_NAME`:
 | `SELF_IMPORT` | The path is the package's own |
 | `IMPORT_NEEDS_ALIAS` | No alias, and the assumed name cannot be a package name |
 | `DUPLICATE_IMPORT_NAME` | The qualifier is the package's own name, or is already bound to a different path (the same qualifier for the same path again is one binding) |
-| `IMPORT_NOT_FOUND` | The path lies under a module in the run, which has no such package (a typo, a wrong case) |
+| `IMPORT_NOT_FOUND` | The path lies under a module in the run, ignoring case, which has no such package (a typo, a wrong case) |
 
 Otherwise the path names a kept package of the run — **bound** — or names none: if its package is on
 disk but not among the inputs, `IMPORT_NOT_LOADED` (warning; pass the directory it names); if it
-lies under no module in the run, `UNRESOLVED_IMPORT` (warning). Both treat the package as
+lies under no module in the run, even ignoring case, `UNRESOLVED_IMPORT` (warning). Both treat the package as
 **external**: references through it resolve as external, with no `UNDEFINED_*`. If the import's
 package is in the inputs but was ignored (see [Modules](#modules)), the import is silent — that
 error is already reported (a package whose own `twf.mod` is broken has no path, so an import of it

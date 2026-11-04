@@ -27,7 +27,7 @@ const createModuleFileCommand = "twf.createModuleFile"
 func createModuleFileActions(store *DocumentStore, doc *Document, params *protocol.CodeActionParams) []protocol.CodeAction {
 	var diag *resolver.ResolveError
 	for _, e := range doc.ResolveErrs {
-		if e.Kind == resolver.ErrPackageOutsideModule && rangesOverlap(params.Range, posToRange(e.Line, e.Column)) {
+		if e.Kind == resolver.ErrPackageOutsideModule && rangesOverlap(params.Range, posToRange(doc.lines(), e.Line, e.Column)) {
 			diag = e
 			break
 		}

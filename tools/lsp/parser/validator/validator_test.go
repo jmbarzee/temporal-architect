@@ -2,6 +2,7 @@ package validator
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"testing"
 
@@ -96,6 +97,100 @@ func TestEmptyNamespaceWarning(t *testing.T) {
 	errs := Validate(file)
 	if !hasWarning(errs, "namespace emptyNs has no worker or endpoint instantiations") {
 		t.Error("expected warning about empty namespace")
+	}
+}
+
+// TestEmptyDefinitionEveryDeclaration: an empty definition is body-local, so
+// a later duplicate the resolver drops (DUPLICATE_*) is still warned about, at
+// its own line, as is an empty first declaration.
+func TestEmptyDefinitionEveryDeclaration(t *testing.T) {
+	file, err := parser.ParseFile(`workflow W(x: int) -> (int):
+    return x
+
+workflow W(x: int) -> (int):
+    # nothing here
+
+activity A(x: int) -> (int):
+    # nothing here
+
+activity A(x: int) -> (int):
+    return x
+`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resolver.Resolve(file)
+	var got []string
+	for _, e := range Validate(file) {
+		if e.Kind == ErrEmptyWorkflow || e.Kind == ErrEmptyActivity {
+			got = append(got, fmt.Sprintf("%02d %s", e.Line, e.Code()))
+		}
+	}
+	if want := []string{"04 EMPTY_WORKFLOW", "07 EMPTY_ACTIVITY"}; fmt.Sprint(got) != fmt.Sprint(want) {
+		t.Errorf("got %v, want %v", got, want)
+	}
+}
+
+// TestDroppedWorkerAndNamespaceUnchecked: a later worker or namespace the
+// resolver drops (DUPLICATE_*) gets only that error, while the same
+// declarations kept first get their registration and placement checks.
+func TestDroppedWorkerAndNamespaceUnchecked(t *testing.T) {
+	const flawed = `
+worker w:
+    workflow W
+    workflow W
+
+namespace n:
+    worker w
+    nexus endpoint e
+`
+	const clean = `
+worker w:
+    workflow W
+
+namespace n:
+    worker w
+        options:
+            task_queue: "q"
+    nexus endpoint e
+        options:
+            task_queue: "q"
+`
+	tests := []struct {
+		name         string
+		first, later string
+		want         []string
+	}{
+		{"flawed dropped", clean, flawed, []string{
+			"15 DUPLICATE_WORKER",
+			"19 DUPLICATE_NAMESPACE",
+		}},
+		{"flawed kept", flawed, clean, []string{
+			"06 WORKER_DUPLICATE_TYPE_NAME",
+			"09 MISSING_TASK_QUEUE",
+			"10 MISSING_ENDPOINT_TASK_QUEUE",
+			"12 DUPLICATE_WORKER",
+			"15 DUPLICATE_NAMESPACE",
+		}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			file, err := parser.ParseFile("workflow W():\n    close complete()\n" + tt.first + tt.later)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var got []string
+			for _, e := range resolver.Resolve(file) {
+				got = append(got, fmt.Sprintf("%02d %s", e.Line, e.Code()))
+			}
+			for _, e := range Validate(file) {
+				got = append(got, fmt.Sprintf("%02d %s", e.Line, e.Code()))
+			}
+			slices.Sort(got)
+			if !slices.Equal(got, tt.want) {
+				t.Errorf("got %v, want %v", got, tt.want)
+			}
+		})
 	}
 }
 

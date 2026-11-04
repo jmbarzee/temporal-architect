@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
-	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/resolver"
 	"github.com/jmbarzee/glsp"
 	protocol "github.com/jmbarzee/glsp/protocol_3_16"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/lexer"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/resolver"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/token"
 )
 
 func codeActionHandler(store *DocumentStore) protocol.TextDocumentCodeActionFunc {
@@ -38,8 +40,9 @@ func addMissingDefinitionActions(doc *Document, params *protocol.CodeActionParam
 	var actions []protocol.CodeAction
 
 	// Check for undefined activity/workflow errors in the range
+	lines := doc.lines()
 	for _, err := range doc.ResolveErrs {
-		errRange := posToRange(err.Line, err.Column)
+		errRange := posToRange(lines, err.Line, err.Column)
 		if !rangesOverlap(params.Range, errRange) {
 			continue
 		}
@@ -82,15 +85,14 @@ func addMissingDefinitionActions(doc *Document, params *protocol.CodeActionParam
 				}
 			} else {
 				if returnType != "" {
-					def = fmt.Sprintf("\nworkflow %s(%s) -> (%s):\n    # TODO: implement\n    close result\n", name, params, returnType)
+					def = fmt.Sprintf("\nworkflow %s(%s) -> (%s):\n    # TODO: implement\n    close complete(result)\n", name, params, returnType)
 				} else {
-					def = fmt.Sprintf("\nworkflow %s(%s):\n    # TODO: implement\n    close\n", name, params)
+					def = fmt.Sprintf("\nworkflow %s(%s):\n    # TODO: implement\n    close complete\n", name, params)
 				}
 			}
 
 			// Insert at end of file
-			lines := strings.Split(doc.Content, "\n")
-			endLine := uint32(len(lines))
+			end := position(lines, len(lines), len(lines[len(lines)-1])+1)
 
 			action := protocol.CodeAction{
 				Title: fmt.Sprintf("Add missing %s '%s'", kind, name),
@@ -99,10 +101,7 @@ func addMissingDefinitionActions(doc *Document, params *protocol.CodeActionParam
 					Changes: map[string][]protocol.TextEdit{
 						doc.URI: {
 							{
-								Range: protocol.Range{
-									Start: protocol.Position{Line: endLine, Character: 0},
-									End:   protocol.Position{Line: endLine, Character: 0},
-								},
+								Range:   protocol.Range{Start: end, End: end},
 								NewText: def,
 							},
 						},
@@ -116,56 +115,73 @@ func addMissingDefinitionActions(doc *Document, params *protocol.CodeActionParam
 	return actions
 }
 
-// convertReturnToCloseActions suggests converting old return statements to close
+// convertReturnToCloseActions offers, on a `return` in a workflow body (not a
+// handler's), the `close complete` it means. The edit replaces the statement
+// alone, so the line keeps its indentation and any comment after it.
 func convertReturnToCloseActions(doc *Document, params *protocol.CodeActionParams) []protocol.CodeAction {
+	lines := doc.lines()
 	var actions []protocol.CodeAction
-
-	// Look for return statements in workflow bodies (not in signal/query/update handlers)
 	for _, def := range doc.File.Definitions {
 		wf, ok := def.(*ast.WorkflowDef)
 		if !ok {
 			continue
 		}
-
-		// Check workflow body for return statements
-		returns := findReturnStatements(wf.Body)
-		for _, ret := range returns {
-			retRange := lineRange(ret.Line, ret.Line)
-			if !rangesOverlap(params.Range, retRange) {
+		for _, ret := range findReturnStatements(wf.Body) {
+			span := statementRange(doc.Content, lines, ret.Pos)
+			if !rangesOverlap(params.Range, span) {
 				continue
 			}
-
-			// Suggest converting to close
-			var newText string
-			if ret.Value != "" {
-				// return Foo{} -> close Foo{}
-				newText = fmt.Sprintf("    close %s", ret.Value)
-			} else {
-				newText = "    close"
-			}
-
-			action := protocol.CodeAction{
-				Title: "Convert 'return' to 'close'",
+			actions = append(actions, protocol.CodeAction{
+				Title: "Convert 'return' to 'close complete'",
 				Kind:  ptrTo(protocol.CodeActionKindRefactor),
 				Edit: &protocol.WorkspaceEdit{
 					Changes: map[string][]protocol.TextEdit{
-						doc.URI: {
-							{
-								Range: protocol.Range{
-									Start: protocol.Position{Line: uint32(ret.Line - 1), Character: 0},
-									End:   protocol.Position{Line: uint32(ret.Line - 1), Character: 1000},
-								},
-								NewText: newText,
-							},
-						},
+						doc.URI: {{Range: span, NewText: closeComplete(ret.Value)}},
 					},
 				},
-			}
-			actions = append(actions, action)
+			})
 		}
 	}
-
 	return actions
+}
+
+// closeComplete is the `close complete` statement that returns value: its
+// argument list, or none for a bare `return`.
+func closeComplete(value string) string {
+	switch toks := lexer.New(value).AllTokens(); {
+	case value == "":
+		return "close complete"
+	case toks[0].Type == token.ARGS && toks[0].End == len(value):
+		return "close complete" + value // already parenthesized: `return (a, b)`
+	default:
+		return "close complete(" + value + ")"
+	}
+}
+
+// statementRange is the range of the statement at pos in content,
+// whose lines are lines: from its keyword to its last token, before any
+// comment. An argument list may carry it onto later lines.
+func statementRange(content string, lines []string, pos ast.Pos) protocol.Range {
+	start := 0
+	for _, l := range lines[:min(max(pos.Line-1, 0), len(lines))] {
+		start += len(l) + 1
+	}
+	start = min(start+max(pos.Column-1, 0), len(content))
+	end := start
+	for l := lexer.New(content[start:]); ; {
+		tok := l.NextToken()
+		switch tok.Type {
+		case token.NEWLINE, token.COMMENT, token.TRAILING_COMMENT, token.INDENT, token.DEDENT, token.EOF:
+			return protocol.Range{Start: offsetPosition(content, lines, start), End: offsetPosition(content, lines, end)}
+		}
+		end = start + tok.End
+	}
+}
+
+// offsetPosition is the LSP position of byte offset off in content.
+func offsetPosition(content string, lines []string, off int) protocol.Position {
+	before := content[:off]
+	return position(lines, strings.Count(before, "\n")+1, off-strings.LastIndex(before, "\n"))
 }
 
 // Helper functions

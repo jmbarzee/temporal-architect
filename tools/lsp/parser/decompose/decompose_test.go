@@ -524,6 +524,93 @@ namespace ns:
 	}
 }
 
+// TestDuplicateMeasuresFirstDeclaration: a workflow, activity or nexus service
+// declared twice (DUPLICATE_*) is its first declaration, as the resolver keeps
+// it: the later one's body neither scores its complexity nor, for a workflow,
+// makes it a root through a handler.
+func TestDuplicateMeasuresFirstDeclaration(t *testing.T) {
+	const first = `
+workflow Parent():
+    workflow Child()
+    close complete
+
+workflow Child():
+    close complete
+
+activity Work():
+    step()
+
+nexus service S:
+    sync Op() -> ():
+        close complete()
+`
+	const later = `
+workflow Child():
+    signal Ping():
+        return
+    activity Work()
+    if (x):
+        activity Work()
+    close complete
+
+activity Work():
+    if (x):
+        step()
+    step()
+
+nexus service S:
+    sync Op() -> ():
+        activity Work()
+        if (x):
+            activity Work()
+        close complete()
+`
+	const rest = `
+worker w:
+    workflow Parent
+    workflow Child
+    activity Work
+    nexus service S
+
+namespace ns:
+    worker w
+        options:
+            task_queue: "q"
+`
+	keys := []string{
+		graph.DefKey(graph.KindWorkflow, "Child"),
+		graph.DefKey(graph.KindActivity, "Work"),
+		graph.DefKey(graph.KindNexusOperation, "S.Op"),
+	}
+	decompose := func(src string) (*Result, map[string]int) {
+		file, parseErrs := parser.ParseFileAll(src)
+		for _, e := range parseErrs {
+			t.Fatalf("parse: %v", e)
+		}
+		resolver.Resolve(file)
+		res := Decompose(file, graph.Extract(file), Options{})
+		complexity := map[string]int{}
+		for _, n := range res.Nodes {
+			complexity[n.Key] = n.Complexity
+		}
+		return res, complexity
+	}
+	_, want := decompose(first + rest)
+	res, got := decompose(first + later + rest)
+	for _, k := range keys {
+		if _, ok := want[k]; !ok {
+			t.Fatalf("no node %s", k)
+		}
+		if got[k] != want[k] {
+			t.Errorf("%s complexity = %d, want the first declaration's %d", k, got[k], want[k])
+		}
+	}
+	child := keys[0]
+	if rootReason(res, child, reasonHandler) {
+		t.Errorf("Child is a root for the later declaration's handler; roots = %+v", res.Roots)
+	}
+}
+
 // ---------------------------------------------------------------------------
 // 9. Service-extraction strategy peels a shared hub + its dominated closure and
 //    separates the remainder into components (Phase 3b)

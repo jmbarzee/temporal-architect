@@ -140,6 +140,28 @@ func TestPublishClosedSiblingImportsAndCauses(t *testing.T) {
 	}
 }
 
+// TestPublishElsewhereInUTF16: a diagnostic published on a closed file has
+// its range counted in UTF-16 over that file's text, not the buffer's.
+func TestPublishElsewhereInUTF16(t *testing.T) {
+	dir := t.TempDir()
+	writeModule(t, dir, "example.com/m")
+	const line = `import "example.com/m/é"` // 25 bytes, 24 UTF-16 units
+	_, sib := writeTWF(t, dir, "use/b.twf", "package use\n\n"+line+"\n")
+	buf := "package use\n\nworkflow W():\n    close complete(\"ok\")\n"
+	_, uri := writeTWF(t, dir, "use/a.twf", buf)
+	store := NewDocumentStore()
+	store.SetFolders([]string{dir})
+	p := published{}
+	p.open(t, store, uri, buf)
+	if len(p[sib]) != 1 {
+		t.Fatalf("closed sibling: %+v, want its failing import", p[sib])
+	}
+	want := protocol.Range{Start: protocol.Position{Line: 2, Character: 0}, End: protocol.Position{Line: 2, Character: 24}}
+	if got := p[sib][0].Range; got != want {
+		t.Errorf("range = %+v, want %+v", got, want)
+	}
+}
+
 // TestPublishOwnModuleErrors: a buffer whose own twf.mod is broken — outside
 // every folder here — shows its MODULE_FILE_INVALID on the twf.mod and at its
 // own 1:1.

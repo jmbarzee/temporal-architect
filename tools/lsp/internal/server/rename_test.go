@@ -32,22 +32,42 @@ worker W:
     activity Do
 `
 
-// applyEdits applies single-line text edits to content, last edit first.
+// applyEdits applies text edits to content, last edit first.
 func applyEdits(t *testing.T, content string, edits []protocol.TextEdit) string {
 	t.Helper()
 	sort.Slice(edits, func(i, j int) bool {
 		a, b := edits[i].Range.Start, edits[j].Range.Start
 		return a.Line > b.Line || (a.Line == b.Line && a.Character > b.Character)
 	})
-	lines := strings.Split(content, "\n")
 	for _, e := range edits {
-		if e.Range.Start.Line != e.Range.End.Line {
-			t.Fatalf("multi-line edit %+v", e.Range)
-		}
-		l := lines[e.Range.Start.Line]
-		lines[e.Range.Start.Line] = l[:e.Range.Start.Character] + e.NewText + l[e.Range.End.Character:]
+		content = content[:offsetOf(t, content, e.Range.Start)] + e.NewText + content[offsetOf(t, content, e.Range.End):]
 	}
-	return strings.Join(lines, "\n")
+	return content
+}
+
+// offsetOf is the byte offset in content of an LSP position, whose character
+// counts UTF-16 code units.
+func offsetOf(t *testing.T, content string, p protocol.Position) int {
+	t.Helper()
+	lines := strings.SplitAfter(content, "\n")
+	if int(p.Line) >= len(lines) {
+		t.Fatalf("position %+v is past the last line", p)
+	}
+	off := 0
+	for _, l := range lines[:p.Line] {
+		off += len(l)
+	}
+	units := uint32(0)
+	for i, r := range strings.TrimSuffix(lines[p.Line], "\n") {
+		if units == p.Character {
+			return off + i
+		}
+		units += utf16Len(string(r))
+	}
+	if units != p.Character {
+		t.Fatalf("position %+v is not a character boundary of %q", p, lines[p.Line])
+	}
+	return off + len(strings.TrimSuffix(lines[p.Line], "\n"))
 }
 
 func TestRenameRewritesNameNotKeyword(t *testing.T) {
