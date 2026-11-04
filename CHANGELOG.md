@@ -213,8 +213,7 @@ may hold any whitespace. A space-indented line is still placed where an editor
 shows it, at the file's own space unit, so the structure survives and every
 other diagnostic still reports.
 
-**Migration:** re-indent `.twf` files with tabs (an editor's "convert
-indentation to tabs" at your space unit).
+**Migration:** run `twf fmt <dir>`.
 
 ### ⚠️ Breaking: string escapes
 
@@ -270,6 +269,11 @@ is now checked against the target's signals.
   site's file rather than the callee's; `TASK_QUEUE_IDENTICAL` and
   `TASK_QUEUE_MISMATCH` now carry a position; option value errors point at the
   value.
+- **New: `twf fmt [--check] <file|dir...>`** rewrites `.twf` indentation to
+  tabs, one per level, at the level the parser reads each line at; `--check`
+  lists files that would change and exits non-zero. Indentation only, for now
+  (#337 extends it). The LSP offers it as the quick fix "Convert indentation to
+  tabs" and as document formatting; MCP as `twf_fmt`.
 - **Visualizer:** worker families get a cardinality badge; packaged definitions
   get file chips; "Show in Tree" / "Show in Graph" resolve a node to its owning
   definition by qualified name, including nexus operation and endpoint nodes.

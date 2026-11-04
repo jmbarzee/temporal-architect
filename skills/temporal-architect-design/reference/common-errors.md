@@ -72,7 +72,7 @@ Parse failures share the code `SYNTAX`; dispatch on the message until categorica
 | `unknown escape \n in string literal (only \" and \\ are escapes)` (`LEX`) | A backslash in a string is followed by anything but `"` or `\`, in a string literal or inside call arguments. Reported at the backslash | Write `\"` or `\\`, or drop the backslash |
 | `unterminated argument list` (`LEX`) | A `(…)` group reaches the end of the file with a `(`, `{` or `[` unmatched. Reported at the opening `(` | Add the missing `)`, or balance the inner delimiters |
 | `inconsistent indentation` (`LEX`) | A line dedents to an indentation no enclosing block uses (one tab, between blocks at none and two tabs). Reported at the line's first token; often followed by a cascading `SYNTAX` error | Indent the line to match the block it belongs to |
-| `indented with spaces; .twf indents with tabs, one per level` / `indentation mixes tabs and spaces; …` (`LEX`) | A line's indentation holds a space. Reported at the first space, once per line | Indent with tabs, one per level (an editor's "convert indentation to tabs") |
+| `indented with spaces; .twf indents with tabs, one per level` / `indentation mixes tabs and spaces; …` (`LEX`) | A line's indentation holds a space. Reported at the first space, once per line | Run `twf fmt <file|dir>`: it re-indents with tabs, one per level |
 
 ## Validation diagnostics (kind: `validate`)
 

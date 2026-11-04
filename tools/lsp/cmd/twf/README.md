@@ -107,6 +107,25 @@ Partial parse: 1 workflow(s), 0 activity(s), 1 error(s), 0 warning(s)
 
 ---
 
+
+### `twf fmt`
+
+Rewrite TWF files in place into canonical form; a directory expands as for
+`twf check`. For now it normalizes **indentation only**: one tab per level, at
+the level the parser reads each line at, which fixes every `indented with
+spaces` error. Nothing but leading whitespace changes, and a second run changes
+nothing. Issue #337 extends it to full formatting. The LSP offers the same
+rewrite as a quick fix and as document formatting; MCP as `twf_fmt`.
+
+```bash
+twf fmt .                # rewrite; prints each file it changes
+twf fmt --check .        # rewrite nothing; list files that would change
+```
+
+**Exit codes:**
+- `0` - Done (with `--check`: nothing to change)
+- `1` - With `--check`, a file would change; or a path does not exist
+
 ### `twf parse`
 
 Emit the canonical **JSON envelope** for one or more TWF files or directories. Always JSON;

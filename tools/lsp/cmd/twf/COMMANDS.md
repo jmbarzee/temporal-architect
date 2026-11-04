@@ -47,6 +47,7 @@ twf [flags]
 ### SEE ALSO
 
 * [twf check](#twf-check)	 - Validate files; exit non-zero on error severity (text only)
+* [twf fmt](#twf-fmt)	 - Rewrite indentation to tabs; --check to list files that need it
 * [twf graph](#twf-graph)	 - Show the resolved deployment graph; --json for envelope output
 * [twf lsp](#twf-lsp)	 - Start the language server (stdio)
 * [twf mcp](#twf-mcp)	 - Run the MCP server over stdio (parser tools + spec resources)
@@ -76,6 +77,37 @@ twf check [flags] <file|dir...>
 ```
   -h, --help      help for check
       --lenient   Exit 0 even if errors are present.
+```
+
+### SEE ALSO
+
+* [twf](#twf)	 - Temporal Workflow Format CLI
+
+## twf fmt
+
+Rewrite indentation to tabs; --check to list files that need it
+
+### Synopsis
+
+Rewrite TWF files in place into canonical form; a directory expands to the
+.twf files beneath it, as for `twf check`. For now it normalizes indentation
+only: each line is indented with one tab per level, at the level the parser
+reads it at, which fixes every "indented with spaces" error. Nothing but
+leading whitespace changes, and a second run changes nothing. Issue #337
+extends it to full formatting.
+
+Prints each file it rewrites. With --check it rewrites nothing, prints each
+file that would change, and exits non-zero if there is one.
+
+```
+twf fmt [flags] <file|dir...>
+```
+
+### Options
+
+```
+      --check   Rewrite nothing; exit non-zero if any file would change.
+  -h, --help    help for fmt
 ```
 
 ### SEE ALSO
