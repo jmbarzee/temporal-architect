@@ -94,7 +94,7 @@ When the parser's JSON output changes, the Go DTO structs are the single source 
 
 The authoritative component graph — scopes, review mappings, propagation routing, and wave ordering — lives in `internal/harness/components.md`. Keep it there and only there.
 
-The contract on each edge: the parser exposes token types, AST node types, and the resolver error model to the LSP server; the JSON output of `twf parse`/`twf symbols` to the visualizer; DSL syntax and semantics (per `tools/spec/sections/`) to the design skill, which in turn exposes Temporal Go SDK mappings to the author skills. The VS Code extension lives in the distribution repo and consumes the toolchain only across the published `@temporal-architect/wire-types` + visualizer release artifacts — a cross-repo version-pin seam, not an in-tree edge.
+The contract on each edge: the parser exposes token types, AST node types, and the resolver error model to the LSP server; the JSON output of `twf parse`/`twf symbols` to the visualizer; DSL syntax and semantics (per `tools/spec/sections/`) to the design skill, whose constructs each author skill maps to its Temporal SDK. The VS Code extension lives in the distribution repo and consumes the toolchain only across the published `@temporal-architect/wire-types` + visualizer release artifacts — a cross-repo version-pin seam, not an in-tree edge.
 
 The spec is consumed three ways: (1) as embedded content via `twf spec [--list|<slug>]`, (2) as files in `tools/spec/sections/` for skill prompts and review commands, and (3) as the importable Go package `github.com/jmbarzee/temporal-architect/tools/spec`.
 

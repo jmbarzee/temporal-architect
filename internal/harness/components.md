@@ -41,7 +41,7 @@ instances* of a shape the parser *defines*, so a change to that shape originates
 must reach **both** consumers: the visualizer, which projects it, and the sampler, which emits it.
 That second edge is the one this component exists to make visible.
 
-The skill set — design, the authors, `author-infra`, and the `temporal-architect` harness front-door — is **one
+The skill set — design, the SDK authors (§ Authors), `author-infra`, and the `temporal-architect` harness front-door — is **one
 component**. Its members have dependencies flowing in many internal directions (design ↔ authors ↔
 harness), so those edges are **intra-component**, not modeled in the DAG. The skills are downstream; the
 only inbound edge is from `parser`.
