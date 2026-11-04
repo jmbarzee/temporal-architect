@@ -1,6 +1,7 @@
 package validator
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -459,5 +460,75 @@ namespace ecommerce:
 			strings.Contains(e.Msg, "never consumed") {
 			t.Errorf("unexpected diagnostic about the signal-send handle: %v", e)
 		}
+	}
+}
+
+// ===== DIAGNOSTIC ORDER =====
+
+// TestDiagnosticOrder pins Validate's output to file, line, column, then code
+// order. The checks walk definition maps, so without the final sort this order
+// changes from run to run (issue #237).
+func TestDiagnosticOrder(t *testing.T) {
+	input := `workflow WA():
+    # empty
+
+workflow WB():
+    # empty
+
+activity AA():
+    # empty
+
+activity AB():
+    # empty
+
+worker wa:
+    # empty
+
+worker wb:
+    # empty
+
+namespace na:
+    # empty
+
+namespace nb:
+    worker wa
+    worker wb
+`
+	file := mustParseAndResolve(t, input)
+	// Attribute the runnables to b.twf and the rest to a.twf, so file order
+	// overrides line order.
+	for _, def := range file.Definitions {
+		switch d := def.(type) {
+		case *ast.WorkflowDef:
+			d.SourceFile = "b.twf"
+		case *ast.ActivityDef:
+			d.SourceFile = "b.twf"
+		case *ast.WorkerDef:
+			d.SourceFile = "a.twf"
+		case *ast.NamespaceDef:
+			d.SourceFile = "a.twf"
+		}
+	}
+	var got []string
+	for _, e := range Validate(file) {
+		got = append(got, fmt.Sprintf("%s:%d:%d %s", e.File, e.Line, e.Column, e.Code()))
+	}
+	want := []string{
+		"a.twf:13:1 EMPTY_WORKER",
+		"a.twf:16:1 EMPTY_WORKER",
+		"a.twf:19:1 EMPTY_NAMESPACE",
+		"a.twf:23:5 MISSING_TASK_QUEUE",
+		"a.twf:24:5 MISSING_TASK_QUEUE",
+		"b.twf:1:1 EMPTY_WORKFLOW",
+		"b.twf:1:1 UNCOVERED_WORKFLOW",
+		"b.twf:4:1 EMPTY_WORKFLOW",
+		"b.twf:4:1 UNCOVERED_WORKFLOW",
+		"b.twf:7:1 EMPTY_ACTIVITY",
+		"b.twf:7:1 UNCOVERED_ACTIVITY",
+		"b.twf:10:1 EMPTY_ACTIVITY",
+		"b.twf:10:1 UNCOVERED_ACTIVITY",
+	}
+	if strings.Join(got, "\n") != strings.Join(want, "\n") {
+		t.Errorf("diagnostic order:\n got %q\nwant %q", got, want)
 	}
 }

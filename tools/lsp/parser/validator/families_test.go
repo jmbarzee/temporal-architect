@@ -558,8 +558,8 @@ func TestTaskQueueOverlap(t *testing.T) {
 		{"disjoint", []string{"sandbox-{a}", "pool"}, nil},
 		{"malformed overlaps nothing", []string{"s{a}{b}", "s{x}"}, nil},
 		{"pairs in source order", []string{"a-{x}", "b-{y}", "b-z", "a-w"}, []string{
-			`hint TASK_QUEUE_OVERLAP 28:13 ns ns.twf: task_queue "a-w" of worker w4 and "a-{x}" of worker w1 could name the same queue in namespace ns`,
 			`hint TASK_QUEUE_OVERLAP 25:13 ns ns.twf: task_queue "b-z" of worker w3 and "b-{y}" of worker w2 could name the same queue in namespace ns`,
+			`hint TASK_QUEUE_OVERLAP 28:13 ns ns.twf: task_queue "a-w" of worker w4 and "a-{x}" of worker w1 could name the same queue in namespace ns`,
 		}},
 	}
 	for _, tt := range tests {
@@ -615,9 +615,9 @@ namespace prod:
 	})
 }
 
-// TestInstanceFamilyHazards: each family placement, in source order, reports
-// its hosted workflows, then its nexus services, then its versioning. Static
-// and malformed placements report none.
+// TestInstanceFamilyHazards: each family placement reports its hosted
+// workflows, its nexus services, and its versioning. Static and malformed
+// placements report none.
 func TestInstanceFamilyHazards(t *testing.T) {
 	src := `nexus service Svc:
     sync Op(x: X) -> (X):
@@ -663,53 +663,13 @@ namespace ns:
 	const wf = `worker fam hosts workflow A, B on the per-instance queue family %q in namespace ns: if an instance goes away for good, its executions stall until their own timeout; short-lived families should host workflows on a shared queue`
 	const svc = `worker fam registers nexus service Svc on the per-instance queue family %q in namespace ns, but a .twf endpoint targets one static queue, so no endpoint in this design reaches it; put the service on a static queue and route on from an async operation's workflow`
 	checkRendered(t, render(Validate(resolvedAllowingErrors(t, src)), ErrInstanceFamilyHostsWorkflow, ErrInstanceFamilyHostsNexusService, ErrInstanceFamilyVersioned), []string{
-		"hint INSTANCE_FAMILY_HOSTS_WORKFLOW 29:5 ns ns.twf: " + fmt.Sprintf(wf, "fam-{id}"),
 		"warning INSTANCE_FAMILY_HOSTS_NEXUS_SERVICE 29:5 ns ns.twf: " + fmt.Sprintf(svc, "fam-{id}"),
+		"hint INSTANCE_FAMILY_HOSTS_WORKFLOW 29:5 ns ns.twf: " + fmt.Sprintf(wf, "fam-{id}"),
 		`hint INSTANCE_FAMILY_VERSIONED 32:13 ns ns.twf: worker fam in namespace ns is a per-instance family on "fam-{id}" with versioning: build_id; every new instance queue needs its own versioning API call (off by default, not on Cloud)`,
-		"hint INSTANCE_FAMILY_HOSTS_WORKFLOW 33:5 ns ns.twf: " + fmt.Sprintf(wf, "other-{id}"),
 		"warning INSTANCE_FAMILY_HOSTS_NEXUS_SERVICE 33:5 ns ns.twf: " + fmt.Sprintf(svc, "other-{id}"),
-		"hint INSTANCE_FAMILY_HOSTS_WORKFLOW 37:5 ns ns.twf: " + fmt.Sprintf(wf, "third-{id}"),
+		"hint INSTANCE_FAMILY_HOSTS_WORKFLOW 33:5 ns ns.twf: " + fmt.Sprintf(wf, "other-{id}"),
 		"warning INSTANCE_FAMILY_HOSTS_NEXUS_SERVICE 37:5 ns ns.twf: " + fmt.Sprintf(svc, "third-{id}"),
+		"hint INSTANCE_FAMILY_HOSTS_WORKFLOW 37:5 ns ns.twf: " + fmt.Sprintf(wf, "third-{id}"),
 		`hint INSTANCE_FAMILY_VERSIONED 40:13 ns ns.twf: worker fam in namespace ns is a per-instance family on "third-{id}" with versioning: deployment; a deployment version accepts at most 100 distinct task queues over its life, so new instance queues are refused once that many have registered`,
 	})
-}
-
-// TestFamilyCheckEmissionOrder: coherence, then overlap, then the family
-// hazards, then the body walk.
-func TestFamilyCheckEmissionOrder(t *testing.T) {
-	src := `workflow W():
-    activity Act() -> r
-        options:
-            task_queue: "nowhere"
-            schedule_to_start_timeout: 1s
-    close complete(r)
-
-activity Act():
-    return x
-
-worker w1:
-    activity Act
-
-worker w2:
-    workflow W
-
-namespace ns:
-    worker w2
-        options:
-            task_queue: "fam-{id}"
-    worker w1
-        options:
-            task_queue: "fam-{x}"
-    worker w1
-        options:
-            task_queue: "fam-pool"
-`
-	var got []string
-	for _, e := range Validate(resolvedAllowingErrors(t, src)) {
-		got = append(got, e.Code())
-	}
-	want := []string{"TASK_QUEUE_MISMATCH", "TASK_QUEUE_OVERLAP", "TASK_QUEUE_OVERLAP", "INSTANCE_FAMILY_HOSTS_WORKFLOW", "EXPLICIT_ROUTING_MISMATCH"}
-	if !slices.Equal(got, want) {
-		t.Errorf("emission order\n got  %v\n want %v", got, want)
-	}
 }
