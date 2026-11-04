@@ -32,6 +32,7 @@ import billing "github.com/acme/shop/billing"         # referenced as: billing
 import billingv2 "github.com/acme/shop/billing/v2"    # assumed name billing too → aliased billingv2 to avoid the clash
 ```
 
+- Imports go after the `package` clause and before every definition; one after a definition is a parse error.
 - The string is the package's **full import path** (module path + directory).
 - An import reaches **only the package with exactly that path** — a typo under your own module is `IMPORT_NOT_FOUND`, not a silent external.
 - Reference the package by the path's **assumed name** — the last element, a trailing `/vN` dropped (`.../billing/v2` → `billing`).

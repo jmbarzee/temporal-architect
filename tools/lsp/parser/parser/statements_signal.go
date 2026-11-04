@@ -13,7 +13,8 @@ import (
 // await / promise / await one. `signal Name(` or `signal Name:` here is a handler
 // declaration that came after the body's first statement.
 func parseSignalSendStmt(p *Parser) (ast.Statement, error) {
-	pos := ast.Pos{Line: p.current.Line, Column: p.current.Column}
+	kw := p.current
+	pos := ast.Pos{Line: kw.Line, Column: kw.Column}
 	p.advance() // consume SIGNAL
 
 	first, err := p.expect(token.IDENT)
@@ -22,7 +23,7 @@ func parseSignalSendStmt(p *Parser) (ast.Statement, error) {
 	}
 	if p.current.Type != token.DOT {
 		if p.current.Type == token.ARGS || p.current.Type == token.COLON {
-			return nil, p.errorf("signal handler %s is declared after the workflow body's first statement; declare handlers before it", first.Literal)
+			return nil, p.lateHandlerError(kw, first)
 		}
 		return nil, p.errorf("signal arrivals must be awaited; a send requires `Head.Name(args)`")
 	}
