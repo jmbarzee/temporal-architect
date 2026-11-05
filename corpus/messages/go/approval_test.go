@@ -44,3 +44,37 @@ func TestApproval(t *testing.T) {
 	require.NoError(t, env.GetWorkflowResult(&got))
 	require.Equal(t, Decision{Request: "access", Approver: "Grace", Note: "LGTM", Status: "reviewed"}, got)
 }
+
+func TestApprovalReviewReturnsBeforeAnyWaiterTakesIt(t *testing.T) {
+	var s testsuite.WorkflowTestSuite
+	env := s.NewTestWorkflowEnvironment()
+	RegisterApprovalTypes(env)
+
+	// Review arrives while Approval still awaits Open, before anything waits for Review.
+	reviewed := false
+	env.RegisterDelayedCallback(func() {
+		env.UpdateWorkflow(ReviewUpdate, "review-1", &testsuite.TestUpdateCallback{
+			OnReject: func(err error) { t.Fatalf("update rejected: %v", err) },
+			OnAccept: func() {},
+			OnComplete: func(result interface{}, err error) {
+				require.NoError(t, err)
+				require.Equal(t, "reviewed", result)
+				reviewed = true
+			},
+		}, "LGTM")
+	}, 30*time.Second)
+	env.RegisterDelayedCallback(func() {
+		require.True(t, reviewed, "Review's caller waited for a waiter")
+		env.SignalWorkflow(OpenSignal, nil)
+	}, time.Minute)
+	env.RegisterDelayedCallback(func() {
+		env.SignalWorkflow(ApproveSignal, ApproveArgs{Approver: "Grace"})
+	}, 2*time.Minute)
+
+	env.ExecuteWorkflow(Approval, "access")
+
+	require.NoError(t, env.GetWorkflowError())
+	var got Decision
+	require.NoError(t, env.GetWorkflowResult(&got))
+	require.Equal(t, Decision{Request: "access", Approver: "Grace", Note: "LGTM", Status: "approved"}, got)
+}
