@@ -49,3 +49,40 @@ func TestArrivalsGoToWaitersInTheOrderTheyBegan(t *testing.T) {
 	require.NoError(t, env.GetWorkflowResult(&got))
 	require.Equal(t, map[string]string{"began first": "1", "created first": "2"}, got)
 }
+
+// cancelledWaiter starts a waiter of signal X and cancels it, then takes X.
+func cancelledWaiter(ctx workflow.Context) (string, error) {
+	var xs arrivals[string]
+	ch := workflow.GetSignalChannel(ctx, "X")
+	workflow.Go(ctx, func(gCtx workflow.Context) {
+		for {
+			var v string
+			ch.Receive(gCtx, &v)
+			xs.add(v)
+		}
+	})
+
+	waitCtx, cancel := workflow.WithCancel(ctx)
+	workflow.Go(waitCtx, func(gCtx workflow.Context) {
+		_, _ = xs.take(gCtx)
+	})
+	if err := workflow.Sleep(ctx, time.Second); err != nil {
+		return "", err
+	}
+	cancel()
+	return xs.take(ctx)
+}
+
+func TestCancelledWaiterLeavesTheQueue(t *testing.T) {
+	var s testsuite.WorkflowTestSuite
+	env := s.NewTestWorkflowEnvironment()
+	env.RegisterWorkflow(cancelledWaiter)
+	env.RegisterDelayedCallback(func() { env.SignalWorkflow("X", "1") }, time.Minute)
+
+	env.ExecuteWorkflow(cancelledWaiter)
+
+	require.NoError(t, env.GetWorkflowError())
+	var got string
+	require.NoError(t, env.GetWorkflowResult(&got))
+	require.Equal(t, "1", got)
+}
