@@ -73,6 +73,9 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version-file: tools/lsp/go.mod
+          go-version-file: corpus/go.mod
+          cache-dependency-path: |
+            corpus/go.sum
+            tools/lsp/go.sum
 
       - run: make corpus-${{ matrix.sdk }}

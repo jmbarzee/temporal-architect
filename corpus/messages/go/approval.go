@@ -77,23 +77,3 @@ func Approval(ctx workflow.Context, request string) (Decision, error) {
 
 	return Decision{Request: request, Approver: approved.Approver, Note: note, Status: status}, nil
 }
-
-// arrivals holds a signal's or update's pending arrivals, oldest first: each
-// handler adds one when it returns, and each waiter takes one.
-type arrivals[T any] struct {
-	pending []T
-}
-
-func (a *arrivals[T]) add(v T) {
-	a.pending = append(a.pending, v)
-}
-
-// take waits for the oldest pending arrival and removes it.
-func (a *arrivals[T]) take(ctx workflow.Context) (T, error) {
-	var v T
-	if err := workflow.Await(ctx, func() bool { return len(a.pending) > 0 }); err != nil {
-		return v, err
-	}
-	v, a.pending = a.pending[0], a.pending[1:]
-	return v, nil
-}
