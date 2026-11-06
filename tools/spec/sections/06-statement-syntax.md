@@ -248,7 +248,7 @@ nexus_target ::= 'nexus' IDENT IDENT '.' IDENT args
 
 Declares a non-blocking async operation. The `<-` operator visually distinguishes async declaration from sync result binding (`->`). Use `await` to wait for the promise later.
 
-A promise is in scope from its binding to the end of the block that binds it, nested blocks included — in a workflow body, a handler body, or a sync nexus operation body. A later binding of the same name shadows it from there on, and same-named promises in sibling blocks are distinct. A handler also sees the promises bound at the top level of its workflow body, wherever in that body they are bound (the last binding of a repeated name); the workflow body does not see a handler's.
+A promise is in scope from its binding to the end of the block that binds it, nested blocks included — in a workflow body or a handler body. A later binding of the same name shadows it from there on, and same-named promises in sibling blocks are distinct. A handler also sees the promises bound at the top level of its workflow body, wherever in that body they are bound (the last binding of a repeated name); the workflow body does not see a handler's.
 
 **Examples:**
 ```

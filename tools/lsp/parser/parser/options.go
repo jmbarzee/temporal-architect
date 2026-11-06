@@ -111,8 +111,8 @@ var workflowStartSchema = map[string]*optionSchema{
 var parentClosePolicySchema = &optionSchema{valueType: "enum", allowed: []string{"TERMINATE", "ABANDON", "REQUEST_CANCEL"}}
 var conflictPolicySchema = &optionSchema{valueType: "enum", allowed: []string{"FAIL", "USE_EXISTING", "TERMINATE_EXISTING"}}
 
-// A child start has a parent, so it takes parent_close_policy (unless detached,
-// which always abandons), and carries no conflict policy. A client start has no
+// A child start has a parent, so it takes parent_close_policy (unless detached:
+// a detached child outlives its parent), and carries no conflict policy. A client start has no
 // parent and carries both ID policies.
 var childStartOptionSchema = schemaWith(workflowStartSchema, "parent_close_policy", parentClosePolicySchema)
 var clientStartOptionSchema = schemaWith(workflowStartSchema, "workflow_id_conflict_policy", conflictPolicySchema)
@@ -160,7 +160,7 @@ var optionMisplaced = map[OptionsContext]map[string]misplacedOption{
 	OptionsContextDetachedChildStart: {
 		"workflow_id":                 workflowIDAtStart,
 		"workflow_id_conflict_policy": childConflictPolicy,
-		"parent_close_policy":         {CodeOptionMisplaced, `a detached start always abandons its child; drop parent_close_policy, or drop "detach" to choose a policy`},
+		"parent_close_policy":         {CodeOptionMisplaced, `a detached child outlives its parent; drop parent_close_policy, or drop "detach" to choose a policy`},
 	},
 	OptionsContextClientStart: {
 		"workflow_id":         workflowIDAtStart,

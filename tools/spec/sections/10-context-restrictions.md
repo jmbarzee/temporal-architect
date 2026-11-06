@@ -20,12 +20,14 @@ Certain keywords are only valid in workflow context and produce errors in activi
 These keywords are **blocked in:**
 - Activity definitions
 - Query handler bodies
+- Sync nexus operation bodies, all but the client forms (below)
 
 ## Handler Body Contexts
 
 - **Signal handlers:** Full workflow statement set (including cross-workflow signal send), but cannot call `close` (can only mutate state)
 - **Update handlers:** Full workflow statement set (including cross-workflow signal send), but cannot call `close` (can only mutate state)
 - **Query handlers:** Activity statement set (no temporal primitives, no signal send), use `return` for values
+- **Sync nexus operation bodies:** Client forms only — a `workflow` start (`detach workflow` included), a `signal` send, `close` — with control flow and raw lines. The handler runs as a Temporal client, with no workflow context, so `activity`, `nexus` (`detach nexus` included), `await`, `timer`, `promise`, `condition`, `state`, `set` and `unset` are each `<keyword> is not allowed in a sync nexus operation body`
 
 Cross-workflow signal send (`signal Head.Name(args)`) follows the same context surface as a `workflow` call: valid in a workflow body, signal handler, update handler, or sync nexus operation body; rejected in an activity body or query handler.
 

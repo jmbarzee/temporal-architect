@@ -241,8 +241,7 @@ put a family behind Nexus, use a static endpoint whose **async** operation start
 shared queue in the family's namespace, and have that workflow call the family. A caller in another
 namespace reaches a family the same way. A sync handler has no workflow context, and Nexus retries a
 start that misses its deadline, so a sync handler that routes on must be idempotent: a signal with an
-idempotent handler, an Update whose ID derives from the Nexus request ID, or (experimental) a
-standalone activity on the family queue whose activity ID derives from the request ID.
+idempotent handler.
 
 **Limits are per instance.** `task_queue_activity_rate_limit` caps each member's queue, not the
 family.
