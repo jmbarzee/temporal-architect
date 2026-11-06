@@ -29,3 +29,33 @@ func TestWorkerOptionDroppedKeys(t *testing.T) {
 		}
 	})
 }
+
+// TestNexusCallOptions pins a nexus call's options to the three timeouts the
+// Temporal API carries; retry_policy and priority are misplaced there.
+func TestNexusCallOptions(t *testing.T) {
+	tests := []struct {
+		entry string
+		code  string // "" means the input parses cleanly
+	}{
+		{"schedule_to_close_timeout: 1h", ""},
+		{"schedule_to_start_timeout: 5m", ""},
+		{"start_to_close_timeout: 10m", ""},
+		{"start_to_close_timeout: 30", CodeSyntax},
+		{"retry_policy:\n\t\t\t\tmaximum_attempts: 3", CodeOptionMisplaced},
+		{"priority:\n\t\t\t\tpriority_key: 1", CodeOptionMisplaced},
+	}
+	for _, tt := range tests {
+		t.Run(tt.entry, func(t *testing.T) {
+			_, errs := ParseFileAll("workflow W(x):\n\tnexus Ep Svc.Op(x) -> y\n\t\toptions:\n\t\t\t" + tt.entry + "\n\tclose complete(y)\n")
+			if tt.code == "" {
+				if len(errs) > 0 {
+					t.Fatalf("expected a clean parse, got %v", errs)
+				}
+				return
+			}
+			if len(errs) == 0 || errs[0].Code() != tt.code {
+				t.Fatalf("expected %s, got %v", tt.code, errs)
+			}
+		})
+	}
+}
