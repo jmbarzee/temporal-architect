@@ -50,7 +50,7 @@ worker orderTypes:
 ## SDK Annotations
 
 An `@sdk` annotation above a worker declares an implementation of it: the SDK it is written in
-and, once code exists, the file that registers its types.
+and, once code exists, its entry file.
 
 ```
 annotation ::= '@' IDENT [ '(' annot_arg (',' annot_arg)* ')' ] NEWLINE
