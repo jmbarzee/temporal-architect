@@ -22,6 +22,16 @@ if err := futureA.Get(ctx, &resultA); err != nil {
 | `activity` / `workflow` | `workflow.Future` from `ExecuteActivity` / `ExecuteChildWorkflow` (the latter a `ChildWorkflowFuture`, also a [signal-send](./signal-send.md) target) |
 | `timer(5m)` | `workflow.Future` from `workflow.NewTimer(ctx, 5*time.Minute)` |
 | `nexus …` | `NexusOperationFuture` from `NexusClient.ExecuteOperation`; `GetNexusOperationExecution()` optionally waits for the start, not the finish |
-| `signal Approved` | `workflow.ReceiveChannel` from `workflow.GetSignalChannel(ctx, "Approved")` — **not a future**: `.Receive()` or `AddReceive`, never `.Get()` |
+| `signal Approve` / `update Review` | `workflow.Future` from `workflow.NewFuture`, settled by a goroutine that takes from the message's queue (below) |
 
-Updates produce no future; to race one, have the handler send on a channel ([update-handler.md](./update-handler.md)). Promises in `await one:` become selector cases ([await-one.md](./await-one.md#cases)).
+A promise on a signal or update begins waiting at its binding, not at its `await`, so draw its ticket there; the goroutine first runs later, after another waiter may have begun:
+
+```go
+approvalTicket := approves.wait()
+approval, settle := workflow.NewFuture(ctx)
+workflow.Go(ctx, func(gCtx workflow.Context) {
+    settle.Set(approves.takeAt(gCtx, approvalTicket))
+})
+```
+
+The queue, `wait` and `takeAt` are in [await-signal.md](./await-signal.md). In `await one:`, a promise is a future case ([await-one.md](./await-one.md#cases)).
