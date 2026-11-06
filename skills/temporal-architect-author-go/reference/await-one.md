@@ -16,7 +16,7 @@ timer := workflow.NewTimer(timerCtx, 24*time.Hour)
 if err := workflow.Await(ctx, func() bool { return paymentsReceived.ready(payment) || timer.IsReady() }); err != nil {
     return OrderResult{}, err
 }
-// A message in the winner's workflow task reaches its handler only after
+// A signal in the winner's workflow task reaches its handler loop only after
 // this coroutine resumes: yield once before choosing.
 yielded := false
 workflow.Go(ctx, func(workflow.Context) { yielded = true })
@@ -37,7 +37,7 @@ if paymentsReceived.ready(payment) { // listed first, so it wins a tie
 }
 ```
 
-`workflow.Await` blocks until any case is ready; then the first listed ready case wins, checked in `.twf` order. Don't use `workflow.Selector`: after it blocks, the first callback in event order wins, not the first listed (`selectorImpl.Select`, sdk-go `internal/internal_workflow.go`), and a receive case on a signal channel bypasses the handler. [`corpus/concurrency/go/batch.go`](https://github.com/jmbarzee/temporal-architect/blob/main/corpus/concurrency/go/batch.go) is the worked example.
+`workflow.Await` blocks until any case is ready; then the first listed ready case wins, checked in `.twf` order. Yield only when a signal handler can make a case ready: an update handler runs before the workflow's coroutine (`internal_update.go`, sdk-go), so it has already run. Don't use `workflow.Selector`: after it blocks, the first callback in event order wins, not the first listed (`selectorImpl.Select`, sdk-go `internal/internal_workflow.go`), and a receive case on a signal channel bypasses the handler. [`corpus/concurrency/go/batch.go`](https://github.com/jmbarzee/temporal-architect/blob/main/corpus/concurrency/go/batch.go) is the worked example.
 
 ## Cases
 

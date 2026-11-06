@@ -50,12 +50,6 @@ func HumanReview(ctx workflow.Context, docId string) (ReviewResult, error) {
     if err := workflow.Await(ctx, func() bool { return reviewComplete || timer.IsReady() }); err != nil {
         return ReviewResult{}, err
     }
-    yielded := false // let a same-task update's handler run first (await-one.md)
-    workflow.Go(ctx, func(workflow.Context) { yielded = true })
-    if err := workflow.Await(ctx, func() bool { return yielded }); err != nil {
-        return ReviewResult{}, err
-    }
-
     if reviewComplete { // listed first, so it wins a tie
         cancelTimer()
     } else {
@@ -101,7 +95,8 @@ workflow ManageRetention(docId: string, retentionDays: int):
 			close complete
 ```
 
-The Go race is Pattern 1's, with the signal handled by a looping goroutine ([signal-handler.md](./signal-handler.md)) instead of an update handler. Two things differ:
+The Go race is Pattern 1's, with the signal handled by a looping goroutine ([signal-handler.md](./signal-handler.md)) instead of an update handler. Three things differ:
 
 1. **The signal goroutine and the workflow's `Await` predicate share `cancelled`** — safe under Temporal's cooperative scheduling, a data race in ordinary Go
 2. **Both branches run the same tail** — make one `DeleteDocument` call after the race rather than one per case
+3. **Yield once before choosing** — the signal loop runs after the workflow's coroutine ([await-one.md](./await-one.md))

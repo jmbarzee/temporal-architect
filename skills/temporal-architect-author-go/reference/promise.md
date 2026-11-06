@@ -24,13 +24,14 @@ if err := futureA.Get(ctx, &resultA); err != nil {
 | `nexus …` | `NexusOperationFuture` from `NexusClient.ExecuteOperation`; `GetNexusOperationExecution()` optionally waits for the start, not the finish |
 | `signal Approve` / `update Review` | `workflow.Future` from `workflow.NewFuture`, settled by a goroutine that takes from the message's queue (below) |
 
-A promise on a signal or update begins waiting at its binding, not at its `await`, so start the goroutine there:
+A promise on a signal or update begins waiting at its binding, not at its `await`, so draw its ticket there; the goroutine first runs later, after another waiter may have begun:
 
 ```go
+approvalTicket := approves.wait()
 approval, settle := workflow.NewFuture(ctx)
 workflow.Go(ctx, func(gCtx workflow.Context) {
-    settle.Set(approves.take(gCtx))
+    settle.Set(approves.takeAt(gCtx, approvalTicket))
 })
 ```
 
-The queue and `take` are in [await-signal.md](./await-signal.md). In `await one:`, a promise is a future case ([await-one.md](./await-one.md#cases)).
+The queue, `wait` and `takeAt` are in [await-signal.md](./await-signal.md). In `await one:`, a promise is a future case ([await-one.md](./await-one.md#cases)).

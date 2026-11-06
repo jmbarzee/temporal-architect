@@ -132,7 +132,7 @@ message CreateThingInput {
 The generated workflow function (`buildXxx` in `*_temporal.pb.go`, checked against `protoc-gen-go_temporal` v1.25.1) runs no handler body and queues nothing, so spec 06's arrival rule is the hand-written code's job, as in [await-signal.md](./await-signal.md):
 
 - **Signal**: the generator passes an `XxxSignal` wrapper over the raw `GetSignalChannel` in `XxxWorkflowInput`, with `Receive`, `ReceiveAsync`, `ReceiveWithTimeout` and `Select`. Start the handler loop in `Initialize` (the generated function calls it before registering handlers, when the workflow struct implements `helpers.Initializable`): `input.Xxx.Receive(gCtx)`, the body, then `xs.add(req)`. That loop is the wrapper's only reader; waiters take from the queue, never through `Receive` or `Select` (its `AddReceive` gives event order, not first listed).
-- **Update**: the generator registers the workflow struct's `UpdateXxx(workflow.Context, *Req)` method with `SetUpdateHandlerWithOptions`; that method is the handler, so it runs the body, then `xs.add(req)`, then returns ([update-handler.md](./update-handler.md)).
+- **Update**: the generator registers the workflow struct's method named after the update RPC (`wf.SomeUpdate1` for RPC `SomeUpdate1`, taking `workflow.Context` and its request) with `SetUpdateHandlerWithOptions`; that method is the handler, so it runs the body, then `xs.add(req)`, then returns ([update-handler.md](./update-handler.md)).
 
 ## Implement, register, client
 

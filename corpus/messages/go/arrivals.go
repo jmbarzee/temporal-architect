@@ -23,7 +23,11 @@ func (a *arrivals[T]) add(v T) {
 // removes the oldest arrival. Await alone would wake waiters in the order their
 // coroutines were created, not the order they began waiting.
 func (a *arrivals[T]) take(ctx workflow.Context) (T, error) {
-	ticket := a.wait()
+	return a.takeAt(ctx, a.wait())
+}
+
+// takeAt is take for a waiter that began earlier with wait.
+func (a *arrivals[T]) takeAt(ctx workflow.Context, ticket int) (T, error) {
 	defer a.leave(ticket)
 	if err := workflow.Await(ctx, func() bool { return a.ready(ticket) }); err != nil {
 		var v T
@@ -32,8 +36,9 @@ func (a *arrivals[T]) take(ctx workflow.Context) (T, error) {
 	return a.claim(), nil
 }
 
-// wait begins a waiter and returns its ticket. An await one case waits, checks
-// ready without taking, and claims only if it wins; win or lose, it leaves.
+// wait begins a waiter and returns its ticket. A promise waits at its binding
+// and takes later with takeAt. An await one case waits, checks ready without
+// taking, and claims only if it wins; win or lose, it leaves.
 func (a *arrivals[T]) wait() int {
 	ticket := a.next
 	a.next++

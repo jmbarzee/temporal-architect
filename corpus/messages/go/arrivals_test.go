@@ -73,6 +73,49 @@ func cancelledWaiter(ctx workflow.Context) (string, error) {
 	return xs.take(ctx)
 }
 
+// promiseThenAwait binds a promise on signal X, then awaits X.
+func promiseThenAwait(ctx workflow.Context) (map[string]string, error) {
+	var xs arrivals[string]
+	ch := workflow.GetSignalChannel(ctx, "X")
+	workflow.Go(ctx, func(gCtx workflow.Context) {
+		for {
+			var v string
+			ch.Receive(gCtx, &v)
+			xs.add(v)
+		}
+	})
+
+	ticket := xs.wait()
+	p, settle := workflow.NewFuture(ctx)
+	workflow.Go(ctx, func(gCtx workflow.Context) {
+		settle.Set(xs.takeAt(gCtx, ticket))
+	})
+	awaited, err := xs.take(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var promised string
+	if err := p.Get(ctx, &promised); err != nil {
+		return nil, err
+	}
+	return map[string]string{"promise": promised, "await": awaited}, nil
+}
+
+func TestPromiseBeginsWaitingAtItsBinding(t *testing.T) {
+	var s testsuite.WorkflowTestSuite
+	env := s.NewTestWorkflowEnvironment()
+	env.RegisterWorkflow(promiseThenAwait)
+	env.RegisterDelayedCallback(func() { env.SignalWorkflow("X", "1") }, time.Minute)
+	env.RegisterDelayedCallback(func() { env.SignalWorkflow("X", "2") }, 2*time.Minute)
+
+	env.ExecuteWorkflow(promiseThenAwait)
+
+	require.NoError(t, env.GetWorkflowError())
+	var got map[string]string
+	require.NoError(t, env.GetWorkflowResult(&got))
+	require.Equal(t, map[string]string{"promise": "1", "await": "2"}, got)
+}
+
 // awaitOne races a case for signal X against a timer, then takes X.
 func awaitOne(ctx workflow.Context, timeout time.Duration) ([]string, error) {
 	var xs arrivals[string]

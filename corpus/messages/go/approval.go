@@ -61,9 +61,10 @@ func Approval(ctx workflow.Context, request string) (Decision, error) {
 	}
 
 	// A promise begins waiting at its binding.
+	approvalTicket := approves.wait()
 	approval, settle := workflow.NewFuture(ctx)
 	workflow.Go(ctx, func(gCtx workflow.Context) {
-		settle.Set(approves.take(gCtx))
+		settle.Set(approves.takeAt(gCtx, approvalTicket))
 	})
 
 	note, err := reviews.take(ctx)
