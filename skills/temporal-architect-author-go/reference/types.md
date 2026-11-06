@@ -17,7 +17,8 @@ The `.twf` type names are defined in `twf spec workflows` (Types). In Go:
 
 | TWF | Go |
 |-----|----|
-| `string` / `int` / `bool` / `any` | same |
+| `string` / `bool` / `any` | same |
+| `int` | `int64` |
 | `float` / `decimal` | `float64` |
 | `duration` | `time.Duration` (`5m` → `5*time.Minute`) |
 | `time` | `time.Time` |

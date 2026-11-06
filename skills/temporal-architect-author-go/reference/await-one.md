@@ -10,66 +10,48 @@ await one:
 ```
 
 ```go
+payment := paymentsReceived.wait()
 timerCtx, cancelTimer := workflow.WithCancel(ctx)
-sel := workflow.NewSelector(ctx)
+timer := workflow.NewTimer(timerCtx, 24*time.Hour)
+if err := workflow.Await(ctx, func() bool { return paymentsReceived.ready(payment) || timer.IsReady() }); err != nil {
+    return OrderResult{}, err
+}
+// A signal in the winner's workflow task reaches its handler loop only after
+// this coroutine resumes: yield once before choosing.
+yielded := false
+workflow.Go(ctx, func(workflow.Context) { yielded = true })
+if err := workflow.Await(ctx, func() bool { return yielded }); err != nil {
+    return OrderResult{}, err
+}
 
-sel.AddReceive(paymentReceivedCh, func(ch workflow.ReceiveChannel, more bool) {
-    var sig PaymentReceivedSignal
-    ch.Receive(ctx, &sig)
+if paymentsReceived.ready(payment) { // listed first, so it wins a tie
+    paymentsReceived.claim()
+    cancelTimer()
     status = "processing"
-    cancelTimer() // history hygiene: the losing timer would otherwise fire later
-})
-
-sel.AddFuture(workflow.NewTimer(timerCtx, 24*time.Hour), func(f workflow.Future) {
-    if err := f.Get(ctx, nil); err != nil {
-        return // timer cancelled — signal won
+} else {
+    paymentsReceived.leave(payment)
+    if err := workflow.ExecuteActivity(ctx, CancelOrder, orderId).Get(ctx, nil); err != nil {
+        return OrderResult{}, err
     }
-    err := workflow.ExecuteActivity(ctx, CancelOrder, orderId).Get(ctx, nil)
-    if err != nil {
-        // handle activity error
-    }
-    // close fail handled after selector
-})
-
-sel.Select(ctx)
+    return OrderResult{}, temporal.NewApplicationError("order cancelled", "OrderCancelled", OrderResult{Status: "cancelled"})
+}
 ```
+
+`workflow.Await` blocks until any case is ready; then the first listed ready case wins, checked in `.twf` order. Yield only when a signal handler can make a case ready: an update handler runs before the workflow's coroutine (`internal_update.go`, sdk-go), so it has already run. Don't use `workflow.Selector`: after it blocks, the first callback in event order wins, not the first listed (`selectorImpl.Select`, sdk-go `internal/internal_workflow.go`), and a receive case on a signal channel bypasses the handler. [`corpus/concurrency/go/batch.go`](https://github.com/jmbarzee/temporal-architect/blob/main/corpus/concurrency/go/batch.go) is the worked example.
 
 ## Cases
 
-| Case | Registration |
-|------|--------------|
-| activity, child workflow, nexus, timer, future-bound promise | `sel.AddFuture(future, func(f workflow.Future) { f.Get(ctx, &result) … })` — `NexusOperationFuture` satisfies `workflow.Future` |
-| signal, signal-bound promise | `sel.AddReceive(ch, func(ch workflow.ReceiveChannel, more bool) { ch.Receive(ctx, &sig) … })` |
-| update | Register the handler separately ([update-handler.md](./update-handler.md)); have it send on a channel the selector `AddReceive`s |
-| condition, nested `await all:` | Goroutine that waits, then sends on a channel the selector `AddReceive`s (below); for `await all:` the goroutine runs a `WaitGroup` and `wg.Wait(gCtx)` instead of `Await` |
+| Case | Before `Await` | In the predicate | Winner |
+|------|----------------|------------------|--------|
+| signal, update | `t := xs.wait()` | `xs.ready(t)` | `xs.claim()`; every losing message case calls `xs.leave(t)` |
+| activity, child workflow, nexus, timer, promise | the future (`workflow.NewTimer` for a timer) | `f.IsReady()` | `f.Get(ctx, &result)` |
+| condition | — | the condition's `bool` | — |
+| nested `await all:` | a goroutine runs its `WaitGroup`, then sets `done` | `done` | — |
 
-```go
-condCh := workflow.NewChannel(ctx)
-workflow.Go(ctx, func(gCtx workflow.Context) {
-    if err := workflow.Await(gCtx, func() bool { return myCondition }); err != nil {
-        return // context cancelled — don't send
-    }
-    condCh.Send(gCtx, true)
-})
-sel.AddReceive(condCh, func(ch workflow.ReceiveChannel, more bool) {
-    ch.Receive(ctx, nil)
-    // case body
-})
-```
+A message case waits without taking: `ready` checks its queue ([await-signal.md](./await-signal.md)), and only the winner claims the arrival. A losing case must `leave`, or it holds its place in the queue and blocks later waiters.
 
 ## Notes
 
-- `sel.Select(ctx)` fires exactly one case — the first to complete — and returns.
-- **Losing cases are not cancelled** — per DSL semantics and `Selector.Select` alike, they keep running until the run ends (`close`, or external cancellation). Cancelling them in the winning handler is history hygiene, not correctness: an uncancelled timer fires later and adds workflow tasks. Cancelling a timer via `workflow.WithCancel` is clean; cancelling a child workflow only *requests* cancellation, and the child decides. For child lifecycle at parent close, use `parent_close_policy` ([options.md](./options.md)).
-- An empty case body → a handler with only the `Receive`/`Get`.
-- `close` in a case body: set a variable in the handler, check it after `sel.Select`, then return.
-- One-time race ("whichever first") → a single `Select`. Event-driven/entity workflows → `Select` in a loop, re-adding cases each iteration (or keeping persistent ones):
-  ```go
-  for {
-      sel := workflow.NewSelector(ctx)
-      sel.AddReceive(signalCh, func(ch workflow.ReceiveChannel, more bool) { ... })
-      sel.AddFuture(workflow.NewTimer(ctx, interval), func(f workflow.Future) { ... })
-      sel.Select(ctx)
-      if done { break }
-  }
-  ```
+- **Losing cases are not cancelled**; they keep running until the run ends. Cancelling a losing timer via `workflow.WithCancel` is history hygiene: otherwise it fires later and adds workflow tasks. Cancelling a child workflow only *requests* cancellation; for child lifecycle at parent close, use `parent_close_policy` ([options.md](./options.md)).
+- An empty case body → the winner's take or `.Get` alone.
+- Event-driven/entity workflows repeat the race in a loop, with a fresh `wait` ticket per message case each iteration.

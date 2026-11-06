@@ -1,6 +1,6 @@
 # options
 
-Option keys map to Go fields by name (`start_to_close_timeout` → `StartToCloseTimeout`); `retry_policy:` → `&temporal.RetryPolicy{...}` (a pointer). When a call has no `options:` block, set a default `ActivityOptions` with `StartToCloseTimeout` on `ctx` near the top of the workflow function.
+Option keys map to Go fields by name (`start_to_close_timeout` → `StartToCloseTimeout`); `retry_policy:` → `&temporal.RetryPolicy{...}` (a pointer); `priority:` → `temporal.Priority{PriorityKey, FairnessKey, FairnessWeight}` (a value). One key inverts: `request_eager_execution: true` → `DisableEagerExecution: false`. When a call has no `options:` block, set a default `ActivityOptions` with `StartToCloseTimeout` on `ctx` near the top of the workflow function.
 
 ## Activity options
 
@@ -56,7 +56,7 @@ err := workflow.ExecuteChildWorkflow(childCtx, ChildWorkflow, input.Data).Get(ct
 
 ## Nexus operation options
 
-Passed inline to `ExecuteOperation` — no context wrapping. Fields: `ScheduleToCloseTimeout` (primary) and `CancellationType` (experimental).
+Passed inline to `ExecuteOperation` — no context wrapping. `schedule_to_close_timeout` → `ScheduleToCloseTimeout`. The struct also has `ScheduleToStartTimeout`, `StartToCloseTimeout` and `CancellationType` (all Experimental). A `nexus` call's `retry_policy` and `priority` have no Go field; drop them with a `// TODO` naming the key. #404 narrows the spec's keys to the three timeouts.
 
 ```twf
 nexus BillingEndpoint BillingService.ChargePayment(payment) -> paymentResult

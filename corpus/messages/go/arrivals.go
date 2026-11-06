@@ -23,16 +23,42 @@ func (a *arrivals[T]) add(v T) {
 // removes the oldest arrival. Await alone would wake waiters in the order their
 // coroutines were created, not the order they began waiting.
 func (a *arrivals[T]) take(ctx workflow.Context) (T, error) {
-	var v T
+	return a.takeAt(ctx, a.wait())
+}
+
+// takeAt is take for a waiter that began earlier with wait.
+func (a *arrivals[T]) takeAt(ctx workflow.Context, ticket int) (T, error) {
+	defer a.leave(ticket)
+	if err := workflow.Await(ctx, func() bool { return a.ready(ticket) }); err != nil {
+		var v T
+		return v, err
+	}
+	return a.claim(), nil
+}
+
+// wait begins a waiter and returns its ticket. A promise waits at its binding
+// and takes later with takeAt. An await one case waits, checks ready without
+// taking, and claims only if it wins; win or lose, it leaves.
+func (a *arrivals[T]) wait() int {
 	ticket := a.next
 	a.next++
 	a.waiters = append(a.waiters, ticket)
-	if err := workflow.Await(ctx, func() bool {
-		return len(a.pending) > 0 && a.waiters[0] == ticket
-	}); err != nil {
-		a.waiters = slices.DeleteFunc(a.waiters, func(w int) bool { return w == ticket })
-		return v, err
-	}
-	v, a.pending, a.waiters = a.pending[0], a.pending[1:], a.waiters[1:]
-	return v, nil
+	return ticket
+}
+
+// ready reports whether an arrival is pending and ticket is the earliest waiter.
+func (a *arrivals[T]) ready(ticket int) bool {
+	return len(a.pending) > 0 && a.waiters[0] == ticket
+}
+
+// claim gives the oldest arrival to the earliest waiter, which must be ready.
+func (a *arrivals[T]) claim() T {
+	v := a.pending[0]
+	a.pending, a.waiters = a.pending[1:], a.waiters[1:]
+	return v
+}
+
+// leave ends a waiter that did not claim; after a claim it does nothing.
+func (a *arrivals[T]) leave(ticket int) {
+	a.waiters = slices.DeleteFunc(a.waiters, func(w int) bool { return w == ticket })
 }

@@ -156,9 +156,8 @@ workflow ProcessOrder(order: Order) -> (Result):
 workflow_call ::= ['detach'] 'workflow' IDENT args ['->' result] [NEWLINE options_line]
 ```
 
-**Detach.** `detach` waits until the start is confirmed, never for a result. From then on the started execution outlives the caller: the caller's cancellation does not reach it, and neither does its close.
-- **`detach workflow`**: a child start takes parent-close policy `ABANDON`, so a `parent_close_policy:` under it is `OPTION_MISPLACED`. A start that fails fails the caller, the same as any child start. A client start has no parent, so `detach` only drops the wait for a result.
-- **`detach nexus`**: Nexus has no parent-close policy. The caller waits until the operation starts, which for a sync operation means until it completes. The caller does not propagate cancellation (operation cancellation type `ABANDON`). When the caller closes, the operation keeps running, and its completion callback to the closed caller fails and is dropped.
+**Detach.** A detached call is guaranteed to start, outlives its caller, and its result is never observed.
+- A detached child outlives its parent by definition, so a `parent_close_policy:` under `detach workflow` is `OPTION_MISPLACED`.
 - A detached call is never awaited, so it cannot follow `await`, fill a `promise`, or be an `await one` case (`DETACH_AWAITED`). Under `await all:` it is done once started.
 
 **Start kind.** A start becomes the Temporal operation its enclosing body allows:
@@ -182,7 +181,7 @@ nexus_call ::= ['detach'] 'nexus' IDENT IDENT '.' IDENT args ['->' result] [NEWL
 
 Calls a nexus service operation. The three IDENTs are: Endpoint, Service.Operation (dot-separated).
 
-- `detach`: wait for the start, never the result ([Detach](#workflow-call))
+- `detach`: started, never observed ([Detach](#workflow-call))
 - Endpoint: The nexus endpoint name (defined in a namespace block)
 - Service.Operation: The nexus service and operation name (dot-separated)
 
@@ -409,7 +408,7 @@ await one:
 
 The case that completes first "wins" the race, its body executes (if present), and then execution continues after the `await one` block. A case already ready on entry, a pending arrival included, wins. Whenever more than one case is ready as the workflow resumes, on entry or later, the first listed wins.
 
-**Lifecycle of non-winning cases:** When one case wins, execution continues after the `await one` block. Operations started by non-winning cases (activities, child workflows, timers) are NOT cancelled — they continue running. These pending operations are cancelled only when the workflow run ends: via `close complete`, `close fail`, `close continue_as_new`, or external cancellation. For child workflows, the `parent_close_policy` option controls behavior at parent completion (TERMINATE, REQUEST_CANCEL, or ABANDON).
+**Lifecycle of non-winning cases:** When one case wins, execution continues after the `await one` block. Operations started by non-winning cases (activities, child workflows, timers) are NOT cancelled — they continue running. These pending operations are cancelled only when the workflow run ends: via `close complete`, `close fail`, `close continue_as_new`, or external cancellation. For child workflows, the `parent_close_policy` option controls behavior at parent completion.
 
 ## Switch Block
 

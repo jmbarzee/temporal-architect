@@ -82,7 +82,7 @@ Common error types:
 - Unresolved import — imported package absent from the tree, treated as external (warning)
 - Unused import — a resolved import never referenced (warning)
 - Unknown option key in `options:` block (including handler `options:` blocks — e.g. `unfinished_policy` on a query handler, where only `description` is allowed)
-- Misplaced option key (`OPTION_MISPLACED`): a key its context cannot carry — `parent_close_policy` in a workflow `default_options:` block (it describes one parent↔child invocation, not the workflow type) or at a client start (no parent) or a detached child start (always `ABANDON`), `workflow_id_conflict_policy` at a child start (a child start carries no conflict policy), and `retry_policy` or `priority` on a nexus call (the API carries neither)
+- Misplaced option key (`OPTION_MISPLACED`): a key its context cannot carry — `parent_close_policy` in a workflow `default_options:` block (it describes one parent↔child invocation, not the workflow type) or at a client start (no parent) or a detached child start (it outlives its parent), `workflow_id_conflict_policy` at a child start (a child start carries no conflict policy), and `retry_policy` or `priority` on a nexus call (the API carries neither)
 - Duplicate option key (`DUPLICATE_OPTION_KEY`): a key repeated in one options block, nested blocks included
 - Wrong value type for option key (e.g., number where duration expected)
 - Invalid enum value for option key (e.g., a value other than `abandon` / `warn_and_abandon` for `unfinished_policy`)
