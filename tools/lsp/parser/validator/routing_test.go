@@ -251,19 +251,19 @@ namespace alpha:
 			name: "explicit from a sync nexus operation: target outside the service's namespace",
 			src: `nexus service Svc:
 	sync Op(x: int) -> (int):
-		activity Act(x) -> y
+		workflow Act(x) -> y
 			options:
 				task_queue: "act-q"
 		close complete(y)
 
-activity Act(x: int) -> (int):
-	return x
+workflow Act(x: int) -> (int):
+	close complete(x)
 
 worker svcWorker:
 	nexus service Svc
 
 worker actWorker:
-	activity Act
+	workflow Act
 
 namespace alpha:
 	worker svcWorker
@@ -276,26 +276,26 @@ namespace beta:
 			task_queue: "act-q"
 `,
 			want: []string{
-				`activity Act has task_queue "act-q", but no worker on that queue in namespace alpha registers it`,
+				`workflow Act has task_queue "act-q", but no worker on that queue in namespace alpha registers it`,
 			},
 		},
 		{
 			name: "explicit from a sync nexus operation: target in the service's namespace",
 			src: `nexus service Svc:
 	sync Op(x: int) -> (int):
-		activity Act(x) -> y
+		workflow Act(x) -> y
 			options:
 				task_queue: "act-q"
 		close complete(y)
 
-activity Act(x: int) -> (int):
-	return x
+workflow Act(x: int) -> (int):
+	close complete(x)
 
 worker svcWorker:
 	nexus service Svc
 
 worker actWorker:
-	activity Act
+	workflow Act
 
 namespace alpha:
 	worker svcWorker
@@ -734,13 +734,13 @@ namespace alpha:
 // its first declaration, as the resolver keeps it, not the later one.
 func TestDuplicateRoutesFirstDeclaration(t *testing.T) {
 	const misrouted = `
-	activity A(x) -> r
+	workflow V(x) -> r
 		options:
 			task_queue: "nowhere"
 	close complete(r)
 `
 	const routed = `
-	activity A(x) -> r
+	workflow V(x) -> r
 	close complete(r)
 `
 	workflow := func(body string) string { return "workflow W(x: X):" + body }
@@ -758,12 +758,12 @@ func TestDuplicateRoutesFirstDeclaration(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			src := tt.decl(misrouted) + "\n" + tt.decl(routed) + "\n" + tt.rest + `
-activity A(x: X) -> (X):
-	return x
+workflow V(x: X) -> (X):
+	close complete(x)
 
 worker w:
 	workflow W
-	activity A
+	workflow V
 	nexus service S
 
 namespace n:
@@ -777,7 +777,7 @@ namespace n:
 			}
 			resolver.Resolve(file)
 			got := routingMsgs(Validate(file))
-			want := []string{`activity A has task_queue "nowhere", but no worker on that queue in namespace n registers it`}
+			want := []string{`workflow V has task_queue "nowhere", but no worker on that queue in namespace n registers it`}
 			if !slices.Equal(got, want) {
 				t.Errorf("routing diagnostics:\n got  %q\n want %q", got, want)
 			}
@@ -847,18 +847,18 @@ worker wb:
 // when the two differ in signature.
 func TestDuplicateDeclarationRoutesFirst(t *testing.T) {
 	const misrouted = `
-		activity A(x)
+		workflow V()
 			options:
 				task_queue: "nowhere"
 `
 	const routed = `
-		activity A(x)
+		workflow V()
 `
 	const async = "\n\tasync Op workflow V\n"
 	signal := func(body string) string { return "\n\tsignal Ping(x: X):" + body }
 	update := func(body string) string { return "\n\tupdate Bump(x: X) -> (R):" + body }
 	sync := func(body string) string { return "\n\tsync Op(x: X) -> ():" + body }
-	const misroutedErr = `activity A has task_queue "nowhere", but no worker on that queue in namespace n registers it`
+	const misroutedErr = `workflow V has task_queue "nowhere", but no worker on that queue in namespace n registers it`
 	tests := []struct {
 		name                string
 		handlers, ops, want string
@@ -880,13 +880,9 @@ workflow V():
 	close complete()
 
 nexus service S:` + tt.ops + `
-activity A(x: X):
-	return
-
 worker w:
 	workflow W
 	workflow V
-	activity A
 	nexus service S
 
 namespace n:

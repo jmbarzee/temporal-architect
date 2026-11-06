@@ -314,55 +314,6 @@ namespace ns:
 	}
 }
 
-// TestNexusCallerFromSyncOperation: a call in a sync operation body
-// originates in the namespaces hosting the enclosing service.
-func TestNexusCallerFromSyncOperation(t *testing.T) {
-	input := `nexus service Front:
-	sync Ask() -> (string):
-		nexus PayEndpoint PayService.Charge()
-		close complete("ok")
-
-nexus service PayService:
-	async Charge workflow ChargeCard
-
-workflow ChargeCard():
-	close complete()
-
-worker frontTypes:
-	nexus service Front
-
-worker payTypes:
-	workflow ChargeCard
-	nexus service PayService
-
-namespace front:
-	worker frontTypes
-		options:
-			task_queue: "front"
-
-namespace payments:
-	worker payTypes
-		options:
-			task_queue: "payments"
-	nexus endpoint PayEndpoint
-		options:
-			task_queue: "payments"
-			allowed_caller_namespaces: ["orders"]
-`
-	var found bool
-	for _, e := range Validate(mustParseAndResolve(t, input)) {
-		if e.Kind == ErrNexusCallerNotAllowed {
-			found = true
-			if e.Name != "Front" || !strings.Contains(e.Msg, "originates in namespace front") {
-				t.Errorf("got Name %q msg %q", e.Name, e.Msg)
-			}
-		}
-	}
-	if !found {
-		t.Fatal("expected NEXUS_CALLER_NOT_ALLOWED from the sync operation body")
-	}
-}
-
 // TestNexusCallerUnhostedNotChecked: a caller on no instantiated worker has
 // no origin namespace, so its call is not checked (it already warns as
 // uncovered).

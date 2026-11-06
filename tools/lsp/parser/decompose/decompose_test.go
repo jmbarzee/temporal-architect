@@ -560,9 +560,9 @@ activity Work():
 
 nexus service S:
 	sync Op() -> ():
-		activity Work()
+		workflow Child()
 		if (x):
-			activity Work()
+			workflow Child()
 		close complete()
 `
 	const rest = `
@@ -620,6 +620,10 @@ func TestDuplicateDeclarationMeasuresFirst(t *testing.T) {
 		if (x):
 			activity Work()
 `
+	const laterOp = `		workflow W()
+		if (x):
+			workflow W()
+`
 	src := func(laterHandler, laterOp string) string {
 		return `
 workflow W():
@@ -658,7 +662,7 @@ namespace ns:
 		return out
 	}
 	want := complexity(src("", ""))
-	got := complexity(src("\tsignal Ping():\n"+later, "\tsync Op() -> ():\n"+later+"\t\tclose complete()\n"))
+	got := complexity(src("\tsignal Ping():\n"+later, "\tsync Op() -> ():\n"+laterOp+"\t\tclose complete()\n"))
 	for _, k := range []string{graph.DefKey(graph.KindWorkflow, "W"), graph.DefKey(graph.KindNexusOperation, "S.Op")} {
 		if _, ok := want[k]; !ok {
 			t.Fatalf("no node %s", k)

@@ -372,9 +372,9 @@ workflow B():
 
 nexus service S:
 	sync Sync(x: X) -> (X):
-		activity A(x) -> r
+		workflow C(x) -> r
 			options:
-				task_queue: "acts"
+				task_queue: "tools"
 		close complete(r)
 	async Async workflow B
 	async Lost workflow Nope
@@ -411,10 +411,9 @@ namespace n:
 		fam = "/worker:fam/namespace:n"
 	)
 	checkRouted(t, dispatched(extractAllowingErrors(t, src)), []string{
-		"activityCall " + op + "Sync" + fam + " -> " + a + " @28 {Explicit:acts NexusEndpoint:}",
 		"activityCall " + w + " -> " + a + " @2 {Explicit:acts NexusEndpoint:}",
 		"asyncBacking " + op + "Async" + fam + " -> workflow:B" + fam + " @32 {Explicit: NexusEndpoint:}",
-		"coarsened worker worker:fam/namespace:n -> worker:aw/namespace:n x2",
+		"coarsened worker worker:fam/namespace:n -> worker:aw/namespace:n x1",
 		"nexusCall " + w + " -> " + op + "Sync" + fam + " @6 {Explicit: NexusEndpoint:" + ep + "}",
 		"nexusRoute " + op + "Async" + fam + " -> " + ep + " @55",
 		"nexusRoute " + op + "Lost" + fam + " -> " + ep + " @55",
@@ -422,6 +421,7 @@ namespace n:
 		"signalSend " + w + " -> workflow:T" + fam + " @8 {Explicit: NexusEndpoint:}",
 		"unresolved activityCall " + w + " Missing @9",
 		"unresolved asyncBacking " + op + "Lost" + fam + " Nope @33",
+		"workflowCall " + op + "Sync" + fam + " -> workflow:C" + fam + " @28 {Explicit:tools NexusEndpoint:}",
 		"workflowCall " + w + " -> workflow:C" + fam + " @5 {Explicit: NexusEndpoint:}",
 		"workflowCall " + w + " -> workflow:T" + fam + " @7 {Explicit: NexusEndpoint:}",
 	})
@@ -471,7 +471,7 @@ workflow B():
 
 nexus service S:
 	sync Sync(x: X) -> (X):
-		activity A(x) -> r
+		workflow C(x) -> r
 		close complete(r)
 	async Async workflow B
 
@@ -512,10 +512,10 @@ namespace n:
 		for _, to := range []string{"callee", "other"} {
 			at := "/worker:" + to + "/namespace:n"
 			want = append(want,
-				"activityCall "+sync+" -> activity:A"+at+" @17 {Explicit: NexusEndpoint:}",
 				"activityCall "+w+" -> activity:A"+at+" @2 {Explicit: NexusEndpoint:}",
 				"asyncBacking "+back+" -> workflow:B"+at+" @19 {Explicit: NexusEndpoint:}",
 				"coarsened worker worker:fam/namespace:n -> worker:"+to+"/namespace:n x4",
+				"workflowCall "+sync+" -> workflow:C"+at+" @17 {Explicit: NexusEndpoint:}",
 				"workflowCall "+w+" -> workflow:C"+at+" @3 {Explicit: NexusEndpoint:}",
 			)
 		}
@@ -754,7 +754,7 @@ activity B(x: X):
 
 nexus service S:
 	sync Op(x: X) -> ():
-		activity A(x)
+		workflow V()
 		close complete()
 	async Op workflow V
 
@@ -772,14 +772,14 @@ namespace n:
 `
 	const at = "/worker:w/namespace:n"
 	want := []string{
-		"activityCall nexusOperation:S.Op" + at + " -> activity:A" + at,
 		"activityCall workflow:W" + at + " -> activity:A" + at, // the signal's
 		"activityCall workflow:W" + at + " -> activity:A" + at, // the update's
+		"workflowCall nexusOperation:S.Op" + at + " -> workflow:V" + at,
 		"containment nexusOperation:S.Op" + at + " line 24",
 		"node nexusOperation:S.Op" + at,
 	}
 	g := extractAllowingErrors(t, src)
-	got := routed(g, EdgeActivityCall, EdgeAsyncBacking)
+	got := routed(g, EdgeActivityCall, EdgeWorkflowCall, EdgeAsyncBacking)
 	for _, e := range g.Edges {
 		if e.Kind == EdgeContainment && strings.HasPrefix(e.From, KindNexusOperation+":") {
 			got = append(got, fmt.Sprintf("containment %s line %d", e.From, e.Line))
