@@ -42,14 +42,12 @@ func main() {
 
 ## Registration
 
-- The file that builds the worker and registers its types is its entry file. Once it exists, the `.twf` worker's `@sdk(go, "<path>")` names it, from the module root (else the `.twf` file's directory): add the annotation, or keep its path current when the file moves.
+- The worker's entry file is the one that registers its types, in `RegisterXxxTypes(r worker.Registry)` (and builds the worker, when the code builds one). Once it exists, the `.twf` worker's `@sdk(go, "<path>")` names it, from the directory of the nearest `twf.mod`, else the `.twf` file's directory: add the annotation, or keep its path current when the file moves.
 - `worker.New(client, taskQueue, options)` — the task queue is the namespace worker's `task_queue` option. Several DSL `worker` blocks → several `worker.New` calls in one `main()`.
 - `RegisterWorkflow(fn)` — one call per workflow in the worker's type set.
 - `RegisterActivity(&Activities{...})` — the standard form: every exported method becomes an activity, sharing the dependencies injected on the struct. Register individual functions instead when activities span structs with different dependency sets, or have none.
 - `RegisterActivityWithOptions` with `Name` sets a prefix for struct methods, or the name of a single function.
-- Registration panics on a duplicate type name (`DisableAlreadyRegisteredCheck: true`, tests only) and on an exported struct method that isn't `(context.Context, ...) (..., error)` (`SkipInvalidStructFunctions: true` skips them).
-- Build dependencies at the composition root (`main`, or a per-package `fx.go` in larger apps) — workflows and activity bodies never construct their own.
-- `w.Run(worker.InterruptCh())` drains in-flight tasks on SIGINT/SIGTERM; close the client and injected dependencies after `Run` returns.
+- Running the worker and injecting its dependencies: `temporal-developer` `references/go/go.md` § Worker Setup, § File Organization Best Practice.
 
 The nil `*Activities` a workflow uses ([activity-call.md](./activity-call.md)) only names the activity. The worker registers a real, fully built instance of the same type, and that instance is what runs.
 
@@ -59,7 +57,6 @@ The nil `*Activities` a workflow uses ([activity-call.md](./activity-call.md)) o
 
 ## Coverage
 
-- An **unregistered type fails the task, not the workflow**: the task goes back to the queue for another worker, and latency and waste accumulate silently.
 - Every worker on a task queue must register the **identical** workflow and activity type set, or tasks intermittently land where they can't run. The same holds for Nexus services among the workers that register any: a worker with none starts no Nexus poller, but one lacking a requested service fails the call with a non-retryable `NotFound`. DSL `worker` blocks with different type sets therefore need different task queues.
 - `twf check` previews this at design time: `UNCOVERED_WORKFLOW` / `UNCOVERED_ACTIVITY` / `UNCOVERED_SERVICE` (no worker covers a type) and `IMPLICIT_ROUTING_MISMATCH` (no worker on the caller's queue in the caller's namespace hosts the target — a `worker.New(client, queue, …)` polls `queue` only in its client's namespace). A clean check is the design-time analog of full registration, except for a [family](#per-instance-worker-families): there it matches `"sandbox-{lease.sandboxId}"` against the queue's shape and cannot know whether that instance's worker is polling when the task is scheduled. The runtime guard is the call's `ScheduleToStartTimeout` (`INSTANCE_QUEUE_NO_START_TIMEOUT`). In reverse, each `worker.New`'s registered set populates a `worker` block.
 
