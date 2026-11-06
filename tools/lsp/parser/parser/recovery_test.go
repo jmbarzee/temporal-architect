@@ -200,7 +200,7 @@ activity A(x):
 		name: "a bad line in a sync nexus operation",
 		src: `nexus service Svc:
 	sync Op(x) -> (R):
-		activity A(x)
+		workflow A(x)
 		update Foo # BAD
 		return x
 	async Other workflow P

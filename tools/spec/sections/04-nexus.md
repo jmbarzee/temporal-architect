@@ -19,7 +19,9 @@ sync_operation  ::= 'sync' IDENT params '->' return_type ':' NEWLINE
 - **Async operations** delegate to a named workflow (one-liner, no body). The backing-workflow name
   is a [`qualified_ref`](./14-packages-and-imports.md) — it may carry an optional `pkg.` package
   qualifier when the workflow lives in another package.
-- **Sync operations** have a body using the workflow statement set (activities, queries, control flow, close)
+- **Sync operations** have a body of client forms: a `workflow` start (`detach` included), a
+  `signal` send, `close complete` or `close fail`, control flow and raw lines. The handler runs as a Temporal client with no
+  workflow context, so any other workflow statement is an error naming the sync body
 - **Starts from a nexus service are client starts.** An async operation starts its backing workflow
   with that workflow's `default_options:`; a `workflow` start in a sync body goes through the
   Temporal client, so it takes `workflow_id_conflict_policy` and no `parent_close_policy` (see
@@ -36,7 +38,7 @@ The service IDENT is the Nexus service name and each operation IDENT its operati
 nexus service OrderService:
 	async PlaceOrder workflow ProcessOrder
 	sync GetStatus(orderId: string) -> (Status):
-		activity FetchStatus(orderId) -> status
+		workflow LookupStatus(orderId) -> status
 		close complete(status)
 ```
 
@@ -89,9 +91,7 @@ endpoint, or its own access boundary, put it on its own task queue.
 
 An endpoint's [`allowed_caller_namespaces`](./03-workers-and-namespaces.md#endpoint-options) lists
 the namespaces a call through it may originate in. A call's origin namespaces are those hosting the
-calling workflow, or, in a sync operation body, those hosting the enclosing service — a
-design-level origin, since a sync handler has no workflow Nexus client. Each origin the list omits
-raises `NEXUS_CALLER_NOT_ALLOWED` at the call site. The check needs only the endpoint and the
+calling workflow. Each origin the list omits raises `NEXUS_CALLER_NOT_ALLOWED` at the call site. The check needs only the endpoint and the
 caller: it runs whether or not the called service resolves, so a call into an external service is
 checked too.
 

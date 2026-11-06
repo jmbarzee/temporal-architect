@@ -6,7 +6,7 @@
 nexus service PaymentsService:
 	async ProcessPayment workflow ProcessPaymentWorkflow
 	sync GetPaymentStatus(paymentId: string) -> (PaymentStatus):
-		activity LookupPayment(paymentId) -> status
+		workflow LookupPayment(paymentId) -> status
 		close complete(status)
 
 nexus service NotificationsService:
@@ -61,10 +61,14 @@ activity DoLocalWork(data: Data) -> (LocalResult):
 activity AlertTimeout(data: Data):
 	alert(data)
 
-activity LookupPayment(paymentId: string) -> (PaymentStatus):
+activity FetchPaymentStatus(paymentId: string) -> (PaymentStatus):
 	return lookup(paymentId)
 
 # --- Target workflows ---
+
+workflow LookupPayment(paymentId: string) -> (PaymentStatus):
+	activity FetchPaymentStatus(paymentId) -> status
+	close complete(status)
 
 workflow ProcessPaymentWorkflow(payment: Payment) -> (PaymentResult):
 	id_scheme: "payment-{payment.id}"
@@ -96,10 +100,11 @@ activity SendPaymentConfirmation(email: string, data: PaymentResult):
 
 worker paymentProcessingWorker:
 	workflow ProcessPaymentWorkflow
+	workflow LookupPayment
 	activity ValidatePaymentDetails
 	activity ChargePaymentMethod
 	activity RecordPaymentTransaction
-	activity LookupPayment
+	activity FetchPaymentStatus
 	nexus service PaymentsService
 
 worker notificationWorker:

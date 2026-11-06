@@ -120,7 +120,7 @@ func TestReservedNameDeclarations(t *testing.T) {
 `,
 		"sync nexus param": `nexus service Svc:
 	sync Op(parent: P) -> (R):
-		activity Do(parent)
+		workflow Do(parent)
 `,
 	} {
 		t.Run(name, func(t *testing.T) {

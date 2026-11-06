@@ -18,8 +18,11 @@ var workflowLineContexts = []struct{ name, src string }{
 	{"for", "workflow P(x):\n\tfor (i in x):\n\t\t%s\n\tclose complete(x)\n"},
 	{"await all", "workflow P(x):\n\tawait all:\n\t\t%s\n\tclose complete(x)\n"},
 	{"await one case", "workflow P(x):\n\tawait one:\n\t\ttimer(1m):\n\t\t\t%s\n\tclose complete(x)\n"},
-	{"sync nexus operation", "nexus service Svc:\n\tsync Op(x) -> (R):\n\t\t%s\n\t\treturn x\n"},
 }
+
+// syncLineContext places a line, at %s, in a sync nexus operation body, inside
+// a for loop so break and continue belong.
+const syncLineContext = "nexus service Svc:\n\tsync Op(x) -> (R):\n\t\tfor (i in x):\n\t\t\t%s\n\t\treturn x\n"
 
 // activityLineContexts place a line, at %s, in the bodies that hold activity
 // statements, inside a for loop so break and continue belong.
@@ -63,6 +66,18 @@ var shortStatements = []struct{ line, what string }{
 // activityShortStatements are the fixed-form statements an activity body holds.
 var activityShortStatements = shortStatements[:2]
 
+// syncShortStatements are the fixed-form statements a sync nexus operation body
+// holds: control flow and the client forms.
+var syncShortStatements = []struct{ line, what string }{
+	{"break", "break"},
+	{"continue", "continue"},
+	{"close complete(x)", "close"},
+	{"close fail", "close"},
+	{"workflow W(x) -> r", "a call"},
+	{"detach workflow W(x)", "a call"},
+	{"signal W.S(x)", "a signal send"},
+}
+
 // A short statement takes nothing after it on its line but a comment or
 // whitespace, in every body that holds it: a trailing token is an error, not a
 // raw statement of its own.
@@ -79,6 +94,7 @@ func TestShortStatementEndsItsLine(t *testing.T) {
 	}
 	run(t, workflowLineContexts, shortStatements)
 	run(t, activityLineContexts, activityShortStatements)
+	run(t, []ctx{{"sync nexus operation", syncLineContext}}, syncShortStatements)
 }
 
 // The declaration lines of a fixed form end their line the same way.

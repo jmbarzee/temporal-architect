@@ -57,11 +57,15 @@ activity GenerateThumbnail(video: Video) -> (Thumbnail):
 
 nexus service PaymentService:
 	sync CheckPaymentStatus(paymentId: string) -> (PaymentStatus):
-		activity GetPaymentStatus(paymentId) -> status
+		workflow LookupPaymentStatus(paymentId) -> status
 		close complete(status)
 
 nexus service AnalyticsService:
 	async TrackEvent workflow TrackEventWorkflow
+
+workflow LookupPaymentStatus(paymentId: string) -> (PaymentStatus):
+	activity GetPaymentStatus(paymentId) -> status
+	close complete(status)
 
 activity GetPaymentStatus(paymentId: string) -> (PaymentStatus):
 	return lookup(paymentId)
@@ -81,6 +85,7 @@ worker orderWorker:
 	activity ValidateOrder
 
 worker paymentWorker:
+	workflow LookupPaymentStatus
 	activity ChargePayment
 	activity GetPaymentStatus
 	nexus service PaymentService
@@ -101,6 +106,7 @@ worker realtimeAnalyticsWorker:
 	activity RecordEvent
 
 worker paymentWorkerSecondary:
+	workflow LookupPaymentStatus
 	activity ChargePayment
 	activity GetPaymentStatus
 	nexus service PaymentService

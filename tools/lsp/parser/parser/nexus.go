@@ -141,7 +141,7 @@ func parseSyncOperation(p *Parser) (*ast.NexusOperation, error) {
 		return nil, err
 	}
 
-	// Parse body with workflow statement set (sync ops can use temporal primitives)
+	// A workflow body restricted to client forms (see syncBodyRejects).
 	p.inSyncNexus = true
 	body, err := p.parseBodyAs(bodyWorkflow)
 	p.inSyncNexus = false
