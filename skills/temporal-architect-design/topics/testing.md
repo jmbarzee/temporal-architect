@@ -2,7 +2,7 @@
 
 > **Example:** [`testing.twf`](./testing.twf)
 
-Tests are authored code, not `.twf`; the author skills write them (Go: `temporal-developer` `references/go/testing.md`). This topic maps the layers and the constructs in a `.twf` to the tests they call for.
+Tests are authored code, not `.twf`; the author skills write them (Go: [SKILL.md Process](../../temporal-architect-author-go/SKILL.md#process), layer 5). This topic maps the layers and the constructs in a `.twf` to the tests they call for.
 
 ## Layers
 
