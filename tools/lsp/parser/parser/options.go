@@ -166,6 +166,10 @@ var optionMisplaced = map[OptionsContext]map[string]misplacedOption{
 		"workflow_id":         workflowIDAtStart,
 		"parent_close_policy": {CodeOptionMisplaced, "a start in a sync nexus operation has no parent workflow, so it takes no parent_close_policy"},
 	},
+	OptionsContextNexusCall: {
+		"retry_policy": {CodeOptionMisplaced, "a nexus call takes no retry_policy; the server retries the operation until its schedule_to_close_timeout"},
+		"priority":     {CodeOptionMisplaced, "a nexus call takes no priority; the Temporal API carries none for a nexus operation"},
+	},
 	OptionsContextWorkflowDefaults: {
 		"workflow_id":         {CodeIDAtStart, "default_options takes no workflow_id; the ID derives from the workflow's id_scheme"},
 		"parent_close_policy": {CodeOptionMisplaced, "call-site-only option key not allowed in default_options: parent_close_policy"},
@@ -181,8 +185,8 @@ func schemaWith(base map[string]*optionSchema, key string, sch *optionSchema) ma
 
 var nexusCallOptionSchema = map[string]*optionSchema{
 	"schedule_to_close_timeout": {valueType: "duration"},
-	"retry_policy":              {valueType: "nested", nested: retryPolicySchema},
-	"priority":                  {valueType: "nested", nested: prioritySchema},
+	"schedule_to_start_timeout": {valueType: "duration"},
+	"start_to_close_timeout":    {valueType: "duration"},
 }
 
 var endpointOptionSchema = map[string]*optionSchema{

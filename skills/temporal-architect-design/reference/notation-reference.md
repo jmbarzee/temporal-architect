@@ -51,20 +51,20 @@ A clean `twf check` requires none of these, but the design must reason about the
 | Key | Attaches to | Why it matters |
 |-----|-------------|----------------|
 | `task_queue` | activity, workflow | Routing — pins the call to a worker pool (capability, isolation, region) |
-| `start_to_close_timeout` | activity | Bounds a single attempt; required in practice for any real activity |
+| `start_to_close_timeout` | activity, nexus | Bounds a single activity attempt (required in practice) or a started async operation |
 | `schedule_to_close_timeout` | activity, nexus | Total time budget across queueing + attempts |
-| `schedule_to_start_timeout` | activity | Tolerance for queue wait before a worker picks it up |
+| `schedule_to_start_timeout` | activity, nexus | Tolerance for the wait before a worker picks it up (activity) or the handler starts the operation (nexus) |
 | `heartbeat_timeout` | activity | Worker-death detection for long activities (pairs with `heartbeat()`) |
-| `retry_policy` | activity, workflow, nexus | `initial_interval`, `backoff_coefficient`, `maximum_interval`, `maximum_attempts`, `non_retryable_error_types` |
+| `retry_policy` | activity, workflow | `initial_interval`, `backoff_coefficient`, `maximum_interval`, `maximum_attempts`, `non_retryable_error_types` |
 | `workflow_execution_timeout` / `workflow_run_timeout` / `workflow_task_timeout` | workflow | Total / per-run / per-task bounds |
 | `parent_close_policy` | workflow (child start) | Child lifecycle when parent closes: `TERMINATE` (default), `REQUEST_CANCEL`, `ABANDON` |
 | `workflow_id_reuse_policy` | workflow | Start onto a *closed* ID: `ALLOW_DUPLICATE`, `ALLOW_DUPLICATE_FAILED_ONLY`, `REJECT_DUPLICATE` |
 | `workflow_id_conflict_policy` | workflow (client start, defaults) | Start onto a *running* ID: `FAIL`, `USE_EXISTING`, `TERMINATE_EXISTING` ([workflow-id-schemes.md](../topics/workflow-id-schemes.md#start-collisions)) |
-| `priority` | activity, workflow, nexus | Relative dispatch priority |
+| `priority` | activity, workflow | Relative dispatch priority |
 
 - Each key appears at most once per options block (`DUPLICATE_OPTION_KEY`).
 - **Start kind decides the workflow keys.** A child start (workflow body or handler) takes `parent_close_policy`, not `workflow_id_conflict_policy`; a client start (sync nexus body, `async` op) the reverse (`OPTION_MISPLACED`). Temporal's deprecated `TERMINATE_IF_RUNNING` is not a value: write `ALLOW_DUPLICATE` + `TERMINATE_EXISTING`.
-- `task_queue` is not a Nexus call option — Nexus routing comes from the endpoint. A workflow **ID** is never a call option: a start's ID derives from the child type's `id_scheme:`, if it has one ([child-workflows.md](../topics/child-workflows.md#workflow-id-design)).
+- A Nexus call takes only the three timeouts: `task_queue` is not an option (routing comes from the endpoint), and `retry_policy` and `priority` are `OPTION_MISPLACED` (the server retries until `schedule_to_close_timeout`). A workflow **ID** is never a call option: a start's ID derives from the child type's `id_scheme:`, if it has one ([child-workflows.md](../topics/child-workflows.md#workflow-id-design)).
 - There is no `cron_schedule` key (rejected as `unknown option key`); recurring starts are Temporal Schedules, platform configuration outside TWF ([timers-scheduling.md](../topics/timers-scheduling.md#schedules-cron-workflows)).
 - **Handler declarations** take their own set: signal and update admit `unfinished_policy` (`abandon` | `warn_and_abandon`, the default); all three admit `description` ([signals-queries-updates.md](../topics/signals-queries-updates.md#handler-options)).
 - **Worker instantiations** in a `namespace` take their own set: `task_queue` (required) and `versioning` (`none` / `build_id` / `deployment`) as the design-level strategy key, plus the worker options every Tier-1 SDK has ([task-queues.md](../topics/task-queues.md#worker-options)).
