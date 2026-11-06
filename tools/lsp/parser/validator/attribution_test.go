@@ -160,13 +160,16 @@ func TestCallerFileFromHandlerAndSyncOp(t *testing.T) {
 `},
 		namedSource{"svc.twf", `nexus service Svc:
 	sync Op(x: int) -> (int):
-		activity Act(x) -> y
+		workflow Run(x) -> y
 			options:
 				task_queue: "act-q"
 		close complete(y)
 `},
 		namedSource{"targets.twf", `activity Act(x: int) -> (int):
 	return x
+
+workflow Run(x: int) -> (int):
+	close complete(x)
 `},
 		namedSource{"deploy.twf", `worker parentWorker:
 	workflow Parent
@@ -176,6 +179,7 @@ worker svcWorker:
 
 worker actWorker:
 	activity Act
+	workflow Run
 
 namespace alpha:
 	worker parentWorker

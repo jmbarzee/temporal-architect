@@ -179,16 +179,16 @@ func TestAddMissingDefinitionSignatureFromItsOwnCall(t *testing.T) {
 	}
 }
 
-// TestAddMissingDefinitionSignatureInNexusOperation: an activity called from a
-// sync nexus operation's body gets that call's signature.
+// TestAddMissingDefinitionSignatureInNexusOperation: a workflow started from a
+// sync nexus operation's body gets that start's signature.
 func TestAddMissingDefinitionSignatureInNexusOperation(t *testing.T) {
-	src := "nexus service S:\n\tsync Op(x: string) -> (R):\n\t\tactivity Missing(x) -> r\n\t\treturn r\n"
+	src := "nexus service S:\n\tsync Op(x: string) -> (R):\n\t\tworkflow Missing(x) -> r\n\t\treturn r\n"
 	r := protocol.Range{Start: protocol.Position{Line: 2}, End: protocol.Position{Line: 2, Character: 200}}
-	actions := codeActions(t, src, r, "Add missing activity 'Missing'")
+	actions := codeActions(t, src, r, "Add missing workflow 'Missing'")
 	if len(actions) != 1 {
 		t.Fatalf("want one action, got %+v", actions)
 	}
-	if got := actions[0].Edit.Changes[renameURI][0].NewText; !strings.Contains(got, "\nactivity Missing(x) -> (Result):\n\t# TODO: implement\n") {
+	if got := actions[0].Edit.Changes[renameURI][0].NewText; !strings.Contains(got, "\nworkflow Missing(x) -> (Result):\n") {
 		t.Errorf("stub %q", got)
 	}
 }

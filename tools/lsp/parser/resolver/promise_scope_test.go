@@ -57,12 +57,6 @@ func TestPromiseScope(t *testing.T) {
 	promise p <- workflow Q(id)
 	close complete()
 `, false},
-		{"sync nexus operation body", `nexus service Svc:
-	sync Op(id: string) -> (string):
-		promise p <- workflow Q(id)
-		await p -> r
-		close complete(r)
-`, false},
 		{"use after the block that binds it", `workflow P(id: string, flag: bool):
 	if (flag):
 		promise p <- workflow Q(id)

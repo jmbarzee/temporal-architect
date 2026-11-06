@@ -1924,14 +1924,14 @@ func TestNexusServiceDef(t *testing.T) {
 	input := `nexus service OrderService:
 	async PlaceOrder workflow ProcessOrder
 	sync GetStatus(orderId: string) -> (Status):
-		activity FetchStatus(orderId) -> status
+		workflow LookupStatus(orderId) -> status
 		close complete(status)
 
 workflow ProcessOrder(order: Order) -> (Result):
 	close complete(Result{})
 
-activity FetchStatus(orderId: string) -> (Status):
-	return getStatus(orderId)
+workflow LookupStatus(orderId: string) -> (Status):
+	close complete(Status{})
 `
 	file, err := ParseFile(input)
 	if err != nil {

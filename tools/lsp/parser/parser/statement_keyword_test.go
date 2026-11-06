@@ -176,3 +176,41 @@ func TestMisplacedKeywordErrors(t *testing.T) {
 		})
 	}
 }
+
+// A sync nexus operation body holds only client forms and control flow: every
+// other workflow statement is one error at its keyword, nested or not.
+func TestSyncBodyRejects(t *testing.T) {
+	forms := []struct{ line, kw string }{
+		{"activity A(x)", "activity"},
+		{"nexus Ep Svc.Op(x) -> r", "nexus"},
+		{"detach nexus Ep Svc.Op(x)", "detach nexus"},
+		{"await timer(1m)", "await"},
+		{"await one:\n\ttimer(1m):\n\t\treturn x", "await"},
+		{"await all:\n\tawait timer(1m)", "await"},
+		{"promise p <- workflow W(x)", "promise"},
+		{"await signal S", "await"},
+		{"await update U", "await"},
+		{"condition Ready", "condition"},
+		{"state:\n\tcondition Ready", "state"},
+		{"set Ready", "set"},
+		{"unset Ready", "unset"},
+		{"timer(1m)", "timer"},
+	}
+	blocks := []struct{ name, src, indent string }{
+		{"body", "nexus service Svc:\n\tsync Op(x) -> (R):\n\t\tworkflow W(x)\n\t\t%s\n\t\treturn x\n", "\t\t"},
+		{"for", "nexus service Svc:\n\tsync Op(x) -> (R):\n\t\tfor (i in x):\n\t\t\t%s\n\t\treturn x\n", "\t\t\t"},
+	}
+	for _, b := range blocks {
+		for _, f := range forms {
+			t.Run(b.name+"/"+f.line, func(t *testing.T) {
+				_, errs := ParseFileAll(fmt.Sprintf(b.src, strings.ReplaceAll(f.line, "\n", "\n"+b.indent)))
+				if len(errs) != 1 {
+					t.Fatalf("got %d errors, want 1: %v", len(errs), errs)
+				}
+				if want := f.kw + " is not allowed in a sync nexus operation body"; errs[0].Msg != want {
+					t.Errorf("got %q, want %q", errs[0].Msg, want)
+				}
+			})
+		}
+	}
+}

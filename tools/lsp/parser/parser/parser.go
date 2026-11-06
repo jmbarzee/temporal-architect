@@ -157,6 +157,22 @@ var temporalKeywords = map[token.TokenType]bool{
 	token.CLOSE:     true,
 }
 
+// syncBodyRejects are the workflow keywords a sync nexus operation body
+// rejects: its handler runs as a Temporal client, with no workflow context, so
+// it holds only client forms — a workflow start, a signal send, close — and
+// control flow.
+var syncBodyRejects = map[token.TokenType]bool{
+	token.ACTIVITY:  true,
+	token.NEXUS:     true,
+	token.AWAIT:     true,
+	token.TIMER:     true,
+	token.PROMISE:   true,
+	token.CONDITION: true,
+	token.SET:       true,
+	token.UNSET:     true,
+	token.STATE:     true,
+}
+
 // ParseFile parses a .twf source string into an AST File. It stops at the
 // first error. A structural lexer error at or before the parser's error is
 // reported in its place: bad indentation misleads the parser, so the error it
@@ -423,6 +439,14 @@ func (p *Parser) parseStatement() (ast.Statement, error) {
 	var ok bool
 	switch p.bodyCtx {
 	case bodyWorkflow:
+		if p.inSyncNexus {
+			if syncBodyRejects[p.current.Type] {
+				return nil, p.errorf("%s is not allowed in a sync nexus operation body", p.current.Literal)
+			}
+			if p.current.Type == token.DETACH && p.peek.Type == token.NEXUS {
+				return nil, p.errorf("detach nexus is not allowed in a sync nexus operation body")
+			}
+		}
 		parseFn, ok = workflowStmtParsers[p.current.Type]
 	case bodyQuery, bodyActivity:
 		if p.current.Type == token.ID_SCHEME {

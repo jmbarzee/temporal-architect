@@ -192,13 +192,8 @@ func TestWorkflowStartKind(t *testing.T) {
 nexus service Svc:
 	sync Op(a: A) -> (R):
 		workflow T(a) -> r
-		detach workflow T(a)
-		await workflow T(a)
-		await one:
-			workflow T(a):
-				close complete(r)
-			timer(1m):
-				close complete(r)
+		if (r):
+			detach workflow T(a)
 		close complete(r)
 `)
 	if len(errs) > 0 {
@@ -225,9 +220,9 @@ nexus service Svc:
 	collect(file.Definitions[1].(*ast.NexusServiceDef).Operations[0].Body)
 	want := []ast.StartKind{
 		ast.StartChild, ast.StartChild, // workflow body: plain, promise
-		ast.StartChild,                                                     // signal handler: detach
-		ast.StartChild,                                                     // update handler: plain
-		ast.StartClient, ast.StartClient, ast.StartClient, ast.StartClient, // sync body: plain, detach, await, await-one case
+		ast.StartChild,                   // signal handler: detach
+		ast.StartChild,                   // update handler: plain
+		ast.StartClient, ast.StartClient, // sync body: plain, detach in an if
 	}
 	if len(got) != len(want) {
 		t.Fatalf("got %d starts, want %d", len(got), len(want))
