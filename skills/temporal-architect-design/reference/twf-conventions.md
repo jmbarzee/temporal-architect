@@ -24,7 +24,7 @@ A clause-less file is the implicit default package, so single-package designs ne
 
 ## Worker implementation: `@sdk`
 
-An `@sdk` annotation above a worker names the SDK it is written in and, once code exists, its entry file — the one file where the worker is built and its types registered:
+An `@sdk` annotation above a worker names the SDK it is written in and, once code exists, its entry file — the file that registers the worker's types (and builds it, when the code builds one):
 
 ```twf
 @sdk(go, "cmd/order-worker/main.go")

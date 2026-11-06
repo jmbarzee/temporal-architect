@@ -24,8 +24,8 @@ Scan for:
 - package layout — where workflows/activities live, proto/ -> gen/ -> lib/ splits
 - Temporal SDK usage — workflow/activity/nexus call sites, signal/query/update handlers
 - registration — the per-slice shared worker -> task queue -> registered types mapping,
-  and each worker's entry file, where it is built and its types registered (record the
-  mapping and the file, not the wiring code)
+  and each worker's entry file, which registers its types and builds it when the code
+  builds one (record the mapping and the file, not the wiring code)
 - .twf/.tf presence, including .twf `package` / `import` layout and every `twf.mod`
   location — or that none exists while packaged .twf files do (they are all ignored)
 - `@sdk` annotations on .twf workers — the path points straight at the worker's entry file
