@@ -67,9 +67,9 @@ annotation anywhere else is `ANNOTATION_MISPLACED`.
 - **The SDK belongs to the worker.** A worker implementation is written in one SDK. Its workflows,
   activities and Nexus services take that SDK by being registered on it; a definition carries no
   SDK of its own.
-- **The path is the worker's entry file**: the one file where the worker is built and its types
-  registered, so an agent finds every registered definition's code from there. It is
-  `/`-separated, may use `..`, and is read from the module root — the directory of the nearest
+- **The path is the worker's entry file**: the file that registers the worker's types (and builds
+  it, when the code builds one), so an agent finds every registered definition's code from there.
+  It is `/`-separated, may use `..`, and is read from the module root — the directory of the nearest
   [`twf.mod`](./15-modules.md) — else from the `.twf` file's directory. An absolute path, a URL, a
   `\`, or an empty path is `INVALID_IMPL_PATH`; a path naming no file is an `IMPL_NOT_FOUND`
   warning, checked only for a `.twf` file on disk.

@@ -101,10 +101,10 @@ Load only what the current layer needs.
 | `workflow_id_reuse_policy` / `workflow_id_conflict_policy` | start-options function; child gets reuse only | [options.md](./reference/options.md#workflow-id-policies) |
 | `activity Name(...)` | activity function / method | [activity-def.md](./reference/activity-def.md) |
 | `worker`, namespace worker `options:` | `worker.New`, `worker.Options` | [worker.md](./reference/worker.md) |
-| `nexus service Name:` | Nexus service + handlers | [nexus-service-def.md](./reference/nexus-service-def.md) |
+| `nexus service Name:`, `async` / `sync` operations | `nexus.NewService`; `temporalnexus.NewWorkflowRunOperation` / `nexus.NewSyncOperation` | [nexus-service-def.md](./reference/nexus-service-def.md) |
 | `activity Name(args) -> r` | `workflow.ExecuteActivity` | [activity-call.md](./reference/activity-call.md) |
 | `workflow Name(args) -> r` | `workflow.ExecuteChildWorkflow` | [workflow-call.md](./reference/workflow-call.md) |
-| `detach workflow ...` | child: confirm start, skip result | [detach.md](./reference/detach.md) |
+| `detach workflow ...` / `detach nexus ...` | confirm start, skip result | [detach.md](./reference/detach.md) |
 | `nexus Endpoint Service.Op(args) -> r` | `NexusClient.ExecuteOperation` | [nexus.md](./reference/nexus.md) |
 | `signal handle.Name(args)` / `signal Type.Name(args)` + `id:` | `SignalChildWorkflow` / `SignalExternalWorkflow` | [signal-send.md](./reference/signal-send.md) |
 | `signal Name(params):` | signal-channel loop: body, then `arrivals.add` | [signal-handler.md](./reference/signal-handler.md) |

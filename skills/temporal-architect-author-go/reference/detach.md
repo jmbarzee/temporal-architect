@@ -36,4 +36,6 @@ if err := fut.GetNexusOperationExecution().Get(ctx, nil); err != nil {
 // Never fut.Get() — that waits for the result
 ```
 
+`detach nexus` rests on `CancellationType`, which the SDK marks Experimental.
+
 When the handler finishes after the caller has closed, its completion callback fails and is dropped.
