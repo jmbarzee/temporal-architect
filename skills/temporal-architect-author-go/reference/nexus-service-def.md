@@ -2,8 +2,11 @@
 
 ```twf
 nexus service BillingService:
-	operation ChargePayment(PaymentRequest) -> (PaymentResult)
-	operation RefundPayment(RefundRequest) -> (RefundResult)
+	async ChargePayment workflow BillingChargeWorkflow
+	sync RefundPayment(req: RefundRequest) -> (RefundResult):
+		signal BillingChargeWorkflow.Refund(req)
+			id: req.chargeId
+		close complete(RefundResult{status: "requested"})
 ```
 
 ```go
@@ -29,9 +32,13 @@ var ChargePaymentOperation = temporalnexus.NewWorkflowRunOperation(
     },
 )
 
-// Sync: direct implementation, or temporalnexus.GetClient(ctx) for Temporal client calls
-var RefundPaymentOperation = nexus.NewSyncOperation(RefundPaymentOp, func(ctx context.Context, input RefundRequest, options nexus.StartOperationOptions) (RefundResult, error) {
-    return RefundResult{}, nil
+// Sync: the body runs in the handler, with a Temporal client, not a workflow context
+var RefundPaymentOperation = nexus.NewSyncOperation(RefundPaymentOp, func(ctx context.Context, req RefundRequest, options nexus.StartOperationOptions) (RefundResult, error) {
+    err := temporalnexus.GetClient(ctx).SignalWorkflow(ctx, req.ChargeID, "", "Refund", req)
+    if err != nil {
+        return RefundResult{}, err
+    }
+    return RefundResult{Status: "requested"}, nil
 })
 ```
 
@@ -47,12 +54,32 @@ w.RegisterNexusService(service)
 w.RegisterWorkflow(BillingChargeWorkflow) // handler workflows must also be registered
 ```
 
-## Sync vs async
+## async
 
-The choice is static — the builder function, not runtime conditions.
+`async Op workflow Name` → `temporalnexus.NewWorkflowRunOperation(Op, Name, getOptions)`: any duration; the caller gets a completion callback, with cancellation propagation and re-attachment via operation token. A qualified `workflow orders.Name` is `orders.Name` from that package's import ([workflow-call.md](./workflow-call.md)).
 
-- **Sync** (`nexus.NewSyncOperation`) — must finish within 10 seconds: short computations, querying/signaling/updating a workflow, direct calls to external services or databases, or (experimental) starting a standalone activity with `client.ExecuteActivity`, its activity ID derived from the Nexus request ID. On handler timeout the caller's Nexus machinery retries until `ScheduleToCloseTimeout`.
-- **Async** (`temporalnexus.NewWorkflowRunOperation`) — any duration, when the operation is a Temporal workflow. The caller gets a completion callback; supports cancellation propagation and re-attachment via operation token.
+`NewWorkflowRunOperation` takes `func(workflow.Context, I) (O, error)`: one input. A backing workflow with several params takes `NewWorkflowRunOperationWithOptions` with a `Handler`, whose input packs the params into one struct (#415) and unpacks them into `ExecuteUntypedWorkflow`:
+
+```go
+var ShipOperation = temporalnexus.MustNewWorkflowRunOperationWithOptions(temporalnexus.WorkflowRunOperationOptions[ShipInput, ShipResult]{
+    Name: ShipOp,
+    Handler: func(ctx context.Context, in ShipInput, options nexus.StartOperationOptions) (temporalnexus.WorkflowHandle[ShipResult], error) {
+        return temporalnexus.ExecuteUntypedWorkflow[ShipResult](ctx, options, ShipOrderStartOptions(in.OrderID), ShipOrder, in.OrderID, in.Address)
+    },
+})
+```
+
+## sync
+
+`sync Op(params) -> (T):` → `nexus.NewSyncOperation(Op, func(ctx, input, options) (T, error))`. It must finish within 10 seconds; on handler timeout the caller's Nexus machinery retries until `ScheduleToCloseTimeout`. The body runs outside any workflow, so each statement maps to a client call or plain Go:
+
+| Statement in a sync body | Go |
+|---|---|
+| `workflow Name(args)` (a client start) | `temporalnexus.GetClient(ctx).ExecuteWorkflow(ctx, NameStartOptions(...), Name, args...)` ([workflow-call.md](./workflow-call.md)) |
+| `signal Type.Name(args)` + `id:` | `temporalnexus.GetClient(ctx).SignalWorkflow(ctx, workflowID, runID, "Name", arg)`; args pack as in [signal-send.md](./signal-send.md) |
+| `close complete(r)` / `close fail(e)` | `return r, nil` / `return T{}, err` |
+| `if` / `for` / `switch` / `break` / `continue`, `x = expr` | Go equivalents ([control-flow.md](./control-flow.md)) |
+| `activity`, `nexus`, `await`, `promise`, `detach` | no faithful mapping (#405): a handler has no workflow context to schedule them on |
 
 ## Naming contract
 
