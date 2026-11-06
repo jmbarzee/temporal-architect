@@ -30,6 +30,7 @@ if paymentErr != nil {
 ```
 
 - Each branch runs in its own `wg.Go` goroutine, whatever its kind (activity, child workflow, nexus); `wg.Wait(ctx)` blocks until all finish — no completion predicates.
+- A `detach` call's branch completes once the call has started ([detach.md](./detach.md)).
 - Check each branch's error after `wg.Wait`. For fail-fast, run the branches under `workflow.WithCancel` and cancel on the first error.
 
 ## Fan-out

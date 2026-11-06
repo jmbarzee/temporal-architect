@@ -2,9 +2,9 @@
 
 Bugs cluster where patterns combine. Two worked compositions:
 
-## Pattern 1: Update handler + condition + selector (HumanReview)
+## Pattern 1: Update handler + condition + await one (HumanReview)
 
-An update handler sets a condition that races against a timer in a selector: "approve within the deadline, or auto-escalate."
+An update handler sets a condition that races against a timer in an `await one`: "approve within the deadline, or auto-escalate."
 
 ### DSL
 
@@ -46,43 +46,38 @@ func HumanReview(ctx workflow.Context, docId string) (ReviewResult, error) {
     }
 
     timerCtx, cancelTimer := workflow.WithCancel(ctx)
+    timer := workflow.NewTimer(timerCtx, 48*time.Hour)
+    if err := workflow.Await(ctx, func() bool { return reviewComplete || timer.IsReady() }); err != nil {
+        return ReviewResult{}, err
+    }
+    yielded := false // let a same-task update's handler run first (await-one.md)
+    workflow.Go(ctx, func(workflow.Context) { yielded = true })
+    if err := workflow.Await(ctx, func() bool { return yielded }); err != nil {
+        return ReviewResult{}, err
+    }
 
-    sel := workflow.NewSelector(ctx)
-
-    condCh := workflow.NewChannel(ctx)
-    workflow.Go(ctx, func(gCtx workflow.Context) {
-        if err := workflow.Await(gCtx, func() bool { return reviewComplete }); err != nil {
-            return // context cancelled
-        }
-        condCh.Send(gCtx, true)
-    })
-    sel.AddReceive(condCh, func(ch workflow.ReceiveChannel, more bool) {
-        ch.Receive(ctx, nil)
+    if reviewComplete { // listed first, so it wins a tie
         cancelTimer()
-    })
-
-    sel.AddFuture(workflow.NewTimer(timerCtx, 48*time.Hour), func(f workflow.Future) {
-        if err := f.Get(ctx, nil); err != nil {
-            return // timer cancelled — review won the race
-        }
+    } else {
         var a *Activities
-        _ = workflow.ExecuteActivity(ctx, a.Escalate, docId).Get(ctx, nil)
+        if err := workflow.ExecuteActivity(ctx, a.Escalate, docId).Get(ctx, nil); err != nil {
+            return ReviewResult{}, err
+        }
         result = "escalated"
-    })
+    }
 
-    sel.Select(ctx)
-
-    _ = workflow.Await(ctx, func() bool { return workflow.AllHandlersFinished(ctx) })
-
+    if err := workflow.Await(ctx, func() bool { return workflow.AllHandlersFinished(ctx) }); err != nil {
+        return ReviewResult{}, err
+    }
     return ReviewResult{Decision: result}, nil
 }
 ```
 
 ### Why this is tricky
 
-1. **Update handler must be registered before `sel.Select`** — if the selector blocks first, updates arriving during the race window are rejected
-2. **Condition is not a future** — it must be bridged to the selector via a goroutine + channel ([await-one.md](./await-one.md#cases))
-3. **Cancel the timer in the winning handler** — losing cases keep running ([await-one.md](./await-one.md#notes))
+1. **Update handler must be registered before the race blocks** — updates arriving before registration are rejected
+2. **The condition is read, not taken** — it is a `bool` in the `Await` predicate; nothing waits on the update itself, so it needs no arrival queue ([await-one.md](./await-one.md#cases))
+3. **Cancel the losing timer** — losing cases keep running ([await-one.md](./await-one.md#notes))
 4. **`AllHandlersFinished` wait before return** — without this, an in-flight update handler is abandoned when the workflow completes (see [update-handler.md](./update-handler.md))
 
 ## Pattern 2: Signal-set condition vs timer with a shared tail (ManageRetention)
@@ -108,5 +103,5 @@ workflow ManageRetention(docId: string, retentionDays: int):
 
 The Go race is Pattern 1's, with the signal handled by a looping goroutine ([signal-handler.md](./signal-handler.md)) instead of an update handler. Two things differ:
 
-1. **The signal goroutine and the condition goroutine share `cancelled`** — safe under Temporal's cooperative scheduling, a data race in ordinary Go
-2. **Both branches run the same tail** — make one `DeleteDocument` call after `sel.Select` rather than one per handler
+1. **The signal goroutine and the workflow's `Await` predicate share `cancelled`** — safe under Temporal's cooperative scheduling, a data race in ordinary Go
+2. **Both branches run the same tail** — make one `DeleteDocument` call after the race rather than one per case

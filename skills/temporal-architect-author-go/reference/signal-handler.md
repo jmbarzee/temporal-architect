@@ -16,6 +16,7 @@ type PaymentReceivedSignal struct {
 func OrderWorkflow(ctx workflow.Context, orderId string) (OrderResult, error) {
     var status string
     var lastTransactionId string
+    var paymentsReceived arrivals[PaymentReceivedSignal] // only if the design waits on it
 
     paymentReceivedCh := workflow.GetSignalChannel(ctx, "PaymentReceived")
     workflow.Go(ctx, func(gCtx workflow.Context) {
@@ -24,6 +25,7 @@ func OrderWorkflow(ctx workflow.Context, orderId string) (OrderResult, error) {
             paymentReceivedCh.Receive(gCtx, &sig)
             status = "payment_received"
             lastTransactionId = sig.TransactionId
+            paymentsReceived.add(sig)
         }
     })
     // ... workflow body
@@ -32,10 +34,7 @@ func OrderWorkflow(ctx workflow.Context, orderId string) (OrderResult, error) {
 
 - Params become one struct; the signal name is the channel name. No params → `Receive(gCtx, nil)`.
 - `decimal` → `float64` by default; for money prefer `shopspring/decimal` or integer cents.
-- Delivery pattern:
-  - **Goroutine loop** (above, the common case) — every arrival is handled, independent of the main flow.
-  - **Inline blocking `Receive`** — the workflow pauses for exactly one signal.
-  - **`Selector.AddReceive`** — racing the signal against other events, reading the same channel ([await-one.md](./await-one.md)).
+- The loop runs every arrival's body, whether or not anything waits, then adds the arrival to the signal's queue. It is the channel's only reader: `await signal`, a signal case and a signal promise take from the queue ([await-signal.md](./await-signal.md)), never from the channel.
 
 ## Handler options
 
@@ -58,7 +57,7 @@ cancelCh := workflow.GetSignalChannelWithOptions(ctx, "Cancel",
 
 ## Continue-As-New
 
-Signals not drained before `workflow.NewContinueAsNewError` are lost (Go SDK). Trigger CAN from the main workflow thread, never a signal handler, and drain first — with `ReceiveAsync`, or with `selector.HasPending()` + `selector.Select(ctx)` when signals go through a selector:
+Signals not drained before `workflow.NewContinueAsNewError` are lost (Go SDK). Trigger CAN from the main workflow thread, never a signal handler, and drain first with `ReceiveAsync`:
 
 ```go
 for {

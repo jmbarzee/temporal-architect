@@ -66,7 +66,7 @@ Root-down: roots (workflows no other workflow calls as a child) → children →
 |-------|------|-------|-----------|
 | 1a. Types + signatures | Structs, interfaces, signatures with empty bodies; interfaces shaped by the dependency map | `go build` | [types.md](./reference/types.md) |
 | 1b. Activity stubs | Every activity with its real signature and a zero-value body, so workflows can reference it by nil-pointer method value ([activity-call.md](./reference/activity-call.md)) | `go build` | [activity-def.md](./reference/activity-def.md) |
-| 2. Workflow bodies | Activity and child calls, signals, timers, selectors | `go build` | [workflow-def.md](./reference/workflow-def.md), [composite-patterns.md](./reference/composite-patterns.md) |
+| 2. Workflow bodies | Activity and child calls, signals, timers, races | `go build` | [workflow-def.md](./reference/workflow-def.md), [composite-patterns.md](./reference/composite-patterns.md) |
 | 3. Activity impl | Thin methods + concrete implementations behind interfaces | `go build` | [activity-def.md](./reference/activity-def.md#activity-implementation-pattern) |
 | 4. Worker wiring | The entry file's `RegisterXxxTypes(r worker.Registry)`, registering the worker's types; the process builds dependencies, calls it on its `worker.New`, and runs | `go build`, `twf check` | [worker.md](./reference/worker.md) |
 | 5. Tests | Floor: one happy-path `testsuite.WorkflowTestSuite` test per workflow, registering through `RegisterXxxTypes`. Non-trivial designs: three layers | `go test` | [three-layer-testing.md](./reference/three-layer-testing.md) |
@@ -107,14 +107,15 @@ Load only what the current layer needs.
 | `detach workflow ...` | child: confirm start, skip result | [detach.md](./reference/detach.md) |
 | `nexus Endpoint Service.Op(args) -> r` | `NexusClient.ExecuteOperation` | [nexus.md](./reference/nexus.md) |
 | `signal handle.Name(args)` / `signal Type.Name(args)` + `id:` | `SignalChildWorkflow` / `SignalExternalWorkflow` | [signal-send.md](./reference/signal-send.md) |
-| `signal Name(params):` | signal channel + selector | [signal-handler.md](./reference/signal-handler.md) |
+| `signal Name(params):` | signal-channel loop: body, then `arrivals.add` | [signal-handler.md](./reference/signal-handler.md) |
 | `query Name(params) -> (T):` | `workflow.SetQueryHandler` | [query-handler.md](./reference/query-handler.md) |
-| `update Name(params) -> (T):` | `workflow.SetUpdateHandler` | [update-handler.md](./reference/update-handler.md) |
+| `update Name(params) -> (T):` | `workflow.SetUpdateHandler`: body, then `arrivals.add` | [update-handler.md](./reference/update-handler.md) |
+| `await signal\|update Name -> (...)` | `arrivals.take` | [await-signal.md](./reference/await-signal.md) |
 | `await timer(d)` | `workflow.Sleep` | [await-timer.md](./reference/await-timer.md) |
-| `promise p <- ...` | future, deferred `.Get` | [promise.md](./reference/promise.md) |
+| `promise p <- ...` | future, deferred `.Get`; for a signal or update, `workflow.NewFuture` settled from the binding | [promise.md](./reference/promise.md) |
 | `state:` / `condition` / `set` / `unset` | `bool` + `workflow.Await` | [condition.md](./reference/condition.md) |
 | `await all:` | `workflow.Go` + futures | [await-all.md](./reference/await-all.md) |
-| `await one:` | `workflow.NewSelector` | [await-one.md](./reference/await-one.md) |
+| `await one:` | `workflow.Await` on any case ready; first listed wins | [await-one.md](./reference/await-one.md) |
 | `options:` / `default_options:` | `ActivityOptions` / `ChildWorkflowOptions` / `NexusOperationOptions` | [options.md](./reference/options.md) |
 | `if` / `for` / `switch` / `break` / `continue`, `x = expr` | Go equivalents | [control-flow.md](./reference/control-flow.md) |
 | `close complete` / `fail` / `continue_as_new` | `return` / `workflow.NewContinueAsNewError` | [close.md](./reference/close.md) |

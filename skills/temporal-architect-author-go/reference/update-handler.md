@@ -39,6 +39,7 @@ if err != nil {
 
 - Unlike queries, the handler takes `workflow.Context` first, may call activities and other primitives, and may mutate workflow state. It cannot `close` the workflow. The caller blocks until it returns.
 - Register at the very start of the workflow, before any blocking call.
+- If the design waits on the update (`await update`, an update case or promise), the handler adds its arrival to the update's queue just before it returns: `reviews.add(note); return status, nil` ([await-signal.md](./await-signal.md)). The caller gets its result then, not when a waiter takes it, so never hand the arrival over by sending on a `workflow.Channel`: the send blocks the handler until something receives.
 - `unfinished_policy: warn_and_abandon` → `HandlerUnfinishedPolicyWarnAndAbandon` (the SDK default; may be left unset); `abandon` → `HandlerUnfinishedPolicyAbandon`. `description` → `Description` — UI/CLI text, no runtime behavior (Experimental). These are the only two option keys TWF admits.
 
 ## Validators
