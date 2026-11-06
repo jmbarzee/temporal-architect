@@ -42,5 +42,4 @@ func (a *Activities) ProcessLargeFile(ctx context.Context, fileId string) (Proce
 
 - `heartbeat(details)` → `activity.RecordHeartbeat(ctx, details...)` — activities only. Details are arbitrary (struct, map, or the progress index as above).
 - The calling side sets `HeartbeatTimeout` in `ActivityOptions` ([options.md](./options.md)).
-- Call it as often as you like: the SDK throttles sends to `heartbeatTimeout * 0.8`, capped at 60s.
-- **Resume on retry.** Without the `HasHeartbeatDetails` / `GetHeartbeatDetails` prologue every retry restarts from the beginning. `HasHeartbeatDetails` is `false` on the first attempt; the details are the last heartbeat that reached the server (post-throttling), so may trail the last `RecordHeartbeat`.
+- Resume on retry (the prologue above) and heartbeat timing: `temporal-developer` `references/go/patterns.md` § Activity Heartbeat Details, `references/go/gotchas.md` § Heartbeating.

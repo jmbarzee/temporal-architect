@@ -170,7 +170,7 @@ func RegisterActivities(w worker.Worker, a pb.MyServiceActivities) {
 }
 ```
 
-**Client interface** — hand-written, in the implementation package, so activities depend on it rather than the concrete client and tests can mock it ([three-layer-testing.md](./three-layer-testing.md)):
+**Client interface** — hand-written, in the implementation package, so activities depend on it rather than the concrete client and tests can mock it:
 
 ```go
 // client.go
@@ -178,4 +178,17 @@ type MyServiceClient interface {
     Create(ctx context.Context, name string) (id string, err error)
     Delete(ctx context.Context, id string) error
 }
+```
+
+**Mocks.** The activities interface is generated, so its mock must be too: [mockery](https://vektra.github.io/mockery/) generates both mocks from `.mockery.yaml` — the activities mock for workflow tests, the client mock for activity tests:
+
+```yaml
+with-expecter: true
+packages:
+  github.com/myorg/myproject/gen/myservice/v1:   # generated activities interface
+    interfaces:
+      MyServiceActivities:
+  github.com/myorg/myproject/lib/myservice/v1:    # hand-written client interface
+    interfaces:
+      MyServiceClient:
 ```

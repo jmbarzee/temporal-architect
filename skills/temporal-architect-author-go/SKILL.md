@@ -69,7 +69,7 @@ Root-down: roots (workflows no other workflow calls as a child) → children →
 | 2. Workflow bodies | Activity and child calls, signals, timers, races | `go build` | [workflow-def.md](./reference/workflow-def.md), [composite-patterns.md](./reference/composite-patterns.md) |
 | 3. Activity impl | Thin methods + concrete implementations behind interfaces | `go build` | [activity-def.md](./reference/activity-def.md#activity-implementation-pattern) |
 | 4. Worker wiring | The entry file's `RegisterXxxTypes(r worker.Registry)`, registering the worker's types; the process builds dependencies, calls it on its `worker.New`, and runs | `go build`, `twf check` | [worker.md](./reference/worker.md) |
-| 5. Tests | Floor: one happy-path `testsuite.WorkflowTestSuite` test per workflow, registering through `RegisterXxxTypes`. Non-trivial designs: three layers | `go test` | [three-layer-testing.md](./reference/three-layer-testing.md) |
+| 5. Tests | Floor: one happy-path `testsuite.WorkflowTestSuite` test per workflow, registering through `RegisterXxxTypes` | `go test` | `temporal-developer` `references/go/testing.md` |
 | 6. Final | | `go vet` | — |
 
 Then present the code for review.

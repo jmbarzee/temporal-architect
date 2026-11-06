@@ -14,7 +14,7 @@ func (a *Activities) ValidateOrder(ctx context.Context, order Order) (ValidateRe
 
 - Stdlib `context.Context`, not `workflow.Context`. `error` is always the last return; no DSL return type → `func (...) Name(ctx context.Context, params...) error`.
 - The `.twf` body is pseudocode — ask the user when the real logic is ambiguous.
-- Cancellation reaches `ctx` only if the activity heartbeats ([heartbeat.md](./heartbeat.md)). A long-running activity must heartbeat and check `ctx.Done()`; otherwise its goroutine keeps running after Temporal has recorded the timeout.
+- Cancellation reaches `ctx` only through heartbeats: `temporal-developer` `references/go/gotchas.md` § Cancellation.
 
 ## Activity Implementation Pattern
 

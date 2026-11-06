@@ -138,15 +138,6 @@ workflow Cart(customerId: string):
 
 Client start forms differ: signal-with-start rejects `FAIL` (override it to `USE_EXISTING` or `TERMINATE_EXISTING`), and update-with-start requires a conflict policy (supply one when the type declares none). Set `WorkflowExecutionErrorWhenAlreadyStarted: true` in the start-options function — without it `ExecuteWorkflow` returns the existing run instead of the refusal; Nexus forces it on, with-start operations ignore it.
 
-## Timeouts
+## Timeouts and retries
 
-- **`StartToCloseTimeout`** — one activity attempt; resets on each retry. The primary way a worker crash is detected; Temporal recommends always setting it.
-- **`ScheduleToCloseTimeout`** — total wall-clock from scheduling, across all retries; does not reset. Caps total time under exponential backoff.
-- An activity needs at least one of the two — omitting both is a runtime error.
-- **`WorkflowExecutionTimeout`** — the whole execution, including retries and Continue-As-New chains. Set in `client.StartWorkflowOptions` or `workflow.ChildWorkflowOptions`, not in `ActivityOptions`.
-
-## Retry pitfalls
-
-- Activities retry by default, server defaults: initial interval 1s, backoff 2.0, max interval 100s, unlimited attempts. With no `RetryPolicy`, these apply — a common surprise. Workflows do not retry by default.
-- `MaximumAttempts: 1` is one attempt total (no retries); `0` (the default) is unlimited.
-- `BackoffCoefficient: 1.0` gives fixed intervals; the interval is `InitialInterval * BackoffCoefficient^(attempt-1)`.
+`temporal-developer` `references/go/error-handling.md` § Timeout Configuration, § Retry Configuration.

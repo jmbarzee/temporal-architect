@@ -45,4 +45,4 @@ client.Messages.New(ctx, anthropic.MessageNewParams{
 
 ## Serialization boundary
 
-Workflow and activity parameters pass through the data converter (JSON by default). Defined types round-trip cleanly; dependency types may carry custom marshaling, unexported fields, or non-JSON-safe constructs. **Keep dependency types inside activity bodies**: signatures use your own types, and the activity converts — which also decouples workflow logic from any one dependency.
+**Keep dependency types inside activity bodies**: signatures use defined types, and the activity converts, so no dependency's marshaling crosses the data converter (`temporal-developer` `references/go/data-handling.md`) and workflow logic stays free of any one dependency.
