@@ -58,7 +58,7 @@ w.RegisterWorkflow(BillingChargeWorkflow) // handler workflows must also be regi
 
 `async Op workflow Name` → `temporalnexus.NewWorkflowRunOperation(Op, Name, getOptions)`: any duration; the caller gets a completion callback, with cancellation propagation and re-attachment via operation token. A qualified `workflow orders.Name` is `orders.Name` from that package's import ([workflow-call.md](./workflow-call.md)).
 
-`NewWorkflowRunOperation` takes `func(workflow.Context, I) (O, error)`: one input. A backing workflow with several params takes `NewWorkflowRunOperationWithOptions` with a `Handler`, whose input packs the params into one struct and unpacks them into `ExecuteUntypedWorkflow`:
+`NewWorkflowRunOperation` takes `func(workflow.Context, I) (O, error)`: one input. A backing workflow with several params takes `NewWorkflowRunOperationWithOptions` with a `Handler`, whose input packs the params into one struct (#415) and unpacks them into `ExecuteUntypedWorkflow`:
 
 ```go
 var ShipOperation = temporalnexus.MustNewWorkflowRunOperationWithOptions(temporalnexus.WorkflowRunOperationOptions[ShipInput, ShipResult]{
