@@ -30,8 +30,6 @@ func TestWorkerOptionDroppedKeys(t *testing.T) {
 	})
 }
 
-// TestNexusCallOptions pins a nexus call's options to the three timeouts the
-// Temporal API carries; retry_policy and priority are misplaced there.
 func TestNexusCallOptions(t *testing.T) {
 	tests := []struct {
 		entry string

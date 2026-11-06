@@ -53,7 +53,7 @@ A clean `twf check` requires none of these, but the design must reason about the
 | `task_queue` | activity, workflow | Routing — pins the call to a worker pool (capability, isolation, region) |
 | `start_to_close_timeout` | activity, nexus | Bounds a single activity attempt (required in practice) or a started async operation |
 | `schedule_to_close_timeout` | activity, nexus | Total time budget across queueing + attempts |
-| `schedule_to_start_timeout` | activity, nexus | Tolerance for queue wait before a worker picks it up |
+| `schedule_to_start_timeout` | activity, nexus | Tolerance for the wait before a worker picks it up (activity) or the handler starts the operation (nexus) |
 | `heartbeat_timeout` | activity | Worker-death detection for long activities (pairs with `heartbeat()`) |
 | `retry_policy` | activity, workflow | `initial_interval`, `backoff_coefficient`, `maximum_interval`, `maximum_attempts`, `non_retryable_error_types` |
 | `workflow_execution_timeout` / `workflow_run_timeout` / `workflow_task_timeout` | workflow | Total / per-run / per-task bounds |
