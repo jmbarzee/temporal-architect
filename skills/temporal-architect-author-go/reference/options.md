@@ -56,7 +56,7 @@ err := workflow.ExecuteChildWorkflow(childCtx, ChildWorkflow, input.Data).Get(ct
 
 ## Nexus operation options
 
-Passed inline to `ExecuteOperation` — no context wrapping. `schedule_to_close_timeout` → `ScheduleToCloseTimeout`. The struct also has `ScheduleToStartTimeout`, `StartToCloseTimeout` and `CancellationType` (all Experimental). A `nexus` call's `retry_policy` and `priority` have no Go field; drop them with a `// TODO` naming the key. #404 narrows the spec's keys to the three timeouts.
+Passed inline to `ExecuteOperation` — no context wrapping. A `nexus` call's options are its three timeouts, each a `workflow.NexusOperationOptions` field: `schedule_to_close_timeout` → `ScheduleToCloseTimeout`, `schedule_to_start_timeout` → `ScheduleToStartTimeout`, `start_to_close_timeout` → `StartToCloseTimeout`. The last two are Experimental and need Temporal Server 1.31.0 or later; `StartToCloseTimeout` is ignored for a sync operation.
 
 ```twf
 nexus BillingEndpoint BillingService.ChargePayment(payment) -> paymentResult

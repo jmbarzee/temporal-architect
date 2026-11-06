@@ -88,7 +88,7 @@ go build ./... && go vet ./... && go test ./...
 
 - One Go package per `.twf`, named from its filename (snake_case), beside the `.twf` unless the user says otherwise.
 - One file per workflow, a shared types file if needed, activities grouped logically, at least one `_test.go` per workflow.
-- Each `.twf` worker's entry file holds its `RegisterXxxTypes(r worker.Registry)`, shared by the worker process and the tests. Its `@sdk(go, "<path>")` names that file, from the directory of the nearest `twf.mod`, else the `.twf` file's directory, as in the corpus's `@sdk(go, "go/worker.go")`.
+- Each `.twf` worker's entry file registers its types, in a `RegisterXxxTypes(r worker.Registry)` shared by the worker process and the tests, and builds the worker when the code builds one. Its `@sdk(go, "<path>")` names that file, from the directory of the nearest `twf.mod`, else the `.twf` file's directory, as in the corpus's `@sdk(go, "go/worker.go")`.
 
 ## Reference index
 
