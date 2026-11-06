@@ -22,7 +22,7 @@ Nexus adds routing and authorization overhead that only a namespace boundary jus
 |-----------|--------------|-------|
 | **Nexus Service** | `nexus service Name:` | Top-level; holds operations |
 | **Async Operation** | `async OpName workflow WorkflowName` | One-liner; delegates to a named workflow, which needs an `id_scheme:` (the start may be retried) |
-| **Sync Operation** | `sync OpName(params) -> (Type):` | Inline body of client forms: a `workflow` start, a `signal` send, `close`, control flow. The handler has no workflow context |
+| **Sync Operation** | `sync OpName(params) -> (Type):` | Inline body of client forms: a `workflow` start, a `signal` send, `close complete`/`close fail`, control flow. The handler has no workflow context |
 | **Service Registration** | `nexus service Name` (in `worker`) | The worker that serves it — always the whole service (`Svc.Op` is `WORKER_REGISTERS_OPERATION`); operations that deploy apart are separate services |
 | **Nexus Endpoint** | `nexus endpoint Name` (in `namespace`) | Requires a static `task_queue`; a worker on that queue **in the endpoint's namespace** must register the service. Optional `allowed_caller_namespaces: [...]` |
 | **Nexus Call** | `nexus Endpoint Service.Op(args)` | Endpoint, then `Service.Op` |
@@ -51,7 +51,7 @@ The same modes as child workflows:
 
 An endpoint targets one static queue, so a `{param}` in its `task_queue` is `ENDPOINT_TASK_QUEUE_TEMPLATED`, and a [per-instance family](./task-queues.md#per-instance-worker-families) that registers a service is unreachable (`INSTANCE_FAMILY_HOSTS_NEXUS_SERVICE`). Put the service on a static queue in the family's namespace and give it an **async** operation whose workflow calls the family. Activities cannot cross namespaces, so that workflow runs there. A caller in another namespace reaches a family the same way.
 
-A **sync** handler that routes on has no workflow context and a ~10s deadline, and Nexus retries a start that misses it, so its action must be idempotent: a signal whose handler is idempotent. Prefer the async operation.
+A **sync** handler that routes on has no workflow context and a ~10s deadline, and Nexus retries a start that misses it, so its action must be idempotent, as a signal to an idempotent handler is. Prefer the async operation.
 
 ## Resolution
 

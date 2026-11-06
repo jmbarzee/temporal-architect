@@ -20,7 +20,7 @@ sync_operation  ::= 'sync' IDENT params '->' return_type ':' NEWLINE
   is a [`qualified_ref`](./14-packages-and-imports.md) — it may carry an optional `pkg.` package
   qualifier when the workflow lives in another package.
 - **Sync operations** have a body of client forms: a `workflow` start (`detach` included), a
-  `signal` send, `close`, control flow and raw lines. The handler runs as a Temporal client with no
+  `signal` send, `close complete` or `close fail`, control flow and raw lines. The handler runs as a Temporal client with no
   workflow context, so any other workflow statement is an error naming the sync body
 - **Starts from a nexus service are client starts.** An async operation starts its backing workflow
   with that workflow's `default_options:`; a `workflow` start in a sync body goes through the

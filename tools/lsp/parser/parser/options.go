@@ -112,8 +112,8 @@ var parentClosePolicySchema = &optionSchema{valueType: "enum", allowed: []string
 var conflictPolicySchema = &optionSchema{valueType: "enum", allowed: []string{"FAIL", "USE_EXISTING", "TERMINATE_EXISTING"}}
 
 // A child start has a parent, so it takes parent_close_policy (unless detached:
-// a detached child outlives its parent), and carries no conflict policy. A client start has no
-// parent and carries both ID policies.
+// a detached child outlives its parent), and carries no conflict policy. A
+// client start has no parent and carries both ID policies.
 var childStartOptionSchema = schemaWith(workflowStartSchema, "parent_close_policy", parentClosePolicySchema)
 var clientStartOptionSchema = schemaWith(workflowStartSchema, "workflow_id_conflict_policy", conflictPolicySchema)
 

@@ -27,7 +27,7 @@ These keywords are **blocked in:**
 - **Signal handlers:** Full workflow statement set (including cross-workflow signal send), but cannot call `close` (can only mutate state)
 - **Update handlers:** Full workflow statement set (including cross-workflow signal send), but cannot call `close` (can only mutate state)
 - **Query handlers:** Activity statement set (no temporal primitives, no signal send), use `return` for values
-- **Sync nexus operation bodies:** Client forms only — a `workflow` start (`detach workflow` included), a `signal` send, `close` — with control flow and raw lines. The handler runs as a Temporal client, with no workflow context, so `activity`, `nexus` (`detach nexus` included), `await`, `timer`, `promise`, `condition`, `state`, `set` and `unset` are each `<keyword> is not allowed in a sync nexus operation body`
+- **Sync nexus operation bodies:** Client forms only — a `workflow` start (`detach workflow` included), a `signal` send, `close complete` or `close fail` (no run to continue as new) — with control flow and raw lines. The handler runs as a Temporal client, with no workflow context, so `activity`, `nexus` (`detach nexus` included), `await`, `timer`, `promise`, `condition`, `state`, `set` and `unset` are each `<keyword> is not allowed in a sync nexus operation body`
 
 Cross-workflow signal send (`signal Head.Name(args)`) follows the same context surface as a `workflow` call: valid in a workflow body, signal handler, update handler, or sync nexus operation body; rejected in an activity body or query handler.
 
