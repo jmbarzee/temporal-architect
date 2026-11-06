@@ -12,10 +12,10 @@ The Go signals the design skill's [reverse engineering](../../temporal-architect
 - `worker.New(client, taskQueue, …)` starts a worker on a queue in its client's namespace (`client.Dial` `Namespace`). A namespace or queue read from config or the environment cannot be resolved from code: ask, or leave it to the stitch's topology.
 - The types registered on one worker make one `worker` block ([worker.md](./worker.md#registration)), annotated `@sdk(go, "<path>")` with the file that registers them. A `RegisterXxxTypes(r worker.Registry)` helper is that set, shared by the worker process and its tests: `RegisterApprovalTypes` is `worker approvalTypes`, and its file is the path. With no `worker.New` calling it in the slice, there is no namespace or queue to recover.
 - `RegisterWorkflow(fn)` registers the function's name; `RegisterActivity(&S{})` every exported method of `S`. `…WithOptions` with `Name` overrides the name, or prefixes a struct's methods.
-- `RegisterDynamicWorkflow` / `RegisterDynamicActivity` serve any type name at runtime and have no `.twf` form: record each in prose with its `file:line`.
-- `GetSignalChannel(ctx, name)`, `SetQueryHandler(ctx, name, fn)` and `SetUpdateHandler(ctx, name, fn)` declare a `signal`, `query` or `update` of the enclosing workflow; `name`, often a constant, is its `.twf` name. Its params are the `Receive` target's fields or `fn`'s params, its result `fn`'s. The `…WithOptions` forms carry `description`, and an update's `UnfinishedPolicy` its `unfinished_policy`.
+- `RegisterDynamicWorkflow` / `RegisterDynamicActivity`, which serve any type name at runtime, and an update's `UpdateHandlerOptions.Validator` ([update-handler.md](./update-handler.md#validators)) have no `.twf` form: record each in prose with its `file:line`.
+- `GetSignalChannel(ctx, name)`, `SetQueryHandler(ctx, name, fn)` and `SetUpdateHandler(ctx, name, fn)` declare a `signal`, `query` or `update` of the enclosing workflow; `name`, often a constant, is its `.twf` name. Its params are the `Receive` target's fields or `fn`'s params after any leading `workflow.Context`, its result `fn`'s, and an update's body `fn`'s statements less the queue's `xs.add`. The `…WithOptions` forms carry `description`, and an update's `UnfinishedPolicy` its `unfinished_policy`.
 - A queue built from an instance key (`"sandbox-"+id`) is a [family](./worker.md#per-instance-worker-families) worker.
-- `nexus.NewService(name)` + `service.Register(ops…)` (or `MustRegister`) + `RegisterNexusService(service)` is a Nexus service and its operations: `nexus.NewSyncOperation` a `sync` one, `temporalnexus.NewWorkflowRunOperation(name, W, …)` an `async` one backed by `W` ([nexus-service-def.md](./nexus-service-def.md)). A `Register` of only some of a service's operations is a forked contract.
+- `nexus.NewService(name)` + `service.Register(ops…)` (or `MustRegister`) + `RegisterNexusService(service)` is a Nexus service and its operations: `nexus.NewSyncOperation` a `sync` one, `temporalnexus.NewWorkflowRunOperation(name, W, …)`, or a `MustNewWorkflowRunOperationWithOptions` whose `Handler` starts `W` through `ExecuteUntypedWorkflow`, an `async` one backed by `W` ([nexus-service-def.md](./nexus-service-def.md)). A `Register` of only some of a service's operations is a forked contract.
 - `workflow.NewNexusClient(endpoint, service)` names the endpoint and service of every `nexus` call made through it.
 - DI wiring (fx, wire) hides `worker.New` behind providers; follow them to it.
 
@@ -23,7 +23,7 @@ The Go signals the design skill's [reverse engineering](../../temporal-architect
 
 | Go | `.twf` |
 |----|--------|
-| a `workflow.Go` loop that `Receive`s from a signal channel | `signal` handler, its body the loop's statements ([signal-handler.md](./signal-handler.md)) |
+| a `workflow.Go` loop that `Receive`s from a signal channel | `signal` handler, its body the loop's statements less the queue's `xs.add` ([signal-handler.md](./signal-handler.md)) |
 | a queue or counter a handler feeds (`arrivals.add`, `acks++`), taken from in the workflow (`take`) | `await signal\|update Name -> (…)` ([await-signal.md](./await-signal.md)) |
 | a `wait` ticket and `workflow.NewFuture` settled by `takeAt` | `promise p <- signal\|update Name` ([promise.md](./promise.md)) |
 | `workflow.Go` + futures joined, or `workflow.NewWaitGroup` | `await all` ([await-all.md](./await-all.md)) |
