@@ -14,5 +14,5 @@ if err := fut.Get(ctx, &paymentResult); err != nil {
 ```
 
 - `NewNexusClient(endpoint, service)` scopes a client to one endpoint + service; `ExecuteOperation(ctx, operation, input, options)` returns a `NexusOperationFuture` — execute and `.Get()`, like a child workflow.
-- Name the operation by the constant from the service contract ([nexus-service-def.md](./nexus-service-def.md#naming-contract)), not a bare string, so caller and handler stay in sync.
+- Name the operation by the constant from the service contract ([nexus-service-def.md](./nexus-service-def.md#naming-contract)), not a bare string, so caller and handler stay in sync. A qualified service, `nexus Ep orders.OrderService.PlaceOrder(...)`, takes those constants from an import of the Go package generated for the `.twf` package `orders`: `NewNexusClient("Ep", orders.OrderServiceName)`, `orders.PlaceOrderOp`.
 - Options: [options.md](./options.md). Fire-and-forget: [detach.md](./detach.md).
