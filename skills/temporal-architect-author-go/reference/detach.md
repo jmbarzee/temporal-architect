@@ -41,4 +41,4 @@ if err := fut.GetNexusOperationExecution().Get(ctx, nil); err != nil {
 
 - Nexus has no parent-close policy. `NexusOperationCancellationTypeAbandon` keeps the caller's cancellation from reaching the operation; the SDK marks `CancellationType` Experimental (`NexusOperationOptions`, `internal/workflow.go`).
 - `GetNexusOperationExecution()` resolves when the operation starts, and for a sync operation together with its result (`NexusOperationFuture`, `internal/workflow.go`).
-- When the operation finishes after the caller has closed, its completion callback to the caller fails and is dropped.
+- When the operation finishes after the caller has closed, its completion callback to the caller fails and is dropped; that is server behavior, with no SDK surface to cite.

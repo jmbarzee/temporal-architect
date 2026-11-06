@@ -75,7 +75,7 @@ var ShipOperation = temporalnexus.MustNewWorkflowRunOperationWithOptions(tempora
 
 | Statement in a sync body | Go |
 |---|---|
-| `workflow Name(args) -> r` (a client start) | `run, err := temporalnexus.GetClient(ctx).ExecuteWorkflow(ctx, NameStartOptions(...), Name, args...)`, then `run.Get(ctx, &r)` ([workflow-call.md](./workflow-call.md)) |
+| `workflow Name(args) [-> r]` (a client start) | `run, err := temporalnexus.GetClient(ctx).ExecuteWorkflow(ctx, NameStartOptions(...), Name, args...)`, then `run.Get(ctx, &r)` (`nil` with no result) ([workflow-call.md](./workflow-call.md)) |
 | `detach workflow Name(args)` | the same `ExecuteWorkflow`, its error returned; never `run.Get` |
 | `signal Type.Name(args)` + `id:` | `temporalnexus.GetClient(ctx).SignalWorkflow(ctx, workflowID, runID, "Name", arg)`; args pack as in [signal-send.md](./signal-send.md) |
 | `close complete(r)` / `close fail(e)` | `return r, nil` / `return T{}, err` |
