@@ -140,7 +140,7 @@ workflow OrderFulfillment(orderId: string) -> (OrderResult):
 
 	workflow ShipOrder(order) -> shipResult
 
-	nexus NotificationsEndpoint NotificationsService.SendNotification(order.customer, "shipped")
+	nexus NotificationsEndpoint NotificationsService.SendNotification(Notification{customer: order.customer, message: "shipped"})
 
 	close complete(OrderResult{status: "completed"})
 
@@ -161,8 +161,8 @@ workflow ShipOrder(order: Order) -> (ShipResult):
 activity CreateShipment(order: Order) -> (Shipment):
 	return ship(order)
 
-workflow SendNotification(customer: Customer, message: string):
-	activity Notify(customer, message)
+workflow SendNotification(notification: Notification):
+	activity Notify(notification.customer, notification.message)
 	close complete
 
 activity Notify(customer: Customer, message: string):
