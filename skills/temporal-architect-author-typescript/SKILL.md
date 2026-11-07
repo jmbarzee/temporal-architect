@@ -22,12 +22,12 @@ A `.twf` name is the registered name, byte for byte; never rename the `.twf` to 
 | Construct | TypeScript default | Set the `.twf` name by |
 |---|---|---|
 | workflow | the export's name in the worker's workflows module (`mod[workflowType]`, `workflow/src/worker-interface.ts`); a caller sends the function's `name` (`common/src/workflow-options.ts`) | naming the exported function as the `.twf` does, never through an aliased export |
-| activity | the key in `Worker.create({activities})` (`worker/src/worker.ts`); a caller sends the `proxyActivities` property name (`workflow/src/workflow.ts`) | naming the exported function as the `.twf` does |
+| activity | the key in `Worker.create({activities})` (`worker/src/worker-options.ts`); a caller sends the `proxyActivities` property name (`workflow/src/workflow.ts`) | naming the exported function as the `.twf` does |
 | signal | none: `defineSignal(name)` (`workflow/src/workflow.ts`) | a `name` equal to the `.twf` name |
 | query | none: `defineQuery(name)` (`workflow/src/workflow.ts`) | a `name` equal to the `.twf` name |
 | update | none: `defineUpdate(name)` (`workflow/src/workflow.ts`) | a `name` equal to the `.twf` name |
 | Nexus service | none: `nexus.service(name, …)` (`nexus-rpc/lib/service/helpers.d.ts`) | a `name` equal to the `.twf` name |
-| Nexus operation | the property key in the `nexus.service` map, unless `nexus.operation({name})` replaces it (`nexus-rpc/lib/service/helpers.d.ts`) | a key equal to the `.twf` name, with `name` unset |
+| Nexus operation | the property key in the `nexus.service` map, unless `nexus.operation({name})` replaces it (`nexus-rpc/lib/service/helpers.js`) | a key equal to the `.twf` name, with `name` unset |
 
 Types map by TypeScript's own conventions. Read [cross-sdk.md, only where `twf check` reports `CROSS_SDK_CALL`](../temporal-architect/reference/cross-sdk.md).
 
