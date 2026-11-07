@@ -24,12 +24,12 @@ if err := childFuture.GetChildWorkflowExecution().Get(ctx, nil); err != nil {
 - A client start, `detach workflow` in a sync nexus body, has no parent: `ExecuteWorkflow` starts the run and returns (`Client`, `internal/client.go`), and the handler never calls `run.Get` ([nexus-service-def.md](./nexus-service-def.md#sync)).
 
 ```twf
-detach nexus NotificationsEndpoint NotificationsService.SendConfirmation(order.customer, paymentResult)
+detach nexus NotificationsEndpoint NotificationsService.SendConfirmation(Confirmation{customer: order.customer, payment: paymentResult})
 ```
 
 ```go
 c := workflow.NewNexusClient("NotificationsEndpoint", "NotificationsService")
-fut := c.ExecuteOperation(ctx, SendConfirmationOp, sendConfirmationInput, workflow.NexusOperationOptions{
+fut := c.ExecuteOperation(ctx, SendConfirmationOp, Confirmation{Customer: order.Customer, Payment: paymentResult}, workflow.NexusOperationOptions{
     CancellationType: workflow.NexusOperationCancellationTypeAbandon,
 })
 // Wait for the start; a sync operation's start is its completion

@@ -32,6 +32,8 @@ A `.twf` name is the registered name, byte for byte; never rename the `.twf` to 
 | Nexus operation | none: the builder's `name` (`nexus.NewSyncOperation`, `temporalnexus.NewWorkflowRunOperation`) | a constant equal to the `.twf` name ([nexus-service-def.md](./reference/nexus-service-def.md)) |
 | proto-driven workflow / activity | the annotation's `name:` | `name:` equal to the `.twf` name, with no package prefix ([proto-driven.md](./reference/proto-driven.md)) |
 
+Types map by Go's own conventions ([types.md](./reference/types.md)). Read [cross-sdk.md, only when a call or return crosses workers whose `@sdk` differ](../temporal-architect/reference/cross-sdk.md).
+
 ## Delegation
 
 This skill owns the `.twf` ↔ Go translation: call shapes, wire names, options, project layout, verify. How to write Go Temporal code well belongs to Temporal's official `temporal-developer` skill, pinned at `v0.6.3`; load it for these topics:
