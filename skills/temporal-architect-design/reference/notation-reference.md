@@ -7,7 +7,7 @@ A quick reference; the grammar itself is `twf spec` (`twf spec --list` for secti
 | `activity Name(args) -> result` | Call activity, bind result (default for single operations) |
 | `workflow Name(args) -> result` | Call child workflow, bind result (multi-step with own failure boundary) |
 | `nexus Endpoint Service.Op(input) -> result` | Nexus operation call; one input — wrap several values in a declared type |
-| `detach workflow Name(args)` / `detach nexus Endpoint Service.Op(args)` | Started; outlives its caller; the result is never observed |
+| `detach workflow Name(args)` / `detach nexus Endpoint Service.Op(input)` | Started; outlives its caller; the result is never observed |
 | `promise p <- activity\|workflow\|nexus ...` | Start async (use when you need the result later); also `promise p <- timer(duration)`, `promise p <- signal Name`; in scope from its binding to the end of its block (handlers see the body's top-level promises) |
 | `await p -> result` | Await promise, bind result |
 | `await timer(duration)` | Durable sleep |

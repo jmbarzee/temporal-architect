@@ -24,7 +24,7 @@ sync_operation  ::= 'sync' IDENT params '->' return_type ':' NEWLINE
   workflow context, so any other workflow statement is an error naming the sync body
 - **An operation takes one input.** A sync operation declares one parameter; an async operation's
   backing workflow takes one. Several values are wrapped in a declared type. Every SDK carries one
-  input payload per operation, so this holds within one SDK as well as across SDKs.
+  input payload per operation.
 - **Starts from a nexus service are client starts.** An async operation starts its backing workflow
   with that workflow's `default_options:`; a `workflow` start in a sync body goes through the
   Temporal client, so it takes `workflow_id_conflict_policy` and no `parent_close_policy` (see
