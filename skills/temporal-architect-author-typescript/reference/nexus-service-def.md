@@ -23,6 +23,7 @@ export const BillingService = nexus.service('BillingService', {
 // service.ts: the handler
 import * as nexus from 'nexus-rpc';
 import { WorkflowRunOperationHandler, getClient, startWorkflow } from '@temporalio/nexus';
+import { Refund } from './billing-workflows'; // BillingChargeWorkflow's defineSignal('Refund')
 
 export const billingServiceHandler = nexus.serviceHandler(BillingService, {
   // async: workflow-backed; resolves when the workflow completes
@@ -31,7 +32,7 @@ export const billingServiceHandler = nexus.serviceHandler(BillingService, {
   ),
   // sync: the body runs in the handler, with a Temporal client, not a workflow
   RefundPayment: async (_ctx, req) => {
-    await getClient().workflow.getHandle(req.chargeId).signal('Refund', req);
+    await getClient().workflow.getHandle(req.chargeId).signal(Refund, req);
     return { status: 'requested' };
   },
 });
@@ -59,7 +60,7 @@ The backing workflow's one parameter is the operation's input.
 |---|---|
 | `workflow Name(args) [-> r]` (a client start) | `const handle = await getClient().workflow.start(Name, {...nameStartOptions(...), args: [...]})`, then `const r = await handle.result()` ([workflow-call.md](./workflow-call.md)) |
 | `detach workflow Name(args)` | the same `start`; never `handle.result()` ([detach.md](./detach.md)) |
-| `signal Type.Name(args)` + `id:` | `await getClient().workflow.getHandle(workflowId, runId?).signal('Name', ...args)`; args as in [signal-send.md](./signal-send.md) |
+| `signal Type.Name(args)` + `id:` | `await getClient().workflow.getHandle(workflowId, runId?).signal(Name, ...args)`, `Name` the target's exported `defineSignal` value; args as in [signal-send.md](./signal-send.md) |
 | `close complete(r)` / `close fail(e)` | `return r` / `throw` the error |
 | `if` / `for` / `switch` / `break` / `continue`, raw lines (`x = expr`) | TypeScript equivalents ([control-flow.md](./control-flow.md)) |
 

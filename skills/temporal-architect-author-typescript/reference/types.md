@@ -20,7 +20,7 @@ The `.twf` type names are defined in `twf spec workflows` (Types). The default p
 | `string` / `bool` / `float` | `string` / `boolean` / `number` |
 | `any` | `unknown` |
 | `int` | `number`, exact to 2^53−1 (`Number.MAX_SAFE_INTEGER`); a `bigint` throws in `JSON.stringify` |
-| `decimal` | `string` holding the base-10 text; the SDK has no decimal type, and the spec's mapping is open (#401) |
+| `decimal` | `string` holding the base-10 text; the SDK has no decimal type |
 | `duration` | a `number` of milliseconds in a payload; an option or timer argument takes the SDK's `Duration`, `'5m'` or milliseconds (`common/src/time.ts`) |
 | `time` | an ISO 8601 `string`: a `Date` encodes as one but decodes as a `string`, so a `Date` type lies |
 | `bytes` | `Uint8Array` as a whole argument or result; a base64 `string` when nested in an interface, list or map, where a `Uint8Array` decodes as an index-keyed object |

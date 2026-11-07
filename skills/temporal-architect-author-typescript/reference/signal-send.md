@@ -18,7 +18,7 @@ const payment = await pay.result();
 ```
 
 - `ChildWorkflowHandle.signal(def, ...args): Promise<void>` (`common/src/workflow-handle.ts`). The handle is always a `startChild` result, which resolves once the child has started, so a send never races the start. Keep the `pay` binding even when it is only signaled, never awaited.
-- `def` is the `defineSignal` value the child's workflows module exports, whose name is the child's handler name ([SKILL.md](../SKILL.md#wire-names)); importing it type-checks the args. The args are positional, one payload per DSL arg; no args → `signal(def)`. How a handler's several params travel across SDKs is open (#438).
+- `def` is the `defineSignal` value the child's workflows module exports, whose name is the child's handler name ([SKILL.md](../SKILL.md#wire-names)); importing it type-checks the args. The args are positional, one payload per DSL arg; no args → `signal(def)`.
 - The promise resolves on **server acceptance — never on the child's handler running** (`resolveSignalExternalWorkflow`, `workflow/src/internals.ts`). Never treat it as "the child processed my signal". Await it, so a failed send fails the sender; `.catch` it when it should not. Never leave it floating: an unhandled rejection fails the workflow task (`setUnhandledRejectionHandler`, `worker/src/workflow/vm-shared.ts`).
 - A send is a statement — not an `await one:` case or `await all:` branch. Each call is one delivery to the one running child the handle refers to.
 
