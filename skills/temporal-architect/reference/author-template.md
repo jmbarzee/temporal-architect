@@ -20,7 +20,7 @@ A `.twf` name is the registered name, byte for byte (`twf spec workflows`, `acti
 | Nexus service | | |
 | Nexus operation | | |
 
-Types map by the SDK's own conventions. Read [cross-sdk.md, only when a call or return crosses workers whose `@sdk` differ](cross-sdk.md).
+Types map by the SDK's own conventions. Read [cross-sdk.md, only where `twf check` reports `CROSS_SDK_CALL`](cross-sdk.md).
 
 ## Delegation
 

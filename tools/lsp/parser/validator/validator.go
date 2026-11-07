@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/graph"
 )
 
 // ErrorKind classifies a validation error for structured handling.
@@ -44,6 +45,7 @@ const (
 	ErrWorkerDuplicateTypeName
 	ErrWorkerMultiSDK
 	ErrImplNotFound
+	ErrCrossSDKCall
 )
 
 // Error represents a validation error with position info.
@@ -138,6 +140,8 @@ func (k ErrorKind) String() string {
 		return "WORKER_MULTI_SDK"
 	case ErrImplNotFound:
 		return "IMPL_NOT_FOUND"
+	case ErrCrossSDKCall:
+		return "CROSS_SDK_CALL"
 	}
 	return "UNKNOWN"
 }
@@ -165,7 +169,9 @@ type validationCtx struct {
 	// nsDefs is every namespace in namespaces, in definition order, so queue
 	// checks that report per placement run in source order.
 	nsDefs []*ast.NamespaceDef
-	errs   []*Error
+	// crossings are the SDKs on each side of every call site between SDKs.
+	crossings map[callSite]*sdkSides
+	errs      []*Error
 }
 
 // key returns the (package, name) key for a definition: its package identity
@@ -729,6 +735,7 @@ type caller struct {
 	kind string // "workflow" or "nexus service"
 	key  pkgKey
 	file string // SourceFile of the calling definition (#238)
+	def  string // graph definition key of the workflow or sync operation
 }
 
 // walkAllBodies walks all workflow and nexus service sync op bodies, in
@@ -751,6 +758,7 @@ func (v *validationCtx) walkAllBodies(defs []ast.Definition) {
 	if len(v.namespaces) == 0 {
 		return
 	}
+	v.crossings = sdkCrossings(graph.Extract(v.file))
 
 	for _, def := range defs {
 		switch d := def.(type) {
@@ -759,7 +767,7 @@ func (v *validationCtx) walkAllBodies(defs []ast.Definition) {
 			if v.workflows[key] != d {
 				continue
 			}
-			from := caller{"workflow", key, d.SourceFile}
+			from := caller{"workflow", key, d.SourceFile, graph.DefKey(graph.KindWorkflow, ast.QualifiedName(key.pkg, key.name))}
 			v.walkStatements(d.Body, from)
 			for _, s := range ast.FirstDeclared(d.Signals) {
 				v.walkStatements(s.Body, from)
@@ -777,7 +785,8 @@ func (v *validationCtx) walkAllBodies(defs []ast.Definition) {
 			}
 			for _, op := range ast.FirstDeclared(d.Operations) {
 				if op.OpType == ast.NexusOpSync {
-					v.walkStatements(op.Body, caller{"nexus service", key, d.SourceFile})
+					def := graph.DefKey(graph.KindNexusOperation, ast.QualifiedName(key.pkg, key.name)+"."+op.Name)
+					v.walkStatements(op.Body, caller{"nexus service", key, d.SourceFile, def})
 				}
 			}
 		}
@@ -788,6 +797,7 @@ func (v *validationCtx) walkAllBodies(defs []ast.Definition) {
 // from the hosted definition from.
 func (v *validationCtx) walkStatements(stmts []ast.Statement, from caller) {
 	ast.WalkStatements(stmts, func(s ast.Statement) bool {
+		v.checkCrossSDK(s, from)
 		switch n := s.(type) {
 		case *ast.ActivityCall:
 			// An unresolved target is external or already reported as
@@ -934,6 +944,83 @@ func (v *validationCtx) checkCallRouting(kind string, target pkgKey, opts, defau
 			File:   from.file,
 		})
 	}
+}
+
+// callSite is a call in a body: its caller's graph definition key and its line.
+type callSite struct {
+	def  string
+	line int
+}
+
+// sdkSides are the SDKs of a call site's callers and of its callees.
+type sdkSides struct{ from, to []string }
+
+// sdkCrossings indexes the graph's call edges between SDKs by call site. A
+// caller deployed on several workers makes the call from each, so its call
+// site is between SDKs when any of its edges is, and names those edges' SDKs.
+func sdkCrossings(g *graph.Graph) map[callSite]*sdkSides {
+	sites := map[callSite]*sdkSides{}
+	for _, c := range g.SDKCrossings() {
+		k := callSite{c.Caller, c.Edge.Line}
+		if sites[k] == nil {
+			sites[k] = &sdkSides{}
+		}
+		sites[k].from = union(sites[k].from, c.From)
+		sites[k].to = union(sites[k].to, c.To)
+	}
+	return sites
+}
+
+// union appends to a the entries of b it lacks.
+func union(a, b []string) []string {
+	for _, s := range b {
+		if !slices.Contains(a, s) {
+			a = append(a, s)
+		}
+	}
+	return a
+}
+
+// checkCrossSDK hints at a call between SDKs, once per call site.
+func (v *validationCtx) checkCrossSDK(s ast.Statement, from caller) {
+	kind, name := callee(s)
+	k := callSite{from.def, s.NodeLine()}
+	sides := v.crossings[k]
+	if kind == "" || sides == nil {
+		return
+	}
+	delete(v.crossings, k)
+	v.errs = append(v.errs, &Error{
+		Msg:      fmt.Sprintf("%s %s runs on %s and its caller on %s; read skills/temporal-architect/reference/cross-sdk.md", kind, name, strings.Join(sides.to, ", "), strings.Join(sides.from, ", ")),
+		Line:     s.NodeLine(),
+		Column:   s.NodeColumn(),
+		Severity: "hint",
+		Kind:     ErrCrossSDKCall,
+		Name:     name,
+		File:     from.file,
+	})
+}
+
+// callee returns the kind and written name of the activity, workflow or Nexus
+// operation s calls, or "" when it calls none.
+func callee(s ast.Statement) (kind, name string) {
+	switch n := s.(type) {
+	case *ast.ActivityCall:
+		return "activity", n.Activity.Name
+	case *ast.WorkflowCall:
+		return "workflow", n.Workflow.Name
+	case *ast.NexusCall:
+		return "nexus operation", n.Service.Name + "." + n.Operation.Name
+	}
+	switch t := ast.AsyncTargetOf(s).(type) {
+	case *ast.ActivityTarget:
+		return "activity", t.Activity.Name
+	case *ast.WorkflowTarget:
+		return "workflow", t.Workflow.Name
+	case *ast.NexusTarget:
+		return "nexus operation", t.Service.Name + "." + t.Operation.Name
+	}
+	return "", ""
 }
 
 // isFamily reports whether q parses with parameters: a worker's per-instance
