@@ -166,6 +166,6 @@ Each author maps these names to its SDK; the parser checks none of them.
 | `bytes` | binary data |
 | `any` | an untyped payload |
 | `list[T]` | an ordered sequence of `T` |
-| `map[string, V]` | `V` keyed by string; keys are strings because payloads serialize to JSON by default |
+| `map[string, V]` | `V` keyed by string |
 
 Any other name is a user-defined type, written in PascalCase. Its shape is inferred from the constructors and field accesses that use it.
