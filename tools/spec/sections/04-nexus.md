@@ -22,6 +22,9 @@ sync_operation  ::= 'sync' IDENT params '->' return_type ':' NEWLINE
 - **Sync operations** have a body of client forms: a `workflow` start (`detach` included), a
   `signal` send, `close complete` or `close fail`, control flow and raw lines. The handler runs as a Temporal client with no
   workflow context, so any other workflow statement is an error naming the sync body
+- **An operation takes one input.** A sync operation declares one parameter; an async operation's
+  backing workflow takes one. Several values are wrapped in a declared type. Every SDK carries one
+  input payload per operation, so this holds within one SDK as well as across SDKs.
 - **Starts from a nexus service are client starts.** An async operation starts its backing workflow
   with that workflow's `default_options:`; a `workflow` start in a sync body goes through the
   Temporal client, so it takes `workflow_id_conflict_policy` and no `parent_close_policy` (see
