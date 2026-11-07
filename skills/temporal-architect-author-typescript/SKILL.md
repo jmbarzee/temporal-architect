@@ -115,5 +115,5 @@ Load only what the current layer needs.
 
 The spec states only what `detach` guarantees (`twf spec statement-syntax`); the author maps it to these mechanics:
 
-- **`detach workflow`**: a child start is `await startChild(W, {…, parentClosePolicy: ParentClosePolicy.ABANDON})`, which resolves once the child starts, so a failed start fails the caller (`workflow/src/workflow.ts`). A client start just starts. Neither touches `.result()`.
+- **`detach workflow`**: a child start is `await startChild(W, {…, parentClosePolicy: ParentClosePolicy.ABANDON, cancellationType: ChildWorkflowCancellationType.ABANDON})`, so neither the caller's close nor its cancellation reaches the child (`workflow/src/interfaces.ts`); it resolves once the child starts, so a failed start fails the caller (`workflow/src/workflow.ts`). A client start just starts. Neither touches `.result()`.
 - **`detach nexus`**: `await client.startOperation(op, input, {cancellationType: NexusOperationCancellationType.ABANDON})`, which resolves once the operation starts (a sync operation starts by completing) and never calls `.result()` (`workflow/src/nexus.ts`). After the caller closes, the operation's completion callback to it fails and is dropped.
