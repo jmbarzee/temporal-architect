@@ -4,9 +4,9 @@ A toolchain for designing, visualizing, and code-generating entire Temporal syst
 
 ## North Star
 
-`.twf` exists to **extend the complexity horizon of AI execution** — to let AI work at *system* scale, not code scale. The largest gains in AI-assisted development came from wiring AIs into **deterministic tooling** (compilers, linters, testers); temporal-architect is that deterministic harness for **Temporal architecture**. It keeps the AI out of the weeds — error handling, library choices, application-code pedantics — so it can focus on the large scale: **workloads, scaling, reliability, availability**. The product is a **context-protecting harness for the main agent**: fit bigger problems into the same context window.
+`.twf` exists to **extend the complexity horizon of AI execution** — to let AI work at *system* scale, not code scale. The largest gains in AI-assisted development came from wiring AIs into **deterministic tooling** (compilers, linters, testers); temporal-architect is that deterministic harness for **Temporal architecture**. It keeps the AI out of the weeds — error handling, library choices, application-code pedantics — so it can focus on the large scale: **workloads, scaling, reliability, availability**. The product is a **context-protecting harness for the main agent**: fit bigger problems into the same context window. (The "main agent" isn't always the *design* agent — sometimes it's authoring or reverse-engineering. Don't assume.)
 
-Every change in this repo should serve that. Prefer designs that protect context and raise the level of abstraction the agent operates at; be wary of anything that drags the AI back down into code-scale busywork. (The "main agent" isn't always the *design* agent — sometimes it's authoring or reverse-engineering. Don't assume.)
+The test for every change in this repo: does it keep `.twf` designs **verifiable from 10,000 ft**? Record each constraint at the highest level that still verifies.
 
 ## Running `go`
 

@@ -30,10 +30,10 @@ Use the **Temporal docs MCP server** (`mcp__temporal-docs__search_temporal_knowl
 - Are there constructs that use inconsistent naming, structure, or semantics relative to each other?
 - Does the DSL's terminology align with Temporal's terminology, or does it introduce unnecessary divergence?
 
-### 4. Expressiveness vs. Complexity
-- Where does the DSL require too many lines to express a simple concept?
-- Where does the DSL collapse too much into a single construct, hiding important distinctions?
-- Is the level of abstraction appropriate — design-time clarity without losing semantic precision?
+### 4. Altitude
+Every construct, existing or proposed, must justify itself against the North Star's test in `AGENTS.md`: does the design stay **verifiable from 10,000 ft**?
+- Where does one construct collapse a distinction a check needs?
+- Which constructs pull `.twf` below it, toward an application language? Each is a finding, even when it maps to a real Temporal primitive.
 
 ## Workflow
 
@@ -62,8 +62,9 @@ Cross-reference against existing files in `internal/changes/dsl/` **and against 
 Read the open `area:dsl` issues — that is where proposed language features live (`gh issue list --label area:dsl --state open`; `gh issue view <n>` for the full write-up). Issues labelled `needs-design` still carry unresolved open questions and are the richest candidates. For each proposed feature:
 - Does it address a gap identified in Phase 2? If so, does the proposed approach resolve it well?
 - Is it motivated by a real Temporal primitive or pattern, or is it speculative?
+- Does it pass the altitude test (rubric §4)?
 - Does it fit consistently with the existing DSL grammar and style?
-- Assign: `validated` (addresses a real gap well) | `reconsidered` (addresses a gap but the approach needs work) | `deferred` (no gap found, premature) | `superseded` (the Phase 2 review suggests a better approach)
+- Assign: `validated` (addresses a real gap well) | `reconsidered` (addresses a gap but the approach needs work) | `deferred` (no gap found, premature, or below altitude) | `superseded` (the Phase 2 review suggests a better approach)
 
 ### Phase 4: Group & Prioritize
 
