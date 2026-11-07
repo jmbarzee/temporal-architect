@@ -20,6 +20,8 @@ A `.twf` name is the registered name, byte for byte (`twf spec workflows`, `acti
 | Nexus service | | |
 | Nexus operation | | |
 
+Types map by the SDK's own conventions. Read [cross-sdk.md, only when a call or return crosses workers whose `@sdk` differ](cross-sdk.md).
+
 ## Delegation
 
 This skill owns the `.twf` ↔ SDK translation: call shapes, wire names, options, project layout, verify. How to write the SDK's Temporal code well belongs to Temporal's official `temporal-developer` skill, pinned at `v0.6.3`; load it for these topics. One table, each topic with its file there:

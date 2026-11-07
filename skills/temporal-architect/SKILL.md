@@ -60,6 +60,6 @@ Load the minimum that fits. **Default:** `temporal-architect-design` + the **one
 
 - **Skip design** for a pure implementation of a settled `.twf` — load only the author(s).
 - **Design in the main agent** when the work is design-heavy or collaborative: the user usually wants to be in the design loop. Dispatch authoring to subagents.
-- **An SDK boundary wants both authors.** Pin the boundary contract once, then prefer isolated per-SDK author subagents that exchange only that contract — two SDK vocabularies in one context are confusable. Co-loading is acceptable when the boundary is small.
+- **An SDK boundary wants both authors.** Pin the boundary contract once, then prefer isolated per-SDK author subagents that exchange only that contract — two SDK vocabularies in one context are confusable. Co-loading is acceptable when the boundary is small. Read [cross-sdk.md, only when a call or return crosses workers whose `@sdk` differ](reference/cross-sdk.md).
 
 A chunk's SDK is each `@sdk` on the workers registering it, and each SDK goes to its own author; with none, infer it from project layout or ask the user. An SDK with no author row is an open question for the user, not a guess.
