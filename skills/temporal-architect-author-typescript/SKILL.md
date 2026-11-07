@@ -94,6 +94,24 @@ Load only what the current layer needs.
 
 | DSL | TypeScript | File |
 |-----|------------|------|
+| `workflow Name(...)` | exported `async` function in the worker's workflows module | [workflow-def.md](./reference/workflow-def.md) |
+| `id_scheme: "..."` | ID function, called by every start and sender | [workflow-def.md](./reference/workflow-def.md#id_scheme) |
+| `workflow_id_reuse_policy` / `workflow_id_conflict_policy` | start-options function; child gets reuse only | [options.md](./reference/options.md#workflow-id-policies) |
+| `activity Name(...)` | `async` function from a `createActivities(deps)` factory | [activity-def.md](./reference/activity-def.md) |
+| types (`int`, `time`, `bytes`, …), user types | what the JSON payload converter round-trips; `interface` | [types.md](./reference/types.md) |
+| activity dependencies | dependency map, confirmed from `.d.ts` | [dependency-resolution.md](./reference/dependency-resolution.md) |
+| `worker`, namespace worker `options:` | registrations helper, `Worker.create`, `WorkerOptions` | [worker.md](./reference/worker.md) |
+| `nexus service Name:`, `async` / `sync` operations | `nexus.service` / `nexus.serviceHandler`; `WorkflowRunOperationHandler` / plain handler | [nexus-service-def.md](./reference/nexus-service-def.md) |
+| `activity Name(args) -> r` | `proxyActivities` | [activity-call.md](./reference/activity-call.md) |
+| `workflow Name(args) -> r` | `executeChild` | [workflow-call.md](./reference/workflow-call.md) |
+| `detach workflow ...` / `detach nexus ...` | `startChild` / `startOperation` with `ABANDON`, skip result | [detach.md](./reference/detach.md) |
+| `nexus Endpoint Service.Op(args) -> r` | `createNexusServiceClient(...).executeOperation` | [nexus.md](./reference/nexus.md) |
+| `signal handle.Name(args)` / `signal Type.Name(args)` + `id:` | `ChildWorkflowHandle.signal` / `getExternalWorkflowHandle(...).signal` | [signal-send.md](./reference/signal-send.md) |
+| `await timer(d)` | `sleep` | [await-timer.md](./reference/await-timer.md) |
+| `options:` / `default_options:` | `ActivityOptions` / `ChildWorkflowOptions` / `StartNexusOperationOptions` | [options.md](./reference/options.md) |
+| `if` / `for` / `switch` / `break` / `continue`, `x = expr` | TypeScript equivalents | [control-flow.md](./reference/control-flow.md) |
+| `close complete` / `fail` / `continue_as_new` | `return` / `throw ApplicationFailure` / `continueAsNew` | [close.md](./reference/close.md) |
+| `heartbeat(details)` | `heartbeat` from `@temporalio/activity` | [heartbeat.md](./reference/heartbeat.md) |
 
 The spec states only what `detach` guarantees (`twf spec statement-syntax`); the author maps it to these mechanics:
 
