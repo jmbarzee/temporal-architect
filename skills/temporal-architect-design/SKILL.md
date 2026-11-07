@@ -5,7 +5,7 @@ description: Design Temporal systems — workflows, activities, workers, namespa
 
 # Temporal Architect: System Design
 
-Design entire Temporal systems in `.twf` — topology, workflow structure, activity boundaries, and primitives as a parseable source of truth. The deliverable is always `.twf`, never SDK code.
+Design entire Temporal systems in `.twf` — topology, workflow structure, activity boundaries, and primitives as a parseable source of truth. The deliverable is always `.twf`, never SDK code. Keep it **verifiable from 10,000 ft**: record each constraint at the highest level that still verifies, and leave encodings, error-handling minutiae, and SDK idioms to the authors.
 
 ## Design Flow
 

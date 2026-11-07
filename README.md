@@ -1,6 +1,6 @@
 # temporal-architect
 
-**Design, visualize, and implement entire Temporal systems — namespaces, workers, workflows, and Nexus — as a validated, visual source of truth.**
+**Design, visualize, and implement entire Temporal systems — namespaces, workers, workflows, and Nexus — as a visual source of truth, verifiable from 10,000 ft.**
 
 Write your architecture in `.twf` and a real parser, language server, and visualizer give you (and your AI agent) compiler-grade feedback on the *whole system* before you write a line of SDK code — then generate the workers and provision the infra from the same design.
 
