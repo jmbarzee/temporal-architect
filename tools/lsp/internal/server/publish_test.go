@@ -334,6 +334,18 @@ func TestWorkspaceMidMigration(t *testing.T) {
 	}
 }
 
+// TestPublishCrossSDKCall: the editor shows the CROSS_SDK_CALL hint at the call.
+func TestPublishCrossSDKCall(t *testing.T) {
+	const src = "workflow W():\n\tactivity A()\n\tclose complete()\n\nactivity A():\n\tdefault_options:\n\t\ttask_queue: \"a\"\n\treturn x\n\n@sdk(go)\nworker wW:\n\tworkflow W\n\n@sdk(python)\nworker aW:\n\tactivity A\n\nnamespace ns:\n\tworker wW\n\t\toptions:\n\t\t\ttask_queue: \"w\"\n\tworker aW\n\t\toptions:\n\t\t\ttask_queue: \"a\"\n"
+	const uri = "untitled:Untitled-1"
+	p := published{}
+	p.open(t, NewDocumentStore(), uri, src)
+	wantCodes(t, p, "a call from go to python", uri, "2:CROSS_SDK_CALL")
+	if d := p[uri]; len(d) == 1 && *d[0].Severity != protocol.DiagnosticSeverityHint {
+		t.Errorf("severity = %v, want hint", *d[0].Severity)
+	}
+}
+
 // TestSkippedImportHint: an import stopped at a skipped directory says to
 // open it as the workspace folder only when that makes the import resolve;
 // otherwise it says what would.

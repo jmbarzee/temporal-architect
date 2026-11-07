@@ -79,7 +79,7 @@ Produce or review `.twf`; `temporal-architect` routes implementation, so don't s
 | `.twf` Conventions | Package-per-directory layout, a worker's `@sdk` | [twf-conventions.md](./reference/twf-conventions.md) |
 | Packages & Imports | Cross-package references | [packages.md](./topics/packages.md) |
 | Workers & Task Queues | Worker grouping, routing, deployment | [task-queues.md](./topics/task-queues.md) |
-| Primitives across SDKs | `int`, `decimal`, `duration`, `time`, `bytes` at an SDK boundary | [cross-sdk.md, only when a call or return crosses workers whose `@sdk` differ](../temporal-architect/reference/cross-sdk.md) |
+| Primitives across SDKs | `int`, `decimal`, `duration`, `time`, `bytes` at an SDK boundary | [cross-sdk.md, only where `twf check` reports `CROSS_SDK_CALL`](../temporal-architect/reference/cross-sdk.md) |
 | Namespaces | Namespace count and boundaries | [namespaces.md](./reference/namespaces.md) |
 | Nexus | Cross-namespace communication | [nexus.md](./topics/nexus.md) |
 | Versioning | Changing a workflow that has executions in flight | [versioning.md](./topics/versioning.md) |

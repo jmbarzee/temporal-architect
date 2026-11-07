@@ -53,7 +53,7 @@ func (g *Graph) emitDispatchEdges(idx *astIndex) {
 		svcQName := idx.defQName(svc, svc.Name)
 		serviceDeployments := idx.deploymentsHosting(KindNexusService, svcQName)
 		for _, op := range ast.FirstDeclared(svc.Operations) {
-			opName := nexusOpQualifiedName(svcQName, op.Name)
+			opName := NexusOpQualifiedName(svcQName, op.Name)
 			switch op.OpType {
 			case ast.NexusOpAsync:
 				if op.Workflow.Resolved == nil {
@@ -265,7 +265,7 @@ func (g *Graph) emitNexusCall(
 	}
 
 	svcQName := idx.defQName(svcRef.Resolved, svcRef.Resolved.Name)
-	opName := nexusOpQualifiedName(svcQName, opRef.Resolved.Name)
+	opName := NexusOpQualifiedName(svcQName, opRef.Resolved.Name)
 	matched := false
 	for _, opDep := range idx.deploymentsHosting(KindNexusService, svcQName) {
 		if opDep.NamespaceName != ep.Namespace {
@@ -336,7 +336,7 @@ func nexusOpCallName(svc ast.Ref[*ast.NexusServiceDef], op ast.Ref[*ast.NexusOpe
 	if op.Resolved != nil {
 		opName = op.Resolved.Name
 	}
-	return nexusOpQualifiedName(svcName, opName)
+	return NexusOpQualifiedName(svcName, opName)
 }
 
 // recordUnresolved emits one Unresolved entry per caller deployment node,

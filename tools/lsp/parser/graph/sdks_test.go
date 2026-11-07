@@ -1,6 +1,7 @@
 package graph
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 
@@ -78,5 +79,84 @@ namespace shop:
 		if !reflect.DeepEqual(n.SDKs, sdks) {
 			t.Errorf("%s SDKs = %v, want %v", id, n.SDKs, sdks)
 		}
+	}
+}
+
+// TestSDKCrossings: activity, workflow and Nexus call edges between disjoint
+// declared SDK sets cross; a call within one SDK and a call to a worker with no
+// `@sdk` do not.
+func TestSDKCrossings(t *testing.T) {
+	file, errs := parser.ParseFileAll(`workflow W():
+	activity A()
+	workflow C()
+	nexus Ep Svc.Op()
+	activity Same()
+	activity Plain()
+	close complete()
+
+activity A():
+	default_options:
+		task_queue: "py"
+	return x
+
+activity Same():
+	return x
+
+activity Plain():
+	default_options:
+		task_queue: "plain"
+	return x
+
+workflow C():
+	default_options:
+		task_queue: "py"
+	close complete()
+
+nexus service Svc:
+	async Op workflow C
+
+@sdk(go)
+worker goW:
+	workflow W
+	activity Same
+
+@sdk(python)
+worker pyW:
+	activity A
+	workflow C
+	nexus service Svc
+
+worker plainW:
+	activity Plain
+
+namespace ns:
+	worker goW
+		options:
+			task_queue: "go"
+	worker pyW
+		options:
+			task_queue: "py"
+	worker plainW
+		options:
+			task_queue: "plain"
+	nexus endpoint Ep
+		options:
+			task_queue: "py"
+`)
+	if len(errs) > 0 {
+		t.Fatalf("parse: %v", errs)
+	}
+	resolver.Resolve(file)
+	var got []string
+	for _, c := range Extract(file).SDKCrossings() {
+		got = append(got, fmt.Sprintf("%s %s:%d %v→%v", c.Edge.Kind, c.Caller, c.Edge.Line, c.From, c.To))
+	}
+	want := []string{
+		"activityCall workflow:W:2 [go]→[python]",
+		"nexusCall workflow:W:4 [go]→[python]",
+		"workflowCall workflow:W:3 [go]→[python]",
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("SDKCrossings:\n got  %v\n want %v", got, want)
 	}
 }

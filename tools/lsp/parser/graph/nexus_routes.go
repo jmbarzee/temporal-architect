@@ -26,7 +26,7 @@ func (g *Graph) emitNexusRoutes(idx *astIndex) {
 			continue
 		}
 		for _, op := range svc.Operations {
-			opName := nexusOpQualifiedName(svcQName, op.Name)
+			opName := NexusOpQualifiedName(svcQName, op.Name)
 			for _, opDep := range serviceDeployments {
 				fromID := HostedID(KindNexusOperation, opName, opDep.WorkerName, opDep.NamespaceName, false)
 				for _, ep := range idx.endpointsByName {

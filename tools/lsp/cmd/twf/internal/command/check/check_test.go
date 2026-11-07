@@ -89,3 +89,22 @@ func TestCheckReportsIndentationErrorsFirst(t *testing.T) {
 		})
 	}
 }
+
+// TestCheckPrintsCrossSDKCall: `twf check` prints the CROSS_SDK_CALL hint and
+// exits 0.
+func TestCheckPrintsCrossSDKCall(t *testing.T) {
+	t.Chdir(t.TempDir())
+	const src = "workflow W():\n\tactivity A()\n\tclose complete()\n\nactivity A():\n\tdefault_options:\n\t\ttask_queue: \"a\"\n\treturn x\n\n@sdk(go)\nworker wW:\n\tworkflow W\n\n@sdk(python)\nworker aW:\n\tactivity A\n\nnamespace ns:\n\tworker wW\n\t\toptions:\n\t\t\ttask_queue: \"w\"\n\tworker aW\n\t\toptions:\n\t\t\ttask_queue: \"a\"\n"
+	if err := os.WriteFile("sdks.twf", []byte(src), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var code int
+	stderr, err := clitest.CaptureStderr(func() { code = runCheck([]string{"sdks.twf"}) })
+	if err != nil {
+		t.Fatal(err)
+	}
+	const want = "hint [validate/CROSS_SDK_CALL] at sdks.twf:2:2: activity A runs on python and its caller on go; read skills/temporal-architect/reference/cross-sdk.md\n"
+	if code != 0 || stderr != want {
+		t.Errorf("twf check exit %d, stderr %q, want 0 and %q", code, stderr, want)
+	}
+}

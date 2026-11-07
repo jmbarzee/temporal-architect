@@ -142,6 +142,7 @@ Diagnostics for [`@sdk` annotations](./03-workers-and-namespaces.md#sdk-annotati
 | `INVALID_IMPL_PATH` | an absolute path, a URL, a `\`, or an empty path | error |
 | `IMPL_NOT_FOUND` | a path naming no file, read from the module root else the `.twf` file's directory; checked only for a file on disk | warning |
 | `WORKER_MULTI_SDK` | a worker with `@sdk` in more than one SDK | warning |
+| `CROSS_SDK_CALL` | an activity, workflow or Nexus call whose caller's worker and callee's worker (for Nexus, the one hosting the service) both carry `@sdk` and share no SDK | hint |
 
 ## Examples
 

@@ -164,6 +164,19 @@ func TestCheckTool(t *testing.T) {
 	}
 }
 
+// TestCheckToolHintsCrossSDKCall: twf_check carries the CROSS_SDK_CALL hint.
+func TestCheckToolHintsCrossSDKCall(t *testing.T) {
+	cs := connect(t)
+	const src = "workflow W():\n\tactivity A()\n\tclose complete()\n\nactivity A():\n\tdefault_options:\n\t\ttask_queue: \"a\"\n\treturn x\n\n@sdk(go)\nworker wW:\n\tworkflow W\n\n@sdk(python)\nworker aW:\n\tactivity A\n\nnamespace ns:\n\tworker wW\n\t\toptions:\n\t\t\ttask_queue: \"w\"\n\tworker aW\n\t\toptions:\n\t\t\ttask_queue: \"a\"\n"
+	var env pipeline.Envelope
+	if err := json.Unmarshal([]byte(toolText(t, callTool(t, cs, "twf_check", map[string]any{"source": src}))), &env); err != nil {
+		t.Fatalf("decode check envelope: %v", err)
+	}
+	if len(env.Diagnostics) != 1 || env.Diagnostics[0].Code != "CROSS_SDK_CALL" || env.Diagnostics[0].Severity != "hint" {
+		t.Errorf("diagnostics = %+v, want one CROSS_SDK_CALL hint", env.Diagnostics)
+	}
+}
+
 func TestParseToolMatchesBuilder(t *testing.T) {
 	cs := connect(t)
 

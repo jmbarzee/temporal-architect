@@ -60,7 +60,7 @@ func (g *Graph) emitContainment(idx *astIndex) {
 				continue
 			}
 			for _, op := range ast.FirstDeclared(svc.Operations) {
-				opName := nexusOpQualifiedName(svcQName, op.Name)
+				opName := NexusOpQualifiedName(svcQName, op.Name)
 				g.Edges = append(g.Edges, Edge{
 					From: HostedID(KindNexusOperation, opName, wd.WorkerName, wd.NamespaceName, false),
 					To:   HostedID(KindNexusService, svcQName, wd.WorkerName, wd.NamespaceName, false),

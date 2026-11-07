@@ -388,7 +388,8 @@ The complete list of `kind` + `code` combinations:
 **kind: `validate`**
 - `EMPTY_WORKFLOW`, `EMPTY_ACTIVITY`, `EMPTY_WORKER`, `EMPTY_NAMESPACE`
 - `WORKER_DUPLICATE_TYPE_NAME`
-- `WORKER_MULTI_SDK`, `IMPL_NOT_FOUND` (warnings; `@sdk` annotations)
+- `WORKER_MULTI_SDK`, `IMPL_NOT_FOUND` (warnings), `CROSS_SDK_CALL` (hint) —
+  `@sdk` annotations
 - `MISSING_TASK_QUEUE`, `MISSING_ENDPOINT_TASK_QUEUE`
 - `UNCOVERED_WORKFLOW`, `UNCOVERED_ACTIVITY`, `UNCOVERED_SERVICE`,
   `UNINSTANTIATED_WORKER`
