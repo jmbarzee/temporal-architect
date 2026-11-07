@@ -327,8 +327,8 @@ func (g *Graph) enumerateNodes(idx *astIndex) {
 		serviceDeployments := idx.deploymentsHosting(KindNexusService, svcQName)
 		pkg := ast.PackageIDOf(svc, idx.file)
 		for _, op := range svc.Operations {
-			opName := nexusOpQualifiedName(svcQName, op.Name)
-			bare := nexusOpQualifiedName(svc.Name, op.Name)
+			opName := NexusOpQualifiedName(svcQName, op.Name)
+			bare := NexusOpQualifiedName(svc.Name, op.Name)
 			if len(serviceDeployments) == 0 {
 				g.addNode(Node{
 					ID:         HostedID(KindNexusOperation, opName, "", "", true),

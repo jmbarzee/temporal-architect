@@ -785,7 +785,7 @@ func (v *validationCtx) walkAllBodies(defs []ast.Definition) {
 			}
 			for _, op := range ast.FirstDeclared(d.Operations) {
 				if op.OpType == ast.NexusOpSync {
-					def := graph.DefKey(graph.KindNexusOperation, ast.QualifiedName(key.pkg, key.name)+"."+op.Name)
+					def := graph.DefKey(graph.KindNexusOperation, graph.NexusOpQualifiedName(ast.QualifiedName(key.pkg, key.name), op.Name))
 					v.walkStatements(op.Body, caller{"nexus service", key, d.SourceFile, def})
 				}
 			}

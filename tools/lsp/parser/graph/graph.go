@@ -280,10 +280,10 @@ func HostedID(kind, name, worker, namespace string, orphan bool) string {
 	return base + "/" + DefKey(KindWorker, worker) + "/" + NamespaceID(namespace)
 }
 
-// nexusOpQualifiedName joins service and operation names into the
+// NexusOpQualifiedName joins service and operation names into the
 // definition-key suffix used for nexus operations
 // (`nexusOperation:PaymentService.CheckPaymentStatus`).
-func nexusOpQualifiedName(service, op string) string {
+func NexusOpQualifiedName(service, op string) string {
 	return service + "." + op
 }
 
@@ -503,7 +503,7 @@ func (g *Graph) calleeLabel(idx *astIndex, kind, qname string) string {
 			}
 		}
 		if svc != nil {
-			return ast.Label(g.Packages, ast.PackageIDOf(svc, idx.file), nexusOpQualifiedName(svc.Name, op))
+			return ast.Label(g.Packages, ast.PackageIDOf(svc, idx.file), NexusOpQualifiedName(svc.Name, op))
 		}
 	}
 	return qname
