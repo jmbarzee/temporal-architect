@@ -27,6 +27,8 @@ Nexus adds routing and authorization overhead that only a namespace boundary jus
 | **Nexus Endpoint** | `nexus endpoint Name` (in `namespace`) | Requires a static `task_queue`; a worker on that queue **in the endpoint's namespace** must register the service. Optional `allowed_caller_namespaces: [...]` |
 | **Nexus Call** | `nexus Endpoint Service.Op(args)` | Endpoint, then `Service.Op` |
 
+**One input:** an operation takes one value — a sync operation one parameter, an async operation's workflow one parameter. Wrap several in a declared type (`SendConfirmation` in the example); every SDK carries one payload per operation.
+
 **Deployment:** the endpoint lives in the **target** namespace, next to the worker that serves the service; the caller namespace hosts only the calling workflows and references the endpoint by name.
 
 **Exposure:** an endpoint exposes **every** service registered on its queue — callers name the service per call. One service per endpoint therefore means one queue per endpoint. Several endpoints on one queue are allowed, but they expose the same services and do not separate access to them.

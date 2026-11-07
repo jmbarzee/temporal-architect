@@ -19,7 +19,7 @@ workflow OrderCheckout(order: Order) -> (OrderResult):
 
 	nexus PaymentsEndpoint PaymentsService.ProcessPayment(order.payment) -> paymentResult
 
-	detach nexus NotificationsEndpoint NotificationsService.SendConfirmation(order.customer, paymentResult)
+	detach nexus NotificationsEndpoint NotificationsService.SendConfirmation(Confirmation{customer: order.customer, payment: paymentResult})
 
 	close complete(OrderResult{paymentId: paymentResult.id})
 
@@ -77,9 +77,9 @@ workflow ProcessPaymentWorkflow(payment: Payment) -> (PaymentResult):
 	activity RecordPaymentTransaction(result)
 	close complete(PaymentResult{id: result.id})
 
-workflow SendConfirmationWorkflow(customer: Customer, paymentResult: PaymentResult):
-	id_scheme: "confirm-{paymentResult.id}"
-	activity SendPaymentConfirmation(customer.email, paymentResult)
+workflow SendConfirmationWorkflow(confirmation: Confirmation):
+	id_scheme: "confirm-{confirmation.payment.id}"
+	activity SendPaymentConfirmation(confirmation.customer.email, confirmation.payment)
 	close complete
 
 # --- Supporting activities for target workflows ---
