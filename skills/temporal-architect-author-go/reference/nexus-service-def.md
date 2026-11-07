@@ -58,20 +58,11 @@ w.RegisterWorkflow(BillingChargeWorkflow) // handler workflows must also be regi
 
 `async Op workflow Name` → `temporalnexus.NewWorkflowRunOperation(Op, Name, getOptions)`: any duration; the caller gets a completion callback, with cancellation propagation and re-attachment via operation token. A qualified `workflow orders.Name` is `orders.Name` from that package's import ([workflow-call.md](./workflow-call.md)).
 
-`NewWorkflowRunOperation` takes `func(workflow.Context, I) (O, error)`: one input. A backing workflow with several params takes `NewWorkflowRunOperationWithOptions` with a `Handler`, whose input packs the params into one struct (#415) and unpacks them into `ExecuteUntypedWorkflow`:
-
-```go
-var ShipOperation = temporalnexus.MustNewWorkflowRunOperationWithOptions(temporalnexus.WorkflowRunOperationOptions[ShipInput, ShipResult]{
-    Name: ShipOp,
-    Handler: func(ctx context.Context, in ShipInput, options nexus.StartOperationOptions) (temporalnexus.WorkflowHandle[ShipResult], error) {
-        return temporalnexus.ExecuteUntypedWorkflow[ShipResult](ctx, options, ShipOrderStartOptions(in.OrderID), ShipOrder, in.OrderID, in.Address)
-    },
-})
-```
+`NewWorkflowRunOperation` takes `func(workflow.Context, I) (O, error)`: the backing workflow's one parameter is the operation's input.
 
 ## sync
 
-`sync Op(params) -> (T):` → `nexus.NewSyncOperation(Op, func(ctx, input, options) (T, error))`. It must finish within 10 seconds; on handler timeout the caller's Nexus machinery retries until `ScheduleToCloseTimeout`. The body holds only client forms, each a client call or plain Go:
+`sync Op(param) -> (T):` → `nexus.NewSyncOperation(Op, func(ctx, input, options) (T, error))`. It must finish within 10 seconds; on handler timeout the caller's Nexus machinery retries until `ScheduleToCloseTimeout`. The body holds only client forms, each a client call or plain Go:
 
 | Statement in a sync body | Go |
 |---|---|
@@ -83,4 +74,4 @@ var ShipOperation = temporalnexus.MustNewWorkflowRunOperationWithOptions(tempora
 
 ## Naming contract
 
-Operation names match byte-for-byte at the wire between caller and handler — no transformation. The string passed to the builder is canonical; define it once as a constant (above) and reference it from both sides. Polyglot callers must also agree on service name and input/output types — use Protobuf or JSON as the Data Converter format.
+Operation names match byte-for-byte at the wire between caller and handler — no transformation. The string passed to the builder is canonical; define it once as a constant (above) and reference it from both sides.

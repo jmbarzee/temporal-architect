@@ -20,7 +20,7 @@ The `.twf` type names are defined in `twf spec workflows` (Types). In Go:
 | `string` / `bool` / `any` | same |
 | `int` | `int64` |
 | `float` | `float64` |
-| `decimal` | `decimal.Decimal` (`github.com/shopspring/decimal`), Go's de facto exact base-10 type: the standard library has none, and `math/big.Rat` is a fraction (text form `a/b`) |
+| `decimal` | `decimal.Decimal` (`github.com/shopspring/decimal`), Go's de facto exact base-10 type: the standard library has none, and `math/big.Rat` is a fraction |
 | `duration` | `time.Duration` (`5m` → `5*time.Minute`) |
 | `time` | `time.Time` |
 | `bytes` | `[]byte` |
