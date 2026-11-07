@@ -6,7 +6,7 @@ A toolchain for designing, visualizing, and code-generating entire Temporal syst
 
 `.twf` exists to **extend the complexity horizon of AI execution** — to let AI work at *system* scale, not code scale. The largest gains in AI-assisted development came from wiring AIs into **deterministic tooling** (compilers, linters, testers); temporal-architect is that deterministic harness for **Temporal architecture**. It keeps the AI out of the weeds — error handling, library choices, application-code pedantics — so it can focus on the large scale: **workloads, scaling, reliability, availability**. The product is a **context-protecting harness for the main agent**: fit bigger problems into the same context window. (The "main agent" isn't always the *design* agent — sometimes it's authoring or reverse-engineering. Don't assume.)
 
-The test for every change in this repo: does the design stay **verifiable from 10,000 ft**? Record each constraint at the highest level that still verifies.
+The test for every change in this repo: does it keep `.twf` designs **verifiable from 10,000 ft**? Record each constraint at the highest level that still verifies.
 
 ## Running `go`
 

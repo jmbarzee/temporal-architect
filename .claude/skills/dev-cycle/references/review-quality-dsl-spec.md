@@ -32,8 +32,8 @@ Use the **Temporal docs MCP server** (`mcp__temporal-docs__search_temporal_knowl
 
 ### 4. Altitude
 Every construct, existing or proposed, must justify itself against the North Star's test in `AGENTS.md`: does the design stay **verifiable from 10,000 ft**?
-- Where does it collapse into one construct a distinction a check needs?
-- Which constructs pull `.twf` below 10,000 ft — application-language mechanics, encodings, SDK idioms? Each is a finding, even when it maps to a real Temporal primitive.
+- Where does one construct collapse a distinction a check needs?
+- Which constructs pull `.twf` below it, toward an application language? Each is a finding, even when it maps to a real Temporal primitive.
 
 ## Workflow
 

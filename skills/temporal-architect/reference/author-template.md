@@ -24,7 +24,7 @@ Types map by the SDK's own conventions. Read [cross-sdk.md, only when a call or 
 
 ## Delegation
 
-This skill owns the `.twf` ↔ SDK translation: call shapes, wire names, options, project layout, verify. Detail the `.twf` leaves out is decided in code, never added to the `.twf`. How to write the SDK's Temporal code well belongs to Temporal's official `temporal-developer` skill, pinned at `v0.6.3`; load it for these topics. One table, each topic with its file there:
+This skill owns the `.twf` ↔ SDK translation: call shapes, wire names, options, project layout, verify. Encodings, error-handling minutiae, and SDK idioms sit below 10,000 ft: decide them in code, never in the `.twf`. How to write the SDK's Temporal code well belongs to Temporal's official `temporal-developer` skill, pinned at `v0.6.3`; load it for these topics. One table, each topic with its file there:
 
 | Topic | `temporal-developer` |
 |---|---|

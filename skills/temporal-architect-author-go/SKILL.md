@@ -36,7 +36,7 @@ Types map by Go's own conventions ([types.md](./reference/types.md)). Read [cros
 
 ## Delegation
 
-This skill owns the `.twf` ↔ Go translation: call shapes, wire names, options, project layout, verify. Detail the `.twf` leaves out is decided in code, never added to the `.twf`. How to write Go Temporal code well belongs to Temporal's official `temporal-developer` skill, pinned at `v0.6.3`; load it for these topics:
+This skill owns the `.twf` ↔ Go translation: call shapes, wire names, options, project layout, verify. Encodings, error-handling minutiae, and SDK idioms sit below 10,000 ft: decide them in code, never in the `.twf`. How to write Go Temporal code well belongs to Temporal's official `temporal-developer` skill, pinned at `v0.6.3`; load it for these topics:
 
 | Topic | `temporal-developer` |
 |---|---|
