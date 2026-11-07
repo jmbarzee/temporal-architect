@@ -24,7 +24,7 @@ Atomically completes the current run and starts a new one with fresh history.
 | Workflow ID | Same (logical continuity) |
 | Run ID | New |
 | History | Reset to zero |
-| Pending signals | Carried over (configurable) |
+| Pending signals and updates | Dropped — pass what the next run needs as arguments |
 | State | Passed as the new run's input — must be serializable |
 
 **When:** after N events, every T hours, as history size nears the limit, or at a business boundary (end of a billing cycle). Two deterministic SDK intrinsics, callable from workflow code (not activities) and written in TWF as raw expressions:
