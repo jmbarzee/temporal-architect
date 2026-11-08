@@ -27,7 +27,7 @@ The Go signals the design skill's [reverse engineering](../../temporal-architect
 | a queue or counter a handler feeds (`arrivals.add`, `acks++`), taken from in the workflow (`take`) | `await signal\|update Name -> (…)` ([await-signal.md](./await-signal.md)) |
 | a `wait` ticket and `workflow.NewFuture` settled by `takeAt` | `promise p <- signal\|update Name` ([promise.md](./promise.md)) |
 | `workflow.Go` + futures joined, or `workflow.NewWaitGroup` | `await all` ([await-all.md](./await-all.md)) |
-| `workflow.Await` on any of several ready checks (`xs.ready(t)`, `f.IsReady()`, a `bool`), then the first ready one in order wins | `await one`, cases in that order ([await-one.md](./await-one.md)) |
+| `workflow.Await` on any of several ready checks (`xs.ready(t)`, `f.IsReady()`, a `bool`), then the first ready one in order wins | `await one`, cases in that order; a losing timer's context cancelled after is still `await one` (`twf spec statement-syntax`, lifecycle of non-winning cases) ([await-one.md](./await-one.md)) |
 | `workflow.NewSelector` (legacy) | `await one`, with a comment that the first event wins, not the first listed |
 | `Receive`, or a selector's `AddReceive`, on a signal channel no handler loop reads (legacy) | `await signal`, or that `await one` case; the code's handler does nothing, which a `.twf` handler cannot say (it needs a statement), so record that in prose |
 | future held, `.Get` later | `promise` ([promise.md](./promise.md)) |
