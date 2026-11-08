@@ -45,6 +45,9 @@ skills/
   temporal-architect-author-python/
     SKILL.md
     reference/...
+  temporal-architect-author-java/
+    SKILL.md
+    reference/...
   temporal-architect-author-infra/
     SKILL.md
     reference/...
