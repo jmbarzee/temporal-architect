@@ -10,7 +10,7 @@
     <IsTestProject>true</IsTestProject>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
     <!-- The designs' other SDK outputs and their dependency directories hold no C#. -->
-    <DefaultItemExcludes>$(DefaultItemExcludes);node_modules/**;*/go/**;*/typescript/**</DefaultItemExcludes>
+    <DefaultItemExcludes>$(DefaultItemExcludes);node_modules/**;*/go/**;*/python/**;*/typescript/**</DefaultItemExcludes>
   </PropertyGroup>
 
   <ItemGroup>
