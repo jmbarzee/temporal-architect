@@ -42,6 +42,9 @@ skills/
   temporal-architect-author-dotnet/
     SKILL.md
     reference/...
+  temporal-architect-author-python/
+    SKILL.md
+    reference/...
   temporal-architect-author-infra/
     SKILL.md
     reference/...
