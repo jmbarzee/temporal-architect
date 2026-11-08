@@ -25,8 +25,13 @@ async function events(h: WorkflowHandle) {
   return (await h.fetchHistory()).events ?? [];
 }
 
+/** Waits up to 10s of real time for an event that has; throws rather than hang. */
 async function until(h: WorkflowHandle, has: (e: Awaited<ReturnType<typeof events>>[number]) => unknown) {
-  while (!(await events(h)).some(has)) await setTimeout(20);
+  const deadline = Date.now() + 10_000;
+  while (!(await events(h)).some(has)) {
+    if (Date.now() > deadline) throw new Error(`${h.workflowId}: the awaited event never reached history`);
+    await setTimeout(20);
+  }
 }
 
 /** Runs awaitOne with the timer fired and Ack sent while no worker runs, so both reach one workflow task. */
