@@ -1,11 +1,10 @@
 (ns messages.workers
-  "Each .twf worker's registrations, shared by the worker process and the tests."
+  "Each .twf worker's options map, shared by the worker process and the tests."
   (:require [messages.approval :refer [Approval]]
             [temporal.client.core :as c]
             [temporal.client.worker :as worker]))
 
-;; worker approvalTypes: an explicit :dispatch, never auto-dispatch (which registers every
-;; defworkflow/defactivity loaded in the JVM).
+;; worker approvalTypes
 (def approval-types
   {:task-queue "approvals"
    :dispatch   {:workflows [Approval]}})
