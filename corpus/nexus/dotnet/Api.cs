@@ -22,6 +22,6 @@ public static class Greeter
     /// <summary>Greet's id_scheme, used by every start.</summary>
     public static string GreetId(string name) => $"greet-{name}";
 
-    /// <summary>Greet's start options, built from its id_scheme.</summary>
-    public static WorkflowOptions GreetStartOptions(string name) => new() { Id = GreetId(name) };
+    /// <summary>Greet's start options, for every start.</summary>
+    public static WorkflowOptions GreetStartOptions(string name) => new(GreetId(name), TaskQueue);
 }

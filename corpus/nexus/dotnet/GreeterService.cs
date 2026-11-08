@@ -11,7 +11,7 @@ public class GreeterService
     public IOperationHandler<string, string> Hello() =>
         OperationHandler.Sync<string, string>((ctx, name) => "Hello, " + name);
 
-    // async Greet workflow Greet: a client start; the task queue defaults to the handler's.
+    // async Greet workflow Greet: a client start with Greet's start options.
     [NexusOperationHandler]
     public IOperationHandler<string, string> Greet() =>
         WorkflowRunOperationHandler.FromHandleFactory(
