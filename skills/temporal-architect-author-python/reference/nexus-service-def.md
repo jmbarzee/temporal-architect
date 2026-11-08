@@ -5,7 +5,7 @@ nexus service BillingService:
 	async ChargePayment workflow BillingChargeWorkflow
 	sync RefundPayment(req: RefundRequest) -> (RefundResult):
 		signal BillingChargeWorkflow.Refund(req)
-			id: req.chargeId
+			id: "charge-{req.chargeId}"
 		close complete(RefundResult{status: "requested"})
 ```
 
@@ -26,12 +26,12 @@ class BillingServiceHandler:
     async def charge_payment(
         self, ctx: nexus.WorkflowRunOperationContext, req: PaymentRequest
     ) -> nexus.WorkflowHandle[PaymentResult]:
-        return await ctx.start_workflow(BillingChargeWorkflow.run, req, id=billing_charge_id(req.charge_id))
+        return await ctx.start_workflow(BillingChargeWorkflow.run, req, **billing_charge_workflow_start_options(req))
 
     # sync: the body runs in the handler, with a Temporal client, not a workflow
     @nexusrpc.handler.sync_operation
     async def refund_payment(self, ctx: nexusrpc.handler.StartOperationContext, req: RefundRequest) -> RefundResult:
-        handle = nexus.client().get_workflow_handle_for(BillingChargeWorkflow.run, req.charge_id)
+        handle = nexus.client().get_workflow_handle_for(BillingChargeWorkflow.run, billing_charge_id(req.charge_id))
         await handle.signal(BillingChargeWorkflow.refund, req)
         return RefundResult(status="requested")
 ```
