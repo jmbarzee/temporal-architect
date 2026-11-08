@@ -98,7 +98,7 @@ cargo clippy --locked --workspace --all-targets -- -D warnings && cargo test --l
 ## Output conventions
 
 - One crate per `.twf` package.
-- The crate's `src/lib.rs` holds one `pub fn <worker>_types() -> Result<WorkerOptions, WorkflowRegistrationError>` per `.twf` worker, named for the worker (`approval_types()`), returning `WorkerOptions::new(task_queue)` with its registrations built (`crates/sdk/src/lib.rs:186-194,472,488`), shared by the worker `main.rs` and the tests. Its `@sdk(rust, "<path>")` names that file, from the directory of the nearest `twf.mod`, else the `.twf` file's directory, e.g. `@sdk(rust, "src/lib.rs")`.
+- The crate's `src/lib.rs` holds one `pub fn <worker>_types() -> Result<WorkerOptions, WorkflowRegistrationError>` per `.twf` worker, named for the worker (`approval_types()`), returning `WorkerOptions::new(task_queue)` with its registrations, then `.build()` (`crates/sdk/src/lib.rs:186-194,472,488`), shared by the worker `main.rs` and the tests. Its `@sdk(rust, "<path>")` names that file, from the directory of the nearest `twf.mod`, else the `.twf` file's directory, e.g. `@sdk(rust, "src/lib.rs")`.
 - Handler methods (`#[run]`, `#[signal]`, `#[query]`, `#[update]`) on a `pub` workflow are `pub`: each gets a marker type with the method's visibility (`crates/macros/src/macro_utils.rs:58-84`), and a private one in the workflow's public interface fails to compile.
 
 ## Reference index
