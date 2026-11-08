@@ -107,6 +107,25 @@ Load only what the current layer needs.
 
 | DSL | Rust | File |
 |-----|------|------|
+| `workflow Name(...)` | `#[workflow]` struct + `#[workflow_methods]` impl with one `#[run]` | [workflow-def.md](./reference/workflow-def.md) |
+| `id_scheme: "..."` | associated `Name::id(...)`, called by every start and sender | [workflow-def.md](./reference/workflow-def.md#id_scheme) |
+| `workflow_id_reuse_policy` / `workflow_id_conflict_policy` | `Name::start_options(...)` for client starts; child gets reuse only | [options.md](./reference/options.md#workflow-id-policies) |
+| `activity Name(...)` | `#[activity(name = "…")]` method in an `#[activities]` impl, on a struct holding its dependencies | [activity-def.md](./reference/activity-def.md) |
+| types (`int`, `time`, `bytes`, …), user types | what the default serde converter round-trips; `#[derive(Serialize, Deserialize)]` struct | [types.md](./reference/types.md) |
+| activity dependencies | dependency map, confirmed from the crate's source | [dependency-resolution.md](./reference/dependency-resolution.md) |
+| `worker`, namespace worker `options:` | `<worker>_types()` in `src/lib.rs` building `WorkerOptions`; `Worker::new(...).run()` | [worker.md](./reference/worker.md) |
+| `nexus service Name:`, `async` / `sync` operations | unsupported in Rust: the handler worker is another SDK's | [nexus-service-def.md](./reference/nexus-service-def.md) |
+| `activity Name(args) -> r` | `ctx.execute_activity(Type::method, input, options)` | [activity-call.md](./reference/activity-call.md) |
+| `workflow Name(args) -> r` | `ctx.start_child_workflow(Name::run, input, options)`, then `.result()` | [workflow-call.md](./reference/workflow-call.md) |
+| `detach workflow ...` / `detach nexus ...` | `Abandon` options; await the start, never `.result()` | [detach.md](./reference/detach.md) |
+| `nexus Endpoint Service.Op(args) -> r` | `ctx.start_nexus_operation(NexusOperationOptions)`, untyped (`experimental`) | [nexus.md](./reference/nexus.md) |
+| `signal handle.Name(args)` / `signal Type.Name(args)` + `id:` | `StartedChildWorkflow::signal` / `ctx.external_workflow(id, run_id).signal` | [signal-send.md](./reference/signal-send.md) |
+| `await timer(d)` | `ctx.timer(d).await` | [await-timer.md](./reference/await-timer.md) |
+| `options:` / `default_options:` | `ActivityOptions` / `ChildWorkflowOptions` / `NexusOperationOptions`, per call | [options.md](./reference/options.md) |
+| `if` / `for` / `switch` / `break` / `continue`, `x = expr` | Rust equivalents; `switch` is `match` | [control-flow.md](./reference/control-flow.md) |
+| `close complete` / `fail` / `continue_as_new` | `Ok(v)` / `Err(ApplicationFailure…)` / `ctx.continue_as_new` | [close.md](./reference/close.md) |
+| `heartbeat(details)` | `ctx.record_heartbeat(details).await` | [heartbeat.md](./reference/heartbeat.md) |
+| (testing, determinism, errors, data, versioning) | the SDK's README, docs.rs and examples | [idioms.md](./reference/idioms.md) |
 
 The spec states only what `detach` guarantees (`twf spec statement-syntax`); the author maps it to these mechanics:
 
