@@ -5,7 +5,7 @@ nexus service BillingService:
 	async ChargePayment workflow BillingChargeWorkflow
 	sync RefundPayment(req: RefundRequest) -> (RefundResult):
 		signal BillingChargeWorkflow.Refund(req)
-			id: req.chargeId
+			id: "charge-{req.chargeId}"
 		close complete(RefundResult{status: "requested"})
 ```
 
@@ -32,7 +32,7 @@ export const billingServiceHandler = nexus.serviceHandler(BillingService, {
   ),
   // sync: the body runs in the handler, with a Temporal client, not a workflow
   RefundPayment: async (_ctx, req) => {
-    await getClient().workflow.getHandle(req.chargeId).signal(Refund, req);
+    await getClient().workflow.getHandle(billingChargeId(req.chargeId)).signal(Refund, req);
     return { status: 'requested' };
   },
 });

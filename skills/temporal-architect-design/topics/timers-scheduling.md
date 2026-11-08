@@ -27,7 +27,7 @@ workflow ProcessWithDeadline(data: Data) -> (Result):
 			close fail(Result{success: false, error: "deadline exceeded"})
 ```
 
-> **`await one` does not cancel the loser.** If the timer wins, `LongOperation` keeps running until the workflow run ends — `await one` is "first to complete wins," not "winner cancels the rest." If the loser must actually stop (release a lock, stop billing), add an explicit cancellation/cleanup activity.
+> **A losing activity is not cancelled.** If the timer wins, `LongOperation` keeps running until the workflow run ends, as would a losing child or Nexus operation; of the inline cases, only a losing timer is cancelled, and a bound `promise` survives losing (`twf spec statement-syntax`). If the loser must actually stop (release a lock, stop billing), add an explicit cancellation/cleanup activity.
 
 The same race bounds a signal wait: `await one:` over the expected signals plus `timer(7d):` for the expiry path. For recurring work inside a workflow, loop over an activity and `await timer(...)`; for polling with backoff, see [patterns.md](./patterns.md#polling).
 

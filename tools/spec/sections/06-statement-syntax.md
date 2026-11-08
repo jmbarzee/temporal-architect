@@ -408,7 +408,27 @@ await one:
 
 The case that completes first "wins" the race, its body executes (if present), and then execution continues after the `await one` block. A case already ready on entry, a pending arrival included, wins. Whenever more than one case is ready as the workflow resumes, on entry or later, the first listed wins.
 
-**Lifecycle of non-winning cases:** When one case wins, execution continues after the `await one` block. Operations started by non-winning cases (activities, child workflows, timers) are NOT cancelled — they continue running. These pending operations are cancelled only when the workflow run ends: via `close complete`, `close fail`, `close continue_as_new`, or external cancellation. For child workflows, the `parent_close_policy` option controls behavior at parent completion.
+**Lifecycle of non-winning cases:** When one case wins, execution continues after the `await one` block, and what a losing case started depends on how it was written:
+
+- An **inline** timer case that loses is cancelled. Nothing can reach it after the block, so only history changes.
+- **Inline** activity, child workflow and Nexus cases that lose keep running, since their side effects matter. They end with the workflow run (`close complete`, `close fail`, `close continue_as_new`, or external cancellation); for a child workflow, `parent_close_policy` governs what happens at parent close.
+- A promise **bound** with `promise x <- …` is never cancelled by losing a round. It stays awaitable until it resolves or the run ends.
+
+A deadline bound once survives every round it loses:
+
+```twf
+workflow CollectVotes(pollId: string) -> (Tally):
+	signal Vote():
+		votes = votes + 1
+
+	votes = 0
+	promise deadline <- timer(24h)
+	for:
+		await one:
+			signal Vote:
+			deadline:
+				close complete(Tally{votes: votes})
+```
 
 ## Switch Block
 

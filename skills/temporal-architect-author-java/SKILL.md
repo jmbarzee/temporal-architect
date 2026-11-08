@@ -99,6 +99,15 @@ Load only what the current layer needs.
 
 | DSL | Java | File |
 |-----|------|------|
+| `signal Name(params):` | `@SignalMethod(name=)` method: body, then `arrivals.add` | [signal-handler.md](./reference/signal-handler.md) |
+| `query Name(params) -> (T):` | `@QueryMethod(name=)` method | [query-handler.md](./reference/query-handler.md) |
+| `update Name(params) -> (T):` | `@UpdateMethod(name=)` method: body, then `arrivals.add`, then `return` | [update-handler.md](./reference/update-handler.md) |
+| `await signal\|update Name -> (...)` | `arrivals.take()` | [await-signal.md](./reference/await-signal.md) |
+| `promise p <- ...` | `Async.function(...)`; for a signal or update, `arrivals.promise()` | [promise.md](./reference/promise.md) |
+| `state:` / `condition` / `set` / `unset` | `boolean` field + `Workflow.await` | [condition.md](./reference/condition.md) |
+| `await all:` | `Promise.allOf(...).get()` | [await-all.md](./reference/await-all.md) |
+| `await one:` | one `Workflow.await` over every case; first listed ready wins | [await-one.md](./reference/await-one.md) |
+| handler + condition + `await one` | worked compositions | [composite-patterns.md](./reference/composite-patterns.md) |
 
 The spec states only what `detach` guarantees (`twf spec statement-syntax`); the author maps it to these mechanics:
 
