@@ -32,12 +32,14 @@ public class Batch
             new() { ParentClosePolicy = ParentClosePolicy.Abandon, CancellationType = ChildWorkflowCancellationType.Abandon });
 
         // await one: one condition over every case, then the first listed that is ready wins,
-        // so Ack wins a tie with the timer. The losing timer is left to the run's end (spec 06).
-        var timer = Workflow.DelayAsync(TimeSpan.FromHours(1));
+        // so Ack wins a tie with the timer.
+        using var timerCancel = CancellationTokenSource.CreateLinkedTokenSource(Workflow.CancellationToken);
+        var timer = Workflow.DelayAsync(TimeSpan.FromHours(1), timerCancel.Token);
         await Workflow.WaitConditionAsync(() => acks > 0 || timer.IsCompleted);
         if (acks > 0)
         {
             acks--;
+            timerCancel.Cancel();
         }
 
         return new(await count, await audited, status);
