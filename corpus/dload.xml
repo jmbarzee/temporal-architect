@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<!-- The PHP corpus's binaries, fetched into corpus/ by `php/vendor/bin/dload get` (make corpus-php). -->
+<dload xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:noNamespaceSchemaLocation="php/vendor/internal/dload/dload.xsd">
+    <actions>
+        <download software="rr" version="2025.1.15"/>
+        <download software="temporal-test-server" version="1.40.0"/>
+    </actions>
+    <registry>
+        <software name="Temporal Test Server" alias="temporal-test-server">
+            <repository type="github" uri="temporalio/sdk-java" asset-pattern="/^temporal-test-server.*/"/>
+            <binary name="temporal-test-server"/>
+        </software>
+    </registry>
+</dload>

@@ -27,9 +27,7 @@
   nil)
 
 (defn detach-workflow!
-  "detach workflow: abandon the child at parent close, never request its cancellation, and wait
-  only for its start (a failed start throws here). temporal.workflow/invoke returns only the
-  result promise, so the start is reached through the untyped child stub."
+  "Starts workflow-type, abandoned on the caller's close and cancellation, and waits only for its start."
   [^String workflow-type params]
   (let [^ChildWorkflowStub stub
         (Workflow/newUntypedChildWorkflowStub
@@ -39,6 +37,7 @@
              (.setCancellationType ChildWorkflowCancellationType/ABANDON)
              (.build)))]
     (.executeAsync stub Object (into-array Object [params]))
+    ;; Resolves once the child has started; a failed start throws here.
     (.get ^Promise (.getExecution stub))))
 
 (defn inline-timer
@@ -59,9 +58,8 @@
          (reset! status "acknowledged")
          (swap! acks inc))))
     ;; await all
-    (let [count-p   (a/invoke Count {:items items} activity-options)
-          audited-p (w/invoke Audit {:items items})
-          [cnt audited] @(tp/all [count-p audited-p])]
+    (let [[cnt audited] @(tp/all [(a/invoke Count {:items items} activity-options)
+                                  (w/invoke Audit {:items items})])]
       (detach-workflow! "Archive" {:items items})
       ;; await one: one await over every case, then the first listed that is ready wins, so Ack
       ;; wins a tie with the timer. Not temporal.promise/race (Promise.anyOf: callback order).
