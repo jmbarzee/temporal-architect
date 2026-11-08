@@ -5,7 +5,7 @@ nexus service BillingService:
 	async ChargePayment workflow BillingChargeWorkflow
 	sync RefundPayment(req: RefundRequest) -> (RefundResult):
 		signal BillingChargeWorkflow.Refund(req)
-			id: req.chargeId
+			id: "charge-{req.chargeId}"
 		close complete(RefundResult{status: "requested"})
 ```
 
@@ -28,13 +28,13 @@ var ChargePaymentOperation = temporalnexus.NewWorkflowRunOperation(
         // The backing workflow's start-options function: a deterministic ID from
         // its ID function (Nexus retries the start) and its default_options,
         // including both ID policies (workflow-def.md#id_scheme).
-        return BillingChargeWorkflowStartOptions(input), nil
+        return BillingChargeWorkflowStartOptions(input.ChargeID), nil
     },
 )
 
 // Sync: the body runs in the handler, with a Temporal client, not a workflow context
 var RefundPaymentOperation = nexus.NewSyncOperation(RefundPaymentOp, func(ctx context.Context, req RefundRequest, options nexus.StartOperationOptions) (RefundResult, error) {
-    err := temporalnexus.GetClient(ctx).SignalWorkflow(ctx, req.ChargeID, "", "Refund", req)
+    err := temporalnexus.GetClient(ctx).SignalWorkflow(ctx, BillingChargeWorkflowID(req.ChargeID), "", "Refund", req)
     if err != nil {
         return RefundResult{}, err
     }
@@ -68,9 +68,11 @@ w.RegisterWorkflow(BillingChargeWorkflow) // handler workflows must also be regi
 |---|---|
 | `workflow Name(args) [-> r]` (a client start) | `run, err := temporalnexus.GetClient(ctx).ExecuteWorkflow(ctx, NameStartOptions(...), Name, args...)`, then `run.Get(ctx, &r)` (`nil` with no result) ([workflow-call.md](./workflow-call.md)) |
 | `detach workflow Name(args)` | the same `ExecuteWorkflow`, its error returned; never `run.Get` |
-| `signal Type.Name(args)` + `id:` | `temporalnexus.GetClient(ctx).SignalWorkflow(ctx, workflowID, runID, "Name", arg)`; args pack as in [signal-send.md](./signal-send.md) |
+| `signal Type.Name(args)` + `id:` | `temporalnexus.GetClient(ctx).SignalWorkflow(ctx, workflowID, runID, "Name", arg)` (`client/client.go`, sdk-go); `workflowID` and args as in [signal-send.md](./signal-send.md) |
 | `close complete(r)` / `close fail(e)` | `return r, nil` / `return T{}, err` |
 | `if` / `for` / `switch` / `break` / `continue`, raw lines (`x = expr`) | Go equivalents ([control-flow.md](./control-flow.md)) |
+
+`id:` is the whole workflow ID (`twf spec cross-workflow-signals`), so `RefundPayment` signals the workflow `ChargePayment` started by calling the ID function its start options use, `BillingChargeWorkflowID`.
 
 ## Naming contract
 
