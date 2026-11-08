@@ -1,0 +1,26 @@
+namespace approvals:
+	worker approvalTypes
+		options:
+			task_queue: "approvals"
+
+@sdk(perl, "ApprovalTypes.pm")
+worker approvalTypes:
+	workflow Approval
+
+workflow Approval(request: string) -> (Decision):
+	state:
+		status = "submitted"
+	signal Open():
+		status = "open"
+	signal Approve(approver: string):
+		status = "approved"
+	update Review(note: string) -> (string):
+		status = "reviewed"
+		return status
+	query Status() -> (string):
+		return status
+	await signal Open
+	promise approval <- signal Approve
+	await update Review -> (note)
+	await approval -> approver
+	close complete(Decision{request: request, approver: approver, note: note, status: status})
