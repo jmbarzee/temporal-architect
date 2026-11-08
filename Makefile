@@ -226,6 +226,7 @@ vet:
 # See corpus/README.md. CI runs `make corpus-<sdk>` once per matrix entry.
 
 .PHONY: check-corpus corpus-go corpus-python corpus-typescript corpus-dotnet corpus-java corpus-ruby corpus-clojure corpus-rust corpus-php
+.PHONY: corpus-perl
 
 # A design is a corpus directory holding a .twf; node_modules is not one.
 CORPUS_DESIGNS := $(patsubst corpus/%/,%,$(sort $(dir $(wildcard corpus/*/*.twf))))
@@ -268,6 +269,14 @@ corpus-dotnet: check-corpus
 ## Check the corpus, then compile (javac -Werror) and test its Java outputs.
 corpus-java: check-corpus
 	cd corpus && ./mvnw -B -q verify
+
+## Check the corpus, then compile and test its Perl outputs, design by design
+## (each design's modules are top-level). sdk-perl has no time-skipping
+## environment, so each test file starts a dev server through the temporal CLI.
+corpus-perl: check-corpus
+	for d in $(CORPUS_DESIGNS); do \
+		( cd corpus/$$d/perl && for m in *.pm; do perl -I. -I../../perl-lib -c $$m || exit 1; done && prove t ) || exit 1; \
+	done
 
 ## Check the corpus, then syntax-check (ruby -wc) and test (Minitest) its Ruby
 ## outputs design by design, against the gems pinned by Gemfile.lock.

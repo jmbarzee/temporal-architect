@@ -67,6 +67,7 @@ command in its `SKILL.md` `## Verify` section. Adding an SDK is one row.
 | `dotnet` | Temporal .NET SDK |
 | `python` | Temporal Python SDK |
 | `java` | Temporal Java SDK |
+| `ruby` | Temporal Ruby SDK |
 | `clojure` | community Temporal Clojure SDK |
 
 `internal/changes/orchestrator/` is **not** a cycle component — it is coordination scratch for the
