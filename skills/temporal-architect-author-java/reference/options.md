@@ -82,7 +82,7 @@ String childResult = child.run(input.data());
 | `priority` | `setPriority` (`@Experimental`, `:334`) |
 | `parent_close_policy` | `setParentClosePolicy`: `PARENT_CLOSE_POLICY_TERMINATE`, `PARENT_CLOSE_POLICY_REQUEST_CANCEL` or `PARENT_CLOSE_POLICY_ABANDON`, from `io.temporal.api.enums.v1.ParentClosePolicy`; unset leaves the server's default, terminate (`internal/sync/SyncWorkflowContext.java:974-976`) |
 
-A client start's `WorkflowOptions` uses the same setter names, less `setParentClosePolicy`, plus `setWorkflowId`, `setWorkflowIdConflictPolicy` and `setTaskQueue` (`client/WorkflowOptions.java:157-272`); its `setPriority` is `@Experimental` too (`:471`).
+A client start's `WorkflowOptions` uses the same setter names, less `setParentClosePolicy`, plus `setWorkflowId` and `setWorkflowIdConflictPolicy` (`client/WorkflowOptions.java:157-272`); its `setPriority` is `@Experimental` too (`:471`).
 
 ## Nexus operation options
 

@@ -28,7 +28,7 @@ The `.twf` type names are defined in `twf spec workflows` (Types). The default c
 | `list[T]` / `map[string, V]` | `List<T>` / `Map<String, V>`, boxed (`List<Long>`) |
 | user type | a `record` whose components are the `.twf` fields as named: `record Result(String status, String trackingId)` |
 
-- **Property names go out as declared**, with no case transform: a record writes its component names, and fields are visible whatever their access (`JacksonJsonPayloadConverter.java:80`). Name each component exactly as the `.twf` field (`trackingId`).
+- **Property names go out as declared**, with no case transform: a record writes its component names, fields are visible whatever their access (`JacksonJsonPayloadConverter.java:80`), and bean getters write too (`getTotal()` → `"total"`; `temporal-developer` `references/java/data-handling.md` § Computed getters). Name each component exactly as the `.twf` field (`trackingId`).
 - **A field named for an `Object` method** (`wait`, `notify`, `notifyAll`, `hashCode`, `toString`, `getClass`, `clone`, `finalize`) is not a legal record component: rename it and keep the wire name with `@JsonProperty("wait")`.
 - **Several returns** (`-> (A, B)`) are one record of the values.
 

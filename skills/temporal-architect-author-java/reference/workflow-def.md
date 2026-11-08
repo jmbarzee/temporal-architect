@@ -43,7 +43,7 @@ public interface ShipItem {
 }
 ```
 
-One static ID method per scheme, on the workflow's interface, taking one argument per hole; the SDK skips static methods there (`common/metadata/POJOWorkflowInterfaceMetadata.java:402-408`). Every start ([workflow-call.md](./workflow-call.md)), every constructed send ([signal-send.md](./signal-send.md#type-head-by-id)), and every client start calls it; never format the ID inline. A `@Service` interface is the exception: every method there must be an `@Operation`, statics included (`nexus-sdk` `ServiceDefinition.java:50-55`, `OperationDefinition.java:13-24`), so a helper a handler needs lives on the handler class or the workflow's interface.
+One static ID method per scheme, on the workflow's interface, taking one argument per hole; the SDK skips static methods there (`common/metadata/POJOWorkflowInterfaceMetadata.java:402-408`). Every start ([workflow-call.md](./workflow-call.md)), every constructed send ([signal-send.md](./signal-send.md#type-head-by-id)), and every client start calls it; never format the ID inline. A `@Service` interface is the exception: every method there must be an `@Operation`, statics included (`nexus-sdk` `ServiceDefinition.java:50-55`, `OperationDefinition.java:13-24`), so a helper a handler needs lives on the workflow's interface.
 
 A type that has a scheme or ID policies, or backs a Nexus run operation, also gets one static start-options method holding its ID, task queue and `default_options:`; every client start uses it ([options.md](./options.md#workflow-id-policies)):
 

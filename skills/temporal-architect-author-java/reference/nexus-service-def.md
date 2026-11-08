@@ -5,7 +5,7 @@ nexus service BillingService:
 	async ChargePayment workflow BillingChargeWorkflow
 	sync RefundPayment(req: RefundRequest) -> (RefundResult):
 		signal BillingChargeWorkflow.Refund(req)
-			id: req.chargeId
+			id: "charge-{req.chargeId}"
 		close complete(RefundResult{status: "requested"})
 ```
 
@@ -43,7 +43,7 @@ public class BillingServiceImpl {
         (ctx, details, req) -> {
           Nexus.getOperationContext()
               .getWorkflowClient()
-              .newWorkflowStub(BillingChargeWorkflow.class, req.chargeId())
+              .newWorkflowStub(BillingChargeWorkflow.class, BillingChargeWorkflow.id(req.chargeId()))
               .refund(req);
           return new RefundResult("requested");
         });
@@ -53,7 +53,7 @@ public class BillingServiceImpl {
 
 The caller is GA since 1.29.0 (`releases/v1.29.0:36`), and `WorkflowRunOperation` and the `@Service`/`@Operation` contract annotations carry no experimental marker; `nexus-sdk`'s `OperationHandler` type is `@io.nexusrpc.Experimental` (`handler/OperationHandler.java:17`), on both kinds.
 
-Registration on the **handler** worker (the target namespace's), not the caller: its registrations method calls `worker.registerNexusServiceImplementation(new BillingServiceImpl())` (`worker/Worker.java:497`) and registers the backing workflows ([worker.md](./worker.md)). A `.twf` `nexus service` is one `@ServiceImpl` class implementing **every** operation it declares — never a subset: a missing handler throws at registration (`nexus-sdk` `handler/ServiceImplInstance.java:259-265`), and `twf check` rejects `nexus service Svc.Op`. Operations a design deploys apart are a separate `nexus service`.
+Registration on the **handler** worker (the target namespace's), not the caller: its registrations method calls `worker.registerNexusServiceImplementation(new BillingServiceImpl())` (`@Experimental`, `worker/Worker.java:496-497`) and registers the backing workflows ([worker.md](./worker.md)). A `.twf` `nexus service` is one `@ServiceImpl` class implementing **every** operation it declares — never a subset: a missing handler throws at registration (`nexus-sdk` `handler/ServiceImplInstance.java:259-265`), and `twf check` rejects `nexus service Svc.Op`. Operations a design deploys apart are a separate `nexus service`.
 
 ## Contract
 
@@ -65,7 +65,7 @@ A `@Service` interface named as the `.twf` service, with `name` unset; each `@Op
 
 The backing workflow's one parameter is the operation's input.
 
-**One ID function per backing workflow.** The async start and every client start or `id:` send in a sync body reach the same run only if they render the `id_scheme` through the same ID method, as the corpus's `greetId(name)` returns `"greet-" + name` for both. A constructed `id:` calls it; a learned `id:` (`req.chargeId` above) is already the full workflow ID and passes as is. Never rebuild the ID inline, nor from the scheme's hole alone.
+**One ID function per backing workflow.** The async start and every client start or `id:` send in a sync body reach the same run only if they render the `id_scheme` through the same ID method, as `BillingChargeWorkflow.id(...)` above serves `startOptions` and the `Refund` send alike. A constructed `id:` calls it; a learned `id:` is already the full workflow ID and passes as is. Never rebuild the ID inline, nor from the scheme's hole alone.
 
 ## sync
 
@@ -75,7 +75,7 @@ The backing workflow's one parameter is the operation's input.
 |---|---|
 | `workflow Name(args) [-> r]` (a client start) | `R r = client.newWorkflowStub(Name.class, Name.startOptions(...)).run(...)`, which starts the run and waits for its result (`client/WorkflowClient.java:141`; [workflow-call.md](./workflow-call.md)) |
 | `detach workflow Name(args)` | `WorkflowClient.start(client.newWorkflowStub(Name.class, Name.startOptions(...))::run, ...)`; never reads the result ([detach.md](./detach.md)) |
-| `signal Type.Name(args)` + `id:` | `client.newWorkflowStub(Type.class, workflowId).name(...)`, or `(Type.class, workflowId, Optional.of(runId))` for `run_id:` (`client/WorkflowClient.java:151,165`); args as in [signal-send.md](./signal-send.md) |
+| `signal Type.Name(args)` + `id:` | `client.newWorkflowStub(Type.class, workflowId).name(...)`, or `(Type.class, WorkflowTargetOptions.newBuilder().setWorkflowId(workflowId).setRunId(runId).build())` for `run_id:` (`client/WorkflowClient.java:151,175`, `client/WorkflowTargetOptions.java:62,68`); args as in [signal-send.md](./signal-send.md) |
 | `close complete(r)` / `close fail(e)` | `return r` / `throw OperationException.failed(ApplicationFailure.newFailure(...))` (`nexus-sdk` `OperationException.java:35`) |
 | `if` / `for` / `switch` / `break` / `continue`, raw lines (`x = expr`) | Java equivalents ([control-flow.md](./control-flow.md)) |
 

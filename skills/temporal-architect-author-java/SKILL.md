@@ -111,6 +111,15 @@ Load only what the current layer needs.
 | `workflow Name(args) -> r` | a call on a `Workflow.newChildWorkflowStub` stub, one per start | [workflow-call.md](./reference/workflow-call.md) |
 | `detach workflow ...` / `detach nexus ...` | child stub / Nexus stub with `ABANDON`; wait for the start, never the result | [detach.md](./reference/detach.md) |
 | `nexus Endpoint Service.Op(args) -> r` | a call on a `Workflow.newNexusServiceStub` stub | [nexus.md](./reference/nexus.md) |
+| `signal Name(params):` | `@SignalMethod(name=)` method: body, then `arrivals.add` | [signal-handler.md](./reference/signal-handler.md) |
+| `query Name(params) -> (T):` | `@QueryMethod(name=)` method | [query-handler.md](./reference/query-handler.md) |
+| `update Name(params) -> (T):` | `@UpdateMethod(name=)` method: body, then `arrivals.add`, then `return` | [update-handler.md](./reference/update-handler.md) |
+| `await signal\|update Name -> (...)` | `arrivals.take()` | [await-signal.md](./reference/await-signal.md) |
+| `promise p <- ...` | `Async.function(...)`; for a signal or update, `arrivals.promise()` | [promise.md](./reference/promise.md) |
+| `state:` / `condition` / `set` / `unset` | `boolean` field + `Workflow.await` | [condition.md](./reference/condition.md) |
+| `await all:` | `Promise.allOf(...).get()` | [await-all.md](./reference/await-all.md) |
+| `await one:` | one `Workflow.await` over every case; first listed ready wins | [await-one.md](./reference/await-one.md) |
+| handler + condition + `await one` | worked compositions | [composite-patterns.md](./reference/composite-patterns.md) |
 | `signal handle.Name(args)` / `signal Type.Name(args)` + `id:` | the child stub's `@SignalMethod` / `Workflow.newExternalWorkflowStub(...)`'s | [signal-send.md](./reference/signal-send.md) |
 | `await timer(d)` | `Workflow.sleep` | [await-timer.md](./reference/await-timer.md) |
 | `options:` / `default_options:` | `ActivityOptions` / `ChildWorkflowOptions` / `NexusOperationOptions`, on the stub | [options.md](./reference/options.md) |

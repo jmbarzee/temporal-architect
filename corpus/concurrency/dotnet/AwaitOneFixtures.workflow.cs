@@ -23,10 +23,16 @@ public class AwaitOneTie : WithAck
     [WorkflowRun]
     public async Task<string> RunAsync(List<string> order)
     {
-        var timer = Workflow.DelayAsync(TimeSpan.FromHours(1));
+        using var timerCancel = CancellationTokenSource.CreateLinkedTokenSource(Workflow.CancellationToken);
+        var timer = Workflow.DelayAsync(TimeSpan.FromHours(1), timerCancel.Token);
         bool Ready(string c) => c == "Ack" ? Acks > 0 : timer.IsCompleted;
         await Workflow.WaitConditionAsync(() => order.Any(Ready));
-        return order.First(Ready);
+        var won = order.First(Ready);
+        if (won == "Ack")
+        {
+            timerCancel.Cancel();
+        }
+        return won;
     }
 }
 
