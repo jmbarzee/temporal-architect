@@ -58,6 +58,7 @@ annot_arg  ::= IDENT | STRING
 
 sdk_annotation ::= '@' 'sdk' '(' sdk [ ',' STRING ] ')' NEWLINE
 sdk            ::= 'go' | 'typescript' | 'python' | 'java' | 'dotnet' | 'ruby' | 'php' | 'rust'
+               | 'swift' | 'haskell' | 'clojure' | 'perl' | 'erlang' | 'elixir'
 ```
 
 Annotations sit on the lines directly above a top-level definition: comment lines may sit among

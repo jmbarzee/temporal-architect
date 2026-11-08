@@ -14,6 +14,7 @@ import (
 var sdkNames = map[string]string{
 	"go": "Go", "typescript": "TypeScript", "python": "Python", "java": "Java",
 	"dotnet": ".NET", "ruby": "Ruby", "php": "PHP", "rust": "Rust",
+	"swift": "Swift", "haskell": "Haskell", "clojure": "Clojure", "perl": "Perl", "erlang": "Erlang", "elixir": "Elixir",
 }
 
 // sdkAt returns the `@sdk` annotation on a 1-based line, and its worker.

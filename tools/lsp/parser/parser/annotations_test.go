@@ -25,6 +25,9 @@ func TestWorkerSDKs(t *testing.T) {
 		{"sdk alone, trailing comment", "@sdk(typescript)   # not yet written", []ast.WorkerSDK{
 			{Pos: ast.Pos{Line: 1, Column: 1}, SDK: "typescript"},
 		}, nil},
+		{"community sdk", `@sdk(haskell, "x")`, []ast.WorkerSDK{
+			{Pos: ast.Pos{Line: 1, Column: 1}, SDK: "haskell", Impl: "x", ImplPos: ast.Pos{Line: 1, Column: 15}},
+		}, nil},
 		{"several, a comment line among them", "@sdk(go, \"../w.go\")\n# the TypeScript port\n@sdk(typescript)", []ast.WorkerSDK{
 			{Pos: ast.Pos{Line: 1, Column: 1}, SDK: "go", Impl: "../w.go", ImplPos: ast.Pos{Line: 1, Column: 10}},
 			{Pos: ast.Pos{Line: 3, Column: 1}, SDK: "typescript"},

@@ -89,8 +89,8 @@ func TestAnnotationCompletions(t *testing.T) {
 	}{
 		{"@", []string{"sdk"}, true},
 		{"@s", []string{"sdk"}, true},
-		{"@sdk(", []string{"go", "typescript", "python", "java", "dotnet", "ruby", "php", "rust"}, true},
-		{"@sdk(ty", []string{"go", "typescript", "python", "java", "dotnet", "ruby", "php", "rust"}, true},
+		{"@sdk(", []string{"go", "typescript", "python", "java", "dotnet", "ruby", "php", "rust", "swift", "haskell", "clojure", "perl", "erlang", "elixir"}, true},
+		{"@sdk(ty", []string{"go", "typescript", "python", "java", "dotnet", "ruby", "php", "rust", "swift", "haskell", "clojure", "perl", "erlang", "elixir"}, true},
 		{`@sdk(go, "`, nil, true},
 		{"\tactivity A", nil, false},
 	}

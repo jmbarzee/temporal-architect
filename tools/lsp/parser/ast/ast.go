@@ -335,7 +335,7 @@ type WorkerSDK struct {
 }
 
 // SDKs are the Temporal SDKs an `@sdk` annotation names.
-var SDKs = []string{"go", "typescript", "python", "java", "dotnet", "ruby", "php", "rust"}
+var SDKs = []string{"go", "typescript", "python", "java", "dotnet", "ruby", "php", "rust", "swift", "haskell", "clojure", "perl", "erlang", "elixir"}
 
 // OperationMention is a worker `nexus service` entry that named an operation
 // of the service: Services[ServiceIndex] is the service, Op the operation.
