@@ -56,3 +56,6 @@ tools/*/.pack-bak.*
 # .NET corpus build output
 corpus/bin/
 corpus/obj/
+
+# Java corpus build output
+target/

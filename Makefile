@@ -225,7 +225,7 @@ vet:
 # ── Corpus targets ───────────────────────────────────────────────────────────
 # See corpus/README.md. CI runs `make corpus-<sdk>` once per matrix entry.
 
-.PHONY: check-corpus corpus-go corpus-python corpus-typescript corpus-dotnet
+.PHONY: check-corpus corpus-go corpus-python corpus-typescript corpus-dotnet corpus-java
 
 # A design is a corpus directory holding a .twf; node_modules is not one.
 CORPUS_DESIGNS := $(patsubst corpus/%/,%,$(sort $(dir $(wildcard corpus/*/*.twf))))
@@ -264,6 +264,10 @@ corpus-typescript: check-corpus
 ## Check the corpus, then restore (pinned by packages.lock.json), build and test its .NET outputs.
 corpus-dotnet: check-corpus
 	cd corpus && dotnet restore --locked-mode && dotnet test --no-restore
+
+## Check the corpus, then compile (javac -Werror) and test its Java outputs.
+corpus-java: check-corpus
+	cd corpus && ./mvnw -B -q verify
 
 # ── Docs targets ─────────────────────────────────────────────────────────────
 
