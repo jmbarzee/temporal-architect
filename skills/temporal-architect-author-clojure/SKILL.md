@@ -102,6 +102,24 @@ Load only what the current layer needs.
 
 | DSL | Clojure | File |
 |-----|---------|------|
+| `workflow Name(...)` | `defworkflow` named as the `.twf`, taking one params map | [workflow-def.md](./reference/workflow-def.md) |
+| `id_scheme: "..."` | one ID function beside the workflow, its value the full workflow ID | [workflow-def.md](./reference/workflow-def.md#id_scheme) |
+| `workflow_id_reuse_policy` / `workflow_id_conflict_policy` | start-options map; child gets reuse only | [options.md](./reference/options.md#workflow-id-policies) |
+| `activity Name(...)` | `defactivity` named as the `.twf`, taking the worker's `:ctx` and one params map | [activity-def.md](./reference/activity-def.md) |
+| types (`int`, `time`, `bytes`, …), user types | what Nippy round-trips; maps with kebab-case keyword keys | [types.md](./reference/types.md) |
+| activity dependencies | dependency map, confirmed from the resolved artifact; keys of `:ctx` | [dependency-resolution.md](./reference/dependency-resolution.md) |
+| `worker`, namespace worker `options:` | one options map with an explicit `:dispatch` in `workers.clj`, `worker/start` | [worker.md](./reference/worker.md) |
+| `nexus service Name:`, `async` / `sync` operations | unsupported | [nexus-service-def.md](./reference/nexus-service-def.md) |
+| `activity Name(args) -> r` | `@(a/invoke Name params opts)` | [activity-call.md](./reference/activity-call.md) |
+| `workflow Name(args) -> r` | `@(w/invoke Name params opts)` | [workflow-call.md](./reference/workflow-call.md) |
+| `detach workflow ...` / `detach nexus ...` | untyped child stub with `ABANDON`, wait for `getExecution` / unsupported | [detach.md](./reference/detach.md) |
+| `nexus Endpoint Service.Op(args) -> r` | unsupported | [nexus.md](./reference/nexus.md) |
+| `signal handle.Name(args)` / `signal Type.Name(args)` + `id:` | the untyped child stub's `.signal` / `s/>!`, `w/signal-external` | [signal-send.md](./reference/signal-send.md) |
+| `await timer(d)` | `w/sleep` | [await-timer.md](./reference/await-timer.md) |
+| `options:` / `default_options:` | an options map per call; `merge` overrides a default | [options.md](./reference/options.md) |
+| `if` / `for` / `switch` / `break` / `continue`, `x = expr` | Clojure equivalents | [control-flow.md](./reference/control-flow.md) |
+| `close complete` / `fail` / `continue_as_new` | the body's value / `throw+` / `w/continue-as-new` | [close.md](./reference/close.md) |
+| `heartbeat(details)` | `a/heartbeat` | [heartbeat.md](./reference/heartbeat.md) |
 
 The spec states only what `detach` guarantees (`twf spec statement-syntax`); the author maps it to these mechanics:
 
