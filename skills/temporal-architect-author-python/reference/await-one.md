@@ -57,6 +57,6 @@ Both names are private and may change in any release. A run records the flag in 
 
 ## Notes
 
-- **Operations started by losing cases are not cancelled** (spec 06); they keep running until the run ends, and `.cancel()` on one would request its cancellation. One exception: the corpus cancels a losing timer, so it does not fire later and add a workflow task (#496). For a child's lifecycle at parent close, use `parent_close_policy`. Cancellation: `temporal-developer` `references/python/patterns.md` § Cancellation Handling.
+- **Losing cases** (spec 06): `.cancel()` a losing inline timer; leave losing inline activities, children and Nexus operations running until the run ends, and never cancel a bound `promise` for losing a round. For a child's lifecycle at parent close, use `parent_close_policy`. Cancellation: `temporal-developer` `references/python/patterns.md` § Cancellation Handling.
 - An empty case body → the winner's `claim` or `await` alone.
 - Event-driven/entity workflows repeat the race in a loop, with a fresh `wait` ticket per message case each iteration.
