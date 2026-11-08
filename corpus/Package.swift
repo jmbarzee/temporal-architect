@@ -10,7 +10,8 @@ let package = Package(
     platforms: [.macOS(.v15)],
     dependencies: [
         .package(url: "https://github.com/apple/swift-temporal-sdk.git", exact: "1.5.0"),
-        .package(url: "https://github.com/apple/swift-log.git", from: "1.15.0"),
+        // 1.17.0 uses @nonexhaustive, which CI's Swift 6.2.1 does not know.
+        .package(url: "https://github.com/apple/swift-log.git", "1.15.0"..<"1.17.0"),
     ],
     targets: designs.map { design in
         .testTarget(
