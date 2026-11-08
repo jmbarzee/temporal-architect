@@ -67,7 +67,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        sdk: [go, python, typescript, dotnet, java, perl]
+        sdk: [go, python, typescript, dotnet, java, ruby, perl]
     steps:
       - uses: actions/checkout@v4
 
@@ -105,6 +105,12 @@ jobs:
           java-version: 21
           cache: maven
           cache-dependency-path: corpus/pom.xml
+
+      - uses: ruby/setup-ruby@v1.338.0
+        if: matrix.sdk == 'ruby'
+        with:
+          working-directory: corpus
+          bundler-cache: true
 
       # Perl: sdk-perl is not on CPAN, so its dists and native libraries (sdk-core
       # via cargo) build from pinned checkouts; the tests run against a dev server.

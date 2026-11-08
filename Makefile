@@ -225,7 +225,7 @@ vet:
 # ── Corpus targets ───────────────────────────────────────────────────────────
 # See corpus/README.md. CI runs `make corpus-<sdk>` once per matrix entry.
 
-.PHONY: check-corpus corpus-go corpus-python corpus-typescript corpus-dotnet corpus-java
+.PHONY: check-corpus corpus-go corpus-python corpus-typescript corpus-dotnet corpus-java corpus-ruby
 .PHONY: corpus-perl
 
 # A design is a corpus directory holding a .twf; node_modules is not one.
@@ -276,6 +276,15 @@ corpus-java: check-corpus
 corpus-perl: check-corpus
 	for d in $(CORPUS_DESIGNS); do \
 		( cd corpus/$$d/perl && for m in *.pm; do perl -I. -I../../perl-lib -c $$m || exit 1; done && prove t ) || exit 1; \
+	done
+
+## Check the corpus, then syntax-check (ruby -wc) and test (Minitest) its Ruby
+## outputs design by design, against the gems pinned by Gemfile.lock.
+corpus-ruby: check-corpus
+	cd corpus && BUNDLE_FROZEN=true bundle install --quiet
+	for d in $(CORPUS_DESIGNS); do \
+		( cd corpus/$$d/ruby && for f in *.rb; do ruby -wc $$f >/dev/null || exit 1; done && \
+		  BUNDLE_GEMFILE=../../Gemfile bundle exec ruby -e 'Dir["*_test.rb"].sort.each { |f| require File.expand_path(f) }' ) || exit 1; \
 	done
 
 # ── Docs targets ─────────────────────────────────────────────────────────────

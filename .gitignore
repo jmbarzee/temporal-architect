@@ -62,3 +62,7 @@ target/
 
 # Perl corpus CPAN deps (installed with cpanm -L)
 corpus/local/
+
+# Ruby corpus gems and local Bundler config
+corpus/vendor/
+corpus/.bundle/
