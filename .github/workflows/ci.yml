@@ -67,7 +67,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        sdk: [go, python, typescript, dotnet, java]
+        sdk: [go, python, typescript, dotnet, java, rust]
     steps:
       - uses: actions/checkout@v4
 
@@ -105,5 +105,16 @@ jobs:
           java-version: 21
           cache: maven
           cache-dependency-path: corpus/pom.xml
+
+      # No protoc: the client's vendored-protox feature compiles the protos in-process.
+      - uses: dtolnay/rust-toolchain@stable
+        if: matrix.sdk == 'rust'
+        with:
+          components: clippy
+
+      - uses: Swatinem/rust-cache@v2
+        if: matrix.sdk == 'rust'
+        with:
+          workspaces: corpus
 
       - run: make corpus-${{ matrix.sdk }}

@@ -225,7 +225,7 @@ vet:
 # ── Corpus targets ───────────────────────────────────────────────────────────
 # See corpus/README.md. CI runs `make corpus-<sdk>` once per matrix entry.
 
-.PHONY: check-corpus corpus-go corpus-python corpus-typescript corpus-dotnet corpus-java
+.PHONY: check-corpus corpus-go corpus-python corpus-typescript corpus-dotnet corpus-java corpus-rust
 
 # A design is a corpus directory holding a .twf; node_modules is not one.
 CORPUS_DESIGNS := $(patsubst corpus/%/,%,$(sort $(dir $(wildcard corpus/*/*.twf))))
@@ -268,6 +268,11 @@ corpus-dotnet: check-corpus
 ## Check the corpus, then compile (javac -Werror) and test its Java outputs.
 corpus-java: check-corpus
 	cd corpus && ./mvnw -B -q verify
+
+## Check the corpus, then lint (clippy -D warnings) and test its Rust outputs: one Cargo
+## workspace whose members are the designs' rust/ directories (Cargo.lock pins them).
+corpus-rust: check-corpus
+	cd corpus && cargo clippy --locked --workspace --all-targets -- -D warnings && cargo test --locked --workspace
 
 # ── Docs targets ─────────────────────────────────────────────────────────────
 

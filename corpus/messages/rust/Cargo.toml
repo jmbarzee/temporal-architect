@@ -1,0 +1,19 @@
+[package]
+name = "corpus-messages"
+version = "0.0.0"
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+temporalio-sdk.workspace = true
+temporalio-macros.workspace = true
+temporalio-workflow.workspace = true
+futures.workspace = true
+temporalio-common.workspace = true
+serde.workspace = true
+
+[dev-dependencies]
+corpus-testkit.workspace = true
+temporalio-client.workspace = true
+tokio.workspace = true
