@@ -19,6 +19,8 @@ corpus/
   pom.xml
   Gemfile
   pom-clojure.xml
+  Cargo.toml             a workspace whose root package, testkit.rs, is Rust's time-skipping kit
+  composer.json
   <design>/
     <design>.twf         the design, with no @sdk
     go/                  its Go output, per skills/temporal-architect-author-go
@@ -33,6 +35,10 @@ corpus/
       <design>.twf       the design plus only @sdk(ruby, …)
     clojure/             its Clojure output, a source root holding <design>/*.clj; nexus has none (Clojure has no Nexus API)
       <design>.twf       the design plus only @sdk(clojure, …)
+    rust/                its Rust output, a workspace member; nexus/rust/ is caller-only (Rust has no Nexus handler)
+      <design>.twf       the design plus only @sdk(rust, …)
+    php/                 its PHP output, tests beside sources; nexus has none (PHP has no Nexus)
+      <design>.twf       the design plus only @sdk(php, …)
 ```
 
 Each SDK's copy of the design names only its own implementation, so no worker carries two SDKs. `check-corpus` checks every `.twf` file on its own (a directory check would load the copies together) and fails when a copy, its `@sdk` lines stripped, differs from the design.
@@ -49,14 +55,16 @@ make corpus-dotnet      # check the corpus, then dotnet restore (locked) and dot
 make corpus-java        # check the corpus, then javac -Werror and the JUnit suites via the Maven wrapper
 make corpus-ruby        # check the corpus, then bundle install (locked), ruby -wc and Minitest in each design's ruby/
 make corpus-clojure     # check the corpus, then the clojure.test suites via the Maven wrapper and pom-clojure.xml
+make corpus-rust        # check the corpus, then cargo clippy (-D warnings) and cargo test, locked
+make corpus-php         # check the corpus, then composer install (locked), dload (rr, test server), PHPStan and PHPUnit
 ```
 
 ## Add an SDK
 
-1. Author each design into `<design>/<sdk>/`, beside a copy of `<design>.twf` carrying only its `@sdk`, with the project file at the corpus root. A Maven SDK lists each design's source root in its pom.
+1. Author each design into `<design>/<sdk>/`, beside a copy of `<design>.twf` carrying only its `@sdk`, with the project file at the corpus root. A Maven SDK lists each design's source root in its pom; a Cargo SDK globs its members (`*/rust`).
 2. Add a `corpus-<sdk>` target to the [Makefile](../Makefile) that depends on `check-corpus`, then builds and tests those outputs. The targets iterate `CORPUS_DESIGNS`, the designs found by `corpus/*/*.twf`, never a directory glob, so a dependency directory such as `node_modules` is never checked or built.
 3. Add `<sdk>` to the `corpus` job's matrix in [ci.yml](../.github/workflows/ci.yml), with a setup step if the runner lacks its toolchain. No test needs a Temporal server today; an SDK whose tests do adds `temporalio/setup-temporal` as a step gated on `matrix.sdk`.
 
 ## Add a design
 
-Write `<design>/<design>.twf`, then author it into every SDK as "Add an SDK" step 1 describes, adding its source root to the pom for a Maven SDK.
+Write `<design>/<design>.twf`, then author it into every SDK as "Add an SDK" step 1 describes, adding its source root to the pom for a Maven SDK; a Cargo SDK globs its members, so needs no edit.

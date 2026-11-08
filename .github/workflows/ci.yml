@@ -67,7 +67,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        sdk: [go, python, typescript, dotnet, java, ruby, clojure]
+        sdk: [go, python, typescript, dotnet, java, ruby, clojure, rust, php]
     steps:
       - uses: actions/checkout@v4
 
@@ -114,4 +114,24 @@ jobs:
           working-directory: corpus
           bundler-cache: true
 
+      # No protoc: the client's vendored-protox feature compiles the protos in-process.
+      - uses: dtolnay/rust-toolchain@stable
+        if: matrix.sdk == 'rust'
+        with:
+          components: clippy
+
+      - uses: Swatinem/rust-cache@v2
+        if: matrix.sdk == 'rust'
+        with:
+          workspaces: corpus
+
+      - uses: shivammathur/setup-php@v2
+        if: matrix.sdk == 'php'
+        with:
+          php-version: '8.4'
+          extensions: grpc, sockets, curl
+          tools: composer:v2
+
       - run: make corpus-${{ matrix.sdk }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }} # dload's GitHub API calls (rr, test server)

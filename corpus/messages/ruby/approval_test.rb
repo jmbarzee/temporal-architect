@@ -13,7 +13,7 @@ module Messages
     def test_approval
       with_env do |env|
         Messages.approval_types(env.client).run do
-          h = env.client.start_workflow(Approval, 'access', id: 'approval-1', task_queue: 'approvals')
+          h = env.client.start_workflow(Approval, 'access', id: 'approval-1', task_queue: APPROVALS_TASK_QUEUE)
           # Approve arrives before anything waits for it, and stays pending.
           env.sleep(30)
           h.signal(Approval.approve, 'Grace')
@@ -31,7 +31,7 @@ module Messages
     def test_review_answered_before_a_waiter_takes_it
       with_env do |env|
         Messages.approval_types(env.client).run do
-          h = env.client.start_workflow(Approval, 'access', id: 'approval-2', task_queue: 'approvals')
+          h = env.client.start_workflow(Approval, 'access', id: 'approval-2', task_queue: APPROVALS_TASK_QUEUE)
           # Review arrives while Approval still awaits Open, before anything waits for Review.
           env.sleep(30)
           assert_equal 'reviewed', h.execute_update(Approval.review, 'LGTM')

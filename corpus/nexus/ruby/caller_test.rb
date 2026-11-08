@@ -46,7 +46,7 @@ module Nexus
         env.create_nexus_endpoint(name: 'GreeterEndpoint', task_queue: 'greeter')
         greeter = Thread.new { serve_greeter(env, 3) }
         Nexus.caller_types(env.client).run do
-          h = env.client.start_workflow(Caller, 'Ada', 'Grace', id: 'caller-1', task_queue: 'caller')
+          h = env.client.start_workflow(Caller, 'Ada', 'Grace', id: 'caller-1', task_queue: CALLER_TASK_QUEUE)
           got = Greetings.from_h(h.result)
           assert_equal Greetings.new(hello: 'Hello, Ada', greeting: 'Greetings, Ada'), got
           assert_equal [%w[GreeterService Hello Ada], %w[GreeterService Greet Ada], %w[GreeterService Greet Grace]],

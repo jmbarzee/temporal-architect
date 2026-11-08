@@ -6,10 +6,12 @@ require 'temporalio/worker'
 require_relative 'workflows'
 
 module Concurrency
+  BATCHES_TASK_QUEUE = 'batches'
+
   # The batchTypes worker: its task queue and registrations, shared by the
   # worker process and the tests.
   def self.batch_types(client, activities: [Count, Store])
-    Temporalio::Worker.new(client:, task_queue: 'batches', workflows: [Batch, Audit, Archive], activities:)
+    Temporalio::Worker.new(client:, task_queue: BATCHES_TASK_QUEUE, workflows: [Batch, Audit, Archive], activities:)
   end
 end
 
