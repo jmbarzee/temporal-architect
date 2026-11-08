@@ -29,7 +29,7 @@ A `.twf` name is the registered name, byte for byte; never rename the `.twf` to 
 | Nexus service | the `@Service` interface's simple name (`ServiceDefinition.java:20`) | naming the interface as the `.twf` does, with `name` unset |
 | Nexus operation | the method name as is (`OperationDefinition.java:27`) | `@Operation(name=…)` |
 
-Set `name=` whenever the Java name differs from the `.twf` name: always for handlers and operations, whose camelCase methods never match a PascalCase `.twf` name; never for workflow and service interfaces, which are PascalCase in both, or for activities, whose default capitalizes the first letter. A missing `name=` registers the Java name silently.
+A missing `name=` registers the Java name silently.
 
 Types map by Java's own conventions. Read [cross-sdk.md, only where `twf check` reports `CROSS_SDK_CALL`](../temporal-architect/reference/cross-sdk.md).
 
