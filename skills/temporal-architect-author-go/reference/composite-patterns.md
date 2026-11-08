@@ -71,7 +71,7 @@ func HumanReview(ctx workflow.Context, docId string) (ReviewResult, error) {
 
 1. **Update handler must be registered before the race blocks** — updates arriving before registration are rejected
 2. **The condition is read, not taken** — it is a `bool` in the `Await` predicate; nothing waits on the update itself, so it needs no arrival queue ([await-one.md](./await-one.md#cases))
-3. **Cancel the losing timer** — losing cases keep running ([await-one.md](./await-one.md#notes))
+3. **Cancel the losing timer** (`twf spec statement-syntax`, lifecycle of non-winning cases), or it fires later ([await-one.md](./await-one.md#notes))
 4. **`AllHandlersFinished` wait before return** — without this, an in-flight update handler is abandoned when the workflow completes (see [update-handler.md](./update-handler.md))
 
 ## Pattern 2: Signal-set condition vs timer with a shared tail (ManageRetention)

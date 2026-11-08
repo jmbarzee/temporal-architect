@@ -58,7 +58,8 @@ func Batch(ctx workflow.Context, items []string) (Report, error) {
 
 	// await one: Ack is listed first, so it wins a tie with the timer. A signal
 	// in the timer's workflow task reaches its handler only after this
-	// coroutine resumes, so yield once before reading acks.
+	// coroutine resumes, so yield once before reading acks. The losing timer is
+	// cancelled (spec 06, lifecycle of non-winning cases).
 	timerCtx, cancelTimer := workflow.WithCancel(ctx)
 	timer := workflow.NewTimer(timerCtx, time.Hour)
 	if err := workflow.Await(ctx, func() bool { return acks > 0 || timer.IsReady() }); err != nil {

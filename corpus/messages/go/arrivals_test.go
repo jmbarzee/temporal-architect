@@ -130,12 +130,14 @@ func awaitOne(ctx workflow.Context, timeout time.Duration) ([]string, error) {
 
 	var took []string
 	ticket := xs.wait()
-	timer := workflow.NewTimer(ctx, timeout)
+	timerCtx, cancelTimer := workflow.WithCancel(ctx)
+	timer := workflow.NewTimer(timerCtx, timeout)
 	if err := workflow.Await(ctx, func() bool { return xs.ready(ticket) || timer.IsReady() }); err != nil {
 		return nil, err
 	}
 	if xs.ready(ticket) {
 		took = append(took, "case "+xs.claim())
+		cancelTimer()
 	} else {
 		xs.leave(ticket)
 		took = append(took, "timer")

@@ -40,20 +40,9 @@ A message case waits without taking: `ready` checks its `Arrivals` ([await-signa
 
 ## Tie order in 1.35.0
 
-The SDK deviates from spec 06 by default: a message case, or a condition a handler sets, beats a timer or result listed before it when both become ready in one activation (#474). An activation applies its signals and updates and runs the workflow before it resolves timers, activities, children and Nexus operations (`temporalio/worker/_workflow_instance.py:481-535`), so the code after `wait_condition` sees only the message case ready. A message case listed first, or two message cases, already follow listed order.
+By default the SDK deviates from spec 06's first-listed rule (#474). An activation applies its signals and updates and runs the workflow before it resolves its timers and activity, child and Nexus results (`temporalio/worker/_workflow_instance.py:481-535`). So when both become ready in one workflow task, a message case, or a condition a handler sets, beats a non-message case listed before it. A message case listed first, or two message cases, already follow listed order.
 
-Where a design depends on listed order, turn on the SDK's flag 2, `PROCESS_WORKFLOW_ACTIVATION_JOBS_AS_SINGLE_BATCH`, which applies every job before the workflow runs. 1.35.0 has no public switch: the flag is off by default, with a TODO to turn it on in a later release (`_workflow_instance.py:4196-4201`), and the only way on is the worker's private hook, called before `run()` (`temporalio/worker/_worker.py:773-782`):
-
-```python
-from temporalio.worker._workflow_instance import _WorkflowLogicFlag
-
-worker = Worker(client, task_queue=TASK_QUEUE, workflows=[Order])
-worker._set_default_workflow_logic_flag(
-    _WorkflowLogicFlag.PROCESS_WORKFLOW_ACTIVATION_JOBS_AS_SINGLE_BATCH, enabled=True
-)
-```
-
-Both names are private and may change in any release. A run records the flag in its history when first used, so its replay keeps the order (`_workflow_instance.py:2320-2326`).
+The fix is the SDK's flag 2, `PROCESS_WORKFLOW_ACTIVATION_JOBS_AS_SINGLE_BATCH`, which applies every job before the workflow runs. It is off by default in 1.35.0, and the SDK plans to make it the default once two published releases recognize it (`_workflow_instance.py:4197-4201`). A run records the flag in its history when first used, so its replay keeps the order (`_workflow_instance.py:2320-2326`). The only switch today is the private `Worker._set_default_workflow_logic_flag` (`temporalio/worker/_worker.py:773-782`): pending upstream ([draft](https://github.com/jmbarzee/temporal-architect/issues/363#issuecomment-6723056854), item 4), private API, may change.
 
 ## Notes
 
