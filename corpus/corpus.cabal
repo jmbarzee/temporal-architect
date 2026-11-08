@@ -1,0 +1,48 @@
+cabal-version: 3.0
+name:          corpus
+version:       0
+build-type:    Simple
+
+-- Each design's Haskell output is one test suite over corpus/<design>/haskell/.
+common design
+  default-language: GHC2021
+  default-extensions:
+    BlockArguments
+    DataKinds
+    DeriveAnyClass
+    DerivingStrategies
+    DuplicateRecordFields
+    LambdaCase
+    OverloadedRecordDot
+    OverloadedStrings
+  ghc-options: -Wall -Werror -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+    , aeson
+    , base
+    , containers
+    , hspec
+    , lens-family
+    , monad-logger
+    , proto-lens
+    , require-callstack
+    , temporal-api-protos
+    , temporal-sdk
+    , temporal-sdk-core
+    , text
+    , transformers
+    , unliftio
+    , unordered-containers
+
+test-suite messages
+  import:         design
+  type:           exitcode-stdio-1.0
+  hs-source-dirs: messages/haskell haskell
+  main-is:        Main.hs
+  other-modules:  Approval Arrivals ArrivalsFixtures Harness
+
+test-suite nexus
+  import:         design
+  type:           exitcode-stdio-1.0
+  hs-source-dirs: nexus/haskell haskell
+  main-is:        Main.hs
+  other-modules:  Greeter Caller Harness

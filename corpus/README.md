@@ -21,6 +21,7 @@ corpus/
   pom-clojure.xml
   Cargo.toml             a workspace whose root package, testkit.rs, is Rust's time-skipping kit
   composer.json
+  cabal.project          with corpus.cabal and haskell/Harness.hs; builds the pinned hs-temporal-sdk checkout
   <design>/
     <design>.twf         the design, with no @sdk
     go/                  its Go output, per skills/temporal-architect-author-go
@@ -39,6 +40,8 @@ corpus/
       <design>.twf       the design plus only @sdk(rust, …)
     php/                 its PHP output, tests beside sources; nexus has none (PHP has no Nexus)
       <design>.twf       the design plus only @sdk(php, …)
+    haskell/             its Haskell output, one test suite; nexus/haskell/ handles Hello only (Greet has no Haskell handler)
+      <design>.twf       the design plus only @sdk(haskell, …)
 ```
 
 Each SDK's copy of the design names only its own implementation, so no worker carries two SDKs. `check-corpus` checks every `.twf` file on its own (a directory check would load the copies together) and fails when a copy, its `@sdk` lines stripped, differs from the design.
@@ -57,6 +60,7 @@ make corpus-ruby        # check the corpus, then bundle install (locked), ruby -
 make corpus-clojure     # check the corpus, then the clojure.test suites via the Maven wrapper and pom-clojure.xml
 make corpus-rust        # check the corpus, then cargo clippy (-D warnings) and cargo test, locked
 make corpus-php         # check the corpus, then composer install (locked), dload (rr, test server), PHPStan and PHPUnit
+make corpus-haskell     # check the corpus, then check out the pinned SDK and cabal test (-Werror, frozen)
 ```
 
 ## Add an SDK

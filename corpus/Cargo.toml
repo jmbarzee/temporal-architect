@@ -2,6 +2,7 @@
 # crate; this root package is the shared time-skipping test environment.
 [workspace]
 members = ["*/rust"]
+exclude = [".hs-temporal-sdk"] # the Haskell SDK clone, whose Rust bridge is its own workspace
 resolver = "3"
 
 [workspace.package]

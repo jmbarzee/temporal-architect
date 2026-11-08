@@ -1,0 +1,28 @@
+-- The Haskell corpus: one package (corpus.cabal), one test suite per design.
+--
+-- hs-temporal-sdk is not released past 2025.10.1.0 on Hackage, which predates
+-- Nexus, so the SDK is a pinned clone (make corpus-haskell checks out the
+-- Makefile's HS_TEMPORAL_SDK_REV into .hs-temporal-sdk). It is built
+-- as local packages, not a source-repository-package: temporal-sdk-core's
+-- Custom Setup registers its Rust bridge's build directory as an extra-lib-dir,
+-- which for a store package is a temporary directory deleted after install, so
+-- anything linking it afterwards fails with "library 'temporal_bridge' not found".
+packages:
+  corpus.cabal
+  .hs-temporal-sdk/sdk
+  .hs-temporal-sdk/core
+  .hs-temporal-sdk/protos
+
+index-state: 2026-11-01T00:00:00Z
+
+-- time-compat >= 1.9.8 adds Lift orphans for DiffTime, NominalDiffTime and Day,
+-- which temporal-sdk also defines (src/Temporal/SearchAttributes.hs:249-260).
+constraints: time-compat < 1.9.8
+
+tests: True
+
+package temporal-sdk
+  tests: False
+
+package temporal-sdk-core
+  tests: False
