@@ -53,9 +53,14 @@ public class HumanReviewImpl implements HumanReview {
 
   @Override
   public ReviewResult run(String docId) {
-    Promise<Void> timer = Workflow.newTimer(Duration.ofHours(48));
+    CompletablePromise<Void> timer = Workflow.newPromise();
+    CancellationScope timerScope =
+        Workflow.newCancellationScope(() -> timer.completeFrom(Workflow.newTimer(Duration.ofHours(48))));
+    timerScope.run();
     Workflow.await(() -> reviewComplete || timer.isCompleted());
-    if (!reviewComplete) { // reviewComplete is listed first, so it wins a tie
+    if (reviewComplete) { // listed first, so it wins a tie
+      timerScope.cancel(); // the inline timer lost
+    } else {
       activities.escalate(docId);
       result = "escalated";
     }
@@ -70,7 +75,7 @@ public class HumanReviewImpl implements HumanReview {
 
 1. **The condition is read, not taken**: it is a `boolean` in the predicate; nothing waits on the update itself, so it needs no `Arrivals` ([await-one.md](./await-one.md#cases))
 2. **Not `Workflow.await(Duration.ofHours(48), () -> reviewComplete)`**: at a tie it reports the timeout, so the timer wins although the condition is listed first ([await-one.md](./await-one.md))
-3. **The losing timer keeps running**: cancel it through a `CancellationScope` for history hygiene ([await-one.md](./await-one.md#notes))
+3. **The losing timer is cancelled**: spec 06 cancels a losing inline timer, so it starts in its own `CancellationScope`; a losing activity, child or Nexus case would keep running ([await-one.md](./await-one.md#notes))
 4. **`Workflow.isEveryHandlerFinished` before returning** (`workflow/Workflow.java:1784`), so an in-flight update is not abandoned ([update-handler.md](./update-handler.md))
 
 ## Pattern 2: Signal-set condition vs timer with a shared tail (ManageRetention)
