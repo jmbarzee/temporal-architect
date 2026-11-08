@@ -81,7 +81,9 @@ module Concurrency
           HeldStore::RELEASE << :go
           archive.result
           assert_equal Report.new(count: 2, audited: true, status: 'acknowledged'), got
-          assert_includes event_types(h), :EVENT_TYPE_TIMER_CANCELED, 'the losing timer was not cancelled'
+          types = event_types(h)
+          assert_equal 1, types.count(:EVENT_TYPE_TIMER_STARTED)
+          assert_includes types, :EVENT_TYPE_TIMER_CANCELED, 'the losing timer was not cancelled'
         end
       end
     end

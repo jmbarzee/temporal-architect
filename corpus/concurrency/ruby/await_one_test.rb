@@ -10,15 +10,20 @@ module Concurrency
   class AwaitOneTest < Minitest::Test
     TASK_QUEUE = 'await-one'
 
+    # A timing-dependent setup step that did not land; any other error is a real failure.
+    class MissedSetup < StandardError; end
+
     def event_types(handle)
       handle.fetch_history_events.map(&:event_type)
     end
 
-    # Waits up to 10s of real time for an event of type; raises rather than hang.
+    # Waits up to 10s of real time for an event of type; raises MissedSetup rather than hang.
     def until_event(handle, type)
       deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 10
       until event_types(handle).include?(type)
-        raise "#{handle.id}: #{type} never reached history" if Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
+        if Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
+          raise MissedSetup, "#{handle.id}: #{type} never reached history"
+        end
 
         sleep 0.02
       end
@@ -34,7 +39,7 @@ module Concurrency
 
     # Runs workflow until a real tie lands — the timer fired and Ack sent while no worker runs, so
     # both reach one workflow task — and returns its winner. The setup is timing-dependent, so a
-    # missed attempt (an error, or a workflow task between the two events) is retried, up to
+    # missed attempt (a MissedSetup, or a workflow task between the two events) is retried, up to
     # ATTEMPTS; if none ties, the test is skipped, never failed: a missed setup proves nothing.
     def tie(workflow, order)
       Temporalio::Testing::WorkflowEnvironment.start_time_skipping do |env|
@@ -44,8 +49,8 @@ module Concurrency
           return got if got
 
           misses << 'no tie in one workflow task'
-        rescue StandardError => e
-          misses << "#{e.class}: #{e.message}"
+        rescue MissedSetup => e
+          misses << e.message
         end
         skip("no real tie in #{ATTEMPTS} attempts: #{misses.join('; ')}")
       end
@@ -58,7 +63,11 @@ module Concurrency
       # Skip time past the timer; with no worker to take its workflow task, nothing runs.
       skipper = Thread.new { env.sleep(7200) }
       until_event(h, :EVENT_TYPE_TIMER_FIRED)
-      h.signal('Ack')
+      begin
+        h.signal('Ack')
+      rescue Temporalio::Error::RPCError => e
+        raise MissedSetup, "#{h.id}: Ack not sent: #{e.message}"
+      end
       got = worker(env).run { h.result }
       skipper.join
 
