@@ -23,11 +23,11 @@ The .NET signals the design skill's [reverse engineering](../../temporal-archite
 
 | C# | `.twf` |
 |----|--------|
-| `[WorkflowSignal]` / `[WorkflowUpdate]` method whose body ends with `xs.Add(…)` on an `Arrivals` | handler, its body less the `xs.Add` ([signal-handler.md](./signal-handler.md), [update-handler.md](./update-handler.md)); a counter it increments (`acks++`) holds arrivals as an `Arrivals<bool>` does |
+| `[WorkflowSignal]` / `[WorkflowUpdate]` method whose body ends with `xs.Add(…)` on an `Arrivals` | handler, its body less the `xs.Add` ([signal-handler.md](./signal-handler.md), [update-handler.md](./update-handler.md)); a counter it increments (`acks++`) and a waiter decrements once per take (`acks > 0` … `acks--`) is an `Arrivals<bool>`, while one never decremented, or reset, is plain `state:` |
 | `await xs.TakeAsync()` | `await signal\|update Name -> (…)`, a tuple deconstructed into its names; `Arrivals<bool>` binds none ([await-signal.md](./await-signal.md)) |
 | `var p = xs.TakeAsync()`, awaited later | `promise p <- signal\|update Name` ([promise.md](./promise.md)) |
 | `Workflow.WhenAllAsync(…)`; over `items.Select(…)` | `await all`, branches in argument order; a `for` fan-out inside ([await-all.md](./await-all.md)) |
-| one `Workflow.WaitConditionAsync` over `xs.Ready`, `p.IsCompleted` and `bool`s, then the first ready one in check order wins (`Claim()`, `await p`) | `await one`, cases in that order; a losing timer's token cancelled after is still `await one` ([await-one.md](./await-one.md)) |
+| one `Workflow.WaitConditionAsync` over `xs.Ready`, an arrivals counter (`acks > 0`), `p.IsCompleted` and `bool`s, then the first ready one in check order wins (`Claim()`, `acks--`, `await p`) | `await one`, cases in that order; a losing timer's token cancelled after is still `await one` ([await-one.md](./await-one.md)) |
 | `WaitConditionAsync(c, timeout)` | `await one` with a `c` case and a `timer(timeout)` case, with a comment that it is a `WhenAny` inside (`Worker/WorkflowInstance.cs:650-668`), so the first to complete wins, not the first listed |
 | `Workflow.WhenAnyAsync(…)` | `await one`, with a comment that the first to complete wins, not the first listed |
 | a `bool` field set by a handler, awaited by `WaitConditionAsync(() => flag)` | `condition` + `set` ([condition.md](./condition.md)), with a comment that repeated arrivals collapse into one: it is no `await signal` |
