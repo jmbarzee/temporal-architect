@@ -72,3 +72,7 @@ corpus/php/vendor/
 corpus/rr
 corpus/temporal-test-server
 corpus/.phpunit.cache/
+
+# Elixir corpus deps and build output
+corpus/_build/
+corpus/deps/

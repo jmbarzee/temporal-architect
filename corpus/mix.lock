@@ -1,0 +1,9 @@
+%{
+  "cowlib": {:hex, :cowlib, "2.21.0", "3ea757c79784bdbdebac7857ce3adf2290af6b8680d4248c75e40ced2e98c89e", [:make, :rebar3], [], "hexpm", "0960248773762a5319b3c17285028bc76f54f58ef0f9451367401bdf67b46274"},
+  "gun": {:hex, :gun, "2.7.0", "8dfc20ff1b70f3c78f07122f7d82ac6950c40d33a8a9b35da0134f49fb35b334", [:make, :rebar3], [{:cowlib, ">= 2.21.0 and < 3.0.0", [hex: :cowlib, repo: "hexpm", optional: false]}], "hexpm", "2a90d073069e72654b6c9a91fae365b746ff5ce385a4a5bbf71ef53a8bf95d82"},
+  "opentelemetry_api": {:hex, :opentelemetry_api, "1.5.0", "1a676f3e3340cab81c763e939a42e11a70c22863f645aa06aafefc689b5550cf", [:mix, :rebar3], [], "hexpm", "f53ec8a1337ae4a487d43ac89da4bd3a3c99ddf576655d071deed8b56a2d5dda"},
+  "quickrand": {:hex, :quickrand, "2.0.7", "d2bd76676a446e6a058d678444b7fda1387b813710d1af6d6e29bb92186c8820", [:rebar3], [], "hexpm", "b8acbf89a224bc217c3070ca8bebc6eb236dbe7f9767993b274084ea044d35f0"},
+  "telemetry": {:hex, :telemetry, "1.4.2", "a0cb522801dffb1c49fe6e30561badffc7b6d0e180db1300df759faa22062855", [:rebar3], [], "hexpm", "928f6495066506077862c0d1646609eed891a4326bee3126ba54b60af61febb1"},
+  "temporal_sdk": {:git, "https://github.com/andrzej-mag/temporal_sdk.git", "d2749c77a74032f466345f476861a59180086fbd", [ref: "d2749c77a74032f466345f476861a59180086fbd"]},
+  "uuid": {:hex, :uuid_erl, "2.0.7", "b2078d2cc814f53afa52d36c91e08962c7e7373585c623f4c0ea6dfb04b2af94", [:rebar3], [{:quickrand, ">= 2.0.7", [hex: :quickrand, repo: "hexpm", optional: false]}], "hexpm", "4e4c5ca3461dc47c5e157ed42aa3981a053b7a186792af972a27b14a9489324e"},
+}
