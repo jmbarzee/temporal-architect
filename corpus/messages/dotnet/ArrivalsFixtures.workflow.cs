@@ -81,7 +81,7 @@ public class CancelledWaiter : WithX
     }
 }
 
-/// <summary>await one: a case for X raced against a timer (listed second), then takes X.</summary>
+/// <summary>await one: a case for X raced against a timer (listed second), then takes X. A losing timer is cancelled (spec 06, lifecycle of non-winning cases).</summary>
 [Workflow]
 public class AwaitOneX : WithX
 {
