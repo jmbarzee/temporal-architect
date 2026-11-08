@@ -16,5 +16,5 @@ public class GreeterService
     public IOperationHandler<string, string> Greet() =>
         WorkflowRunOperationHandler.FromHandleFactory(
             (WorkflowRunOperationContext ctx, string name) =>
-                ctx.StartWorkflowAsync((Greet wf) => wf.RunAsync(name), new() { Id = Greeter.GreetId(name) }));
+                ctx.StartWorkflowAsync((Greet wf) => wf.RunAsync(name), Greeter.GreetStartOptions(name)));
 }
