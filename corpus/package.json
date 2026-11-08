@@ -1,0 +1,27 @@
+{
+  "name": "temporal-architect-corpus",
+  "private": true,
+  "type": "commonjs",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "build": "tsc --noEmit",
+    "test": "node --import tsx --test \"*/typescript/**/*.test.ts\""
+  },
+  "dependencies": {
+    "@temporalio/activity": "1.25.0",
+    "@temporalio/client": "1.25.0",
+    "@temporalio/common": "1.25.0",
+    "@temporalio/nexus": "1.25.0",
+    "@temporalio/testing": "1.25.0",
+    "@temporalio/worker": "1.25.0",
+    "@temporalio/workflow": "1.25.0",
+    "nexus-rpc": "0.0.3"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0"
+  }
+}

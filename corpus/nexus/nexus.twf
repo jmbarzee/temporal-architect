@@ -12,11 +12,9 @@ namespace greeter:
 			task_queue: "greeter"
 			allowed_caller_namespaces: ["caller"]
 
-@sdk(go, "go/worker.go")
 worker callerTypes:
 	workflow Caller
 
-@sdk(go, "go/worker.go")
 worker greeterTypes:
 	workflow Greet
 	activity Compose

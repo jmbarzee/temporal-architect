@@ -1,0 +1,39 @@
+namespace batches:
+	worker batchTypes
+		options:
+			task_queue: "batches"
+
+@sdk(go, "worker.go")
+worker batchTypes:
+	workflow Batch
+	workflow Audit
+	workflow Archive
+	activity Count
+	activity Store
+
+workflow Batch(items: list[string]) -> (Report):
+	state:
+		status = "unacknowledged"
+	signal Ack():
+		status = "acknowledged"
+	await all:
+		activity Count(items) -> count
+		workflow Audit(items) -> audited
+	detach workflow Archive(items)
+	await one:
+		signal Ack:
+		timer(1h):
+	close complete(Report{count: count, audited: audited, status: status})
+
+workflow Audit(items: list[string]) -> (bool):
+	close complete(len(items) > 0)
+
+workflow Archive(items: list[string]):
+	activity Store(items)
+	close complete
+
+activity Count(items: list[string]) -> (int):
+	return len(items)
+
+activity Store(items: list[string]):
+	write(items)

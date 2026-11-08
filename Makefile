@@ -225,16 +225,32 @@ vet:
 # ── Corpus targets ───────────────────────────────────────────────────────────
 # See corpus/README.md. CI runs `make corpus-<sdk>` once per matrix entry.
 
-.PHONY: check-corpus corpus-go
+.PHONY: check-corpus corpus-go corpus-typescript
 
-## Check each corpus design on its own
+# A design is a corpus directory holding a .twf; node_modules is not one.
+CORPUS_DESIGNS := $(patsubst corpus/%/,%,$(sort $(dir $(wildcard corpus/*/*.twf))))
+
+## Check each corpus design and each SDK's copy of it file by file (a directory
+## check would load the copies together), and fail if a copy differs from its
+## design in anything but its @sdk lines.
 check-corpus: build-lsp
-	for d in corpus/*/; do $(BIN_DIR)/twf check $$d || exit 1; done
+	for d in $(CORPUS_DESIGNS); do \
+		$(BIN_DIR)/twf check corpus/$$d/$$d.twf || exit 1; \
+		for c in corpus/$$d/*/$$d.twf; do \
+			$(BIN_DIR)/twf check $$c || exit 1; \
+			grep -v '^@sdk' $$c | diff -u corpus/$$d/$$d.twf - || { echo "$$c drifts from corpus/$$d/$$d.twf"; exit 1; }; \
+		done; \
+	done
 
 ## Check the corpus, then vet and test its Go outputs. The corpus is a user's
-## project, not part of the toolchain workspace, so go.work is off.
+## project, not part of the toolchain workspace, so go.work is off. The
+## packages are named so that ./... does not walk corpus/node_modules.
 corpus-go: check-corpus
-	cd corpus && GOWORK=off go vet ./... && GOWORK=off go test ./...
+	cd corpus && GOWORK=off go vet $(CORPUS_DESIGNS:%=./%/go/...) && GOWORK=off go test $(CORPUS_DESIGNS:%=./%/go/...)
+
+## Check the corpus, then typecheck and test its TypeScript outputs.
+corpus-typescript: check-corpus
+	cd corpus && npm ci && npx tsc -p . && npm test
 
 # ── Docs targets ─────────────────────────────────────────────────────────────
 
