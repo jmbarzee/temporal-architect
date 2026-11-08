@@ -69,7 +69,7 @@ child_result = Temporalio::Workflow.execute_child_workflow(
 | `priority` | `priority:` |
 | `parent_close_policy` | `parent_close_policy:` `Temporalio::Workflow::ParentClosePolicy::TERMINATE`, `REQUEST_CANCEL` or `ABANDON` (`workflow/parent_close_policy.rb:12-16`); the keyword defaults to `TERMINATE` (`workflow.rb:453`), the spec's default |
 
-A client start, `Client#start_workflow` (`client.rb:321-341`), takes the same keywords less `parent_close_policy:`, plus `id:` (required) and `id_conflict_policy:`.
+A client start, `Client#start_workflow` (`client.rb:321-341`), takes the same keywords less `parent_close_policy:`, plus `id:` and `task_queue:` (both required) and `id_conflict_policy:`.
 
 ## Nexus operation options
 

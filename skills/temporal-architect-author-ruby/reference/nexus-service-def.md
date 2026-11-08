@@ -31,7 +31,6 @@ class Caller < Temporalio::Workflow::Definition
 end
 ```
 
-- **The worker options** `max_concurrent_nexus_task_executions` and `max_concurrent_nexus_task_pollers` are unsupported for the same reason ([worker.md](./worker.md#worker-options)).
 - **Testing a Ruby caller** needs a handler from elsewhere: `WorkflowEnvironment#create_nexus_endpoint` routes an endpoint to a task queue under `start_time_skipping`, and the corpus's `caller_test.rb` answers that queue with a stand-in.
 
 A Ruby workflow started by such a handler (or a Ruby client start of it) still takes its ID from the workflow's one ID method, which must render the scheme as the handler's does ([workflow-def.md](./workflow-def.md#id_scheme)).
