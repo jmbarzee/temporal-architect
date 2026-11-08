@@ -96,6 +96,25 @@ Load only what the current layer needs.
 
 | DSL | Haskell | File |
 |-----|---------|------|
+| `workflow Name(...)` | `provideWorkflow JSON "Name"` value | [workflow-def.md](./reference/workflow-def.md) |
+| `id_scheme: "..."` | ID function returning a `WorkflowId`, called by every start and sender | [workflow-def.md](./reference/workflow-def.md#id_scheme) |
+| `workflow_id_reuse_policy` / `workflow_id_conflict_policy` | start-options function; a child gets reuse only | [options.md](./reference/options.md#workflow-id-policies) |
+| `activity Name(...)` | `provideActivity JSON "Name"` value over an environment record | [activity-def.md](./reference/activity-def.md) |
+| types (`int`, `time`, `bytes`, …), user types | what Aeson round-trips; a `Generic` record | [types.md](./reference/types.md) |
+| activity dependencies | dependency map, confirmed from the resolved version; the SDK from a pinned clone | [dependency-resolution.md](./reference/dependency-resolution.md) |
+| `worker`, namespace worker `options:` | `<worker>Types` function, `configure`, `ConfigM` setters | [worker.md](./reference/worker.md) |
+| `nexus service Name:`, `async` / `sync` operations | `NexusServiceHandler`; `syncOperation`; `async` unsupported | [nexus-service-def.md](./reference/nexus-service-def.md) |
+| `activity Name(args) -> r` | `executeActivity` | [activity-call.md](./reference/activity-call.md) |
+| `workflow Name(args) -> r` | `executeChildWorkflow` | [workflow-call.md](./reference/workflow-call.md) |
+| `detach workflow ...` / `detach nexus ...` | `startChildWorkflow` with both `Abandon`s + `waitChildWorkflowStart` / unsupported | [detach.md](./reference/detach.md) |
+| `nexus Endpoint Service.Op(args) -> r` | `executeNexusOperation (makeNexusClient …) "Op"` over `encodeJSON` / `decodeJSON` | [nexus.md](./reference/nexus.md) |
+| `signal handle.Name(args)` / `signal Type.Name(args)` + `id:` | `signal` on a `ChildWorkflowHandle` / `getExternalWorkflowHandle`, then `wait` | [signal-send.md](./reference/signal-send.md) |
+| `await timer(d)` | `sleep` | [await-timer.md](./reference/await-timer.md) |
+| `options:` / `default_options:` | `StartActivityOptions` / `StartChildWorkflowOptions` / `ScheduleNexusOperationOptions` | [options.md](./reference/options.md) |
+| `if` / `for` / `switch` / `break` / `continue`, `x = expr` | bindings, `StateVar`s, recursion | [control-flow.md](./reference/control-flow.md) |
+| `close complete` / `fail` / `continue_as_new` | `pure` / `throwM ApplicationFailure` / `continueAsNew` | [close.md](./reference/close.md) |
+| `heartbeat(details)` | `withHeartbeat` | [heartbeat.md](./reference/heartbeat.md) |
+| SDK idioms | the SDK's source and the cookbook, by topic | [idioms.md](./reference/idioms.md) |
 
 The spec states only what `detach` guarantees (`twf spec statement-syntax`); the author maps it to these mechanics:
 
