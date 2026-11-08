@@ -107,6 +107,15 @@ Load only what the current layer needs.
 
 | DSL | Rust | File |
 |-----|------|------|
+| `signal Name(params):` | `#[signal(name=)]` method: body, then `arrivals.add` | [signal-handler.md](./reference/signal-handler.md) |
+| `query Name(params) -> (T):` | `#[query(name=)]` method on `&self` | [query-handler.md](./reference/query-handler.md) |
+| `update Name(params) -> (T):` | `#[update(name=)]` method: body, then `arrivals.add`, then return | [update-handler.md](./reference/update-handler.md) |
+| `await signal\|update Name -> (...)` | `take(ctx, of!(arrivals)).await?` | [await-signal.md](./reference/await-signal.md) |
+| `promise p <- ...` | the unawaited call; for a signal or update, an unawaited `take` | [promise.md](./reference/promise.md) |
+| `state:` / `condition` / `set` / `unset` | `bool` field + `ctx.wait_condition` | [condition.md](./reference/condition.md) |
+| `await all:` | `workflows::join!` / `join_all` | [await-all.md](./reference/await-all.md) |
+| `await one:` | `workflows::select!`, arms in listed order; first listed ready wins | [await-one.md](./reference/await-one.md) |
+| handler + condition + `await one` | worked compositions | [composite-patterns.md](./reference/composite-patterns.md) |
 
 The spec states only what `detach` guarantees (`twf spec statement-syntax`); the author maps it to these mechanics:
 
