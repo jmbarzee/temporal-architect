@@ -19,7 +19,7 @@ For an existing repo, dispatch the design skill's [project-discovery subagent](.
 
 ## Wire names
 
-A `.twf` name is the registered name, byte for byte; never rename the `.twf` to fit the code. Paths below are in `Temporal/Worker/Workflow/` and `TemporalMacros/`.
+A `.twf` name is the registered name, byte for byte; never rename the `.twf` to fit the code. Paths below are in `Temporal/Worker/Workflow/`.
 
 | Construct | Swift default | Set the `.twf` name by |
 |---|---|---|
@@ -31,7 +31,7 @@ A `.twf` name is the registered name, byte for byte; never rename the `.twf` to 
 | Nexus service | unsupported ([Orient](#orient)) | a worker in another SDK |
 | Nexus operation | unsupported ([Orient](#orient)) | a worker in another SDK |
 
-So a PascalCase `.twf` name needs no `name:`: the idiomatic lowerCamel method reproduces it. A `.twf` name that does not start with an uppercase letter always needs `name:`. The macro names its nested struct from the method even when `name:` is set, so a method whose capitalized name collides with another type in scope (`Input`, `Output`, a declared struct) is renamed and takes `name:`.
+So a PascalCase `.twf` name needs no `name:`: the idiomatic lowerCamel method reproduces it. A `.twf` name that does not start with an uppercase letter always needs `name:`. The macro names its nested struct from the method even when `name:` is set, so a method whose capitalized name collides with another type in scope (`Input`, `Output`, a declared struct, the container's generated `Activities`, `TemporalMacros/ActivityContainerMacro.swift:139,157`) is renamed and takes `name:`.
 
 Types map by Swift's own conventions. Read [cross-sdk.md, only where `twf check` reports `CROSS_SDK_CALL`](../temporal-architect/reference/cross-sdk.md).
 
