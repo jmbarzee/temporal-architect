@@ -176,6 +176,9 @@ jobs:
           extensions: grpc, sockets, curl
           tools: composer:v2
 
+      # setup-swift verifies Swiftly against swift.org's signing keys, which the runner lacks.
+      - if: matrix.sdk == 'swift'
+        run: curl -fsSL https://www.swift.org/keys/all-keys.asc | gpg --import -
       - uses: swift-actions/setup-swift@v3.0.0-beta.1
         if: matrix.sdk == 'swift'
         with:
