@@ -99,6 +99,18 @@ Load only what the current layer needs.
 
 | DSL | Java | File |
 |-----|------|------|
+| `workflow Name(...)` | `@WorkflowInterface` interface with one `@WorkflowMethod`, plus an impl class | [workflow-def.md](./reference/workflow-def.md) |
+| `id_scheme: "..."` | static ID method on the workflow's interface, called by every start and sender | [workflow-def.md](./reference/workflow-def.md#id_scheme) |
+| `workflow_id_reuse_policy` / `workflow_id_conflict_policy` | static start-options method; child gets reuse only | [options.md](./reference/options.md#workflow-id-policies) |
+| `activity Name(...)` | `@ActivityInterface` method, implemented on an instance holding its dependencies | [activity-def.md](./reference/activity-def.md) |
+| types (`int`, `time`, `bytes`, …), user types | what the default Jackson mapper round-trips; `record` | [types.md](./reference/types.md) |
+| activity dependencies | dependency map, confirmed from the resolved artifact | [dependency-resolution.md](./reference/dependency-resolution.md) |
+| `worker`, namespace worker `options:` | `registerXxxTypes(Worker)` in `Workers.java`, `WorkerFactory`, `WorkerOptions` | [worker.md](./reference/worker.md) |
+| `nexus service Name:`, `async` / `sync` operations | `@Service` interface + `@ServiceImpl` class; `WorkflowRunOperation.fromWorkflowMethod` / `OperationHandler.sync` | [nexus-service-def.md](./reference/nexus-service-def.md) |
+| `activity Name(args) -> r` | a call on a `Workflow.newActivityStub` stub | [activity-call.md](./reference/activity-call.md) |
+| `workflow Name(args) -> r` | a call on a `Workflow.newChildWorkflowStub` stub, one per start | [workflow-call.md](./reference/workflow-call.md) |
+| `detach workflow ...` / `detach nexus ...` | child stub / Nexus stub with `ABANDON`; wait for the start, never the result | [detach.md](./reference/detach.md) |
+| `nexus Endpoint Service.Op(args) -> r` | a call on a `Workflow.newNexusServiceStub` stub | [nexus.md](./reference/nexus.md) |
 | `signal Name(params):` | `@SignalMethod(name=)` method: body, then `arrivals.add` | [signal-handler.md](./reference/signal-handler.md) |
 | `query Name(params) -> (T):` | `@QueryMethod(name=)` method | [query-handler.md](./reference/query-handler.md) |
 | `update Name(params) -> (T):` | `@UpdateMethod(name=)` method: body, then `arrivals.add`, then `return` | [update-handler.md](./reference/update-handler.md) |
@@ -108,6 +120,12 @@ Load only what the current layer needs.
 | `await all:` | `Promise.allOf(...).get()` | [await-all.md](./reference/await-all.md) |
 | `await one:` | one `Workflow.await` over every case; first listed ready wins | [await-one.md](./reference/await-one.md) |
 | handler + condition + `await one` | worked compositions | [composite-patterns.md](./reference/composite-patterns.md) |
+| `signal handle.Name(args)` / `signal Type.Name(args)` + `id:` | the child stub's `@SignalMethod` / `Workflow.newExternalWorkflowStub(...)`'s | [signal-send.md](./reference/signal-send.md) |
+| `await timer(d)` | `Workflow.sleep` | [await-timer.md](./reference/await-timer.md) |
+| `options:` / `default_options:` | `ActivityOptions` / `ChildWorkflowOptions` / `NexusOperationOptions`, on the stub | [options.md](./reference/options.md) |
+| `if` / `for` / `switch` / `break` / `continue`, `x = expr` | Java equivalents | [control-flow.md](./reference/control-flow.md) |
+| `close complete` / `fail` / `continue_as_new` | `return` / `throw ApplicationFailure.newFailure` / `Workflow.newContinueAsNewStub` | [close.md](./reference/close.md) |
+| `heartbeat(details)` | `Activity.getExecutionContext().heartbeat` | [heartbeat.md](./reference/heartbeat.md) |
 
 The spec states only what `detach` guarantees (`twf spec statement-syntax`); the author maps it to these mechanics:
 
