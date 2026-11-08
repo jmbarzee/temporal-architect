@@ -59,7 +59,7 @@ class HumanReview:
 
 1. **The condition is read, not taken**: it is a `bool` in the predicate; nothing waits on the update itself, so it needs no `Arrivals` ([await-one.md](./await-one.md#cases))
 2. **Not `wait_condition(lambda: self.review_complete, timeout=timedelta(hours=48))`**: it raises on timeout rather than listing the timer as a case ([condition.md](./condition.md))
-3. **Cancel the losing timer**: losing cases keep running ([await-one.md](./await-one.md#notes))
+3. **The losing timer is cancelled**: operations started by losing cases are not cancelled (spec 06), but the corpus cancels a losing timer (#496) ([await-one.md](./await-one.md#notes))
 4. **`all_handlers_finished` before returning**, so an in-flight update is not abandoned ([update-handler.md](./update-handler.md))
 
 ## Pattern 2: Signal-set condition vs timer with a shared tail (ManageRetention)
