@@ -27,7 +27,7 @@ class OrderWorkflow < Temporalio::Workflow::Definition
 end
 ```
 
-- `workflow_signal name: '…'` marks the next method (`workflow/definition.rb:140-152`), always with `name:` (the SKILL's Wire names). Params map positionally, one payload each, converted for the method's params (`internal/worker/workflow_instance.rb:445,725-733`); no params → `def open`. A `decimal` arrives as its base-10 `String` ([types.md](./types.md)).
+- `workflow_signal name: '…'` marks the next method (`workflow/definition.rb:140-152`), always with `name:` (the SKILL's Wire names). Params map positionally, one payload each, converted for the method's params (`internal/worker/workflow_instance.rb:445,725-733`); a signal with none maps to a method with none (the corpus's `def open`). A `decimal` arrives as its base-10 `String` ([types.md](./types.md)).
 - State and `Arrivals` are set in `initialize`: a handler can run before `execute` starts, since the activation creates the instance, applies every job, and only then schedules `execute` (`internal/worker/workflow_instance.rb:201-208`).
 - The handler runs every arrival's body, whether or not anything waits, then adds the arrival to the signal's `Arrivals` ([await-signal.md](./await-signal.md)). A body that blocks (a timer, an activity) adds after its last blocking call: the arrival is pending only once the handler returns. A signal nothing waits on needs no `Arrivals`.
 

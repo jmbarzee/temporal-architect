@@ -10,19 +10,19 @@ await one:
 ```
 
 ```ruby
-payment = @payments_received.wait
+ticket = @payments_received.wait
 timer_cancellation, cancel_timer = Temporalio::Cancellation.new(Temporalio::Workflow.cancellation)
 timer = Temporalio::Workflow::Future.new do
   Temporalio::Workflow.sleep(24 * 3600, cancellation: timer_cancellation)
 end
-Temporalio::Workflow.wait_condition { @payments_received.ready?(payment) || timer.done? }
+Temporalio::Workflow.wait_condition { @payments_received.ready?(ticket) || timer.done? }
 
-if @payments_received.ready?(payment) # listed first, so it wins a tie
+if @payments_received.ready?(ticket) # listed first, so it wins a tie
   @payments_received.claim
   cancel_timer.call # the inline timer lost
   @status = 'processing'
 else
-  @payments_received.leave(payment)
+  @payments_received.leave(ticket)
   Temporalio::Workflow.execute_activity(CancelOrder, order_id, start_to_close_timeout: 60)
   raise Temporalio::Error::ApplicationError.new('order cancelled', OrderResult.new(status: 'cancelled'),
                                                 type: 'OrderCancelled')
@@ -42,7 +42,7 @@ One `wait_condition` over every case blocks until any is ready; then the first l
 |------|-------------------------|------------------|--------|
 | signal, update | `t = @xs.wait` | `@xs.ready?(t)` | `@xs.claim`; every losing message case calls `@xs.leave(t)` |
 | inline timer | `timer`, a `Future` over `Workflow.sleep(d, cancellation: timer_cancellation)`, as above | `timer.done?` | every other winner calls `cancel_timer.call` |
-| activity, child workflow, nexus, promise | `f = Workflow::Future.new { … }` ([promise.md](./promise.md)) | `f.done?` | `f.wait` |
+| activity, child workflow, nexus, promise | `f = Workflow::Future.new { … }` ([promise.md](./promise.md)); a bound promise is its existing future, not a new one | `f.done?` | `f.wait` |
 | condition | — | the condition | — |
 | nested `await all:` | `all = Workflow::Future.all_of(…)` | `all.done?` | `all.wait` |
 
