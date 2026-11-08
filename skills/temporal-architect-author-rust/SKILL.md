@@ -18,6 +18,7 @@ Rust is Tier 2: `temporal-developer` `v0.6.3` calls the SDK Public Preview (`ref
 - the Nexus service contract (`nexus service`), its `sync` and `async` operation bodies, and the client-start forms inside them
 - signal and update `unfinished_policy` and `description`; query `description`
 - worker option `local_activity_only_mode`: task types follow the registrations (`crates/sdk/src/lib.rs:723-727`)
+- worker option `versioning: build_id`: the worker always runs deployment-based versioning (`crates/sdk/src/lib.rs:738-740`)
 
 Settle where the code lands. The project root is the directory whose `Cargo.toml` depends on `temporalio-sdk`. In an existing repo its conventions are **requirements to match**; in greenfield, ask. The code is hand-written: no codegen variant is mapped.
 

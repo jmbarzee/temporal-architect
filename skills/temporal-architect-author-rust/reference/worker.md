@@ -169,7 +169,7 @@ The richer versioning model (ramping, per-namespace-vs-per-worker placement) sta
 The DSL `versioning` enum carries *strategy*, not identifiers. Concrete Build ID / deployment name are **deploy-time inputs from config/env** — never fabricate them into generated code.
 
 - `none` → no versioning fields: the default `deployment_options` names the worker with a build ID hashed from its executable, without opting into versioning (`sdk/src/lib.rs:223-226,554-557`, `common/src/worker.rs:135-146`).
-- `build_id` → **unsupported in Rust**: the legacy Build-ID strategy is unreachable, since `WorkerOptions` always hands the worker deployment-based versioning (`sdk/src/lib.rs:738-740`). Raise it with the user; `deployment` is the current path.
+- `build_id` → **unsupported in Rust**: the legacy Build-ID strategy is unreachable, since `WorkerOptions` always hands the worker deployment-based versioning (`sdk/src/lib.rs:738-740`). `deployment` is the current path.
 - `deployment` → `deployment_options` (`common/src/worker.rs:118-133`):
 
 ```rust

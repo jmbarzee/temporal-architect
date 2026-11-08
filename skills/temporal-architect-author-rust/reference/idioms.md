@@ -10,6 +10,7 @@
   ```toml
   [dev-dependencies]
   temporalio-sdk-core = { version = "=0.10.2", features = ["ephemeral-server"] }
+  tonic = "0.14"
   ```
 
   `TestServerConfig` with `default_cached_download()` downloads Temporal's test server once into the OS temp dir and starts it (`sdk-core/src/ephemeral_server/mod.rs:225-250,389-395`); the connection's `test_service()` skips time with `unlock_time_skipping_with_sleep`, or by unlocking time skipping around a result wait. The corpus's test kit, `corpus/testkit.rs`, is that environment.
@@ -30,4 +31,4 @@ The default converter and the `.twf` type map: [types.md](./types.md). Evolving 
 
 ## Versioning
 
-Patching: `ctx.patched(id)` and `ctx.deprecate_patch(id)` (`sdk/README.md` § Patching; `workflow/src/workflow_context.rs:1970-1983`). Worker deployment versioning: `WorkerDeploymentOptions` ([worker.md](./worker.md#versioning-not-11)), docs.rs [`temporalio_common::worker`](https://docs.rs/temporalio-common/1.1.2/temporalio_common/worker/). Check a change against recorded histories with `WorkflowReplayer` before deploying it.
+Patching: `ctx.patched(id)` and `ctx.deprecate_patch(id)` (`sdk/README.md` § Patching; `workflow/src/workflow_context.rs:2449-2458`). Worker deployment versioning: `WorkerDeploymentOptions` ([worker.md](./worker.md#versioning-not-11)), docs.rs [`temporalio_common::worker`](https://docs.rs/temporalio-common/1.1.2/temporalio_common/worker/). Check a change against recorded histories with `WorkflowReplayer` before deploying it.
