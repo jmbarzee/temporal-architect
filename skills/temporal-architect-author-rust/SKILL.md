@@ -120,6 +120,15 @@ Load only what the current layer needs.
 | `workflow Name(args) -> r` | `ctx.start_child_workflow(Name::run, input, options)`, then `.result()` | [workflow-call.md](./reference/workflow-call.md) |
 | `detach workflow ...` / `detach nexus ...` | `Abandon` options; await the start, never `.result()` | [detach.md](./reference/detach.md) |
 | `nexus Endpoint Service.Op(args) -> r` | `ctx.start_nexus_operation(NexusOperationOptions)`, untyped (`experimental`) | [nexus.md](./reference/nexus.md) |
+| `signal Name(params):` | `#[signal(name=)]` method: body, then `arrivals.add` | [signal-handler.md](./reference/signal-handler.md) |
+| `query Name(params) -> (T):` | `#[query(name=)]` method on `&self` | [query-handler.md](./reference/query-handler.md) |
+| `update Name(params) -> (T):` | `#[update(name=)]` method: body, then `arrivals.add`, then return | [update-handler.md](./reference/update-handler.md) |
+| `await signal\|update Name -> (...)` | `take(ctx, of!(arrivals)).await?` | [await-signal.md](./reference/await-signal.md) |
+| `promise p <- ...` | the unawaited call; for a signal or update, an unawaited `take` | [promise.md](./reference/promise.md) |
+| `state:` / `condition` / `set` / `unset` | `bool` field + `ctx.wait_condition` | [condition.md](./reference/condition.md) |
+| `await all:` | `workflows::join!` / `join_all` | [await-all.md](./reference/await-all.md) |
+| `await one:` | `workflows::select!`, arms in listed order; first listed ready wins | [await-one.md](./reference/await-one.md) |
+| handler + condition + `await one` | worked compositions | [composite-patterns.md](./reference/composite-patterns.md) |
 | `signal handle.Name(args)` / `signal Type.Name(args)` + `id:` | `StartedChildWorkflow::signal` / `ctx.external_workflow(id, run_id).signal` | [signal-send.md](./reference/signal-send.md) |
 | `await timer(d)` | `ctx.timer(d).await` | [await-timer.md](./reference/await-timer.md) |
 | `options:` / `default_options:` | `ActivityOptions` / `ChildWorkflowOptions` / `NexusOperationOptions`, per call | [options.md](./reference/options.md) |
