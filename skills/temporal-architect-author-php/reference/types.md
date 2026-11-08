@@ -30,7 +30,7 @@ The `.twf` type names are defined in `twf spec workflows` (Types). The default d
 
 - **Property names go out as declared** (`Internal/Marshaller/Mapper/AttributeMapper.php:124`): name each property as the `.twf` field (`trackingId`); `#[Marshal(name: 'x')]` renames one.
 - **A DTO is decoded without its constructor** (`JsonConverter.php:239-245`): a constructor default never fills a missing field. Adding a field later: `temporal-developer` [`data-handling.md` § Typed Inputs and Results](https://github.com/temporalio/skill-temporal-developer/blob/2d334cd853a624bf653d16cb9678f3cd806592a1/references/php/data-handling.md#typed-inputs-and-results).
-- **A list of user types inside a DTO** decodes as plain arrays unless the property carries `#[MarshalArray(of: Item::class)]` (`Internal/Marshaller/Meta/MarshalArray.php:28`).
+- **A list of user types** decodes as arrays of arrays (`JsonConverter.php:78-83,124-129`): inside a DTO, give the property `#[MarshalArray(of: Item::class)]` (`Internal/Marshaller/Meta/MarshalArray.php:28`); as a parameter or result, carry it in a DTO property that has one.
 - **Several returns** (`-> (A, B)`) are one DTO of the values.
 - **A workflow returns through `#[ReturnType(T::class)]`**: its method is a generator, which cannot declare `T` (`Workflow/ReturnType.php:24`; [workflow-def.md](./workflow-def.md)).
 
