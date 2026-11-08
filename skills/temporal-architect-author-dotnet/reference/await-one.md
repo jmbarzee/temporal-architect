@@ -43,6 +43,6 @@ A message case waits without taking: `Ready` checks its `Arrivals` ([await-signa
 
 ## Notes
 
-- **An inline timer case that loses is cancelled** (#496): cancel its token, or it fires later and adds workflow tasks. Inline activity, child workflow and Nexus cases keep running until the run ends, and a bound promise is never cancelled by losing. Cancelling a child only *requests* its cancellation; for its lifecycle at parent close, use `parent_close_policy` ([options.md](./options.md)). Tokens: `temporal-developer` `references/dotnet/patterns.md` § Cancellation Handling (CancellationToken).
+- **An inline timer case that loses is cancelled** (`twf spec statement-syntax`, lifecycle of non-winning cases): cancel its token, or it fires later and adds workflow tasks. Inline activity, child workflow and Nexus cases keep running until the run ends, and a bound promise is never cancelled by losing. Cancelling a child only *requests* its cancellation; for its lifecycle at parent close, use `parent_close_policy` ([options.md](./options.md)). Tokens: `temporal-developer` `references/dotnet/patterns.md` § Cancellation Handling (CancellationToken).
 - An empty case body → the winner's `Claim()` or `await` alone.
 - Event-driven/entity workflows repeat the race in a loop, with a fresh timer each iteration.
