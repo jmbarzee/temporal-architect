@@ -7,7 +7,7 @@ Elixir has no loop statements and no mutation, so loops are `Enum` calls or recu
 | `x = expr` (first use) / again | `x = expr` / `x = expr`, rebinding; a rebinding inside `if`, `case` or a function body is invisible outside it, so return the new value instead: `x = if c, do: a, else: x` |
 | `if (c):` … `else:` | `if c do … else … end` |
 | `for (item in items):` | `Enum.each(items, fn item -> … end)`; `Enum.reduce(items, acc, fn item, acc -> … end)` when the body updates a variable |
-| `for (retries < max):` | a recursive private function: `defp loop(retries) when retries < max, do: …; loop(retries + 1)` |
+| `for (retries < max):` | a recursive private function: `defp loop(retries, max) when retries < max, do: …; loop(retries + 1, max)` |
 | `for:` | a recursive function with no guard |
 | `switch (v):` `case "a":` … `else:` | `case v do "a" -> …; _ -> … end`; cases never fall through |
 | `break` / `continue` | in `Enum.reduce_while/3`, `{:halt, acc}` / `{:cont, acc}`; in a recursive loop, return / recurse |

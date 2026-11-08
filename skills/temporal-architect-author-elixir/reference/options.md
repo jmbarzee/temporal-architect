@@ -57,7 +57,7 @@ workflow ChildWorkflow(input.data) -> childResult
 ```elixir
 start_child_workflow(context.worker_opts.task_queue, "ChildWorkflow",
   input: [input["data"]],
-  workflow_id: workflow_id <> "/child",
+  workflow_id: context.task.workflow_execution.workflow_id <> "/ChildWorkflow",
   workflow_execution_timeout: {1, :hour},
   parent_close_policy: :PARENT_CLOSE_POLICY_REQUEST_CANCEL,
   retry_policy: %{maximum_attempts: 3},
@@ -136,7 +136,7 @@ workflow Cart(customerId: string):
 
 ## Worker options
 
-A namespace worker's `options:` map onto `:temporal_sdk_worker.start/3`'s options (`worker/temporal_sdk_worker.erl:32-196`), given to the workflow worker, the activity worker, or both, as each row says. The rows marked **none** have no equivalent at the pin: leave them out of the code and tell the user.
+A namespace worker's `options:` map onto `TemporalSdk.Worker.start/3`'s options (`worker/temporal_sdk_worker.erl:32-196`), given to the workflow worker, the activity worker, or both, as each row says. The rows marked **none** have no equivalent at the pin: leave them out of the code and tell the user.
 
 | TWF worker option | Elixir |
 |-------------------|--------|
