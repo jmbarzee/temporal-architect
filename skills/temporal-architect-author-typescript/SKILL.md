@@ -106,6 +106,15 @@ Load only what the current layer needs.
 | `workflow Name(args) -> r` | `executeChild` | [workflow-call.md](./reference/workflow-call.md) |
 | `detach workflow ...` / `detach nexus ...` | `startChild` / `startOperation` with `ABANDON`, skip result | [detach.md](./reference/detach.md) |
 | `nexus Endpoint Service.Op(args) -> r` | `createNexusServiceClient(...).executeOperation` | [nexus.md](./reference/nexus.md) |
+| `signal Name(params):` | `setHandler`: body, then `arrivals.add` | [signal-handler.md](./reference/signal-handler.md) |
+| `query Name(params) -> (T):` | `setHandler` with a synchronous handler | [query-handler.md](./reference/query-handler.md) |
+| `update Name(params) -> (T):` | `setHandler`: body, then `arrivals.add`, then `return` | [update-handler.md](./reference/update-handler.md) |
+| `await signal\|update Name -> (...)` | `await arrivals.take()` | [await-signal.md](./reference/await-signal.md) |
+| `promise p <- ...` | the call's un-awaited `Promise`; for a signal or update, `arrivals.take()` | [promise.md](./reference/promise.md) |
+| `state:` / `condition` / `set` / `unset` | `let` boolean + `condition` | [condition.md](./reference/condition.md) |
+| `await all:` | `Promise.all` | [await-all.md](./reference/await-all.md) |
+| `await one:` | one `condition` over every case; first listed ready wins | [await-one.md](./reference/await-one.md) |
+| handler + condition + `await one` | worked compositions | [composite-patterns.md](./reference/composite-patterns.md) |
 | `signal handle.Name(args)` / `signal Type.Name(args)` + `id:` | `ChildWorkflowHandle.signal` / `getExternalWorkflowHandle(...).signal` | [signal-send.md](./reference/signal-send.md) |
 | `await timer(d)` | `sleep` | [await-timer.md](./reference/await-timer.md) |
 | `options:` / `default_options:` | `ActivityOptions` / `ChildWorkflowOptions` / `StartNexusOperationOptions` | [options.md](./reference/options.md) |
