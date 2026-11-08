@@ -16,7 +16,7 @@ await Workflow.WhenAllAsync(inventory, payment);
 
 - One `Workflow.WhenAllAsync` over every branch's `Task`, whatever its kind; each result comes from awaiting its own `Task` after. Branches of one result type → `Workflow.WhenAllAsync<T>`, whose array is in branch order.
 - Never `Task.WhenAll`: `temporal-developer` `references/dotnet/gotchas.md` § Task.WhenAll / Task.WhenAny.
-- `WhenAllAsync` is `Task.WhenAll` on the workflow's scheduler (`Workflows/Workflow.cs:1486-1496`): it completes once every branch has finished, even after one fails, and the `await` rethrows the first failure. To stop the others early, give the branches one linked `CancellationToken` and cancel it on failure (`temporal-developer` `references/dotnet/patterns.md` § Cancellation Handling (CancellationToken)).
+- `WhenAllAsync` is `Task.WhenAll` (`Workflows/Workflow.cs:1486-1496`): it completes once every branch has finished, even after one fails, and the `await` rethrows the first failure. To stop the others early, give the branches one linked `CancellationToken` and cancel it on failure (`temporal-developer` `references/dotnet/patterns.md` § Cancellation Handling (CancellationToken)).
 - A `detach` call's branch is its `StartChildWorkflowAsync` / `StartNexusOperationAsync`, which resolves once the call has started ([detach.md](./detach.md)).
 
 ## Fan-out
