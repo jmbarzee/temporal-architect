@@ -19,6 +19,7 @@ corpus/
   pom.xml
   Gemfile
   pom-clojure.xml
+  composer.json
   <design>/
     <design>.twf         the design, with no @sdk
     go/                  its Go output, per skills/temporal-architect-author-go
@@ -33,6 +34,8 @@ corpus/
       <design>.twf       the design plus only @sdk(ruby, …)
     clojure/             its Clojure output, a source root holding <design>/*.clj; nexus has none (Clojure has no Nexus API)
       <design>.twf       the design plus only @sdk(clojure, …)
+    php/                 its PHP output, tests beside sources; nexus has none (PHP has no Nexus)
+      <design>.twf       the design plus only @sdk(php, …)
 ```
 
 Each SDK's copy of the design names only its own implementation, so no worker carries two SDKs. `check-corpus` checks every `.twf` file on its own (a directory check would load the copies together) and fails when a copy, its `@sdk` lines stripped, differs from the design.
@@ -49,6 +52,7 @@ make corpus-dotnet      # check the corpus, then dotnet restore (locked) and dot
 make corpus-java        # check the corpus, then javac -Werror and the JUnit suites via the Maven wrapper
 make corpus-ruby        # check the corpus, then bundle install (locked), ruby -wc and Minitest in each design's ruby/
 make corpus-clojure     # check the corpus, then the clojure.test suites via the Maven wrapper and pom-clojure.xml
+make corpus-php         # check the corpus, then composer install (locked), dload (rr, test server), PHPStan and PHPUnit
 ```
 
 ## Add an SDK

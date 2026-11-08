@@ -225,7 +225,7 @@ vet:
 # ── Corpus targets ───────────────────────────────────────────────────────────
 # See corpus/README.md. CI runs `make corpus-<sdk>` once per matrix entry.
 
-.PHONY: check-corpus corpus-go corpus-python corpus-typescript corpus-dotnet corpus-java corpus-ruby corpus-clojure
+.PHONY: check-corpus corpus-go corpus-python corpus-typescript corpus-dotnet corpus-java corpus-ruby corpus-clojure corpus-php
 
 # A design is a corpus directory holding a .twf; node_modules is not one.
 CORPUS_DESIGNS := $(patsubst corpus/%/,%,$(sort $(dir $(wildcard corpus/*/*.twf))))
@@ -281,6 +281,13 @@ corpus-ruby: check-corpus
 ## Check the corpus, then test its Clojure outputs via the Maven wrapper.
 corpus-clojure: check-corpus
 	cd corpus && ./mvnw -B -q -f pom-clojure.xml verify
+
+## Check the corpus, then install (composer.lock), fetch rr and the test server (dload.xml),
+## analyse (PHPStan) and test its PHP outputs; the PHPUnit bootstrap starts both binaries.
+## Composer installs into php/vendor/: a corpus/vendor/ beside go.mod would switch Go to vendor
+## mode, and dload finds its autoloader only in a directory named vendor.
+corpus-php: check-corpus
+	cd corpus && composer install --no-interaction --no-progress && php/vendor/bin/dload get -n -q && php/vendor/bin/phpstan analyse --no-progress && php/vendor/bin/phpunit
 
 # ── Docs targets ─────────────────────────────────────────────────────────────
 
