@@ -102,6 +102,24 @@ Load only what the current layer needs.
 
 | DSL | Elixir | File |
 |-----|--------|------|
+| `workflow Name(...)` | a `use TemporalSdk.Workflow` module whose `execute(context, input)` takes the positional payload list | [workflow-def.md](./reference/workflow-def.md) |
+| `id_scheme: "..."` | one ID function on the workflow's module, called by every start | [workflow-def.md](./reference/workflow-def.md#id_scheme) |
+| `workflow_id_reuse_policy` / `workflow_id_conflict_policy` | start-options function; child gets reuse only | [options.md](./reference/options.md#workflow-id-policies) |
+| `activity Name(...)` | a `use TemporalSdk.Activity` module whose `execute/2` returns the result's payload list | [activity-def.md](./reference/activity-def.md) |
+| types (`int`, `time`, `bytes`, …), user types | what the default codec chain round-trips; maps with string keys, `:null` | [types.md](./reference/types.md) |
+| activity dependencies | dependency map, confirmed from the locked version | [dependency-resolution.md](./reference/dependency-resolution.md) |
+| `worker`, namespace worker `options:` | name→module maps and `start_<worker>` in `workers.ex`, `TemporalSdk.Worker.start/3` | [worker.md](./reference/worker.md) |
+| `nexus service Name:`, `async` / `sync` operations | unsupported | [nexus-service-def.md](./reference/nexus-service-def.md) |
+| `activity Name(args) -> r` | `start_activity("Name", [args], opts ++ [wait: true])`, matched on `:completed` | [activity-call.md](./reference/activity-call.md) |
+| `workflow Name(args) -> r` | `start_child_workflow(task_queue, "Name", input: [args], workflow_id: …, wait: true)` | [workflow-call.md](./reference/workflow-call.md) |
+| `detach workflow ...` / `detach nexus ...` | child with `ABANDON`, `awaitable_event: :start`, `await_open_before_close(false)` / unsupported | [detach.md](./reference/detach.md) |
+| `nexus Endpoint Service.Op(args) -> r` | unsupported | [nexus.md](./reference/nexus.md) |
+| `signal handle.Name(args)` / `signal Type.Name(args)` + `id:` | unsupported | [signal-send.md](./reference/signal-send.md) |
+| `await timer(d)` | `start_timer(d, [:wait])` | [await-timer.md](./reference/await-timer.md) |
+| `options:` / `default_options:` | the call's keyword list; `Keyword.merge` overrides a default | [options.md](./reference/options.md) |
+| `if` / `for` / `switch` / `break` / `continue`, `x = expr` | `if`, `Enum`, recursion, `case`, `reduce_while` | [control-flow.md](./reference/control-flow.md) |
+| `close complete` / `fail` / `continue_as_new` | `complete_workflow_execution` / `fail_workflow_execution` / `continue_as_new_workflow` | [close.md](./reference/close.md) |
+| `heartbeat(details)` | `heartbeat([details])`, with `handle_heartbeat/1` and `handle_cancel/1` | [heartbeat.md](./reference/heartbeat.md) |
 
 The spec states only what `detach` guarantees (`twf spec statement-syntax`); the author maps it to these mechanics:
 
