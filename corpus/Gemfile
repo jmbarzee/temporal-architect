@@ -1,0 +1,9 @@
+# frozen_string_literal: true
+
+source 'https://rubygems.org'
+
+gem 'temporalio', '1.10.1'
+
+group :test do
+  gem 'minitest', '~> 6.1'
+end

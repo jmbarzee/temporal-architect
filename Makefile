@@ -225,7 +225,7 @@ vet:
 # ── Corpus targets ───────────────────────────────────────────────────────────
 # See corpus/README.md. CI runs `make corpus-<sdk>` once per matrix entry.
 
-.PHONY: check-corpus corpus-go corpus-python corpus-typescript corpus-dotnet corpus-java corpus-rust
+.PHONY: check-corpus corpus-go corpus-python corpus-typescript corpus-dotnet corpus-java corpus-ruby corpus-clojure corpus-rust
 
 # A design is a corpus directory holding a .twf; node_modules is not one.
 CORPUS_DESIGNS := $(patsubst corpus/%/,%,$(sort $(dir $(wildcard corpus/*/*.twf))))
@@ -268,6 +268,19 @@ corpus-dotnet: check-corpus
 ## Check the corpus, then compile (javac -Werror) and test its Java outputs.
 corpus-java: check-corpus
 	cd corpus && ./mvnw -B -q verify
+
+## Check the corpus, then syntax-check (ruby -wc) and test (Minitest) its Ruby
+## outputs design by design, against the gems pinned by Gemfile.lock.
+corpus-ruby: check-corpus
+	cd corpus && BUNDLE_FROZEN=true bundle install --quiet
+	for d in $(CORPUS_DESIGNS); do \
+		( cd corpus/$$d/ruby && for f in *.rb; do ruby -wc $$f >/dev/null || exit 1; done && \
+		  BUNDLE_GEMFILE=../../Gemfile bundle exec ruby -e 'Dir["*_test.rb"].sort.each { |f| require File.expand_path(f) }' ) || exit 1; \
+	done
+
+## Check the corpus, then test its Clojure outputs via the Maven wrapper.
+corpus-clojure: check-corpus
+	cd corpus && ./mvnw -B -q -f pom-clojure.xml verify
 
 ## Check the corpus, then lint (clippy -D warnings) and test its Rust outputs: one Cargo
 ## workspace whose members are the designs' rust/ directories (Cargo.lock pins them).

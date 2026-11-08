@@ -67,7 +67,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        sdk: [go, python, typescript, dotnet, java, rust]
+        sdk: [go, python, typescript, dotnet, java, ruby, clojure, rust]
     steps:
       - uses: actions/checkout@v4
 
@@ -99,12 +99,20 @@ jobs:
           cache-dependency-path: corpus/packages.lock.json
 
       - uses: actions/setup-java@v4
-        if: matrix.sdk == 'java'
+        if: matrix.sdk == 'java' || matrix.sdk == 'clojure'
         with:
           distribution: temurin
           java-version: 21
           cache: maven
-          cache-dependency-path: corpus/pom.xml
+          cache-dependency-path: |
+            corpus/pom.xml
+            corpus/pom-clojure.xml
+
+      - uses: ruby/setup-ruby@v1.338.0
+        if: matrix.sdk == 'ruby'
+        with:
+          working-directory: corpus
+          bundler-cache: true
 
       # No protoc: the client's vendored-protox feature compiles the protos in-process.
       - uses: dtolnay/rust-toolchain@stable

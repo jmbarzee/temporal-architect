@@ -17,6 +17,8 @@ corpus/
   package.json
   pyproject.toml
   pom.xml
+  Gemfile
+  pom-clojure.xml
   Cargo.toml             a workspace whose root package, testkit.rs, is Rust's time-skipping kit
   <design>/
     <design>.twf         the design, with no @sdk
@@ -28,7 +30,11 @@ corpus/
       <design>.twf       the design plus only @sdk(python, …)
     java/                its Java output, tests beside sources
       <design>.twf       the design plus only @sdk(java, …)
-    rust/                its Rust output, a workspace member (nexus: the caller only)
+    ruby/                its Ruby output; nexus/ruby/ is caller-only (Ruby has no Nexus handler)
+      <design>.twf       the design plus only @sdk(ruby, …)
+    clojure/             its Clojure output, a source root holding <design>/*.clj; nexus has none (Clojure has no Nexus API)
+      <design>.twf       the design plus only @sdk(clojure, …)
+    rust/                its Rust output, a workspace member; nexus/rust/ is caller-only (Rust has no Nexus handler)
       <design>.twf       the design plus only @sdk(rust, …)
 ```
 
@@ -44,6 +50,8 @@ make corpus-typescript  # check the corpus, then npm ci, tsc and the node:test s
 make corpus-python      # check the corpus, then uv sync, mypy and pytest in each design's python/
 make corpus-dotnet      # check the corpus, then dotnet restore (locked) and dotnet test
 make corpus-java        # check the corpus, then javac -Werror and the JUnit suites via the Maven wrapper
+make corpus-ruby        # check the corpus, then bundle install (locked), ruby -wc and Minitest in each design's ruby/
+make corpus-clojure     # check the corpus, then the clojure.test suites via the Maven wrapper and pom-clojure.xml
 make corpus-rust        # check the corpus, then cargo clippy (-D warnings) and cargo test, locked
 ```
 
