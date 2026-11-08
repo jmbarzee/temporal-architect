@@ -115,7 +115,7 @@ Load only what the current layer needs.
 | `await timer(d)` | `yield Workflow::timer` | [await-timer.md](./reference/await-timer.md) |
 | `options:` / `default_options:` | `ActivityOptions` / `ChildWorkflowOptions`, immutable `with*` chains | [options.md](./reference/options.md) |
 | `if` / `for` / `switch` / `break` / `continue`, `x = expr` | PHP equivalents | [control-flow.md](./reference/control-flow.md) |
-| `close complete` / `fail` / `continue_as_new` | `return` / `throw new ApplicationFailure` / `return yield Workflow::continueAsNew` | [close.md](./reference/close.md) |
+| `close complete` / `fail` / `continue_as_new` | `return` / `throw new ApplicationFailure` / `return yield Workflow::newContinueAsNewStub(...)->run(...)` | [close.md](./reference/close.md) |
 | `heartbeat(details)` | `Activity::heartbeat` | [heartbeat.md](./reference/heartbeat.md) |
 
 The spec states only what `detach` guarantees (`twf spec statement-syntax`); the author maps it to these mechanics:

@@ -19,7 +19,7 @@ namespace App\Orders;
 
 use Temporal\Worker\WorkerFactoryInterface;
 
-/** Each .twf worker's registrations, shared by the worker process and the test worker. */
+/** Each .twf worker's registrations, shared by the worker process. */
 final class Workers
 {
     public const ORDERS_TASK_QUEUE = 'orders';
