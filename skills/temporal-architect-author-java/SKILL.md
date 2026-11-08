@@ -126,6 +126,7 @@ Load only what the current layer needs.
 | `if` / `for` / `switch` / `break` / `continue`, `x = expr` | Java equivalents | [control-flow.md](./reference/control-flow.md) |
 | `close complete` / `fail` / `continue_as_new` | `return` / `throw ApplicationFailure.newFailure` / `Workflow.newContinueAsNewStub` | [close.md](./reference/close.md) |
 | `heartbeat(details)` | `Activity.getExecutionContext().heartbeat` | [heartbeat.md](./reference/heartbeat.md) |
+| recovered `.twf` (code → `.twf`) | project roots, registration, concurrency, codegen | [discovery.md](./reference/discovery.md) |
 
 The spec states only what `detach` guarantees (`twf spec statement-syntax`); the author maps it to these mechanics:
 
