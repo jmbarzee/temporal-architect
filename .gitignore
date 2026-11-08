@@ -66,3 +66,9 @@ corpus/local/
 # Ruby corpus gems and local Bundler config
 corpus/vendor/
 corpus/.bundle/
+
+# PHP corpus dependencies, binaries (corpus/dload.xml) and PHPUnit cache
+corpus/php/vendor/
+corpus/rr
+corpus/temporal-test-server
+corpus/.phpunit.cache/

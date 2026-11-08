@@ -67,7 +67,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        sdk: [go, python, typescript, dotnet, java, ruby, clojure, rust, perl]
+        sdk: [go, python, typescript, dotnet, java, ruby, clojure, rust, php, perl]
     steps:
       - uses: actions/checkout@v4
 
@@ -169,4 +169,13 @@ jobs:
         with:
           workspaces: corpus
 
+      - uses: shivammathur/setup-php@v2
+        if: matrix.sdk == 'php'
+        with:
+          php-version: '8.4'
+          extensions: grpc, sockets, curl
+          tools: composer:v2
+
       - run: make corpus-${{ matrix.sdk }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }} # dload's GitHub API calls (rr, test server)
