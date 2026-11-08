@@ -17,7 +17,7 @@ my ($inventory, $payment) = await Future->needs_all(
 ```
 
 - One `Future->needs_all` over every branch's unawaited workflow future, whatever its kind (`README.md:605-608`); it returns the branches' results concatenated in branch order (CPAN `Future` § needs_all). [`corpus/concurrency/perl/Batch.pm`](https://github.com/jmbarzee/temporal-architect/blob/main/corpus/concurrency/perl/Batch.pm) is the worked example.
-- On the first failure it fails at once with that failure and cancels the branches still pending (CPAN `Future` § needs_all): a pending activity's cancellation is requested (`Workflow.pm:218-222`). To let every branch finish first, use `Future->wait_all` and check each future after.
+- On the first failure it fails at once with that failure and cancels every branch still pending, a bound promise passed as a branch included (CPAN `Future` § needs_all; the SDK's `cpanfile` leaves `Future` unpinned, read at 0.54). An activity's cancellation is requested (`Workflow.pm:218-222`), and a child's or Nexus operation's too, unless its `cancellation_type` is abandon (`Workflow/Runner.pm:1296-1307,1688-1699`). Other SDKs leave the other branches running; for that, use `Future->wait_all` and check each future after.
 - A `detach` call's branch is its `start_child_workflow` / `start_operation`, which resolves once the call has started ([detach.md](./detach.md)).
 
 ## Fan-out
