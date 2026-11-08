@@ -36,6 +36,7 @@ Each output registers the `.twf` names, implements every workflow and activity, 
 make corpus-go          # check the corpus, then go vet and go test the Go outputs
 make corpus-typescript  # check the corpus, then npm ci, tsc and the node:test suites
 make corpus-python      # check the corpus, then uv sync, mypy and pytest in each design's python/
+make corpus-dotnet      # check the corpus, then dotnet restore (locked) and dotnet test
 ```
 
 ## Add an SDK

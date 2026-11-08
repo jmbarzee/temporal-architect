@@ -225,7 +225,7 @@ vet:
 # ── Corpus targets ───────────────────────────────────────────────────────────
 # See corpus/README.md. CI runs `make corpus-<sdk>` once per matrix entry.
 
-.PHONY: check-corpus corpus-go corpus-python corpus-typescript
+.PHONY: check-corpus corpus-go corpus-python corpus-typescript corpus-dotnet
 
 # A design is a corpus directory holding a .twf; node_modules is not one.
 CORPUS_DESIGNS := $(patsubst corpus/%/,%,$(sort $(dir $(wildcard corpus/*/*.twf))))
@@ -260,6 +260,10 @@ corpus-python: check-corpus
 ## Check the corpus, then typecheck and test its TypeScript outputs.
 corpus-typescript: check-corpus
 	cd corpus && npm ci && npx tsc -p . && npm test
+
+## Check the corpus, then restore (pinned by packages.lock.json), build and test its .NET outputs.
+corpus-dotnet: check-corpus
+	cd corpus && dotnet restore --locked-mode && dotnet test --no-restore
 
 # ── Docs targets ─────────────────────────────────────────────────────────────
 
