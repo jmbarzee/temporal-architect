@@ -36,7 +36,7 @@ select! {
 | inline child workflow, nexus | the start bound before `select!` (`let start = ctx.start_child_workflow(…);`), so it starts even when an earlier case is ready; the arm is `r = async { … start.await? … .result().await … }.fuse()` | dropped; keeps running |
 | promise | `r = p`, borrowed ([promise.md](./promise.md)) | untouched |
 | condition | `_ = ctx.wait_condition(\|s\| …)` | — |
-| nested `await all:` | `r = async { join!(…) }.fuse()` ([await-all.md](./await-all.md)) | as its branches |
+| nested `await all:` | its branch calls bound before `select!` (`let a = ctx.execute_activity(…);`), so they start even when an earlier case is ready; the arm is `r = async { join!(a, b) }.fuse()` ([await-all.md](./await-all.md)) | as its branches |
 
 A message case takes only if it wins: `select!` polls a later arm only while every earlier one is pending, and a dropped `take` leaves the line ([await-signal.md](./await-signal.md)). SDK futures and `ctx.wait_condition` are already fused (`crates/workflow/src/workflow_context.rs:2543-2549,2636-2639`); an async block or `take` needs `.fuse()`.
 
