@@ -114,6 +114,15 @@ Load only what the current layer needs.
 | `workflow Name(args) -> r` | `@(w/invoke Name params opts)` | [workflow-call.md](./reference/workflow-call.md) |
 | `detach workflow ...` / `detach nexus ...` | untyped child stub with `ABANDON`, wait for `getExecution` / unsupported | [detach.md](./reference/detach.md) |
 | `nexus Endpoint Service.Op(args) -> r` | unsupported | [nexus.md](./reference/nexus.md) |
+| `signal Name(params):` | the one `s/register-signal-handler!`, a `case` on the name: body, then `arr/add!` | [signal-handler.md](./reference/signal-handler.md) |
+| `query Name(params) -> (T):` | the one `w/register-query-handler!`, a `case` on the keyword | [query-handler.md](./reference/query-handler.md) |
+| `update Name(params) -> (T):` | the one `w/register-update-handler!` with a `:validator`: body, then `arr/add!`, then the result | [update-handler.md](./reference/update-handler.md) |
+| `await signal\|update Name -> (...)` | `arr/take!` | [await-signal.md](./reference/await-signal.md) |
+| `promise p <- ...` | `a/invoke` / `w/invoke` / `w/new-timer`; for a signal or update, `arr/promise!` | [promise.md](./reference/promise.md) |
+| `state:` / `condition` / `set` / `unset` | `atom` + `w/await` | [condition.md](./reference/condition.md) |
+| `await all:` | `@(tp/all [...])` | [await-all.md](./reference/await-all.md) |
+| `await one:` | one `w/await` over every case; first listed ready wins | [await-one.md](./reference/await-one.md) |
+| handler + condition + `await one` | worked compositions | [composite-patterns.md](./reference/composite-patterns.md) |
 | `signal handle.Name(args)` / `signal Type.Name(args)` + `id:` | the untyped child stub's `.signal` / `s/>!`, `w/signal-external` | [signal-send.md](./reference/signal-send.md) |
 | `await timer(d)` | `w/sleep` | [await-timer.md](./reference/await-timer.md) |
 | `options:` / `default_options:` | an options map per call; `merge` overrides a default | [options.md](./reference/options.md) |
