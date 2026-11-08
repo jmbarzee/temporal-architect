@@ -52,3 +52,7 @@ internal/changes/
 
 # Transient backups from make pack-* version stamping
 tools/*/.pack-bak.*
+
+# .NET corpus build output
+corpus/bin/
+corpus/obj/
