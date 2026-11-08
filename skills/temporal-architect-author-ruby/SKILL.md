@@ -50,7 +50,7 @@ This skill owns the `.twf` ↔ Ruby translation: call shapes, wire names, option
 
 If it is not installed, install it from https://github.com/temporalio/skill-temporal-developer at `v0.6.3`, or read the topic's file there.
 
-The corpus uses `WorkflowEnvironment.start_time_skipping` throughout, not `start_local` (`testing.md` leads with it), since designs wait minutes to hours; each test starts its own.
+The corpus uses `WorkflowEnvironment.start_time_skipping` throughout, not `start_local` (`testing.md` recommends it for long durations), since designs wait minutes to hours; each test starts its own.
 
 ## Process
 
