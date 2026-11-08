@@ -59,3 +59,7 @@ corpus/obj/
 
 # Java corpus build output
 target/
+
+# Ruby corpus gems and local Bundler config
+corpus/vendor/
+corpus/.bundle/
