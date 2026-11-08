@@ -36,6 +36,9 @@ skills/
   temporal-architect-author-go/
     SKILL.md
     reference/...
+  temporal-architect-author-typescript/
+    SKILL.md
+    reference/...
   temporal-architect-author-infra/
     SKILL.md
     reference/...
