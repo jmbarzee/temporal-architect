@@ -23,4 +23,4 @@ ResultA resultA = handleA.get();
 
 - `get()` blocks for the result and throws a failure (`workflow/Promise.java:41-47`). A failed promise never read only logs a warning, never failing the workflow (`internal/sync/DeterministicRunnerImpl.java:336-344`).
 - A promise on a signal or update begins waiting at its binding, not at its `get()`: `promise()` draws its ticket from the message's `Arrivals` before its `Async.function` ([await-signal.md](./await-signal.md)), as the corpus's `Promise<String> approval = approves.promise()` does. Not `Async.function(approves::take)`: the new thread first runs once the current one blocks (`internal/sync/DeterministicRunnerImpl.java:215`), so its ticket would be late.
-- In `await one:`, a promise is an `isCompleted()` case ([await-one.md](./await-one.md#cases)).
+- In `await one:`, a promise is an `isCompleted()` case ([await-one.md](./await-one.md#cases)). Losing a round never cancels it, a `timer` promise included: it is bound outside any scope a race cancels, and stays awaitable (spec 06).

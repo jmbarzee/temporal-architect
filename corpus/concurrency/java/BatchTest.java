@@ -1,6 +1,7 @@
 package concurrency;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.temporal.api.enums.v1.EventType;
@@ -51,12 +52,36 @@ class BatchTest {
     wf.ack();
     WorkflowStub h = WorkflowStub.fromTyped(wf);
     assertEquals(new Batch.Report(2, true, "acknowledged"), h.getResult(Batch.Report.class));
+    assertTrue(has("batch-1", EventType.EVENT_TYPE_TIMER_CANCELED), "the losing timer was not cancelled");
   }
 
   @Test
   void batchTimesOut() {
     Batch wf = batch("batch-2");
     assertEquals(new Batch.Report(1, true, "unacknowledged"), wf.run(List.of("a")));
+    assertFalse(has("batch-2", EventType.EVENT_TYPE_TIMER_CANCELED));
+  }
+
+  @Test
+  void aBoundPromiseSurvivesTheRoundsItLoses() {
+    env.newWorker("bound").registerWorkflowImplementationTypes(BoundDeadline.Impl.class);
+    env.start();
+    BoundDeadline wf =
+        env.getWorkflowClient()
+            .newWorkflowStub(
+                BoundDeadline.class,
+                WorkflowOptions.newBuilder().setTaskQueue("bound").setWorkflowId("bound-1").build());
+    WorkflowClient.start(wf::run);
+    wf.ack();
+    env.sleep(Duration.ofHours(1));
+    wf.ack();
+    assertEquals(2, WorkflowStub.fromTyped(wf).getResult(Integer.class));
+    assertFalse(has("bound-1", EventType.EVENT_TYPE_TIMER_CANCELED));
+    assertTrue(has("bound-1", EventType.EVENT_TYPE_TIMER_FIRED), "the deadline never fired");
+  }
+
+  private boolean has(String id, EventType type) {
+    return events(id).stream().anyMatch(e -> e.getEventType() == type);
   }
 
   private List<HistoryEvent> events(String id) {

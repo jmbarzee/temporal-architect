@@ -54,7 +54,7 @@ class NexusTest {
                 .build());
     assertEquals(new Caller.Greetings("Hello, Ada", "Greetings, Ada"), caller.run("Ada", "Grace"));
 
-    String grace = GreeterServiceImpl.greetId("Grace");
+    String grace = Greet.id("Grace");
     assertEquals(
         WorkflowExecutionStatus.WORKFLOW_EXECUTION_STATUS_RUNNING,
         client.newUntypedWorkflowStub(grace).describe().getStatus(),
@@ -67,14 +67,7 @@ class NexusTest {
   void greet() {
     Workers.registerGreeterTypes(env.newWorker(Workers.GREETER_TASK_QUEUE));
     env.start();
-    Greet greet =
-        env.getWorkflowClient()
-            .newWorkflowStub(
-                Greet.class,
-                WorkflowOptions.newBuilder()
-                    .setTaskQueue(Workers.GREETER_TASK_QUEUE)
-                    .setWorkflowId("greet-1")
-                    .build());
+    Greet greet = env.getWorkflowClient().newWorkflowStub(Greet.class, Greet.startOptions("Ada"));
     assertEquals("Greetings, Ada", greet.run("Ada"));
   }
 }

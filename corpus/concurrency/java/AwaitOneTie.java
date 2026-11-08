@@ -1,5 +1,6 @@
 package concurrency;
 
+import io.temporal.workflow.CancellationScope;
 import io.temporal.workflow.CompletablePromise;
 import io.temporal.workflow.Promise;
 import io.temporal.workflow.SignalMethod;
@@ -32,7 +33,10 @@ public interface AwaitOneTie {
 
     @Override
     public String run(List<String> order, boolean anyOf) {
-      Promise<Void> timer = Workflow.newTimer(Duration.ofHours(1));
+      CompletablePromise<Void> timer = Workflow.newPromise();
+      CancellationScope timerScope =
+          Workflow.newCancellationScope(() -> timer.completeFrom(Workflow.newTimer(Duration.ofHours(1))));
+      timerScope.run();
       if (anyOf) {
         List<Promise<String>> cases = new ArrayList<>();
         for (String c : order) {
@@ -43,6 +47,9 @@ public interface AwaitOneTie {
       Workflow.await(() -> acks > 0 || timer.isCompleted());
       for (String c : order) {
         if (c.equals("Ack") ? acks > 0 : timer.isCompleted()) {
+          if (c.equals("Ack")) {
+            timerScope.cancel();
+          }
           return c;
         }
       }

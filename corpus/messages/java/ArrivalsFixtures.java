@@ -2,6 +2,7 @@ package messages;
 
 import io.temporal.workflow.Async;
 import io.temporal.workflow.CancellationScope;
+import io.temporal.workflow.CompletablePromise;
 import io.temporal.workflow.Promise;
 import io.temporal.workflow.SignalMethod;
 import io.temporal.workflow.Workflow;
@@ -100,10 +101,14 @@ public final class ArrivalsFixtures {
     public List<String> run(Duration timeout) {
       List<String> took = new ArrayList<>();
       long ticket = xs.begin();
-      Promise<Void> timer = Workflow.newTimer(timeout);
+      CompletablePromise<Void> timer = Workflow.newPromise();
+      CancellationScope timerScope =
+          Workflow.newCancellationScope(() -> timer.completeFrom(Workflow.newTimer(timeout)));
+      timerScope.run();
       Workflow.await(() -> xs.ready(ticket) || timer.isCompleted());
       if (xs.ready(ticket)) {
         took.add("case " + xs.claim()); // first listed wins
+        timerScope.cancel();
       } else {
         xs.leave(ticket);
         took.add("timer");

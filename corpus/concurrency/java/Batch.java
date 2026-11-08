@@ -4,8 +4,10 @@ import io.temporal.activity.ActivityInterface;
 import io.temporal.activity.ActivityOptions;
 import io.temporal.api.enums.v1.ParentClosePolicy;
 import io.temporal.workflow.Async;
+import io.temporal.workflow.CancellationScope;
 import io.temporal.workflow.ChildWorkflowCancellationType;
 import io.temporal.workflow.ChildWorkflowOptions;
+import io.temporal.workflow.CompletablePromise;
 import io.temporal.workflow.Promise;
 import io.temporal.workflow.SignalMethod;
 import io.temporal.workflow.Workflow;
@@ -77,11 +79,16 @@ public interface Batch {
       Workflow.getWorkflowExecution(archive).get();
 
       // await one: one await over every case, then the first listed that is ready wins,
-      // so Ack wins a tie with the timer. The losing timer is not cancelled (spec 06).
-      Promise<Void> timer = Workflow.newTimer(Duration.ofHours(1));
+      // so Ack wins a tie with the timer. The inline timer starts in its own scope, to be
+      // cancelled when it loses (spec 06).
+      CompletablePromise<Void> timer = Workflow.newPromise();
+      CancellationScope timerScope =
+          Workflow.newCancellationScope(() -> timer.completeFrom(Workflow.newTimer(Duration.ofHours(1))));
+      timerScope.run();
       Workflow.await(() -> acks > 0 || timer.isCompleted());
       if (acks > 0) {
         acks--;
+        timerScope.cancel();
       }
 
       return new Report(count.get(), audited.get(), status);
