@@ -17,6 +17,7 @@ corpus/
   package.json
   pyproject.toml
   pom.xml
+  pom-clojure.xml
   <design>/
     <design>.twf         the design, with no @sdk
     go/                  its Go output, per skills/temporal-architect-author-go
@@ -27,7 +28,11 @@ corpus/
       <design>.twf       the design plus only @sdk(python, …)
     java/                its Java output, tests beside sources
       <design>.twf       the design plus only @sdk(java, …)
+    clojure/             its Clojure output, a source root holding <design>/*.clj
+      <design>.twf       the design plus only @sdk(clojure, …)
 ```
+
+`nexus` has no Clojure output: the Clojure SDK has no Nexus API.
 
 Each SDK's copy of the design names only its own implementation, so no worker carries two SDKs. `check-corpus` checks every `.twf` file on its own (a directory check would load the copies together) and fails when a copy, its `@sdk` lines stripped, differs from the design.
 
@@ -41,6 +46,7 @@ make corpus-typescript  # check the corpus, then npm ci, tsc and the node:test s
 make corpus-python      # check the corpus, then uv sync, mypy and pytest in each design's python/
 make corpus-dotnet      # check the corpus, then dotnet restore (locked) and dotnet test
 make corpus-java        # check the corpus, then javac -Werror and the JUnit suites via the Maven wrapper
+make corpus-clojure     # check the corpus, then the clojure.test suites via the Maven wrapper and pom-clojure.xml
 ```
 
 ## Add an SDK
