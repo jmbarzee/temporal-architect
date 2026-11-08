@@ -13,7 +13,7 @@ packages:
   .hs-temporal-sdk/core
   .hs-temporal-sdk/protos
 
-index-state: 2026-11-01T00:00:00Z
+index-state: 2026-10-31T22:41:05Z
 
 -- time-compat >= 1.9.8 adds Lift orphans for DiffTime, NominalDiffTime and Day,
 -- which temporal-sdk also defines (src/Temporal/SearchAttributes.hs:249-260).

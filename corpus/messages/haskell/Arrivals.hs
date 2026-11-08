@@ -23,7 +23,7 @@ import Prelude hiding (take)
 -- awaited) keeps the arrival it is owed while a later waiter waits for the next.
 --
 -- The line is positional for two reasons. Woken conditions run newest first
--- (putIVar prepends them to the run queue, sdk/src/Temporal/Workflow/Internal/Monad.hs:576-582
+-- (putIVar prepends them to the run queue, sdk/src/Temporal/Workflow/Internal/Monad.hs:578-584
 -- at e57a0ae), so one 'waitCondition' per waiter serves waiters in reverse. And
 -- the SDK has no fork that returns a handle, so a promise cannot be a running waiter.
 data Arrivals a = Arrivals
