@@ -1,6 +1,6 @@
 # Versioning
 
-swift-temporal-sdk `1.5.0` has no DocC article or Example on versioning; its symbol docs are the source. Link them, never copy them. Paths are in `Sources/Temporal/`.
+swift-temporal-sdk `1.5.0` has no DocC article or Example on versioning; its symbol docs are the source. Paths are in `Sources/Temporal/`.
 
 ## Patching
 
@@ -19,6 +19,6 @@ Spec 03's `versioning:` option sets `TemporalWorker.Configuration.versioningStra
 |---|---|---|
 | `none` | `.none(.init())` | [`none(_:)`](https://github.com/apple/swift-temporal-sdk/blob/1.5.0/Sources/Temporal/Worker/TemporalWorker+Configuration.swift#L180) |
 | `build_id` | `.legacyBuildIdBased(.init(buildId:))` | [`legacyBuildIdBased(_:)`](https://github.com/apple/swift-temporal-sdk/blob/1.5.0/Sources/Temporal/Worker/TemporalWorker+Configuration.swift#L195) |
-| `deployment` | `.deploymentBased(.init(deploymentVersion:useWorkerVersioning: true, defaultVersioningBehavior:))` | [`deploymentBased(_:)`](https://github.com/apple/swift-temporal-sdk/blob/1.5.0/Sources/Temporal/Worker/TemporalWorker+Configuration.swift#L188) |
+| `deployment` | `.deploymentBased(.init(deploymentVersion: …, useWorkerVersioning: true, defaultVersioningBehavior: …))` | [`deploymentBased(_:)`](https://github.com/apple/swift-temporal-sdk/blob/1.5.0/Sources/Temporal/Worker/TemporalWorker+Configuration.swift#L188) |
 
 The Build ID and deployment name are deploy-time inputs from config or env: never hard-code them. Under `deployment`, the worker's `defaultVersioningBehavior` (`.pinned` or `.autoUpgrade`; `.unspecified` fails at startup, `:133`) is the only behavior knob at `1.5.0`.
