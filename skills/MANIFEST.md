@@ -48,6 +48,9 @@ skills/
   temporal-architect-author-java/
     SKILL.md
     reference/...
+  temporal-architect-author-clojure/
+    SKILL.md
+    reference/...
   temporal-architect-author-infra/
     SKILL.md
     reference/...

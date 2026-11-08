@@ -22,6 +22,7 @@ Language authors, one per SDK, each built from [reference/author-template.md](re
 | `dotnet` | `temporal-architect-author-dotnet` |
 | `python` | `temporal-architect-author-python` |
 | `java` | `temporal-architect-author-java` |
+| `clojure` | `temporal-architect-author-clojure` |
 
 Its job is to protect the main agent's context: keep it on the architecture at 10,000 ft (workloads, scaling, reliability, availability) and dispatch code-scale authoring to subagents that each see only their chunk. The main agent is not always the design agent — sometimes it is authoring or reverse-engineering.
 
