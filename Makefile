@@ -225,7 +225,7 @@ vet:
 # ── Corpus targets ───────────────────────────────────────────────────────────
 # See corpus/README.md. CI runs `make corpus-<sdk>` once per matrix entry.
 
-.PHONY: check-corpus corpus-go corpus-python corpus-typescript corpus-dotnet corpus-java corpus-ruby corpus-clojure
+.PHONY: check-corpus corpus-go corpus-python corpus-typescript corpus-dotnet corpus-java corpus-ruby corpus-clojure corpus-rust
 
 # A design is a corpus directory holding a .twf; node_modules is not one.
 CORPUS_DESIGNS := $(patsubst corpus/%/,%,$(sort $(dir $(wildcard corpus/*/*.twf))))
@@ -281,6 +281,11 @@ corpus-ruby: check-corpus
 ## Check the corpus, then test its Clojure outputs via the Maven wrapper.
 corpus-clojure: check-corpus
 	cd corpus && ./mvnw -B -q -f pom-clojure.xml verify
+
+## Check the corpus, then lint (clippy -D warnings) and test its Rust outputs: one Cargo
+## workspace whose members are the designs' rust/ directories (Cargo.lock pins them).
+corpus-rust: check-corpus
+	cd corpus && cargo clippy --locked --workspace --all-targets -- -D warnings && cargo test --locked --workspace
 
 # ── Docs targets ─────────────────────────────────────────────────────────────
 
