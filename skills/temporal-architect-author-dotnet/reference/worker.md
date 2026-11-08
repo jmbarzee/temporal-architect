@@ -46,7 +46,7 @@ A missing registration is an unregistered type: the worker starts, and the task 
 
 **Nexus.** The handler worker's method calls `AddNexusService(new ServiceHandler())` and adds the backing workflows, per [nexus-service-def.md](./nexus-service-def.md). The endpoint that routes to it belongs to `temporal-architect-author-infra`.
 
-**Hosting.** A generic-host app runs the same set as a hosted service: `services.AddHostedTemporalWorker("localhost:7233", "default", "orders").ConfigureOptions(options => options.AddOrderTypes(activities))` (`Temporalio.Extensions.Hosting`, `TemporalHostingServiceCollectionExtensions.cs:107`; its options class derives from `TemporalWorkerOptions`, `TemporalWorkerServiceOptions.cs:10`). To build activities from DI instead, register them with the builder's `AddScopedActivities<T>()` / `AddSingletonActivities<T>()` beside the method (`TemporalWorkerServiceOptionsBuilderExtensions.cs:25,86`); the `@sdk` path still names the registrations method's file.
+**Hosting.** A generic-host app runs the same set as a hosted service: `services.AddHostedTemporalWorker("localhost:7233", "default", "orders").ConfigureOptions(options => options.AddOrderTypes(activities))` (`Temporalio.Extensions.Hosting`, `TemporalHostingServiceCollectionExtensions.cs:107`; its options class derives from `TemporalWorkerOptions`, `TemporalWorkerServiceOptions.cs:10`). To build activities from DI instead, register them with the builder's `AddScopedActivities<T>()` / `AddSingletonActivities<T>()` beside the method (`TemporalWorkerServiceOptionsBuilderExtensions.cs:86,25`); the `@sdk` path still names the registrations method's file.
 
 ## Coverage
 
@@ -123,17 +123,17 @@ The namespace worker's `options:` block maps onto `TemporalWorkerOptions` (`Work
 | `max_concurrent_workflow_task_executions` | `MaxConcurrentWorkflowTasks` (renamed) |
 | `max_concurrent_local_activity_executions` | `MaxConcurrentLocalActivities` (renamed) |
 | `max_concurrent_nexus_task_executions` | `MaxConcurrentNexusTasks` (renamed) |
-| `max_concurrent_workflow_task_pollers` | `MaxConcurrentWorkflowTaskPolls` |
-| `max_concurrent_activity_task_pollers` | `MaxConcurrentActivityTaskPolls` |
-| `max_concurrent_nexus_task_pollers` | `MaxConcurrentNexusTaskPolls` |
-| `worker_activity_rate_limit` | `MaxActivitiesPerSecond` |
-| `task_queue_activity_rate_limit` | `MaxTaskQueueActivitiesPerSecond` |
+| `max_concurrent_workflow_task_pollers` | `MaxConcurrentWorkflowTaskPolls` (renamed) |
+| `max_concurrent_activity_task_pollers` | `MaxConcurrentActivityTaskPolls` (renamed) |
+| `max_concurrent_nexus_task_pollers` | `MaxConcurrentNexusTaskPolls` (renamed) |
+| `worker_activity_rate_limit` | `MaxActivitiesPerSecond` (renamed) |
+| `task_queue_activity_rate_limit` | `MaxTaskQueueActivitiesPerSecond` (renamed) |
 | `max_cached_workflows` | `MaxCachedWorkflows` |
-| `sticky_schedule_to_start_timeout` | `StickyQueueScheduleToStartTimeout` |
+| `sticky_schedule_to_start_timeout` | `StickyQueueScheduleToStartTimeout` (renamed) |
 | `max_heartbeat_throttle_interval` | `MaxHeartbeatThrottleInterval` |
-| `worker_identity` | `Identity` |
+| `worker_identity` | `Identity` (renamed) |
 | `worker_shutdown_timeout` | `GracefulShutdownTimeout` (renamed) |
-| `local_activity_only_mode: true` | `LocalActivityWorkerOnly = true` (not inverted) |
+| `local_activity_only_mode: true` | `LocalActivityWorkerOnly = true` (renamed, not inverted) |
 | `versioning` | not 1:1 — see below |
 
 ```twf

@@ -79,6 +79,8 @@ var childResult = await Workflow.ExecuteChildWorkflowAsync(
 | `priority` | `Priority` |
 | `parent_close_policy` | `ParentClosePolicy`: `Terminate` (default), `RequestCancel` or `Abandon` (`Workflows/ParentClosePolicy.cs:16-26`) |
 
+A client start's `WorkflowOptions` uses the same names, less `ParentClosePolicy`, plus `IdConflictPolicy`, and takes `Id` and `TaskQueue` in its constructor (`Client/WorkflowOptions.cs:28-86`).
+
 ## Nexus operation options
 
 A `nexus` call's options are exactly its three timeouts, in `NexusWorkflowOperationOptions` (`Workflows/NexusWorkflowOperationOptions.cs:17-36`), the second argument of `ExecuteNexusOperationAsync`/`StartNexusOperationAsync`: `schedule_to_close_timeout` → `ScheduleToCloseTimeout`, `schedule_to_start_timeout` → `ScheduleToStartTimeout`, `start_to_close_timeout` → `StartToCloseTimeout`, which bounds an async operation after its start. Its `CancellationType` belongs to [detach](./detach.md) alone.
