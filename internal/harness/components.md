@@ -69,6 +69,7 @@ command in its `SKILL.md` `## Verify` section. Adding an SDK is one row.
 | `java` | Temporal Java SDK |
 | `ruby` | Temporal Ruby SDK |
 | `clojure` | community Temporal Clojure SDK |
+| `php` | Temporal PHP SDK |
 
 `internal/changes/orchestrator/` is **not** a cycle component — it is coordination scratch for the
 orchestrator's own design and is excluded.
