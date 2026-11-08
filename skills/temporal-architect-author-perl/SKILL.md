@@ -111,6 +111,15 @@ Load only what the current layer needs.
 | `workflow Name(args) -> r` | `Temporalio::Workflow::execute_child_workflow('Name', args => [...])` | [workflow-call.md](./reference/workflow-call.md) |
 | `detach workflow ...` / `detach nexus ...` | `start_child_workflow` / `start_operation` with `abandon`, never `->result` | [detach.md](./reference/detach.md) |
 | `nexus Endpoint Service.Op(args) -> r` | `create_nexus_client(...)->execute_operation('Op', $input)` | [nexus.md](./reference/nexus.md) |
+| `signal Name(params):` | `:Signal('Name')` method: body, then `$xs->add` | [signal-handler.md](./reference/signal-handler.md) |
+| `query Name(params) -> (T):` | `:Query('Name')` method | [query-handler.md](./reference/query-handler.md) |
+| `update Name(params) -> (T):` | `:Update('Name')` method: body, then `$xs->add`, then `return` | [update-handler.md](./reference/update-handler.md) |
+| `await signal\|update Name -> (...)` | `await $xs->take` | [await-signal.md](./reference/await-signal.md) |
+| `promise p <- ...` | the call's unawaited future; for a signal or update, `$xs->take` | [promise.md](./reference/promise.md) |
+| `state:` / `condition` / `set` / `unset` | `field` + `Temporalio::Workflow::wait_condition` | [condition.md](./reference/condition.md) |
+| `await all:` | `Future->needs_all` | [await-all.md](./reference/await-all.md) |
+| `await one:` | one `wait_condition` over every case; first listed ready wins | [await-one.md](./reference/await-one.md) |
+| handler + condition + `await one` | worked compositions | [composite-patterns.md](./reference/composite-patterns.md) |
 | `signal handle.Name(args)` / `signal Type.Name(args)` + `id:` | `$child->signal` / `get_external_workflow_handle($id)->signal`; `id: parent` unsupported | [signal-send.md](./reference/signal-send.md) |
 | `await timer(d)` | `Temporalio::Workflow::sleep($seconds)` | [await-timer.md](./reference/await-timer.md) |
 | `options:` / `default_options:` | flat keys on the call; an options sub per definition | [options.md](./reference/options.md) |
