@@ -42,7 +42,7 @@ class ShipItem :isa(Temporalio::Workflow::Definition) {
 
 One plain `sub id` per scheme in the workflow's package, taking one argument per hole, called as `ShipItem::id(...)`. Every start ([workflow-call.md](./workflow-call.md)), every constructed send ([signal-send.md](./signal-send.md#type-head-by-id)), and every client start calls it; never format the ID inline.
 
-A type that has a scheme or ID policies, or backs a Nexus run operation, also gets one `start_options` sub returning its ID, task queue and `default_options:` as a key/value list; every client start spreads it ([options.md](./options.md#workflow-id-policies)):
+A type with `default_options:` ID policies also gets one `start_options` sub returning its ID, task queue and those policies as a key/value list; every client start spreads it ([options.md](./options.md#workflow-id-policies)), and a Nexus run operation follows it with `task_queue => $ctx->info->task_queue` ([nexus-service-def.md](./nexus-service-def.md#async)):
 
 ```twf
 workflow OrderTracker(orderId: string):

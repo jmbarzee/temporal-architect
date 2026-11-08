@@ -57,7 +57,7 @@ The backing workflow's one parameter is the operation's input.
 
 | Statement in a sync body | Perl |
 |---|---|
-| `workflow Name(args) [-> r]` (a client start) | `my $h = await $ctx->client->start_workflow('Name', [...], Name::start_options(...))`, then `my $r = await $h->result` (`Client.pm:202`, `Client/WorkflowHandle.pm:56`) |
+| `workflow Name(args) [-> r]` (a client start) | `my $h = await $ctx->client->start_workflow('Name', [...], %opts)`, `%opts` per [workflow-def.md](./workflow-def.md#id_scheme), then `my $r = await $h->result` (`Client.pm:202`, `Client/WorkflowHandle.pm:56`) |
 | `detach workflow Name(args)` | the same `start_workflow`; never `->result` ([detach.md](./detach.md)) |
 | `signal Type.Name(args)` + `id:` | `await $ctx->client->get_workflow_handle($workflow_id, run_id => $run_id)->signal('Name', [...])` (`Client.pm:117-130`, `Client/WorkflowHandle.pm:329`); `$workflow_id` and args as in [signal-send.md](./signal-send.md) |
 | `close complete(r)` / `close fail(e)` | `return $r` / `Temporalio::Exception::Application->throw(...)` ([close.md](./close.md)) |
