@@ -24,7 +24,7 @@
        (case update-type
          :Review (do (reset! status "reviewed") (arr/add! reviews args) @status)))
      {:validator (fn [update-type _]
-                   (when-not (= :Review update-type)
+                   (when-not (#{:Review} update-type)
                      (throw (IllegalArgumentException. (str "unknown update " (name update-type))))))})
     (w/register-query-handler!
      (fn [query-type _]
@@ -34,4 +34,5 @@
     (let [approval           (arr/promise! approves) ; begins waiting here, at its binding
           {:keys [note]}     (arr/take! reviews)
           {:keys [approver]} @approval]
+      (w/await w/every-handler-finished?)
       {:request request :approver approver :note note :status @status})))

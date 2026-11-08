@@ -1,11 +1,10 @@
 (ns concurrency.workers
-  "Each .twf worker's registrations, shared by the worker process and the tests."
+  "Each .twf worker's options map, shared by the worker process and the tests."
   (:require [concurrency.batch :refer [Archive Audit Batch Count Store]]
             [temporal.client.core :as c]
             [temporal.client.worker :as worker]))
 
-;; worker batchTypes: an explicit :dispatch, never auto-dispatch (which registers every
-;; defworkflow/defactivity loaded in the JVM).
+;; worker batchTypes
 (def batch-types
   {:task-queue "batches"
    :dispatch   {:workflows  [Batch Audit Archive]

@@ -225,7 +225,9 @@ vet:
 # ── Corpus targets ───────────────────────────────────────────────────────────
 # See corpus/README.md. CI runs `make corpus-<sdk>` once per matrix entry.
 
-.PHONY: check-corpus corpus-go corpus-python corpus-typescript corpus-dotnet corpus-java corpus-ruby corpus-clojure corpus-rust corpus-elixir
+.PHONY: check-corpus corpus-go corpus-python corpus-typescript corpus-dotnet corpus-java corpus-ruby corpus-clojure corpus-rust corpus-php
+.PHONY: corpus-perl
+.PHONY: corpus-elixir
 
 # A design is a corpus directory holding a .twf; node_modules is not one.
 CORPUS_DESIGNS := $(patsubst corpus/%/,%,$(sort $(dir $(wildcard corpus/*/*.twf))))
@@ -269,6 +271,14 @@ corpus-dotnet: check-corpus
 corpus-java: check-corpus
 	cd corpus && ./mvnw -B -q verify
 
+## Check the corpus, then compile and test its Perl outputs, design by design
+## (each design's modules are top-level). sdk-perl has no time-skipping
+## environment, so each test file starts a dev server through the temporal CLI.
+corpus-perl: check-corpus
+	for d in $(CORPUS_DESIGNS); do \
+		( cd corpus/$$d/perl && for m in *.pm; do perl -I. -I../../perl-lib -c $$m || exit 1; done && prove t ) || exit 1; \
+	done
+
 ## Check the corpus, then syntax-check (ruby -wc) and test (Minitest) its Ruby
 ## outputs design by design, against the gems pinned by Gemfile.lock.
 corpus-ruby: check-corpus
@@ -292,6 +302,13 @@ corpus-rust: check-corpus
 ## --dynamic-config-value frontend.WorkflowTimeSkippingEnabled=true.
 corpus-elixir: check-corpus
 	cd corpus && MIX_ENV=test mix deps.get --check-locked && MIX_ENV=test mix compile && mix test
+
+## Check the corpus, then install (composer.lock), fetch rr and the test server (dload.xml),
+## analyse (PHPStan) and test its PHP outputs; the PHPUnit bootstrap starts both binaries.
+## Composer installs into php/vendor/: a corpus/vendor/ beside go.mod would switch Go to vendor
+## mode, and dload finds its autoloader only in a directory named vendor.
+corpus-php: check-corpus
+	cd corpus && composer install --no-interaction --no-progress && php/vendor/bin/dload get -n -q && php/vendor/bin/phpstan analyse --no-progress && php/vendor/bin/phpunit
 
 # ── Docs targets ─────────────────────────────────────────────────────────────
 

@@ -67,7 +67,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        sdk: [go, python, typescript, dotnet, java, ruby, clojure, rust, elixir]
+        sdk: [go, python, typescript, dotnet, java, ruby, clojure, rust, php, perl, elixir]
     steps:
       - uses: actions/checkout@v4
 
@@ -114,6 +114,50 @@ jobs:
           working-directory: corpus
           bundler-cache: true
 
+      # Perl: sdk-perl is not on CPAN, so its dists and native libraries (sdk-core
+      # via cargo) build from pinned checkouts; the tests run against a dev server.
+      - uses: actions/checkout@v4
+        if: matrix.sdk == 'perl'
+        with:
+          repository: MasonEgger/sdk-perl
+          ref: 55816a1b279acd17f1e994047533b04a60e9d05d
+          path: .perl/sdk-perl
+      - uses: actions/checkout@v4
+        if: matrix.sdk == 'perl'
+        with:
+          repository: temporalio/sdk-rust
+          ref: v0.4.0
+          path: .perl/sdk-rust
+          submodules: recursive
+      - uses: actions/checkout@v4
+        if: matrix.sdk == 'perl'
+        with:
+          repository: MasonEgger/protobuf-perl
+          ref: 008677c8864e56ea6e9b2a1ade0bda1c47bd4def
+          path: .perl/protobuf-perl
+      - uses: actions/cache@v4
+        if: matrix.sdk == 'perl'
+        with:
+          path: |
+            ~/.cargo/registry
+            .perl/sdk-rust/target
+            .perl/sdk-perl/ext/temporalio-perl-bridge/target
+          key: corpus-perl-cargo-55816a1-v0.4.0-008677c
+      - uses: dtolnay/rust-toolchain@stable
+        if: matrix.sdk == 'perl'
+      - uses: shogo82148/actions-setup-perl@v1
+        if: matrix.sdk == 'perl'
+        with:
+          perl-version: "5.38"
+          install-modules-with: cpanm
+          working-directory: corpus
+      - uses: temporalio/setup-temporal@v0
+        if: matrix.sdk == 'perl'
+      - if: matrix.sdk == 'perl'
+        run: sudo apt-get install -y -q protobuf-compiler    # sdk-core's build needs protoc
+      - if: matrix.sdk == 'perl'
+        run: corpus/perl-lib/install-sdk.sh .perl
+
       # No protoc: the client's vendored-protox feature compiles the protos in-process.
       - uses: dtolnay/rust-toolchain@stable
         if: matrix.sdk == 'rust'
@@ -151,4 +195,13 @@ jobs:
           temporal server start-dev --headless --dynamic-config-value frontend.WorkflowTimeSkippingEnabled=true &
           until temporal operator cluster health; do sleep 1; done
 
+      - uses: shivammathur/setup-php@v2
+        if: matrix.sdk == 'php'
+        with:
+          php-version: '8.4'
+          extensions: grpc, sockets, curl
+          tools: composer:v2
+
       - run: make corpus-${{ matrix.sdk }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }} # dload's GitHub API calls (rr, test server)
