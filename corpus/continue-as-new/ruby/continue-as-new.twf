@@ -1,0 +1,19 @@
+namespace counters:
+	worker counterTypes
+		options:
+			task_queue: "counters"
+
+@sdk(ruby, "worker.rb")
+worker counterTypes:
+	workflow Counter
+	activity Increment
+
+workflow Counter(count: int, limit: int) -> (int):
+	await timer(1m)
+	activity Increment(count) -> next
+	if (next >= limit):
+		close complete(next)
+	close continue_as_new(next, limit)
+
+activity Increment(count: int) -> (int):
+	return count + 1

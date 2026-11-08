@@ -4,7 +4,8 @@
             [temporal.client.core :as c]
             [temporal.client.worker :as worker]))
 
-;; worker batchTypes
+;; worker batchTypes: an explicit :dispatch, never auto-dispatch (which registers every
+;; defworkflow/defactivity loaded in the JVM).
 (def batch-types
   {:task-queue "batches"
    :dispatch   {:workflows  [Batch Audit Archive]

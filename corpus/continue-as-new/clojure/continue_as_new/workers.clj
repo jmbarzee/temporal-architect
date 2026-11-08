@@ -4,7 +4,8 @@
             [temporal.client.core :as c]
             [temporal.client.worker :as worker]))
 
-;; worker counterTypes
+;; worker counterTypes: an explicit :dispatch, never auto-dispatch (which registers every
+;; defworkflow/defactivity loaded in the JVM).
 (def counter-types
   {:task-queue "counters"
    :dispatch   {:workflows  [Counter]

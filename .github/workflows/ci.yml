@@ -67,7 +67,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        sdk: [go, python, typescript, dotnet, java, clojure]
+        sdk: [go, python, typescript, dotnet, java, ruby, clojure]
     steps:
       - uses: actions/checkout@v4
 
@@ -107,5 +107,11 @@ jobs:
           cache-dependency-path: |
             corpus/pom.xml
             corpus/pom-clojure.xml
+
+      - uses: ruby/setup-ruby@v1.338.0
+        if: matrix.sdk == 'ruby'
+        with:
+          working-directory: corpus
+          bundler-cache: true
 
       - run: make corpus-${{ matrix.sdk }}
