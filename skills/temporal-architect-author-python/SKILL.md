@@ -98,6 +98,15 @@ Load only what the current layer needs.
 
 | DSL | Python | File |
 |-----|--------|------|
+| `signal Name(params):` | `@workflow.signal(name=…)`: body, then `arrivals.add` | [signal-handler.md](./reference/signal-handler.md) |
+| `query Name(params) -> (T):` | `@workflow.query(name=…)` on a plain `def` | [query-handler.md](./reference/query-handler.md) |
+| `update Name(params) -> (T):` | `@workflow.update(name=…)`: body, then `arrivals.add`, then `return` | [update-handler.md](./reference/update-handler.md) |
+| `await signal\|update Name -> (...)` | `await arrivals.take()` | [await-signal.md](./reference/await-signal.md) |
+| `promise p <- ...` | the call's task; for a signal or update, `arrivals.take()` | [promise.md](./reference/promise.md) |
+| `state:` / `condition` / `set` / `unset` | `bool` attribute + `workflow.wait_condition` | [condition.md](./reference/condition.md) |
+| `await all:` | `asyncio.gather` | [await-all.md](./reference/await-all.md) |
+| `await one:` | one `wait_condition` over every case; first listed ready wins | [await-one.md](./reference/await-one.md) |
+| handler + condition + `await one` | worked compositions | [composite-patterns.md](./reference/composite-patterns.md) |
 
 The spec states only what `detach` guarantees (`twf spec statement-syntax`); the author maps it to these mechanics:
 

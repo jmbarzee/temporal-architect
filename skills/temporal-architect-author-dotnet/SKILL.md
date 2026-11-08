@@ -107,6 +107,15 @@ Load only what the current layer needs.
 | `workflow Name(args) -> r` | `Workflow.ExecuteChildWorkflowAsync` | [workflow-call.md](./reference/workflow-call.md) |
 | `detach workflow ...` / `detach nexus ...` | `StartChildWorkflowAsync` / `StartNexusOperationAsync` with `Abandon`, skip result | [detach.md](./reference/detach.md) |
 | `nexus Endpoint Service.Op(args) -> r` | `Workflow.CreateNexusWorkflowClient<T>(...).ExecuteNexusOperationAsync` | [nexus.md](./reference/nexus.md) |
+| `signal Name(params):` | `[WorkflowSignal]` method: body, then `arrivals.Add` | [signal-handler.md](./reference/signal-handler.md) |
+| `query Name(params) -> (T):` | `[WorkflowQuery]` method or property | [query-handler.md](./reference/query-handler.md) |
+| `update Name(params) -> (T):` | `[WorkflowUpdate]` method: body, then `arrivals.Add`, then `return` | [update-handler.md](./reference/update-handler.md) |
+| `await signal\|update Name -> (...)` | `await arrivals.TakeAsync()` | [await-signal.md](./reference/await-signal.md) |
+| `promise p <- ...` | the call's un-awaited `Task`; for a signal or update, `arrivals.TakeAsync()` | [promise.md](./reference/promise.md) |
+| `state:` / `condition` / `set` / `unset` | `bool` field + `Workflow.WaitConditionAsync` | [condition.md](./reference/condition.md) |
+| `await all:` | `Workflow.WhenAllAsync` | [await-all.md](./reference/await-all.md) |
+| `await one:` | one `WaitConditionAsync` over every case; first listed ready wins | [await-one.md](./reference/await-one.md) |
+| handler + condition + `await one` | worked compositions | [composite-patterns.md](./reference/composite-patterns.md) |
 | `signal handle.Name(args)` / `signal Type.Name(args)` + `id:` | `ChildWorkflowHandle.SignalAsync` / `Workflow.GetExternalWorkflowHandle<T>(...).SignalAsync` | [signal-send.md](./reference/signal-send.md) |
 | `await timer(d)` | `Workflow.DelayAsync` | [await-timer.md](./reference/await-timer.md) |
 | `options:` / `default_options:` | `ActivityOptions` / `ChildWorkflowOptions` / `NexusWorkflowOperationOptions` | [options.md](./reference/options.md) |
