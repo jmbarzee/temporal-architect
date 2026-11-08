@@ -64,6 +64,7 @@ command in its `SKILL.md` `## Verify` section. Adding an SDK is one row.
 |---|---|
 | `go` | Temporal Go SDK |
 | `typescript` | Temporal TypeScript SDK |
+| `dotnet` | Temporal .NET SDK |
 | `python` | Temporal Python SDK |
 
 `internal/changes/orchestrator/` is **not** a cycle component — it is coordination scratch for the
