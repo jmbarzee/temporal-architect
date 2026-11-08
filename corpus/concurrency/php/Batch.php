@@ -18,13 +18,20 @@ use Temporal\Workflow\WorkflowMethod;
 final class Batch
 {
     private string $status = 'unacknowledged';
-    private int $acks = 0; // pending arrivals of Ack
+
+    /** @var Arrivals<true> */
+    private Arrivals $acks;
+
+    public function __construct()
+    {
+        $this->acks = new Arrivals();
+    }
 
     #[SignalMethod(name: 'Ack')]
     public function ack(): void
     {
         $this->status = 'acknowledged';
-        ++$this->acks;
+        $this->acks->add(true);
     }
 
     /** @param list<string> $items */
@@ -52,7 +59,8 @@ final class Batch
 
         // await one: one await over every case, then the first listed that is ready wins, so Ack
         // wins a tie with the timer. The inline timer runs in its own scope, to be cancelled when
-        // it loses (spec 06).
+        // it loses (spec 06). The Ack case waits without taking, and claims only if it wins.
+        $ticket = $this->acks->begin();
         $fired = false;
         $timer = Workflow::async(static function () use (&$fired): \Generator {
             // The flag is set as the timer's result is applied, not when this scope next runs.
@@ -60,10 +68,12 @@ final class Batch
                 $fired = true;
             });
         });
-        yield Workflow::await(function () use (&$fired): bool { return $this->acks > 0 || $fired; });
-        if ($this->acks > 0) {
-            --$this->acks;
+        yield Workflow::await(function () use ($ticket, &$fired): bool { return $this->acks->ready($ticket) || $fired; });
+        if ($this->acks->ready($ticket)) {
+            $this->acks->claim();
             $timer->cancel();
+        } else {
+            $this->acks->leave($ticket);
         }
 
         return new Report($count, $audited, $this->status);
