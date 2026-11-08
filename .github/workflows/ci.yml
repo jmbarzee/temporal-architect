@@ -67,7 +67,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        sdk: [go, python, typescript, dotnet]
+        sdk: [go, python, typescript, dotnet, java]
     steps:
       - uses: actions/checkout@v4
 
@@ -97,5 +97,13 @@ jobs:
           dotnet-version: 10.0.x
           cache: true
           cache-dependency-path: corpus/packages.lock.json
+
+      - uses: actions/setup-java@v4
+        if: matrix.sdk == 'java'
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+          cache-dependency-path: corpus/pom.xml
 
       - run: make corpus-${{ matrix.sdk }}
