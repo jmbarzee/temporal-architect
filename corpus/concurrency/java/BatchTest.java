@@ -1,7 +1,6 @@
 package concurrency;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.temporal.api.enums.v1.EventType;
@@ -88,9 +87,8 @@ class BatchTest {
   }
 
   /** Runs AwaitOneTie with the timer fired and Ack sent while no worker runs, so both reach one workflow task. */
-  private String tie(List<String> order, boolean anyOf, boolean signalFirst)
-      throws InterruptedException {
-    String id = "tie-" + order + "-" + anyOf + "-" + signalFirst;
+  private String tie(List<String> order, boolean anyOf) throws InterruptedException {
+    String id = "tie-" + order + "-" + anyOf;
     WorkflowStub h =
         env.getWorkflowClient()
             .newUntypedWorkflowStub(
@@ -101,9 +99,6 @@ class BatchTest {
     until(id, EventType.EVENT_TYPE_TIMER_STARTED);
     first.shutdownNow();
     first.awaitTermination(10, TimeUnit.SECONDS);
-    if (signalFirst) {
-      h.signal("Ack");
-    }
     // Skip time past the timer. With no worker to take the timer's workflow task, the
     // sleep may not return, so it runs on its own thread.
     Thread skip =
@@ -118,9 +113,7 @@ class BatchTest {
     skip.setDaemon(true);
     skip.start();
     until(id, EventType.EVENT_TYPE_TIMER_FIRED);
-    if (!signalFirst) {
-      h.signal("Ack");
-    }
+    h.signal("Ack");
     WorkerFactory second = worker();
     String got = h.getResult(String.class);
     second.shutdownNow();
@@ -129,10 +122,9 @@ class BatchTest {
     List<HistoryEvent> evs = events(id);
     int fired = indexOf(evs, EventType.EVENT_TYPE_TIMER_FIRED);
     int signaled = indexOf(evs, EventType.EVENT_TYPE_WORKFLOW_EXECUTION_SIGNALED);
-    assertTrue(fired >= 0 && signaled >= 0);
-    assertEquals(signalFirst, signaled < fired, "history order");
+    assertTrue(fired >= 0 && signaled > fired);
     assertTrue(
-        evs.subList(Math.min(fired, signaled), Math.max(fired, signaled)).stream()
+        evs.subList(fired, signaled).stream()
             .noneMatch(e -> e.getEventType() == EventType.EVENT_TYPE_WORKFLOW_TASK_STARTED),
         "the timer and Ack reached different workflow tasks");
     return got;
@@ -149,21 +141,14 @@ class BatchTest {
 
   @Test
   void awaitOneTheFirstListedOfSeveralReadyCasesWins() throws InterruptedException {
-    assertEquals("Ack", tie(List.of("Ack", "timer"), false, false));
-    assertEquals("timer", tie(List.of("timer", "Ack"), false, false));
-  }
-
-  @Test
-  void signalFirstCannotShareATaskWithTheTimer() {
-    // Ack sent while no worker runs schedules a workflow task, and a pending workflow task holds
-    // the test server's clock, so the timer never fires: this order cannot be engineered here.
-    assertThrows(IllegalStateException.class, () -> tie(List.of("Ack", "timer"), false, true));
+    assertEquals("Ack", tie(List.of("Ack", "timer"), false));
+    assertEquals("timer", tie(List.of("timer", "Ack"), false));
   }
 
   @Test
   void promiseAnyOfIsNotListedOrder() throws InterruptedException {
     // Ack is listed first, but the timer's promise completes as its event is applied, before
     // Ack's handler runs on a callback thread.
-    assertEquals("timer", tie(List.of("Ack", "timer"), true, false));
+    assertEquals("timer", tie(List.of("Ack", "timer"), true));
   }
 }

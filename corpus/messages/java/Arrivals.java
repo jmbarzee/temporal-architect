@@ -31,7 +31,7 @@ public final class Arrivals<T> {
   }
 
   /** take for a waiter that began earlier with begin. */
-  public T takeAt(long ticket) {
+  private T takeAt(long ticket) {
     try {
       Workflow.await(() -> ready(ticket));
       return claim();
