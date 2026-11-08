@@ -225,7 +225,7 @@ vet:
 # ── Corpus targets ───────────────────────────────────────────────────────────
 # See corpus/README.md. CI runs `make corpus-<sdk>` once per matrix entry.
 
-.PHONY: check-corpus corpus-go corpus-python corpus-typescript corpus-dotnet corpus-java corpus-ruby
+.PHONY: check-corpus corpus-go corpus-python corpus-typescript corpus-dotnet corpus-java corpus-ruby corpus-clojure
 
 # A design is a corpus directory holding a .twf; node_modules is not one.
 CORPUS_DESIGNS := $(patsubst corpus/%/,%,$(sort $(dir $(wildcard corpus/*/*.twf))))
@@ -277,6 +277,10 @@ corpus-ruby: check-corpus
 		( cd corpus/$$d/ruby && for f in *.rb; do ruby -wc $$f >/dev/null || exit 1; done && \
 		  BUNDLE_GEMFILE=../../Gemfile bundle exec ruby -e 'Dir["*_test.rb"].sort.each { |f| require File.expand_path(f) }' ) || exit 1; \
 	done
+
+## Check the corpus, then test its Clojure outputs via the Maven wrapper.
+corpus-clojure: check-corpus
+	cd corpus && ./mvnw -B -q -f pom-clojure.xml verify
 
 # ── Docs targets ─────────────────────────────────────────────────────────────
 
