@@ -37,16 +37,16 @@ Types map by Haskell's own conventions. Read [cross-sdk.md, only where `twf chec
 
 ## Delegation
 
-This skill owns the `.twf` ↔ Haskell translation: call shapes, wire names, options, project layout, verify. Encodings, error-handling minutiae, and SDK idioms sit below 10,000 ft: decide them in code, never in the `.twf`. Temporal's official `temporal-developer` skill has no Haskell coverage, so how to write Haskell Temporal code well belongs to the SDK's haddock and `MercuryTechnologies/hs-temporal-cookbook`, linked at their pins from [idioms.md](./reference/idioms.md); load its row for these topics:
+This skill owns the `.twf` ↔ Haskell translation: call shapes, wire names, options, project layout, verify. Encodings, error-handling minutiae, and SDK idioms sit below 10,000 ft: decide them in code, never in the `.twf`. Temporal's official `temporal-developer` skill has no Haskell coverage, so how to write Haskell Temporal code well belongs to the SDK's haddock and `MercuryTechnologies/hs-temporal-cookbook`, which [idioms.md](./reference/idioms.md) links by topic at their pins:
 
-| Topic | [idioms.md](./reference/idioms.md) row |
+| Topic | Source |
 |---|---|
-| worker setup | cookbook `hello/`; `Temporal.Worker` haddock |
-| testing | cookbook `temporal102/ex2/solution/tests/` |
-| determinism | `Temporal.Workflow` haddock § Deterministic constraints |
-| errors | cookbook `temporal102/ex3/`, `temporal101/RetryPolicy.hs`; `Temporal.Exception` haddock |
-| data | `Temporal.Payload` haddock |
-| versioning | `Temporal.Workflow` haddock § Workflow Versioning |
+| worker setup | [idioms.md § worker setup](./reference/idioms.md#worker-setup) |
+| testing | [idioms.md § testing](./reference/idioms.md#testing) |
+| determinism | [idioms.md § determinism](./reference/idioms.md#determinism) |
+| errors | [idioms.md § errors](./reference/idioms.md#errors) |
+| data | [idioms.md § data](./reference/idioms.md#data) |
+| versioning | [idioms.md § versioning](./reference/idioms.md#versioning) |
 
 ## Process
 
@@ -88,7 +88,7 @@ cabal test all
 ## Output conventions
 
 - One Haskell module tree per `.twf` package.
-- Each `.twf` worker has one `WorkerConfig`, since a config polls one task queue (`Worker.hs:319`): a function named for the worker, `approvalTypes :: ConfigM () () -> WorkerConfig ()`, `approvalTypes = configure () (approval, count)`, registering its workflows and activities, and its Nexus services through `addNexusServiceHandler` (`Worker.hs:196-201,541`). The caller passes the settings, so the worker process and the tests share it; an activity environment other than `()` replaces both `()`s. Its `@sdk(haskell, "<path>")` names that function's module file, from the directory of the nearest `twf.mod`, else the `.twf` file's directory, e.g. `@sdk(haskell, "haskell/Approval.hs")`.
+- Each `.twf` worker has one `WorkerConfig`, since a config polls one task queue (`Worker.hs:319`): a function named for the worker, `approvalTypes :: ConfigM () () -> WorkerConfig ()`, `approvalTypes = configure () (approval, count)`, registering its workflows and activities, and its Nexus services through `addNexusServiceHandler` (`Worker.hs:196-201,541`). The caller passes the settings, so the worker process and the tests share it; activities with dependencies take an environment, `approvalTypes :: env -> ConfigM env () -> WorkerConfig env`, `approvalTypes env = configure env (approval, count)`. Its `@sdk(haskell, "<path>")` names that function's module file, from the directory of the nearest `twf.mod`, else the `.twf` file's directory, e.g. `@sdk(haskell, "haskell/Approval.hs")`.
 
 ## Reference index
 
