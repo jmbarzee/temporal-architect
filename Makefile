@@ -225,7 +225,7 @@ vet:
 # ── Corpus targets ───────────────────────────────────────────────────────────
 # See corpus/README.md. CI runs `make corpus-<sdk>` once per matrix entry.
 
-.PHONY: check-corpus corpus-go corpus-python corpus-typescript corpus-dotnet corpus-java corpus-ruby corpus-clojure corpus-rust corpus-php
+.PHONY: check-corpus corpus-go corpus-python corpus-typescript corpus-dotnet corpus-java corpus-ruby corpus-clojure corpus-rust corpus-php corpus-swift
 
 # A design is a corpus directory holding a .twf; node_modules is not one.
 CORPUS_DESIGNS := $(patsubst corpus/%/,%,$(sort $(dir $(wildcard corpus/*/*.twf))))
@@ -293,6 +293,11 @@ corpus-rust: check-corpus
 ## mode, and dload finds its autoloader only in a directory named vendor.
 corpus-php: check-corpus
 	cd corpus && composer install --no-interaction --no-progress && php/vendor/bin/dload get -n -q && php/vendor/bin/phpstan analyse --no-progress && php/vendor/bin/phpunit
+
+## Check the corpus, then build (warnings are errors) and test its Swift outputs under the
+## TestKit's time-skipping server, against the packages pinned by Package.resolved.
+corpus-swift: check-corpus
+	cd corpus && swift build --build-tests --force-resolved-versions && swift test --skip-build
 
 # ── Docs targets ─────────────────────────────────────────────────────────────
 

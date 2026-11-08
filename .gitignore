@@ -69,3 +69,6 @@ corpus/php/vendor/
 corpus/rr
 corpus/temporal-test-server
 corpus/.phpunit.cache/
+
+# Swift corpus build output
+corpus/.build/
