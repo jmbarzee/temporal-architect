@@ -13,7 +13,7 @@ A quick reference; the grammar itself is `twf spec` (`twf spec --list` for secti
 | `await timer(duration)` | Durable sleep |
 | `await signal Name` / `await update Name` | Wait for a signal / update |
 | `await nexus Endpoint Service.Op(args) -> result` | Wait for a Nexus call |
-| `await one:` | Race: first to complete wins (timeouts, signal-or-timer). Losers are **not** cancelled — they run until the workflow run ends |
+| `await one:` | Race: first to complete wins (timeouts, signal-or-timer). A losing inline timer is cancelled; other losing inline cases run until the run ends; a bound `promise` survives losing |
 | `await all:` | Join: wait for all (parallel execution) |
 | `state:` | Workflow state block (conditions and variable initializations) |
 | `condition name` | Named boolean awaitable (in `state:`) |
