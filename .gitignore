@@ -63,3 +63,7 @@ target/
 # Ruby corpus gems and local Bundler config
 corpus/vendor/
 corpus/.bundle/
+
+# Elixir corpus deps and build output
+corpus/_build/
+corpus/deps/

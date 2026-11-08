@@ -225,7 +225,7 @@ vet:
 # ── Corpus targets ───────────────────────────────────────────────────────────
 # See corpus/README.md. CI runs `make corpus-<sdk>` once per matrix entry.
 
-.PHONY: check-corpus corpus-go corpus-python corpus-typescript corpus-dotnet corpus-java corpus-ruby corpus-clojure corpus-rust
+.PHONY: check-corpus corpus-go corpus-python corpus-typescript corpus-dotnet corpus-java corpus-ruby corpus-clojure corpus-rust corpus-elixir
 
 # A design is a corpus directory holding a .twf; node_modules is not one.
 CORPUS_DESIGNS := $(patsubst corpus/%/,%,$(sort $(dir $(wildcard corpus/*/*.twf))))
@@ -286,6 +286,12 @@ corpus-clojure: check-corpus
 ## workspace whose members are the designs' rust/ directories (Cargo.lock pins them).
 corpus-rust: check-corpus
 	cd corpus && cargo clippy --locked --workspace --all-targets -- -D warnings && cargo test --locked --workspace
+
+## Check the corpus, then fetch (pinned by mix.lock), compile (warnings as errors) and test its
+## Elixir outputs against a dev server at TEMPORAL_ADDRESS (default 127.0.0.1:7233) started with
+## --dynamic-config-value frontend.WorkflowTimeSkippingEnabled=true.
+corpus-elixir: check-corpus
+	cd corpus && MIX_ENV=test mix deps.get --check-locked && MIX_ENV=test mix compile && mix test
 
 # ── Docs targets ─────────────────────────────────────────────────────────────
 
