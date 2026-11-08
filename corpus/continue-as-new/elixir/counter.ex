@@ -5,14 +5,20 @@ defmodule ContinueAsNew.Counter do
   @impl true
   def execute(context, [count, limit]) do
     start_timer({1, :minute}, [:wait])
-    %{result: [next]} = wait(start_activity("Increment", [count]))
 
-    if next >= limit do
-      complete_workflow_execution([next])
-    else
-      # The task queue is positional; the next run starts there with the new input.
-      %{workflow_info: %{workflow_execution_task_queue: tq}} = context
-      continue_as_new_workflow(tq, "Counter", input: [next, limit])
+    # A closed activity returns its state, never raises; any state but completed fails the run.
+    case wait(start_activity("Increment", [count])) do
+      %{state: :completed, result: [next]} when next >= limit ->
+        complete_workflow_execution([next])
+
+      %{state: :completed, result: [next]} ->
+        # The task queue is positional (not context.workflow_info: on a sticky task it holds only
+        # the attempt); the next run starts there with the new input.
+        %{worker_opts: %{task_queue: tq}} = context
+        continue_as_new_workflow(tq, "Counter", input: [next, limit])
+
+      %{state: state} ->
+        fail_workflow_execution(message: "Increment #{state}")
     end
   end
 end

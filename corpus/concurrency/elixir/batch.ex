@@ -7,28 +7,38 @@ defmodule Concurrency.Batch do
   def execute(context, [items]) do
     Process.put(:status, "unacknowledged")
     Arrivals.on("Ack", fn _ -> Process.put(:status, "acknowledged") end)
-    %{workflow_info: %{workflow_execution_task_queue: tq, workflow_execution: %{workflow_id: wid}}} = context
+    # Not context.workflow_info: on a sticky task it holds only the attempt.
+    %{worker_opts: %{task_queue: tq}, task: %{workflow_execution: %{workflow_id: wid}}} = context
 
-    # await all: activity Count(items) -> count; workflow Audit(items) -> audited
+    # await all: activity Count(items) -> count; workflow Audit(items) -> audited.
+    # A closed activity or child returns its state, never raises; a failed match would raise into
+    # a retried workflow-task failure, so any state but completed closes the run as failed.
     count = start_activity("Count", [items])
     audit = start_child_workflow(tq, "Audit", input: [items], workflow_id: wid <> "/audit")
-    [%{result: [n]}, %{result: [audited]}] = wait_all([count, audit])
 
-    # detach workflow Archive(items): wait for its start, never its result; ABANDON at parent close
-    archive =
-      start_child_workflow(tq, "Archive",
-        input: [items],
-        workflow_id: wid <> "/archive",
-        parent_close_policy: :PARENT_CLOSE_POLICY_ABANDON,
-        awaitable_event: :start,
-        wait: true
-      )
+    case wait_all([count, audit]) do
+      [%{state: :completed, result: [n]}, %{state: :completed, result: [audited]}] ->
+        case detach_archive(tq, wid, items) do
+          %{state: :initiate_failed} -> fail_workflow_execution(message: "Archive did not start")
+          _ -> acknowledge(n, audited)
+        end
 
-    # A failed match would raise, which the SDK retries as a workflow-task failure; close instead.
-    case archive do
-      %{state: :started} -> acknowledge(n, audited)
-      %{state: state} -> fail_workflow_execution(message: "Archive did not start: #{state}")
+      [c, a] ->
+        fail_workflow_execution(message: "Count #{c.state}, Audit #{a.state}")
     end
+  end
+
+  # detach workflow Archive(items): wait for its start, never its result; ABANDON at parent close.
+  # A start already followed by the child's close reports that state, so only initiate_failed
+  # means Archive never started.
+  defp detach_archive(tq, wid, items) do
+    start_child_workflow(tq, "Archive",
+      input: [items],
+      workflow_id: wid <> "/archive",
+      parent_close_policy: :PARENT_CLOSE_POLICY_ABANDON,
+      awaitable_event: :start,
+      wait: true
+    )
   end
 
   defp acknowledge(n, audited) do
@@ -71,8 +81,10 @@ defmodule Concurrency.Archive do
 
   @impl true
   def execute(_context, [items]) do
-    wait(start_activity("Store", [items]))
-    complete_workflow_execution([])
+    case wait(start_activity("Store", [items])) do
+      %{state: :completed} -> complete_workflow_execution([])
+      %{state: state} -> fail_workflow_execution(message: "Store #{state}")
+    end
   end
 end
 
