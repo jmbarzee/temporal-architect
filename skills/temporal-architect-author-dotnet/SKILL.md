@@ -21,7 +21,7 @@ A `.twf` name is the registered name, byte for byte; never rename the `.twf` to 
 
 | Construct | .NET default | Set the `.twf` name by |
 |---|---|---|
-| workflow | the `[Workflow]` class's name, not its `[WorkflowRun]` method's (`Workflows/WorkflowDefinition.cs:160`) | naming the class as the `.twf` does, else `[Workflow("Name")]` |
+| workflow | the `[Workflow]` type's name, not its `[WorkflowRun]` method's; on an interface, a leading `I` trimmed before a capital (`Workflows/WorkflowDefinition.cs:160-166`) | naming the class as the `.twf` does, else `[Workflow("Name")]` |
 | activity | the method name, `Async` trimmed when it returns a `Task` (`Activities/ActivityDefinition.cs:277,298-301`) | naming the method as the `.twf` does, else `[Activity("Name")]` |
 | signal | the method name, `Async` trimmed (`Workflows/WorkflowSignalDefinition.cs:131-136`) | naming the method as the `.twf` does, else `[WorkflowSignal("Name")]` |
 | query | the method or property name as is (`Workflows/WorkflowQueryDefinition.cs:110,167`) | naming the member as the `.twf` does, else `[WorkflowQuery("Name")]` |
@@ -68,7 +68,7 @@ Root-down: roots (workflows no other workflow calls as a child) → children →
 | 2. Workflow bodies | Activity and child calls, signals, timers, races | `dotnet build` |
 | 3. Activity impl | Thin `[Activity]` methods + concrete implementations behind interfaces | `dotnet build` |
 | 4. Worker wiring | Each worker's registrations extension method; the process builds dependencies, applies it to `TemporalWorkerOptions`, and runs | `dotnet build`, `twf check` |
-| 5. Tests | Floor: one happy-path test per workflow under `WorkflowEnvironment.StartTimeSkippingAsync()`, one environment per test, since designs wait minutes to hours, its worker built from the registrations extension method | `dotnet test` |
+| 5. Tests | Floor: one happy-path test per workflow under `WorkflowEnvironment.StartTimeSkippingAsync()`, since designs wait minutes to hours, its worker built from the registrations extension method | `dotnet test` |
 | 6. Final | | [Verify](#verify) |
 
 Then present the code for review.
