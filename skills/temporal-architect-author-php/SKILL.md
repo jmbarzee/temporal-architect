@@ -99,6 +99,18 @@ Load only what the current layer needs.
 
 | DSL | PHP | File |
 |-----|-----|------|
+| `workflow Name(...)` | `#[WorkflowInterface]` class with a generator `#[WorkflowMethod]` and `#[ReturnType]` | [workflow-def.md](./reference/workflow-def.md) |
+| `id_scheme: "..."` | static ID function, called by every start and sender | [workflow-def.md](./reference/workflow-def.md#id_scheme) |
+| `workflow_id_reuse_policy` / `workflow_id_conflict_policy` | start-options function; child gets reuse only | [options.md](./reference/options.md#workflow-id-policies) |
+| `activity Name(...)` | `#[ActivityMethod(name:)]` on an `#[ActivityInterface]` class holding its dependencies | [activity-def.md](./reference/activity-def.md) |
+| types (`int`, `time`, `bytes`, …), user types | what the default JSON converter round-trips; a class with typed public properties | [types.md](./reference/types.md) |
+| activity dependencies | dependency map, confirmed from the installed package | [dependency-resolution.md](./reference/dependency-resolution.md) |
+| `worker`, namespace worker `options:` | `Workers::registerXxxTypes`, `WorkerOptions`, `.rr.yaml` | [worker.md](./reference/worker.md) |
+| `nexus service Name:`, `async` / `sync` operations | unsupported: no Nexus handler | [nexus-service-def.md](./reference/nexus-service-def.md) |
+| `activity Name(args) -> r` | `yield Workflow::newActivityStub(...)->method(...)` | [activity-call.md](./reference/activity-call.md) |
+| `workflow Name(args) -> r` | `yield Workflow::newChildWorkflowStub(...)->run(...)` | [workflow-call.md](./reference/workflow-call.md) |
+| `detach workflow ...` / `detach nexus ...` | untyped child stub `start()` with `ParentClosePolicy::Abandon` and the worker flag / unsupported | [detach.md](./reference/detach.md) |
+| `nexus Endpoint Service.Op(args) -> r` | unsupported: no Nexus caller | [nexus.md](./reference/nexus.md) |
 | `signal Name(params):` | `#[SignalMethod(name:)]` method: body, then `$arrivals->add` | [signal-handler.md](./reference/signal-handler.md) |
 | `query Name(params) -> (T):` | `#[QueryMethod(name:)]` method | [query-handler.md](./reference/query-handler.md) |
 | `update Name(params) -> (T):` | `#[UpdateMethod(name:)]` method: body, then `$arrivals->add`, then `return` | [update-handler.md](./reference/update-handler.md) |
@@ -108,6 +120,12 @@ Load only what the current layer needs.
 | `await all:` | `Promise::all` | [await-all.md](./reference/await-all.md) |
 | `await one:` | one `Workflow::await` over every case; first listed ready wins | [await-one.md](./reference/await-one.md) |
 | handler + condition + `await one` | worked compositions | [composite-patterns.md](./reference/composite-patterns.md) |
+| `signal handle.Name(args)` / `signal Type.Name(args)` + `id:` | the child proxy's signal method / `Workflow::newExternalWorkflowStub(...)` | [signal-send.md](./reference/signal-send.md) |
+| `await timer(d)` | `yield Workflow::timer` | [await-timer.md](./reference/await-timer.md) |
+| `options:` / `default_options:` | `ActivityOptions` / `ChildWorkflowOptions`, immutable `with*` chains | [options.md](./reference/options.md) |
+| `if` / `for` / `switch` / `break` / `continue`, `x = expr` | PHP equivalents | [control-flow.md](./reference/control-flow.md) |
+| `close complete` / `fail` / `continue_as_new` | `return` / `throw new ApplicationFailure` / `return yield Workflow::newContinueAsNewStub(...)->run(...)` | [close.md](./reference/close.md) |
+| `heartbeat(details)` | `Activity::heartbeat` | [heartbeat.md](./reference/heartbeat.md) |
 
 The spec states only what `detach` guarantees (`twf spec statement-syntax`); the author maps it to these mechanics:
 
