@@ -225,7 +225,7 @@ vet:
 # ── Corpus targets ───────────────────────────────────────────────────────────
 # See corpus/README.md. CI runs `make corpus-<sdk>` once per matrix entry.
 
-.PHONY: check-corpus corpus-go corpus-typescript
+.PHONY: check-corpus corpus-go corpus-python corpus-typescript
 
 # A design is a corpus directory holding a .twf; node_modules is not one.
 CORPUS_DESIGNS := $(patsubst corpus/%/,%,$(sort $(dir $(wildcard corpus/*/*.twf))))
@@ -247,6 +247,15 @@ check-corpus: build-lsp
 ## packages are named so that ./... does not walk corpus/node_modules.
 corpus-go: check-corpus
 	cd corpus && GOWORK=off go vet $(CORPUS_DESIGNS:%=./%/go/...) && GOWORK=off go test $(CORPUS_DESIGNS:%=./%/go/...)
+
+## Check the corpus, then typecheck and test its Python outputs, design by
+## design: each design's modules (worker.py, workflows.py) are top-level, so
+## one run over several designs would import one design's worker as another's.
+corpus-python: check-corpus
+	cd corpus && uv sync --locked
+	for d in $(CORPUS_DESIGNS); do \
+		( cd corpus/$$d/python && uv run --locked mypy . && uv run --locked pytest -q ) || exit 1; \
+	done
 
 ## Check the corpus, then typecheck and test its TypeScript outputs.
 corpus-typescript: check-corpus
