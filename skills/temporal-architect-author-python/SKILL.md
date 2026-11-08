@@ -110,6 +110,15 @@ Load only what the current layer needs.
 | `workflow Name(args) -> r` | `workflow.execute_child_workflow` | [workflow-call.md](./reference/workflow-call.md) |
 | `detach workflow ...` / `detach nexus ...` | `start_child_workflow` / `start_operation` with `ABANDON`, handle never awaited | [detach.md](./reference/detach.md) |
 | `nexus Endpoint Service.Op(args) -> r` | `workflow.create_nexus_client(...).execute_operation` | [nexus.md](./reference/nexus.md) |
+| `signal Name(params):` | `@workflow.signal(name=…)`: body, then `arrivals.add` | [signal-handler.md](./reference/signal-handler.md) |
+| `query Name(params) -> (T):` | `@workflow.query(name=…)` on a plain `def` | [query-handler.md](./reference/query-handler.md) |
+| `update Name(params) -> (T):` | `@workflow.update(name=…)`: body, then `arrivals.add`, then `return` | [update-handler.md](./reference/update-handler.md) |
+| `await signal\|update Name -> (...)` | `await arrivals.take()` | [await-signal.md](./reference/await-signal.md) |
+| `promise p <- ...` | the call's task; for a signal or update, `arrivals.take()` | [promise.md](./reference/promise.md) |
+| `state:` / `condition` / `set` / `unset` | `bool` attribute + `workflow.wait_condition` | [condition.md](./reference/condition.md) |
+| `await all:` | `asyncio.gather` | [await-all.md](./reference/await-all.md) |
+| `await one:` | one `wait_condition` over every case; first listed ready wins | [await-one.md](./reference/await-one.md) |
+| handler + condition + `await one` | worked compositions | [composite-patterns.md](./reference/composite-patterns.md) |
 | `signal handle.Name(args)` / `signal Type.Name(args)` + `id:` | `ChildWorkflowHandle.signal` / `get_external_workflow_handle_for(...).signal` | [signal-send.md](./reference/signal-send.md) |
 | `await timer(d)` | `workflow.sleep` | [await-timer.md](./reference/await-timer.md) |
 | `options:` / `default_options:` | the call's keyword arguments; `workflow.ActivityConfig` / `ChildWorkflowConfig` | [options.md](./reference/options.md) |
