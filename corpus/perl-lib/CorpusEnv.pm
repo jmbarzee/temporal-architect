@@ -95,13 +95,13 @@ sub until_event ($handle, $which, $timeout = 20) {
     return;
 }
 
-my $torn_down = 0;
+# Stops the workers, the client and the dev server; start may follow with a fresh one.
 sub teardown () {
-    return if $torn_down++;
-    eval { $_->shutdown(60) } for @workers;
+    eval { $_->shutdown(60) } for splice @workers;
     eval { $client->connection->close if $client };
     eval { $server->shutdown if $server };
     eval { $runtime->shutdown if $runtime };
+    ($client, $server, $runtime) = ();
     return;
 }
 END { local $?; teardown() }

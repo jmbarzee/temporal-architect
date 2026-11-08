@@ -67,7 +67,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        sdk: [go, python, typescript, dotnet, java, ruby, clojure, perl]
+        sdk: [go, python, typescript, dotnet, java, ruby, clojure, rust, perl]
     steps:
       - uses: actions/checkout@v4
 
@@ -157,5 +157,16 @@ jobs:
         run: sudo apt-get install -y -q protobuf-compiler    # sdk-core's build needs protoc
       - if: matrix.sdk == 'perl'
         run: corpus/perl-lib/install-sdk.sh .perl
+
+      # No protoc: the client's vendored-protox feature compiles the protos in-process.
+      - uses: dtolnay/rust-toolchain@stable
+        if: matrix.sdk == 'rust'
+        with:
+          components: clippy
+
+      - uses: Swatinem/rust-cache@v2
+        if: matrix.sdk == 'rust'
+        with:
+          workspaces: corpus
 
       - run: make corpus-${{ matrix.sdk }}

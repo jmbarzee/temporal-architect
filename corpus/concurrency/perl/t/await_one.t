@@ -8,11 +8,10 @@ use Temporalio::Worker;
 use AwaitOneTie;
 use TwoTimerTie;
 
-my $client = CorpusEnv::start();
 my $n = 0;
 
 # No cache, so no sticky queue: the next workflow task goes to the normal queue, not a stopped worker.
-sub worker () {
+sub worker ($client) {
     return CorpusEnv::run_worker(Temporalio::Worker->new(
         client               => $client,
         task_queue           => 'await-one',
@@ -36,14 +35,14 @@ sub no_task_between ($events, $i, $j) {
 
 # No time skipping: a short timer fires while no worker runs, then Ack arrives, so
 # both reach one workflow task when a worker returns.
-sub ack_tie ($type, @args) {
+sub ack_tie ($client, $type, @args) {
     my $h = wait_for($client->start_workflow($type, [@args], id => 'tie-' . $n++, task_queue => 'await-one'));
-    my $tw = worker();
+    my $tw = worker($client);
     CorpusEnv::until_event($h, 'timer_started_event_attributes');
     CorpusEnv::stop_worker($tw);
     CorpusEnv::until_event($h, 'timer_fired_event_attributes');
     wait_for($h->signal('Ack'));
-    $tw = worker();
+    $tw = worker($client);
     my $got = wait_for($h->result);
     CorpusEnv::stop_worker($tw);
     my @ev = CorpusEnv::events($h);
@@ -52,9 +51,9 @@ sub ack_tie ($type, @args) {
     return ($got, $tied);
 }
 
-sub timer_tie ($form, $order) {
+sub timer_tie ($client, $form, $order) {
     my $h = wait_for($client->start_workflow('TwoTimerTie', [$form, $order], id => 'tie-' . $n++, task_queue => 'await-one'));
-    my $tw = worker();
+    my $tw = worker($client);
     CorpusEnv::until_event($h, 'timer_started_event_attributes');
     CorpusEnv::stop_worker($tw);
     my $deadline = time + 20;
@@ -62,7 +61,7 @@ sub timer_tie ($form, $order) {
         die "timers never fired\n" if time > $deadline;
         CorpusEnv::sleep_real(0.1);
     }
-    $tw = worker();
+    $tw = worker($client);
     my $got = wait_for($h->result);
     CorpusEnv::stop_worker($tw);
     my @ev = CorpusEnv::events($h);
@@ -71,15 +70,19 @@ sub timer_tie ($form, $order) {
     return ($got, $tied);
 }
 
-# (#529) The setup is real-time and can miss: retry it, up to 3 times, until history
-# shows a real tie, and assert only then. A setup that never ties skips, never fails.
+# (#529) The setup is real-time and can miss: a stopped worker's open poll can take
+# the timer's task. Retry it, up to 3 times, each on a fresh dev server and workflow
+# ID, until history shows a real tie, and assert only then. A setup that times out
+# is a miss, not a failure; a setup that never ties skips.
 sub at_tie ($name, $want, $setup, @args) {
     for my $attempt (1 .. 3) {
-        my ($got, $tied) = eval { $setup->(@args) };
-        diag("$name: setup attempt $attempt failed: $@") if $@;
-        next unless $tied;
-        return is($got, $want, $name);
+        my $client = CorpusEnv::start();
+        my ($got, $tied) = eval { $setup->($client, @args) };
+        diag("$name: setup attempt $attempt missed: $@") if $@;
+        CorpusEnv::teardown();
+        return is($got, $want, $name) if $tied;
     }
+    diag "$name: skipped, no tie after 3 setups";
     SKIP: { skip "$name: no tie landed in one workflow task after 3 setups", 1 }
     return;
 }

@@ -99,6 +99,25 @@ Load only what the current layer needs.
 
 | DSL | Perl | File |
 |-----|------|------|
+| `workflow Name(...)` | `Temporalio::Workflow::Definition` subclass with an `async method run :Run` | [workflow-def.md](./reference/workflow-def.md) |
+| `id_scheme: "..."` | `sub id` in the workflow's package, called by every start and sender | [workflow-def.md](./reference/workflow-def.md#id_scheme) |
+| `workflow_id_reuse_policy` / `workflow_id_conflict_policy` | `start_options` sub; a child gets reuse only | [options.md](./reference/options.md#workflow-id-policies) |
+| `activity Name(...)` | `:Defn('Name')` method on a `Temporalio::Activity::Definition` subclass | [activity-def.md](./reference/activity-def.md) |
+| types (`int`, `time`, `bytes`, …), user types | plain data `JSON::PP` writes: hashrefs, arrayrefs, scalars, `!!$x` | [types.md](./reference/types.md) |
+| activity dependencies | dependency map, confirmed from the installed module | [dependency-resolution.md](./reference/dependency-resolution.md) |
+| `worker`, namespace worker `options:` | `<Worker>Types.pm` `sub worker`, `Temporalio::Worker->new` keys | [worker.md](./reference/worker.md) |
+| `nexus service Name:`, `async` / `sync` operations | `Temporalio::Nexus::Definition` subclass; `:WorkflowRunOperation` / `:SyncOperation` | [nexus-service-def.md](./reference/nexus-service-def.md) |
+| `activity Name(args) -> r` | `Temporalio::Workflow::execute_activity('Name', args => [...])` | [activity-call.md](./reference/activity-call.md) |
+| `workflow Name(args) -> r` | `Temporalio::Workflow::execute_child_workflow('Name', args => [...])` | [workflow-call.md](./reference/workflow-call.md) |
+| `detach workflow ...` / `detach nexus ...` | `start_child_workflow` / `start_operation` with `abandon`, never `->result` | [detach.md](./reference/detach.md) |
+| `nexus Endpoint Service.Op(args) -> r` | `create_nexus_client(...)->execute_operation('Op', $input)` | [nexus.md](./reference/nexus.md) |
+| `signal handle.Name(args)` / `signal Type.Name(args)` + `id:` | `$child->signal` / `get_external_workflow_handle($id)->signal`; `id: parent` unsupported | [signal-send.md](./reference/signal-send.md) |
+| `await timer(d)` | `Temporalio::Workflow::sleep($seconds)` | [await-timer.md](./reference/await-timer.md) |
+| `options:` / `default_options:` | flat keys on the call; an options sub per definition | [options.md](./reference/options.md) |
+| `if` / `for` / `switch` / `break` / `continue`, `x = expr` | Perl equivalents | [control-flow.md](./reference/control-flow.md) |
+| `close complete` / `fail` / `continue_as_new` | `return` / `Temporalio::Exception::Application->throw` / `Temporalio::Workflow::continue_as_new` | [close.md](./reference/close.md) |
+| `heartbeat(details)` | `Temporalio::Activity::heartbeat` | [heartbeat.md](./reference/heartbeat.md) |
+| SDK idioms, Perl traps | sdk-perl README by topic; the module header, one class per file | [idioms.md](./reference/idioms.md) |
 
 The spec states only what `detach` guarantees (`twf spec statement-syntax`); the author maps it to these mechanics:
 
