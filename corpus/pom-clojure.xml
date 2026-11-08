@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <!-- The Clojure corpus: `./mvnw -B -q -f pom-clojure.xml verify`. A pom of its own, since the
+       Clojure SDK depends on temporal-shaded, which repeats the io.temporal classes that the Java
+       corpus takes from temporal-sdk. -->
+  <groupId>io.github.jmbarzee.temporalarchitect</groupId>
+  <artifactId>corpus-clojure</artifactId>
+  <version>0</version>
+  <packaging>jar</packaging>
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <temporal.version>2.4.1</temporal.version>
+  </properties>
+
+  <repositories>
+    <repository>
+      <id>clojars</id>
+      <url>https://repo.clojars.org/</url>
+    </repository>
+  </repositories>
+
+  <dependencies>
+    <dependency>
+      <groupId>io.github.manetu</groupId>
+      <artifactId>temporal-sdk</artifactId>
+      <version>${temporal.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-nop</artifactId>
+      <version>1.7.36</version>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <directory>target/clojure</directory>
+    <plugins>
+      <plugin>
+        <groupId>com.theoryinpractise</groupId>
+        <artifactId>clojure-maven-plugin</artifactId>
+        <version>1.9.4</version>
+        <configuration>
+          <sourceDirectories/>
+          <!-- One line per design: Maven cannot glob source roots. -->
+          <testSourceDirectories>
+            <testSourceDirectory>concurrency/clojure</testSourceDirectory>
+            <testSourceDirectory>continue-as-new/clojure</testSourceDirectory>
+            <testSourceDirectory>messages/clojure</testSourceDirectory>
+          </testSourceDirectories>
+        </configuration>
+        <executions>
+          <execution>
+            <id>test</id>
+            <phase>test</phase>
+            <goals>
+              <goal>test</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+</project>
