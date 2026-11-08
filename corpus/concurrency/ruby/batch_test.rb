@@ -6,7 +6,6 @@ require_relative 'worker'
 
 module Concurrency
   class BatchTest < Minitest::Test
-    TASK_QUEUE = 'batches'
     ITEMS = %w[a b].freeze
 
     # Archive's Store, held until the test releases it. A held activity stops time
@@ -67,7 +66,7 @@ module Concurrency
     def test_batch_acknowledged_without_waiting_for_its_detached_archive
       with_env do |env|
         Concurrency.batch_types(env.client, activities: [Count, HeldStore]).run do
-          h = env.client.start_workflow(Batch, ITEMS, id: 'batch-ack', task_queue: TASK_QUEUE)
+          h = env.client.start_workflow(Batch, ITEMS, id: 'batch-ack', task_queue: BATCHES_TASK_QUEUE)
           until_event(h, :EVENT_TYPE_TIMER_STARTED)
           h.signal(Batch.ack)
           got = Report.from_h(h.result)
@@ -91,7 +90,7 @@ module Concurrency
     def test_batch_the_timer_wins
       with_env do |env|
         Concurrency.batch_types(env.client).run do
-          h = env.client.start_workflow(Batch, ITEMS, id: 'batch-timer', task_queue: TASK_QUEUE)
+          h = env.client.start_workflow(Batch, ITEMS, id: 'batch-timer', task_queue: BATCHES_TASK_QUEUE)
           assert_equal Report.new(count: 2, audited: true, status: 'unacknowledged'), Report.from_h(h.result)
           refute_includes event_types(h), :EVENT_TYPE_TIMER_CANCELED
         end
@@ -102,9 +101,9 @@ module Concurrency
       with_env do |env|
         Temporalio::Worker.new(client: env.client, task_queue: 'bound', workflows: [BoundDeadline]).run do
           h = env.client.start_workflow(BoundDeadline, id: 'bound', task_queue: 'bound')
-          h.signal('Ack')
+          h.signal(BoundDeadline.ack)
           env.sleep(3600)
-          h.signal('Ack')
+          h.signal(BoundDeadline.ack)
           assert_equal 2, h.result
           types = event_types(h)
           refute_includes types, :EVENT_TYPE_TIMER_CANCELED
@@ -116,7 +115,7 @@ module Concurrency
     def test_audit
       with_env do |env|
         Concurrency.batch_types(env.client).run do
-          assert_equal true, env.client.execute_workflow(Audit, ['a'], id: 'audit', task_queue: TASK_QUEUE)
+          assert_equal true, env.client.execute_workflow(Audit, ['a'], id: 'audit', task_queue: BATCHES_TASK_QUEUE)
         end
       end
     end
@@ -124,7 +123,7 @@ module Concurrency
     def test_archive
       with_env do |env|
         Concurrency.batch_types(env.client).run do
-          assert_nil env.client.execute_workflow(Archive, ['a'], id: 'archive', task_queue: TASK_QUEUE)
+          assert_nil env.client.execute_workflow(Archive, ['a'], id: 'archive', task_queue: BATCHES_TASK_QUEUE)
         end
       end
     end

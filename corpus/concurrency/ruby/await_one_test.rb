@@ -10,23 +10,19 @@ module Concurrency
   class AwaitOneTest < Minitest::Test
     TASK_QUEUE = 'await-one'
 
-    # A timing-dependent setup step that did not land; any other error is a real failure.
-    class MissedSetup < StandardError; end
-
     def event_types(handle)
       handle.fetch_history_events.map(&:event_type)
     end
 
-    # Waits up to 10s of real time for an event of type; raises MissedSetup rather than hang.
+    # Waits up to 10s of real time for an event of type; false rather than hang.
     def until_event(handle, type)
       deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 10
       until event_types(handle).include?(type)
-        if Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
-          raise MissedSetup, "#{handle.id}: #{type} never reached history"
-        end
+        return false if Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
 
         sleep 0.02
       end
+      true
     end
 
     # No cache, so no sticky queue: the next workflow task goes to the normal queue, not a stopped worker.
@@ -39,46 +35,47 @@ module Concurrency
 
     # Runs workflow until a real tie lands — the timer fired and Ack sent while no worker runs, so
     # both reach one workflow task — and returns its winner. The setup is timing-dependent, so a
-    # missed attempt (a MissedSetup, or a workflow task between the two events) is retried, up to
-    # ATTEMPTS; if none ties, the test is skipped, never failed: a missed setup proves nothing.
+    # missed attempt is retried, up to ATTEMPTS; if none ties, the test is skipped, never failed: a
+    # missed setup proves nothing. Each attempt gets a fresh test server, so a poll left open by an
+    # earlier attempt's stopped worker cannot take its workflow task.
     def tie(workflow, order)
-      Temporalio::Testing::WorkflowEnvironment.start_time_skipping do |env|
-        misses = []
-        ATTEMPTS.times do
-          got = attempt_tie(env, workflow, order)
-          return got if got
-
-          misses << 'no tie in one workflow task'
-        rescue MissedSetup => e
-          misses << e.message
+      misses = []
+      ATTEMPTS.times do
+        got = Temporalio::Testing::WorkflowEnvironment.start_time_skipping do |env|
+          attempt_tie(env, workflow, order, misses)
         end
-        skip("no real tie in #{ATTEMPTS} attempts: #{misses.join('; ')}")
+        return got if got
       end
+      skip("no real tie in #{ATTEMPTS} attempts: #{misses.join('; ')}")
     end
 
-    # One attempt: the winner when the timer firing and Ack land in one workflow task, else nil.
-    def attempt_tie(env, workflow, order)
+    # One attempt: the winner when the timer firing and Ack land in one workflow task, else nil
+    # with the miss added to misses.
+    def attempt_tie(env, workflow, order, misses)
       h = env.client.start_workflow(workflow, order, id: "tie-#{SecureRandom.uuid}", task_queue: TASK_QUEUE)
-      worker(env).run { until_event(h, :EVENT_TYPE_TIMER_STARTED) }
+      started = worker(env).run { until_event(h, :EVENT_TYPE_TIMER_STARTED) }
+      return miss(misses, h, 'timer never started') unless started
+
       # Skip time past the timer; with no worker to take its workflow task, nothing runs.
       skipper = Thread.new { env.sleep(7200) }
-      until_event(h, :EVENT_TYPE_TIMER_FIRED)
-      begin
-        h.signal('Ack')
-      rescue Temporalio::Error::RPCError => e
-        raise MissedSetup, "#{h.id}: Ack not sent: #{e.message}"
-      end
+      return miss(misses, h, 'timer never fired') unless until_event(h, :EVENT_TYPE_TIMER_FIRED)
+
+      h.signal(workflow.ack)
       got = worker(env).run { h.result }
-      skipper.join
 
       # Both ready on one resume: no workflow task started between the timer firing and Ack arriving.
       types = event_types(h)
-      fired = types.index(:EVENT_TYPE_TIMER_FIRED)
-      signaled = types.index(:EVENT_TYPE_WORKFLOW_EXECUTION_SIGNALED)
-      return nil if fired.nil? || signaled.nil?
-      return nil if types[[fired, signaled].min..[fired, signaled].max].include?(:EVENT_TYPE_WORKFLOW_TASK_STARTED)
+      between = types[types.index(:EVENT_TYPE_TIMER_FIRED)..types.index(:EVENT_TYPE_WORKFLOW_EXECUTION_SIGNALED)]
+      return miss(misses, h, "split by #{between.join(', ')}") if between.include?(:EVENT_TYPE_WORKFLOW_TASK_STARTED)
 
       got
+    ensure
+      skipper&.join
+    end
+
+    def miss(misses, handle, why)
+      misses << "#{handle.id}: #{why}"
+      nil
     end
 
     def test_await_one_ack_listed_first_wins_a_tie
