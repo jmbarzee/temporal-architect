@@ -34,4 +34,5 @@
     (let [approval           (arr/promise! approves) ; begins waiting here, at its binding
           {:keys [note]}     (arr/take! reviews)
           {:keys [approver]} @approval]
+      (w/await w/every-handler-finished?)
       {:request request :approver approver :note note :status @status})))
