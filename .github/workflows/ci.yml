@@ -67,7 +67,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        sdk: [go, typescript]
+        sdk: [go, typescript, dotnet]
     steps:
       - uses: actions/checkout@v4
 
@@ -84,5 +84,12 @@ jobs:
           node-version: 24
           cache: npm
           cache-dependency-path: corpus/package-lock.json
+
+      - uses: actions/setup-dotnet@v5
+        if: matrix.sdk == 'dotnet'
+        with:
+          dotnet-version: 10.0.x
+          cache: true
+          cache-dependency-path: corpus/packages.lock.json
 
       - run: make corpus-${{ matrix.sdk }}
