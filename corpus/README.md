@@ -16,6 +16,7 @@ corpus/
   go.mod                 one project per SDK, at the corpus root
   package.json
   pyproject.toml
+  pom.xml
   <design>/
     <design>.twf         the design, with no @sdk
     go/                  its Go output, per skills/temporal-architect-author-go
@@ -24,6 +25,8 @@ corpus/
       <design>.twf       the design plus only @sdk(typescript, …)
     python/              its Python output, as top-level modules
       <design>.twf       the design plus only @sdk(python, …)
+    java/                its Java output, tests beside sources
+      <design>.twf       the design plus only @sdk(java, …)
 ```
 
 Each SDK's copy of the design names only its own implementation, so no worker carries two SDKs. `check-corpus` checks every `.twf` file on its own (a directory check would load the copies together) and fails when a copy, its `@sdk` lines stripped, differs from the design.
@@ -37,10 +40,15 @@ make corpus-go          # check the corpus, then go vet and go test the Go outpu
 make corpus-typescript  # check the corpus, then npm ci, tsc and the node:test suites
 make corpus-python      # check the corpus, then uv sync, mypy and pytest in each design's python/
 make corpus-dotnet      # check the corpus, then dotnet restore (locked) and dotnet test
+make corpus-java        # check the corpus, then javac -Werror and the JUnit suites via the Maven wrapper
 ```
 
 ## Add an SDK
 
-1. Author each design into `<design>/<sdk>/`, beside a copy of `<design>.twf` carrying only its `@sdk`, with the project file at the corpus root.
+1. Author each design into `<design>/<sdk>/`, beside a copy of `<design>.twf` carrying only its `@sdk`, with the project file at the corpus root. A Maven SDK lists each design's source root in its pom.
 2. Add a `corpus-<sdk>` target to the [Makefile](../Makefile) that depends on `check-corpus`, then builds and tests those outputs. The targets iterate `CORPUS_DESIGNS`, the designs found by `corpus/*/*.twf`, never a directory glob, so a dependency directory such as `node_modules` is never checked or built.
 3. Add `<sdk>` to the `corpus` job's matrix in [ci.yml](../.github/workflows/ci.yml), with a setup step if the runner lacks its toolchain. No test needs a Temporal server today; an SDK whose tests do adds `temporalio/setup-temporal` as a step gated on `matrix.sdk`.
+
+## Add a design
+
+Write `<design>/<design>.twf`, then author it into every SDK as "Add an SDK" step 1 describes, adding its source root to the pom for a Maven SDK.
