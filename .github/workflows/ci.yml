@@ -154,6 +154,8 @@ jobs:
       - uses: temporalio/setup-temporal@v0
         if: matrix.sdk == 'perl'
       - if: matrix.sdk == 'perl'
+        run: sudo apt-get install -y -q protobuf-compiler    # sdk-core's build needs protoc
+      - if: matrix.sdk == 'perl'
         run: corpus/perl-lib/install-sdk.sh .perl
 
       - run: make corpus-${{ matrix.sdk }}
