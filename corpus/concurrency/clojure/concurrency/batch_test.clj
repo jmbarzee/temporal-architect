@@ -50,9 +50,9 @@
   (let [acks (atom 0)
         _    (s/register-signal-handler! (fn [signal-name _] (when (= "Ack" signal-name) (swap! acks inc))))
         ;; promise deadline <- timer(24h): bound before the rounds, so losing one never cancels it.
-        ^Promise deadline (Workflow/newTimer (Duration/ofHours 24))]
+        deadline (w/new-timer (Duration/ofHours 24))]
     (loop [counted 0]
-      (w/await #(or (pos? @acks) (.isCompleted deadline)))
+      (w/await #(or (pos? @acks) (p/done? deadline)))
       (if (zero? @acks)
         counted
         (do (swap! acks dec) (recur (inc counted)))))))
@@ -142,30 +142,34 @@
                    (subvec evs fired signaled)))))
 
 (defn- tie-once
-  "Runs AwaitOneTie with the timer fired and Ack sent while no worker runs, so both reach one
-  workflow task; returns the winner, or nil when the setup missed the tie."
+  "Runs AwaitOneTie on a test env of its own, with the timer fired and Ack sent while no worker
+  runs, so both reach one workflow task; returns the winner, or nil when the setup missed the tie."
   [id order mode]
-  (let [wf (c/create-workflow (client) AwaitOneTie {:task-queue "await-one" :workflow-id id})]
-    (c/start wf {:order order :mode mode})
-    (let [first-worker (tie-worker)]
-      (until id EventType/EVENT_TYPE_TIMER_STARTED)
-      (.shutdownNow first-worker)
-      (.awaitTermination first-worker 10 TimeUnit/SECONDS))
-    ;; Skip time past the timer. With no worker to take the timer's workflow task, the sleep may
-    ;; not return, so it runs on its own thread.
-    (doto (let [env *env*] (Thread. ^Runnable (fn [] (try (.sleep env (Duration/ofHours 1)) (catch RuntimeException _)))))
-      (.setDaemon true)
-      (.start))
-    (until id EventType/EVENT_TYPE_TIMER_FIRED)
-    (c/>! wf :Ack {})
-    (if (tied? id)
-      (let [second-worker (tie-worker)]
-        (try (result wf) (finally (.shutdownNow second-worker))))
-      (.terminate ^WorkflowStub (:stub wf) "setup missed the tie" (object-array 0)))))
+  (let [env (e/create)]
+    (try
+      (binding [*env* env]
+        (let [wf (c/create-workflow (client) AwaitOneTie {:task-queue "await-one" :workflow-id id})]
+          (c/start wf {:order order :mode mode})
+          (let [first-worker (tie-worker)]
+            (until id EventType/EVENT_TYPE_TIMER_STARTED)
+            (.shutdownNow first-worker)
+            (.awaitTermination first-worker 10 TimeUnit/SECONDS))
+          ;; Skip time past the timer. With no worker to take the timer's workflow task, the sleep
+          ;; may not return, so it runs on its own thread.
+          (doto (Thread. ^Runnable (fn [] (try (.sleep env (Duration/ofHours 1)) (catch RuntimeException _))))
+            (.setDaemon true)
+            (.start))
+          (until id EventType/EVENT_TYPE_TIMER_FIRED)
+          (c/>! wf :Ack {})
+          (when (tied? id)
+            (let [second-worker (tie-worker)]
+              (try (result wf) (finally (.shutdownNow second-worker)))))))
+      (finally (e/synchronized-stop env)))))
 
 (defn- on-a-tie
-  "Asserts AwaitOneTie's winner on a real tie. The test server may hand the timer's task to the
-  stopped worker's last poll, so a missed setup is retried, then skipped, never failed (#529)."
+  "Asserts AwaitOneTie's winner on a real tie. The stopped worker's last poll may take the timer's
+  task, so a missed setup is retried on a fresh env and workflow ID (a same-server retry can hang),
+  then skipped, never failed (#529)."
   [expected order mode]
   (if-let [won (some #(tie-once (str "tie-" order "-" mode "-" %) order mode) (range 3))]
     (is (= expected won))

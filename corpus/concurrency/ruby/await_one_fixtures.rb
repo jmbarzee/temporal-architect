@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'temporalio/cancellation'
 require 'temporalio/workflow'
 
 # Test workflows for await one; registered only by await_one_test.rb.
@@ -17,10 +18,15 @@ module Concurrency
       end
 
       def execute(order)
-        timer = Temporalio::Workflow::Future.new { Temporalio::Workflow.sleep(3600) }
+        timer_cancellation, cancel_timer = Temporalio::Cancellation.new(Temporalio::Workflow.cancellation)
+        timer = Temporalio::Workflow::Future.new do
+          Temporalio::Workflow.sleep(3600, cancellation: timer_cancellation)
+        end
         ready = { 'Ack' => -> { @acks.positive? }, 'timer' => -> { timer.done? } }
         Temporalio::Workflow.wait_condition { order.any? { |c| ready[c].call } }
-        order.find { |c| ready[c].call }
+        winner = order.find { |c| ready[c].call }
+        cancel_timer.call unless winner == 'timer' # the inline timer lost
+        winner
       end
     end
 
