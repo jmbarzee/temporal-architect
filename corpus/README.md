@@ -20,6 +20,7 @@ corpus/
   Gemfile
   pom-clojure.xml
   Cargo.toml             a workspace whose root package, testkit.rs, is Rust's time-skipping kit
+  composer.json
   <design>/
     <design>.twf         the design, with no @sdk
     go/                  its Go output, per skills/temporal-architect-author-go
@@ -36,6 +37,8 @@ corpus/
       <design>.twf       the design plus only @sdk(clojure, …)
     rust/                its Rust output, a workspace member; nexus/rust/ is caller-only (Rust has no Nexus handler)
       <design>.twf       the design plus only @sdk(rust, …)
+    php/                 its PHP output, tests beside sources; nexus has none (PHP has no Nexus)
+      <design>.twf       the design plus only @sdk(php, …)
 ```
 
 Each SDK's copy of the design names only its own implementation, so no worker carries two SDKs. `check-corpus` checks every `.twf` file on its own (a directory check would load the copies together) and fails when a copy, its `@sdk` lines stripped, differs from the design.
@@ -53,6 +56,7 @@ make corpus-java        # check the corpus, then javac -Werror and the JUnit sui
 make corpus-ruby        # check the corpus, then bundle install (locked), ruby -wc and Minitest in each design's ruby/
 make corpus-clojure     # check the corpus, then the clojure.test suites via the Maven wrapper and pom-clojure.xml
 make corpus-rust        # check the corpus, then cargo clippy (-D warnings) and cargo test, locked
+make corpus-php         # check the corpus, then composer install (locked), dload (rr, test server), PHPStan and PHPUnit
 ```
 
 ## Add an SDK
