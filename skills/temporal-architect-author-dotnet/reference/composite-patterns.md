@@ -69,7 +69,7 @@ public class HumanReview
 
 1. **The condition is read, not taken**: it is a `bool` in the predicate; nothing waits on the update itself, so it needs no `Arrivals` ([await-one.md](./await-one.md#cases))
 2. **Not `WaitConditionAsync(() => reviewComplete, TimeSpan.FromHours(48))`**: it races internally, so a tie goes to the timer, not the first listed ([await-one.md](./await-one.md))
-3. **Cancel the losing timer**: losing cases keep running ([await-one.md](./await-one.md#notes))
+3. **Cancel the losing timer** (`twf spec statement-syntax`, lifecycle of non-winning cases), or it fires later ([await-one.md](./await-one.md#notes))
 4. **`AllHandlersFinished` before returning**, so an in-flight update is not abandoned ([update-handler.md](./update-handler.md))
 
 ## Pattern 2: Signal-set condition vs timer with a shared tail (ManageRetention)

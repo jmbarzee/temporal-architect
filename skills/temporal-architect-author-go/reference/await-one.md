@@ -52,6 +52,6 @@ A message case waits without taking: `ready` checks its queue ([await-signal.md]
 
 ## Notes
 
-- **Losing cases are not cancelled**; they keep running until the run ends. Cancelling a losing timer via `workflow.WithCancel` is history hygiene: otherwise it fires later and adds workflow tasks. Cancelling a child workflow only *requests* cancellation; for child lifecycle at parent close, use `parent_close_policy` ([options.md](./options.md)).
+- **An inline timer case that loses is cancelled** (`twf spec statement-syntax`, lifecycle of non-winning cases): create it under `workflow.WithCancel` and cancel that context (`NewTimer`, sdk-go `workflow/deterministic_wrappers.go`), or it fires later and adds workflow tasks. Inline activity, child workflow and Nexus cases keep running until the run ends, and a bound promise is never cancelled by losing. Cancelling a child workflow only *requests* cancellation; for child lifecycle at parent close, use `parent_close_policy` ([options.md](./options.md)).
 - An empty case body → the winner's take or `.Get` alone.
 - Event-driven/entity workflows repeat the race in a loop, with a fresh `wait` ticket per message case each iteration.
