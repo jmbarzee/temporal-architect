@@ -10,7 +10,8 @@ module Messages
   class ArrivalsTest < Minitest::Test
     TASK_QUEUE = 'arrivals'
 
-    # Runs a fixture, sending X "1" after a minute and X "2" after two.
+    # Runs a fixture, sending X "1" after a minute and X "2" after two; returns its result after
+    # yielding its handle while the test server still runs.
     def run_fixture(workflow, *args)
       Temporalio::Testing::WorkflowEnvironment.start_time_skipping do |env|
         worker = Temporalio::Worker.new(client: env.client, task_queue: TASK_QUEUE, workflows: ArrivalsFixtures::ALL)
@@ -24,7 +25,9 @@ module Messages
           rescue Temporalio::Error::RPCError
             nil # A workflow that needed only one X has completed by now.
           end
-          h.result
+          result = h.result
+          yield h if block_given?
+          result
         end
       end
     end
@@ -42,12 +45,22 @@ module Messages
       assert_equal({ 'promise' => '2', 'await' => '1' }, run_fixture(ArrivalsFixtures::NaivePromiseThenAwait))
     end
 
+    def event_types(handle)
+      handle.fetch_history_events.map(&:event_type)
+    end
+
     def test_await_one_the_case_wins_and_takes
-      assert_equal ['case 1', 'then 2'], run_fixture(ArrivalsFixtures::AwaitOne, 3600)
+      got = run_fixture(ArrivalsFixtures::AwaitOne, 3600) do |h|
+        assert_includes event_types(h), :EVENT_TYPE_TIMER_CANCELED, 'the losing timer was not cancelled'
+      end
+      assert_equal ['case 1', 'then 2'], got
     end
 
     def test_await_one_the_timer_wins_and_the_case_takes_nothing
-      assert_equal ['timer', 'then 1'], run_fixture(ArrivalsFixtures::AwaitOne, 10)
+      got = run_fixture(ArrivalsFixtures::AwaitOne, 10) do |h|
+        refute_includes event_types(h), :EVENT_TYPE_TIMER_CANCELED
+      end
+      assert_equal ['timer', 'then 1'], got
     end
 
     def test_a_cancelled_waiter_leaves_the_queue
