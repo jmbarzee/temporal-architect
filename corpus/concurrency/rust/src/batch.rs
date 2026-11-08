@@ -39,9 +39,9 @@ fn activity_options() -> ActivityOptions {
 /// A child's task queue is written out: an unset one goes to the server empty, which the
 /// Temporal server reads as the parent's queue but the time-skipping test server does not.
 fn child_options<W>(ctx: &WorkflowContext<W>) -> ChildWorkflowOptions {
-    let mut o = ChildWorkflowOptions::default();
-    o.task_queue = Some(ctx.task_queue().to_string());
-    o
+    ChildWorkflowOptions::builder()
+        .task_queue(ctx.task_queue().to_string())
+        .build()
 }
 
 #[workflow]
@@ -87,9 +87,11 @@ impl Batch {
 
         // detach: abandon the child on parent close and never request its cancellation; wait
         // only for its start.
-        let mut detached = child_options(ctx);
-        detached.parent_close_policy = ParentClosePolicy::Abandon;
-        detached.cancel_type = ChildWorkflowCancellationType::Abandon;
+        let detached = ChildWorkflowOptions::builder()
+            .task_queue(ctx.task_queue().to_string())
+            .parent_close_policy(ParentClosePolicy::Abandon)
+            .cancel_type(ChildWorkflowCancellationType::Abandon)
+            .build();
         ctx.start_child_workflow(Archive::run, items, detached)
             .await?;
 

@@ -1,4 +1,8 @@
-use corpus_continue_as_new::{COUNTERS_TASK_QUEUE, counter::Counter, counter_types};
+use corpus_continue_as_new::{
+    COUNTERS_TASK_QUEUE,
+    counter::{Counter, CounterActivities},
+    counter_types,
+};
 use corpus_testkit::{Env, local};
 use temporalio_client::{
     WorkflowFetchHistoryOptions, WorkflowGetResultOptions, WorkflowStartOptions,
@@ -9,7 +13,7 @@ use temporalio_common::{data_converters::MultiArgs2, protos::temporal::api::enum
 async fn counter_completes_at_the_limit() {
     local(async {
         let env = Env::start().await;
-        let w = env.worker(counter_types().unwrap());
+        let w = env.worker(counter_types(CounterActivities).unwrap());
         let h = env
             .client
             .start_workflow(
@@ -35,7 +39,7 @@ async fn counter_completes_at_the_limit() {
 async fn counter_continues_as_new_below_it() {
     local(async {
         let env = Env::start().await;
-        let w = env.worker(counter_types().unwrap());
+        let w = env.worker(counter_types(CounterActivities).unwrap());
         let h = env
             .client
             .start_workflow(
