@@ -56,8 +56,8 @@ final class BatchTest extends TimeSkippingWorkflowTestCase
 
     public function testAwaitOneTheFirstListedOfSeveralReadyCasesWins(): void
     {
-        self::assertSame('Ack', $this->tie(['Ack', 'timer'], 'await one')[0]);
-        self::assertSame('timer', $this->tie(['timer', 'Ack'], 'await one')[0]);
+        self::assertSame('Ack', $this->tie(['Ack', 'timer'], 'await one'));
+        self::assertSame('timer', $this->tie(['timer', 'Ack'], 'await one'));
     }
 
     public function testTheTemptingFormsAreNotListedOrder(): void
@@ -66,7 +66,7 @@ final class BatchTest extends TimeSkippingWorkflowTestCase
         foreach (['any', 'awaitWithTimeout'] as $form) {
             $winners = [];
             foreach ([['Ack', 'timer'], ['timer', 'Ack']] as $order) {
-                $winners[] = $this->tie($order, $form)[0];
+                $winners[] = $this->tie($order, $form);
             }
             self::assertSame($winners[0], $winners[1], $form . ' picked by listing order');
         }
@@ -76,26 +76,19 @@ final class BatchTest extends TimeSkippingWorkflowTestCase
 
     /**
      * Runs AwaitOneTie until its timer fired and Ack arrived in one workflow task, then returns the
-     * winner and the case whose event came earlier in history. A setup that misses the tie is retried, at most TIE_ATTEMPTS times, and never fails
+     * winner. A setup that misses the tie is retried, at most TIE_ATTEMPTS times, and never fails
      * the test: after the last miss the test is skipped.
      *
      * @param list<string> $order
-     * @return array{string, string}
      */
-    private function tie(array $order, string $form): array
+    private function tie(array $order, string $form): string
     {
         $misses = [];
         for ($attempt = 1; $attempt <= self::TIE_ATTEMPTS; ++$attempt) {
-            try {
-                $got = $this->tieOnce($order, $form);
-            } catch (\Throwable $e) {
-                $misses[] = $e->getMessage() . " <- " . $e->getPrevious()?->getMessage();
-                continue;
-            }
+            $got = $this->tieOnce($order, $form, $misses);
             if ($got !== null) {
                 return $got;
             }
-            $misses[] = 'the timer and Ack reached different workflow tasks';
         }
         self::markTestSkipped('no tie landed: ' . \implode('; ', $misses));
     }
@@ -103,21 +96,27 @@ final class BatchTest extends TimeSkippingWorkflowTestCase
     /**
      * Holds a workflow task (Hold blocks the single PHP workflow process for 5s) across the timer's
      * due time and Ack's arrival, so both reach the next workflow task. The timer (3s) runs in
-     * real time under the test case's time lock. Returns null when the two did not share one task.
+     * real time under the test case's time lock. Returns null, recording why in $misses, when the
+     * setup failed or the two did not share one task; the workflow's own failures throw.
      *
      * @param list<string> $order
-     * @return array{string, string}|null
+     * @param list<string> $misses
      */
-    private function tieOnce(array $order, string $form): ?array
+    private function tieOnce(array $order, string $form, array &$misses): ?string
     {
         $wf = $this->stub('AwaitOneTie', 'await-one');
         $this->workflowClient->start($wf, $order, $form, 3);
-        $this->until($wf, EventType::EVENT_TYPE_TIMER_STARTED);
-        $started = \microtime(true);
-        $wf->signal('Hold', 5000);
-        $this->until($wf, EventType::EVENT_TYPE_WORKFLOW_TASK_STARTED, 2); // the hold is running
-        \usleep((int) \max(0, (3.5 - (\microtime(true) - $started)) * 1_000_000)); // past the timer's due time
-        $wf->signal('Ack');
+        try {
+            $this->until($wf, EventType::EVENT_TYPE_TIMER_STARTED);
+            $started = \microtime(true);
+            $wf->signal('Hold', 5000);
+            $this->until($wf, EventType::EVENT_TYPE_WORKFLOW_TASK_STARTED, 2); // the hold is running
+            \usleep((int) \max(0, (3.5 - (\microtime(true) - $started)) * 1_000_000)); // past the timer's due time
+            $wf->signal('Ack');
+        } catch (\Exception $e) {
+            $misses[] = 'setup: ' . $e->getMessage();
+            return null;
+        }
         $got = $wf->getResult('string', 30);
 
         // A real tie: Ack and the timer's firing reached history with no workflow task started between them.
@@ -125,14 +124,14 @@ final class BatchTest extends TimeSkippingWorkflowTestCase
         $fired = \array_search(EventType::EVENT_TYPE_TIMER_FIRED, $types, true);
         $signals = \array_keys($types, EventType::EVENT_TYPE_WORKFLOW_EXECUTION_SIGNALED, true);
         $ack = \end($signals); // Hold is the first signal, Ack the last
-        if (!\is_int($fired) || \count($signals) < 2) {
-            return null;
+        if (\is_int($fired) && \count($signals) >= 2) {
+            [$first, $last] = [\min($fired, $ack), \max($fired, $ack)];
+            if (!\in_array(EventType::EVENT_TYPE_WORKFLOW_TASK_STARTED, \array_slice($types, $first, $last - $first), true)) {
+                return $got;
+            }
         }
-        [$first, $last] = [\min($fired, $ack), \max($fired, $ack)];
-        if (\in_array(EventType::EVENT_TYPE_WORKFLOW_TASK_STARTED, \array_slice($types, $first, $last - $first), true)) {
-            return null;
-        }
-        return [$got, $fired < $ack ? 'timer' : 'Ack'];
+        $misses[] = 'the timer and Ack reached different workflow tasks';
+        return null;
     }
 
     /** @return list<int> the event types of the workflow's history, in order */

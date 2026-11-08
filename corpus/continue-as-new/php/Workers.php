@@ -6,7 +6,7 @@ namespace Corpus\ContinueAsNew;
 
 use Temporal\Worker\WorkerFactoryInterface;
 
-/** Each .twf worker's registrations, shared by the corpus worker process and the test worker. */
+/** Each .twf worker's registrations, shared by the corpus worker process. */
 final class Workers
 {
     public const COUNTERS_TASK_QUEUE = 'counters';
