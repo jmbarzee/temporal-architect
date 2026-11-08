@@ -126,6 +126,7 @@ Load only what the current layer needs.
 | `if` / `for` / `switch` / `break` / `continue`, `x = expr` | Perl equivalents | [control-flow.md](./reference/control-flow.md) |
 | `close complete` / `fail` / `continue_as_new` | `return` / `Temporalio::Exception::Application->throw` / `Temporalio::Workflow::continue_as_new` | [close.md](./reference/close.md) |
 | `heartbeat(details)` | `Temporalio::Activity::heartbeat` | [heartbeat.md](./reference/heartbeat.md) |
+| recovered `.twf` (code → `.twf`) | project roots, registration, concurrency, codegen | [discovery.md](./reference/discovery.md) |
 | SDK idioms, Perl traps | sdk-perl README by topic; the module header, one class per file | [idioms.md](./reference/idioms.md) |
 
 The spec states only what `detach` guarantees (`twf spec statement-syntax`); the author maps it to these mechanics:
