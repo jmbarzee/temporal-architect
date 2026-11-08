@@ -67,7 +67,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        sdk: [go, typescript]
+        sdk: [go, python, typescript]
     steps:
       - uses: actions/checkout@v4
 
@@ -84,5 +84,11 @@ jobs:
           node-version: 24
           cache: npm
           cache-dependency-path: corpus/package-lock.json
+
+      - uses: astral-sh/setup-uv@v10.3.3
+        if: matrix.sdk == 'python'
+        with:
+          enable-cache: true
+          cache-dependency-glob: corpus/uv.lock
 
       - run: make corpus-${{ matrix.sdk }}

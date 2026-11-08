@@ -15,12 +15,15 @@ Small `.twf` designs, each authored into every supported SDK and built and teste
 corpus/
   go.mod                 one project per SDK, at the corpus root
   package.json
+  pyproject.toml
   <design>/
     <design>.twf         the design, with no @sdk
     go/                  its Go output, per skills/temporal-architect-author-go
       <design>.twf       the design plus only @sdk(go, …)
     typescript/          its TypeScript output
       <design>.twf       the design plus only @sdk(typescript, …)
+    python/              its Python output, as top-level modules
+      <design>.twf       the design plus only @sdk(python, …)
 ```
 
 Each SDK's copy of the design names only its own implementation, so no worker carries two SDKs. `check-corpus` checks every `.twf` file on its own (a directory check would load the copies together) and fails when a copy, its `@sdk` lines stripped, differs from the design.
@@ -32,6 +35,7 @@ Each output registers the `.twf` names, implements every workflow and activity, 
 ```shell
 make corpus-go          # check the corpus, then go vet and go test the Go outputs
 make corpus-typescript  # check the corpus, then npm ci, tsc and the node:test suites
+make corpus-python      # check the corpus, then uv sync, mypy and pytest in each design's python/
 ```
 
 ## Add an SDK
