@@ -1,0 +1,61 @@
+namespace Corpus.Concurrency;
+
+using Temporalio.Workflows;
+
+public record Report(long Count, bool Audited, string Status);
+
+[Workflow]
+public class Batch
+{
+    private static readonly ActivityOptions Options = new() { StartToCloseTimeout = TimeSpan.FromMinutes(1) };
+    private string status = "unacknowledged";
+    private int acks; // pending arrivals of Ack
+
+    [WorkflowSignal]
+    public Task AckAsync()
+    {
+        status = "acknowledged";
+        acks++;
+        return Task.CompletedTask;
+    }
+
+    [WorkflowRun]
+    public async Task<Report> RunAsync(List<string> items)
+    {
+        var count = Workflow.ExecuteActivityAsync(() => Activities.Count(items), Options);
+        var audited = Workflow.ExecuteChildWorkflowAsync((Audit wf) => wf.RunAsync(items));
+        await Workflow.WhenAllAsync(count, audited);
+
+        // detach: abandon the child, never request its cancellation, and wait only for its start.
+        await Workflow.StartChildWorkflowAsync(
+            (Archive wf) => wf.RunAsync(items),
+            new() { ParentClosePolicy = ParentClosePolicy.Abandon, CancellationType = ChildWorkflowCancellationType.Abandon });
+
+        // await one: one condition over every case, then the first listed that is ready wins,
+        // so Ack wins a tie with the timer. The losing timer is left to the run's end (spec 06).
+        var timer = Workflow.DelayAsync(TimeSpan.FromHours(1));
+        await Workflow.WaitConditionAsync(() => acks > 0 || timer.IsCompleted);
+        if (acks > 0)
+        {
+            acks--;
+        }
+
+        return new(await count, await audited, status);
+    }
+}
+
+[Workflow]
+public class Audit
+{
+    [WorkflowRun]
+    public Task<bool> RunAsync(List<string> items) => Task.FromResult(items.Count > 0);
+}
+
+[Workflow]
+public class Archive
+{
+    [WorkflowRun]
+    public Task RunAsync(List<string> items) =>
+        Workflow.ExecuteActivityAsync(
+            () => Activities.Store(items), new() { StartToCloseTimeout = TimeSpan.FromMinutes(1) });
+}

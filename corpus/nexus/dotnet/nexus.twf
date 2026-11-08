@@ -1,0 +1,42 @@
+namespace caller:
+	worker callerTypes
+		options:
+			task_queue: "caller"
+
+namespace greeter:
+	worker greeterTypes
+		options:
+			task_queue: "greeter"
+	nexus endpoint GreeterEndpoint
+		options:
+			task_queue: "greeter"
+			allowed_caller_namespaces: ["caller"]
+
+@sdk(dotnet, "Worker.cs")
+worker callerTypes:
+	workflow Caller
+
+@sdk(dotnet, "Worker.cs")
+worker greeterTypes:
+	workflow Greet
+	activity Compose
+	nexus service GreeterService
+
+nexus service GreeterService:
+	sync Hello(name: string) -> (string):
+		close complete("Hello, " + name)
+	async Greet workflow Greet
+
+workflow Greet(name: string) -> (string):
+	id_scheme: "greet-{name}"
+	activity Compose(name) -> greeting
+	close complete(greeting)
+
+activity Compose(name: string) -> (string):
+	return "Greetings, " + name
+
+workflow Caller(name: string, friend: string) -> (Greetings):
+	nexus GreeterEndpoint GreeterService.Hello(name) -> hello
+	nexus GreeterEndpoint GreeterService.Greet(name) -> greeting
+	detach nexus GreeterEndpoint GreeterService.Greet(friend)
+	close complete(Greetings{hello: hello, greeting: greeting})
