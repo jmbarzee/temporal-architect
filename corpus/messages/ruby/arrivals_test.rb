@@ -17,10 +17,10 @@ module Messages
         worker.run do
           h = env.client.start_workflow(workflow, *args, id: "arrivals-#{SecureRandom.uuid}", task_queue: TASK_QUEUE)
           env.sleep(60)
-          h.signal('X', '1')
+          h.signal(workflow.x, '1')
           env.sleep(60)
           begin
-            h.signal('X', '2')
+            h.signal(workflow.x, '2')
           rescue Temporalio::Error::RPCError
             nil # A workflow that needed only one X has completed by now.
           end
@@ -66,8 +66,8 @@ module Messages
       Temporalio::Testing::WorkflowEnvironment.start_time_skipping do |env|
         h = env.client.start_workflow(ArrivalsFixtures::RaceTakes, id: "race-#{SecureRandom.uuid}",
                                                                   task_queue: TASK_QUEUE)
-        h.signal('Y')
-        h.signal('X')
+        h.signal(ArrivalsFixtures::RaceTakes.y)
+        h.signal(ArrivalsFixtures::RaceTakes.x)
         worker = Temporalio::Worker.new(client: env.client, task_queue: TASK_QUEUE, workflows: ArrivalsFixtures::ALL)
         assert_equal ['Y', 'X lost'], worker.run { h.result }
       end

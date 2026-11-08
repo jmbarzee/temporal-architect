@@ -64,7 +64,7 @@ module Concurrency
       skipper = Thread.new { env.sleep(7200) }
       until_event(h, :EVENT_TYPE_TIMER_FIRED)
       begin
-        h.signal('Ack')
+        h.signal(workflow.ack)
       rescue Temporalio::Error::RPCError => e
         raise MissedSetup, "#{h.id}: Ack not sent: #{e.message}"
       end

@@ -83,7 +83,7 @@ module Messages
       def execute(timeout)
         took = []
         ticket = @xs.wait
-        timer_cancellation, cancel_timer = Temporalio::Cancellation.new
+        timer_cancellation, cancel_timer = Temporalio::Cancellation.new(Temporalio::Workflow.cancellation)
         timer = Temporalio::Workflow::Future.new { Temporalio::Workflow.sleep(timeout, cancellation: timer_cancellation) }
         Temporalio::Workflow.wait_condition { @xs.ready?(ticket) || timer.done? }
         if @xs.ready?(ticket)
