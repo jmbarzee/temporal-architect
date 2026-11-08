@@ -5,7 +5,7 @@ nexus service BillingService:
 	async ChargePayment workflow BillingChargeWorkflow
 	sync RefundPayment(req: RefundRequest) -> (RefundResult):
 		signal BillingChargeWorkflow.Refund(req)
-			id: req.chargeId
+			id: "charge-{req.chargeId}"
 		close complete(RefundResult{status: "requested"})
 ```
 
@@ -38,7 +38,7 @@ public class BillingService
         WorkflowRunOperationHandler.FromHandleFactory(
             (WorkflowRunOperationContext ctx, PaymentRequest input) =>
                 ctx.StartWorkflowAsync(
-                    (BillingChargeWorkflow wf) => wf.RunAsync(input), Billing.BillingChargeWorkflowStartOptions(input)));
+                    (BillingChargeWorkflow wf) => wf.RunAsync(input), Billing.BillingChargeWorkflowStartOptions(input.ChargeId)));
 
     // sync: the body runs in the handler, with a Temporal client, not a workflow
     [NexusOperationHandler]
@@ -46,7 +46,7 @@ public class BillingService
         OperationHandler.Sync<RefundRequest, RefundResult>(async (ctx, req) =>
         {
             await NexusOperationExecutionContext.Current.TemporalClient
-                .GetWorkflowHandle<BillingChargeWorkflow>(req.ChargeId)
+                .GetWorkflowHandle<BillingChargeWorkflow>(Billing.BillingChargeWorkflowId(req.ChargeId))
                 .SignalAsync(wf => wf.RefundAsync(req));
             return new("requested");
         });
@@ -75,8 +75,10 @@ The backing workflow's one parameter is the operation's input.
 |---|---|
 | `workflow Name(args) [-> r]` (a client start) | `var handle = await client.StartWorkflowAsync((Name wf) => wf.RunAsync(...), NameStartOptions(...))`, then `var r = await handle.GetResultAsync()` ([workflow-call.md](./workflow-call.md)) |
 | `detach workflow Name(args)` | the same `StartWorkflowAsync`; never `GetResultAsync()` ([detach.md](./detach.md)) |
-| `signal Type.Name(args)` + `id:` | `await client.GetWorkflowHandle<Type>(workflowId, runId).SignalAsync(wf => wf.NameAsync(...))` (`Client/TemporalClient.Workflow.cs:68`); args as in [signal-send.md](./signal-send.md) |
+| `signal Type.Name(args)` + `id:` | `await client.GetWorkflowHandle<Type>(workflowId, runId).SignalAsync(wf => wf.NameAsync(...))` (`Client/TemporalClient.Workflow.cs:68`); `workflowId` and args as in [signal-send.md](./signal-send.md) |
 | `close complete(r)` / `close fail(e)` | `return r` / `throw` the error |
 | `if` / `for` / `switch` / `break` / `continue`, raw lines (`x = expr`) | C# equivalents ([control-flow.md](./control-flow.md)) |
+
+`id:` is the whole workflow ID (`twf spec cross-workflow-signals`), so `RefundPayment` signals the workflow `ChargePayment` started by calling the ID function its start options use, `Billing.BillingChargeWorkflowId`.
 
 `TemporalOperationHandler`, which the docs' .NET Nexus guide leads with, is experimental (`Nexus/TemporalOperationHandler.cs:15`) and not used: `OperationHandler.Sync` and `WorkflowRunOperationHandler` cover both kinds.
