@@ -8,7 +8,7 @@ using Temporalio.Workflows;
 /// because the workflow resolves only the first satisfied WaitConditionAsync, in the order the
 /// waits began, and lets its continuation run before checking the next. So no two waiters see
 /// one arrival, and a plain queue needs no tickets (Temporalio 1.21.1 WorkflowInstance.cs:636
-/// and 992-1010, under the modern event loop every new workflow runs).
+/// and 963-1010, under the modern event loop every new workflow runs).
 /// </summary>
 /// <typeparam name="T">The arrival's parameters.</typeparam>
 public sealed class Arrivals<T>
