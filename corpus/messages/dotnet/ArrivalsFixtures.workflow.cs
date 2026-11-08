@@ -89,9 +89,18 @@ public class AwaitOneX : WithX
     public async Task<List<string>> RunAsync(TimeSpan timeout)
     {
         var took = new List<string>();
-        var timer = Workflow.DelayAsync(timeout);
+        using var timerCancel = CancellationTokenSource.CreateLinkedTokenSource(Workflow.CancellationToken);
+        var timer = Workflow.DelayAsync(timeout, timerCancel.Token);
         await Workflow.WaitConditionAsync(() => Xs.Ready || timer.IsCompleted);
-        took.Add(Xs.Ready ? "case " + Xs.Claim() : "timer"); // first listed wins
+        if (Xs.Ready) // first listed wins
+        {
+            took.Add("case " + Xs.Claim());
+            timerCancel.Cancel();
+        }
+        else
+        {
+            took.Add("timer");
+        }
         took.Add("then " + await Xs.TakeAsync());
         return took;
     }
@@ -105,9 +114,15 @@ public class PromiseBeforeAwaitOne : WithX
     public async Task<List<string>> RunAsync()
     {
         var p = Xs.TakeAsync();
-        var timer = Workflow.DelayAsync(TimeSpan.FromHours(1));
+        using var timerCancel = CancellationTokenSource.CreateLinkedTokenSource(Workflow.CancellationToken);
+        var timer = Workflow.DelayAsync(TimeSpan.FromHours(1), timerCancel.Token);
         await Workflow.WaitConditionAsync(() => Xs.Ready || timer.IsCompleted);
-        var won = Xs.Ready ? "case " + Xs.Claim() : "timer";
+        var won = "timer";
+        if (Xs.Ready)
+        {
+            won = "case " + Xs.Claim();
+            timerCancel.Cancel();
+        }
         return new() { "promise " + await p, won };
     }
 }
@@ -122,10 +137,16 @@ public class AwaitOneXTie : WithX
     [WorkflowRun]
     public async Task<List<string>> RunAsync(List<string> order)
     {
-        var timer = Workflow.DelayAsync(TimeSpan.FromHours(1));
+        using var timerCancel = CancellationTokenSource.CreateLinkedTokenSource(Workflow.CancellationToken);
+        var timer = Workflow.DelayAsync(TimeSpan.FromHours(1), timerCancel.Token);
         bool Ready(string c) => c == "X" ? Xs.Ready : timer.IsCompleted;
         await Workflow.WaitConditionAsync(() => order.Any(Ready));
-        var won = order.First(Ready) == "X" ? "case " + Xs.Claim() : "timer";
+        var won = "timer";
+        if (order.First(Ready) == "X")
+        {
+            won = "case " + Xs.Claim();
+            timerCancel.Cancel();
+        }
         return new() { won, Xs.Ready ? "pending " + Xs.Claim() : "none pending" };
     }
 }

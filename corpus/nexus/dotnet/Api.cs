@@ -1,6 +1,7 @@
 namespace Corpus.Nexus;
 
 using NexusRpc;
+using Temporalio.Client;
 
 /// <summary>The GreeterService contract. NexusRpc trims the interface's leading I, and an operation is named for its method.</summary>
 [NexusService]
@@ -20,4 +21,7 @@ public static class Greeter
 
     /// <summary>Greet's id_scheme, used by every start.</summary>
     public static string GreetId(string name) => $"greet-{name}";
+
+    /// <summary>Greet's start options, for every start.</summary>
+    public static WorkflowOptions GreetStartOptions(string name) => new(GreetId(name), TaskQueue);
 }
