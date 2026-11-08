@@ -24,14 +24,14 @@ A `.twf` name is the registered name, byte for byte; never rename the `.twf` to 
 | Construct | Perl default | Set the `.twf` name by |
 |---|---|---|
 | workflow | a `:Run` method named `run` → the package basename; any other `:Run` method → the method name (`Workflow/Attributes.pm:111-112,142-145`) | naming the package as the `.twf` does, else `:Run('Name')` |
-| activity | the `:Defn` method name as written (`Activity/Attributes.pm:23-24,62`) | `:Defn('Name')` |
+| activity | the `:Defn` method name as written; a method named `run` → the package basename (`Activity/Attributes.pm:23-24,62`) | `:Defn('Name')` |
 | signal | the `:Signal` method name as written (`Workflow/Attributes.pm:29,86`) | `:Signal('Name')` |
 | query | the `:Query` method name as written (`Workflow/Attributes.pm:29,86`) | `:Query('Name')` |
 | update | the `:Update` method name as written (`Workflow/Attributes.pm:29,86`) | `:Update('Name')` |
 | Nexus service | the class basename (`Nexus/Definition.pm:94-101`) | naming the class as the `.twf` does, else `:NexusService('Name')` on one method |
 | Nexus operation | the method name as written (`Nexus/Definition.pm:81-83`) | `:SyncOperation('Name')` / `:WorkflowRunOperation('Name')` |
 
-Name every `.twf` name explicitly unless the default already equals it. Perl methods are snake_case, so a handler, activity or operation almost always takes its name; a missing one registers the method name silently.
+Name every `.twf` name explicitly unless the default already equals it. Perl methods are snake_case, so a handler, activity or operation almost always needs the explicit name; a missing one registers the method name silently.
 
 Types map by Perl's own conventions. Read [cross-sdk.md, only where `twf check` reports `CROSS_SDK_CALL`](../temporal-architect/reference/cross-sdk.md).
 
@@ -84,7 +84,7 @@ Then present the code for review.
 From the worker's Perl directory, with the `temporal` CLI on `PATH` for the tests' dev server:
 
 ```sh
-printf '%s\n' *.pm | xargs -n1 perl -I. -c && prove -I. t
+find . -name '*.pm' -not -path './t/*' | xargs -n1 perl -I. -c && prove -I. t
 ```
 
 ## Output conventions
