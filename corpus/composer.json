@@ -1,0 +1,28 @@
+{
+    "name": "temporal-architect/corpus",
+    "description": "The corpus designs authored into PHP",
+    "type": "project",
+    "license": "MIT",
+    "require": {
+        "php": ">=8.2",
+        "ext-grpc": "*",
+        "temporal/sdk": "2.20.*"
+    },
+    "require-dev": {
+        "internal/dload": "^1.19",
+        "phpstan/phpstan": "^2.1",
+        "phpunit/phpunit": "^11.5"
+    },
+    "autoload": {
+        "psr-4": {
+            "Corpus\\Messages\\": "messages/php/",
+            "Corpus\\Concurrency\\": "concurrency/php/",
+            "Corpus\\ContinueAsNew\\": "continue-as-new/php/"
+        }
+    },
+    "config": {
+        "sort-packages": true,
+        "vendor-dir": "php/vendor",
+        "allow-plugins": {}
+    }
+}

@@ -6,10 +6,12 @@ require 'temporalio/worker'
 require_relative 'workflows'
 
 module Messages
+  APPROVALS_TASK_QUEUE = 'approvals'
+
   # The approvalTypes worker: its task queue and registrations, shared by the
   # worker process and the tests.
   def self.approval_types(client)
-    Temporalio::Worker.new(client:, task_queue: 'approvals', workflows: [Approval])
+    Temporalio::Worker.new(client:, task_queue: APPROVALS_TASK_QUEUE, workflows: [Approval])
   end
 end
 
