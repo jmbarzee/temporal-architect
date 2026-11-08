@@ -56,5 +56,5 @@ Where files land and how they are named.
 
 The spec states only what `detach` guarantees (`twf spec statement-syntax`); the author maps it to these mechanics, each cited from the SDK:
 
-- **`detach workflow`**: a child start takes parent-close policy `ABANDON` and waits for the child to start, so a failed start fails the caller. A client start just starts. Neither gets the result.
+- **`detach workflow`**: a child start takes parent-close policy `ABANDON`, and cancellation does not reach the child. It waits for the child to start, so a failed start fails the caller. A client start just starts. Neither gets the result.
 - **`detach nexus`**: cancellation type `ABANDON`; wait for the operation to start (a sync operation starts by completing) and never get the result. After the caller closes, the operation's completion callback to it fails and is dropped.
