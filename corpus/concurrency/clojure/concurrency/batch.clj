@@ -27,9 +27,7 @@
   nil)
 
 (defn detach-workflow!
-  "detach workflow: abandon the child at parent close, never request its cancellation, and wait
-  only for its start (a failed start throws here). temporal.workflow/invoke returns only the
-  result promise, so the start is reached through the untyped child stub."
+  "Starts workflow-type, abandoned on the caller's close and cancellation, and waits only for its start."
   [^String workflow-type params]
   (let [^ChildWorkflowStub stub
         (Workflow/newUntypedChildWorkflowStub
@@ -39,6 +37,7 @@
              (.setCancellationType ChildWorkflowCancellationType/ABANDON)
              (.build)))]
     (.executeAsync stub Object (into-array Object [params]))
+    ;; Resolves once the child has started; a failed start throws here.
     (.get ^Promise (.getExecution stub))))
 
 (defn inline-timer

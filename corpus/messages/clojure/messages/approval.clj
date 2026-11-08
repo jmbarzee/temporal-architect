@@ -24,7 +24,7 @@
        (case update-type
          :Review (do (reset! status "reviewed") (arr/add! reviews args) @status)))
      {:validator (fn [update-type _]
-                   (when-not (= :Review update-type)
+                   (when-not (#{:Review} update-type)
                      (throw (IllegalArgumentException. (str "unknown update " (name update-type))))))})
     (w/register-query-handler!
      (fn [query-type _]
