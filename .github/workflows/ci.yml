@@ -67,7 +67,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        sdk: [go, python, typescript, dotnet, java]
+        sdk: [go, python, typescript, dotnet, java, ruby]
     steps:
       - uses: actions/checkout@v4
 
@@ -105,5 +105,11 @@ jobs:
           java-version: 21
           cache: maven
           cache-dependency-path: corpus/pom.xml
+
+      - uses: ruby/setup-ruby@v1.338.0
+        if: matrix.sdk == 'ruby'
+        with:
+          working-directory: corpus
+          bundler-cache: true
 
       - run: make corpus-${{ matrix.sdk }}
