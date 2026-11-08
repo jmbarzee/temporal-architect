@@ -5,12 +5,16 @@
 
 use std::{future::Future, time::Duration};
 
-use temporalio_client::{Client, ClientOptions, ConnectionOptions, Url, WorkflowFetchHistoryOptions};
+use temporalio_client::{
+    Client, ClientOptions, ConnectionOptions, Url, WorkflowFetchHistoryOptions,
+};
 use temporalio_common::protos::temporal::api::{
     enums::v1::EventType, history::v1::HistoryEvent, testservice::v1::SleepRequest,
 };
 use temporalio_sdk::{Worker, WorkerOptions};
-use temporalio_sdk_core::ephemeral_server::{EphemeralServer, TestServerConfig, default_cached_download};
+use temporalio_sdk_core::ephemeral_server::{
+    EphemeralServer, TestServerConfig, default_cached_download,
+};
 
 pub use temporalio_sdk::Runtime;
 
@@ -46,14 +50,19 @@ impl Env {
             .start_server_with_output(std::process::Stdio::null(), std::process::Stdio::null())
             .await
             .expect("test server starts");
-        let conn = ConnectionOptions::new(Url::parse(&format!("http://{}", server.target)).unwrap())
-            .identity("corpus".to_owned())
-            .build();
+        let conn =
+            ConnectionOptions::new(Url::parse(&format!("http://{}", server.target)).unwrap())
+                .identity("corpus".to_owned())
+                .build();
         let client = Client::connect(conn, ClientOptions::new("default").build())
             .await
             .expect("client connects");
         let runtime = Runtime::from_current_tokio(Default::default()).expect("runtime");
-        Env { server, client, runtime }
+        Env {
+            server,
+            client,
+            runtime,
+        }
     }
 
     /// Starts a worker on its own local task: `Worker::run` is not `Send` (workflow state is
@@ -64,7 +73,10 @@ impl Env {
         let done = tokio::task::spawn_local(async move {
             worker.run().await.expect("worker runs");
         });
-        RunningWorker { shutdown: Box::new(shutdown), done }
+        RunningWorker {
+            shutdown: Box::new(shutdown),
+            done,
+        }
     }
 
     /// Skips `d` of test-server time, as other SDKs' `env.sleep`.
@@ -84,9 +96,13 @@ impl Env {
     /// Runs `f` (usually a result wait) with time skipping unlocked, as other SDKs' result waits do.
     pub async fn skipping<T>(&self, f: impl Future<Output = T>) -> T {
         let mut ts = self.client.connection().test_service();
-        ts.unlock_time_skipping(tonic::Request::new(Default::default())).await.expect("unlock");
+        ts.unlock_time_skipping(tonic::Request::new(Default::default()))
+            .await
+            .expect("unlock");
         let out = f.await;
-        ts.lock_time_skipping(tonic::Request::new(Default::default())).await.expect("lock");
+        ts.lock_time_skipping(tonic::Request::new(Default::default()))
+            .await
+            .expect("lock");
         out
     }
 
@@ -101,7 +117,10 @@ impl Env {
     }
 
     pub async fn has(&self, workflow_id: &str, t: EventType) -> bool {
-        self.events(workflow_id).await.iter().any(|e| e.event_type() == t)
+        self.events(workflow_id)
+            .await
+            .iter()
+            .any(|e| e.event_type() == t)
     }
 
     /// Whether an event of the type reaches history within 10s of real time.
@@ -125,7 +144,9 @@ async fn skip(client: &Client, d: Duration) -> Result<(), tonic::Status> {
     client
         .connection()
         .test_service()
-        .unlock_time_skipping_with_sleep(tonic::Request::new(SleepRequest { duration: Some(d.try_into().unwrap()) }))
+        .unlock_time_skipping_with_sleep(tonic::Request::new(SleepRequest {
+            duration: Some(d.try_into().unwrap()),
+        }))
         .await
         .map(drop)
 }

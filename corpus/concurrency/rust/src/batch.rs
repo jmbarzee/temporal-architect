@@ -55,7 +55,11 @@ pub struct Batch {
 impl Batch {
     #[init]
     pub fn new(_ctx: &WorkflowContextView, items: Vec<String>) -> Self {
-        Self { items, status: "unacknowledged".into(), acks: 0 }
+        Self {
+            items,
+            status: "unacknowledged".into(),
+            acks: 0,
+        }
     }
 
     #[signal(name = "Ack")]
@@ -73,7 +77,9 @@ impl Batch {
         let (count, audited) = join!(
             ctx.execute_activity(BatchActivities::count, items.clone(), activity_options()),
             async {
-                let audit = ctx.start_child_workflow(Audit::run, items.clone(), child_options(ctx)).await?;
+                let audit = ctx
+                    .start_child_workflow(Audit::run, items.clone(), child_options(ctx))
+                    .await?;
                 Ok::<_, temporalio_sdk::WorkflowTermination>(audit.result().await?)
             },
         );
@@ -84,7 +90,8 @@ impl Batch {
         let mut detached = child_options(ctx);
         detached.parent_close_policy = ParentClosePolicy::Abandon;
         detached.cancel_type = ChildWorkflowCancellationType::Abandon;
-        ctx.start_child_workflow(Archive::run, items, detached).await?;
+        ctx.start_child_workflow(Archive::run, items, detached)
+            .await?;
 
         // await one: select! polls the cases in listed order, so Ack wins a tie with the timer.
         // A dropped timer is not cancelled, so the losing inline timer is cancelled by hand
@@ -98,7 +105,11 @@ impl Batch {
             _ = timer => {}
         }
 
-        Ok(Report { count, audited, status: ctx.state(|s| s.status.clone()) })
+        Ok(Report {
+            count,
+            audited,
+            status: ctx.state(|s| s.status.clone()),
+        })
     }
 }
 
@@ -122,7 +133,8 @@ pub struct Archive;
 impl Archive {
     #[run]
     pub async fn run(ctx: &mut WorkflowContext<Self>, items: Vec<String>) -> WorkflowResult<()> {
-        ctx.execute_activity(BatchActivities::store, items, activity_options()).await?;
+        ctx.execute_activity(BatchActivities::store, items, activity_options())
+            .await?;
         Ok(())
     }
 }

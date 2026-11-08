@@ -24,7 +24,10 @@ pub struct Counter;
 #[workflow_methods]
 impl Counter {
     #[run]
-    pub async fn run(ctx: &mut WorkflowContext<Self>, args: MultiArgs2<i64, i64>) -> WorkflowResult<i64> {
+    pub async fn run(
+        ctx: &mut WorkflowContext<Self>,
+        args: MultiArgs2<i64, i64>,
+    ) -> WorkflowResult<i64> {
         let MultiArgs2(count, limit) = args;
         ctx.timer(Duration::from_secs(60)).await;
         let next = ctx

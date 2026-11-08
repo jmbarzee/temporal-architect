@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{io::Write, time::Duration};
 
 use corpus_concurrency::{
     BATCHES_TASK_QUEUE,
@@ -18,14 +18,33 @@ async fn batch_acknowledged() {
         let w = env.worker(batch_types().unwrap());
         let h = env
             .client
-            .start_workflow(Batch::run, vec!["a".into(), "b".into()], WorkflowStartOptions::new(BATCHES_TASK_QUEUE, "batch-1").build())
+            .start_workflow(
+                Batch::run,
+                vec!["a".into(), "b".into()],
+                WorkflowStartOptions::new(BATCHES_TASK_QUEUE, "batch-1").build(),
+            )
             .await
             .unwrap();
         env.sleep(Duration::from_secs(60)).await;
-        h.signal(Batch::ack, (), WorkflowSignalOptions::default()).await.unwrap();
-        let got = env.skipping(h.get_result(WorkflowGetResultOptions::default())).await.unwrap();
-        assert_eq!(got, Report { count: 2, audited: true, status: "acknowledged".into() });
-        assert!(env.has("batch-1", EventType::TimerCanceled).await, "the losing timer was not cancelled");
+        h.signal(Batch::ack, (), WorkflowSignalOptions::default())
+            .await
+            .unwrap();
+        let got = env
+            .skipping(h.get_result(WorkflowGetResultOptions::default()))
+            .await
+            .unwrap();
+        assert_eq!(
+            got,
+            Report {
+                count: 2,
+                audited: true,
+                status: "acknowledged".into()
+            }
+        );
+        assert!(
+            env.has("batch-1", EventType::TimerCanceled).await,
+            "the losing timer was not cancelled"
+        );
         w.stop().await;
         env.shutdown().await;
     })
@@ -39,11 +58,25 @@ async fn batch_times_out() {
         let w = env.worker(batch_types().unwrap());
         let h = env
             .client
-            .start_workflow(Batch::run, vec!["a".into()], WorkflowStartOptions::new(BATCHES_TASK_QUEUE, "batch-2").build())
+            .start_workflow(
+                Batch::run,
+                vec!["a".into()],
+                WorkflowStartOptions::new(BATCHES_TASK_QUEUE, "batch-2").build(),
+            )
             .await
             .unwrap();
-        let got = env.skipping(h.get_result(WorkflowGetResultOptions::default())).await.unwrap();
-        assert_eq!(got, Report { count: 1, audited: true, status: "unacknowledged".into() });
+        let got = env
+            .skipping(h.get_result(WorkflowGetResultOptions::default()))
+            .await
+            .unwrap();
+        assert_eq!(
+            got,
+            Report {
+                count: 1,
+                audited: true,
+                status: "unacknowledged".into()
+            }
+        );
         assert!(!env.has("batch-2", EventType::TimerCanceled).await);
         w.stop().await;
         env.shutdown().await;
@@ -55,18 +88,39 @@ async fn batch_times_out() {
 async fn a_bound_promise_survives_the_rounds_it_loses() {
     local(async {
         let env = Env::start().await;
-        let w = env.worker(WorkerOptions::new("bound").register_workflow::<BoundDeadline>().unwrap().build());
+        let w = env.worker(
+            WorkerOptions::new("bound")
+                .register_workflow::<BoundDeadline>()
+                .unwrap()
+                .build(),
+        );
         let h = env
             .client
-            .start_workflow(BoundDeadline::run, (), WorkflowStartOptions::new("bound", "bound-1").build())
+            .start_workflow(
+                BoundDeadline::run,
+                (),
+                WorkflowStartOptions::new("bound", "bound-1").build(),
+            )
             .await
             .unwrap();
-        h.signal(BoundDeadline::ack, (), WorkflowSignalOptions::default()).await.unwrap();
+        h.signal(BoundDeadline::ack, (), WorkflowSignalOptions::default())
+            .await
+            .unwrap();
         env.sleep(Duration::from_secs(3600)).await;
-        h.signal(BoundDeadline::ack, (), WorkflowSignalOptions::default()).await.unwrap();
-        assert_eq!(env.skipping(h.get_result(WorkflowGetResultOptions::default())).await.unwrap(), 2);
+        h.signal(BoundDeadline::ack, (), WorkflowSignalOptions::default())
+            .await
+            .unwrap();
+        assert_eq!(
+            env.skipping(h.get_result(WorkflowGetResultOptions::default()))
+                .await
+                .unwrap(),
+            2
+        );
         assert!(!env.has("bound-1", EventType::TimerCanceled).await);
-        assert!(env.has("bound-1", EventType::TimerFired).await, "the deadline never fired");
+        assert!(
+            env.has("bound-1", EventType::TimerFired).await,
+            "the deadline never fired"
+        );
         w.stop().await;
         env.shutdown().await;
     })
@@ -112,17 +166,27 @@ async fn tie(env: &Env, order: &[&str], attempt: u32) -> Option<String> {
         skip.abort();
         return None;
     }
-    h.signal(AwaitOneTie::ack, (), WorkflowSignalOptions::default()).await.unwrap();
+    h.signal(AwaitOneTie::ack, (), WorkflowSignalOptions::default())
+        .await
+        .unwrap();
     let second = tie_worker(env);
-    let got = env.skipping(h.get_result(WorkflowGetResultOptions::default())).await.unwrap();
+    let got = env
+        .skipping(h.get_result(WorkflowGetResultOptions::default()))
+        .await
+        .unwrap();
     second.stop().await;
     skip.abort();
 
     // A real tie: no workflow task started between the timer firing and Ack.
     let evs = env.events(&id).await;
     let at = |t: EventType| evs.iter().position(|e| e.event_type() == t).unwrap();
-    let (fired, signaled) = (at(EventType::TimerFired), at(EventType::WorkflowExecutionSignaled));
-    let one_task = evs[fired..signaled].iter().all(|e| e.event_type() != EventType::WorkflowTaskStarted);
+    let (fired, signaled) = (
+        at(EventType::TimerFired),
+        at(EventType::WorkflowExecutionSignaled),
+    );
+    let one_task = evs[fired..signaled]
+        .iter()
+        .all(|e| e.event_type() != EventType::WorkflowTaskStarted);
     one_task.then_some(got)
 }
 
@@ -136,24 +200,44 @@ async fn first_listed_wins(env: &Env, order: &[&str]) {
             return;
         }
     }
-    eprintln!("await one {order:?}: no one-task tie in {ATTEMPTS} attempts; behaviour not checked");
+    // Written to stderr directly: libtest captures eprintln! of a passing test, hiding the miss.
+    let _ = writeln!(
+        std::io::stderr(),
+        "await one {order:?}: no one-task tie in {ATTEMPTS} attempts; behaviour not checked"
+    );
 }
 
 #[tokio::test(flavor = "multi_thread")]
 async fn a_dropped_timer_is_not_cancelled() {
     local(async {
         let env = Env::start().await;
-        let w = env.worker(WorkerOptions::new("dropped").register_workflow::<DroppedTimer>().unwrap().build());
+        let w = env.worker(
+            WorkerOptions::new("dropped")
+                .register_workflow::<DroppedTimer>()
+                .unwrap()
+                .build(),
+        );
         let h = env
             .client
-            .start_workflow(DroppedTimer::run, (), WorkflowStartOptions::new("dropped", "dropped-1").build())
+            .start_workflow(
+                DroppedTimer::run,
+                (),
+                WorkflowStartOptions::new("dropped", "dropped-1").build(),
+            )
             .await
             .unwrap();
         env.sleep(Duration::from_secs(60)).await;
-        h.signal(DroppedTimer::ack, (), WorkflowSignalOptions::default()).await.unwrap();
-        env.skipping(h.get_result(WorkflowGetResultOptions::default())).await.unwrap();
+        h.signal(DroppedTimer::ack, (), WorkflowSignalOptions::default())
+            .await
+            .unwrap();
+        env.skipping(h.get_result(WorkflowGetResultOptions::default()))
+            .await
+            .unwrap();
         assert!(env.has("dropped-1", EventType::TimerStarted).await);
-        assert!(!env.has("dropped-1", EventType::TimerCanceled).await, "dropping cancelled the timer");
+        assert!(
+            !env.has("dropped-1", EventType::TimerCanceled).await,
+            "dropping cancelled the timer"
+        );
         w.stop().await;
         env.shutdown().await;
     })

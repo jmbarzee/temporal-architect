@@ -19,7 +19,11 @@ pub struct Arrivals<T> {
 
 impl<T> Default for Arrivals<T> {
     fn default() -> Self {
-        Self { pending: VecDeque::new(), waiters: VecDeque::new(), next: 0 }
+        Self {
+            pending: VecDeque::new(),
+            waiters: VecDeque::new(),
+            next: 0,
+        }
     }
 }
 
@@ -71,7 +75,10 @@ impl<W, T> Copy for Of<W, T> {}
 #[macro_export]
 macro_rules! of {
     ($field:ident) => {
-        $crate::arrivals::Of { get: |w| &w.$field, get_mut: |w| &mut w.$field }
+        $crate::arrivals::Of {
+            get: |w| &w.$field,
+            get_mut: |w| &mut w.$field,
+        }
     };
 }
 
@@ -98,9 +105,16 @@ pub fn take<W: 'static, T: 'static>(
     of: Of<W, T>,
 ) -> impl Future<Output = Result<T, WorkflowCancellationError>> + use<W, T> {
     let ticket = ctx.state_mut(|w| (of.get_mut)(w).begin());
-    let leave = Leave { ctx: ctx.clone(), of, ticket };
+    let leave = Leave {
+        ctx: ctx.clone(),
+        of,
+        ticket,
+    };
     async move {
-        leave.ctx.wait_condition(|w| (of.get)(w).ready(ticket)).await?;
+        leave
+            .ctx
+            .wait_condition(|w| (of.get)(w).ready(ticket))
+            .await?;
         Ok(leave.ctx.state_mut(|w| (of.get_mut)(w).claim(ticket)))
     }
 }

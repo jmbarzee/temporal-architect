@@ -52,7 +52,10 @@ async fn stub_handler(env: &Env, seen: Arc<Mutex<Vec<(String, String)>>>) {
         let Ok(poll) = svc
             .poll_nexus_task_queue(tonic::Request::new(PollNexusTaskQueueRequest {
                 namespace: "default".into(),
-                task_queue: Some(TaskQueue { name: GREETER_TASK_QUEUE.into(), ..Default::default() }),
+                task_queue: Some(TaskQueue {
+                    name: GREETER_TASK_QUEUE.into(),
+                    ..Default::default()
+                }),
                 identity: "stub".into(),
                 ..Default::default()
             }))
@@ -61,16 +64,25 @@ async fn stub_handler(env: &Env, seen: Arc<Mutex<Vec<(String, String)>>>) {
             continue;
         };
         let poll = poll.into_inner();
-        let Some(request::Variant::StartOperation(start)) = poll.request.and_then(|r| r.variant) else {
+        let Some(request::Variant::StartOperation(start)) = poll.request.and_then(|r| r.variant)
+        else {
             continue;
         };
         let name: String = RawValue::new(vec![start.payload.unwrap()]).to_value(&pc);
-        seen.lock().unwrap().push((start.operation.clone(), name.clone()));
+        seen.lock()
+            .unwrap()
+            .push((start.operation.clone(), name.clone()));
         let variant = match start.operation.as_str() {
-            "Hello" => start_operation_response::Variant::SyncSuccess(start_operation_response::Sync {
-                payload: Some(RawValue::from_value(&format!("Hello, {name}"), &pc).payloads.remove(0)),
-                links: vec![],
-            }),
+            "Hello" => {
+                start_operation_response::Variant::SyncSuccess(start_operation_response::Sync {
+                    payload: Some(
+                        RawValue::from_value(&format!("Hello, {name}"), &pc)
+                            .payloads
+                            .remove(0),
+                    ),
+                    links: vec![],
+                })
+            }
             _ => {
                 if name != "Grace" {
                     let callback = Callback {
@@ -102,7 +114,9 @@ async fn stub_handler(env: &Env, seen: Arc<Mutex<Vec<(String, String)>>>) {
             identity: "stub".into(),
             task_token: poll.task_token,
             response: Some(Response {
-                variant: Some(response::Variant::StartOperation(StartOperationResponse { variant: Some(variant) })),
+                variant: Some(response::Variant::StartOperation(StartOperationResponse {
+                    variant: Some(variant),
+                })),
             }),
             ..Default::default()
         }))
@@ -138,7 +152,12 @@ async fn caller_sync_and_async_and_a_detached_greet_it_never_waits_for() {
         create_endpoint(&env).await;
         let seen = Arc::new(Mutex::new(Vec::new()));
         let caller = env.worker(caller_types().unwrap());
-        let greeter = env.worker(WorkerOptions::new(GREETER_TASK_QUEUE).register_workflow::<Greet>().unwrap().build());
+        let greeter = env.worker(
+            WorkerOptions::new(GREETER_TASK_QUEUE)
+                .register_workflow::<Greet>()
+                .unwrap()
+                .build(),
+        );
         let h = env
             .client
             .start_workflow(
@@ -152,7 +171,13 @@ async fn caller_sync_and_async_and_a_detached_greet_it_never_waits_for() {
             r = env.skipping(h.get_result(WorkflowGetResultOptions::default())) => r.unwrap(),
             _ = stub_handler(&env, seen.clone()) => unreachable!(),
         };
-        assert_eq!(got, Greetings { hello: "Hello, Ada".into(), greeting: "Greetings, Ada".into() });
+        assert_eq!(
+            got,
+            Greetings {
+                hello: "Hello, Ada".into(),
+                greeting: "Greetings, Ada".into()
+            }
+        );
         assert_eq!(
             *seen.lock().unwrap(),
             vec![

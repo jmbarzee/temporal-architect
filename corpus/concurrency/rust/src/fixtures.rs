@@ -3,9 +3,7 @@
 use std::time::Duration;
 
 use temporalio_macros::{workflow, workflow_methods};
-use temporalio_sdk::{
-    SyncWorkflowContext, WorkflowContext, WorkflowResult, workflows::select,
-};
+use temporalio_sdk::{SyncWorkflowContext, WorkflowContext, WorkflowResult, workflows::select};
 
 /// Batch's `await one` over Ack and timer(1h), the cases listed in `order`; returns the winner.
 #[workflow]
@@ -22,7 +20,10 @@ impl AwaitOneTie {
     }
 
     #[run]
-    pub async fn run(ctx: &mut WorkflowContext<Self>, order: Vec<String>) -> WorkflowResult<String> {
+    pub async fn run(
+        ctx: &mut WorkflowContext<Self>,
+        order: Vec<String>,
+    ) -> WorkflowResult<String> {
         let ctx = &*ctx;
         let mut timer = ctx.timer(Duration::from_secs(3600));
         let mut ack = ctx.wait_condition(|s| s.acks > 0);
@@ -98,4 +99,3 @@ impl DroppedTimer {
         Ok(())
     }
 }
-

@@ -9,5 +9,7 @@ pub const CALLER_TASK_QUEUE: &str = "caller";
 
 /// The `callerTypes` worker's registrations, shared by the worker binary and the tests.
 pub fn caller_types() -> Result<WorkerOptions, WorkflowRegistrationError> {
-    Ok(WorkerOptions::new(CALLER_TASK_QUEUE).register_workflow::<caller::Caller>()?.build())
+    Ok(WorkerOptions::new(CALLER_TASK_QUEUE)
+        .register_workflow::<caller::Caller>()?
+        .build())
 }

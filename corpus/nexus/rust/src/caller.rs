@@ -30,7 +30,11 @@ fn op(pc: &PayloadConverter, operation: &str, input: &String) -> NexusOperationO
 }
 
 /// `nexus GreeterEndpoint GreeterService.<operation>(input) -> result`
-async fn call<W>(ctx: &WorkflowContext<W>, operation: &str, input: &String) -> WorkflowResult<String> {
+async fn call<W>(
+    ctx: &WorkflowContext<W>,
+    operation: &str,
+    input: &String,
+) -> WorkflowResult<String> {
     let pc = ctx.payload_converter().clone();
     let started = ctx
         .start_nexus_operation(op(&pc, operation, input))
@@ -50,7 +54,10 @@ pub struct Caller;
 impl Caller {
     /// Two `.twf` params, two payloads: `MultiArgs2` is the SDK's positional form.
     #[run]
-    pub async fn run(ctx: &mut WorkflowContext<Self>, args: MultiArgs2<String, String>) -> WorkflowResult<Greetings> {
+    pub async fn run(
+        ctx: &mut WorkflowContext<Self>,
+        args: MultiArgs2<String, String>,
+    ) -> WorkflowResult<Greetings> {
         let MultiArgs2(name, friend) = args;
         let hello = call(ctx, "Hello", &name).await?;
         let greeting = call(ctx, "Greet", &name).await?;
@@ -58,7 +65,9 @@ impl Caller {
         let pc = ctx.payload_converter().clone();
         let mut detached = op(&pc, "Greet", &friend);
         detached.cancellation_type = Some(NexusOperationCancellationType::Abandon);
-        ctx.start_nexus_operation(detached).await.map_err(|f| ApplicationFailure::new(f.message))?;
+        ctx.start_nexus_operation(detached)
+            .await
+            .map_err(|f| ApplicationFailure::new(f.message))?;
         Ok(Greetings { hello, greeting })
     }
 }

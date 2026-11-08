@@ -35,7 +35,10 @@ impl TwoWaiters {
         };
         let began_first = take(ctx, of!(xs));
         let (c, b) = join!(created_first, began_first);
-        Ok(BTreeMap::from([("created first".into(), c?), ("began first".into(), b?)]))
+        Ok(BTreeMap::from([
+            ("created first".into(), c?),
+            ("began first".into(), b?),
+        ]))
     }
 }
 
@@ -57,7 +60,10 @@ impl PromiseThenAwait {
     pub async fn run(ctx: &mut WorkflowContext<Self>) -> WorkflowResult<BTreeMap<String, String>> {
         let p = take(ctx, of!(xs));
         let awaited = take(ctx, of!(xs)).await?;
-        Ok(BTreeMap::from([("promise".into(), p.await?), ("await".into(), awaited)]))
+        Ok(BTreeMap::from([
+            ("promise".into(), p.await?),
+            ("await".into(), awaited),
+        ]))
     }
 }
 
@@ -99,7 +105,10 @@ impl AwaitOne {
     }
 
     #[run]
-    pub async fn run(ctx: &mut WorkflowContext<Self>, timeout: Duration) -> WorkflowResult<Vec<String>> {
+    pub async fn run(
+        ctx: &mut WorkflowContext<Self>,
+        timeout: Duration,
+    ) -> WorkflowResult<Vec<String>> {
         let mut took = Vec::new();
         let mut timer = ctx.timer(timeout);
         select! {
@@ -134,7 +143,8 @@ impl NaiveTwoWaiters {
         let naive_take = || async {
             ctx.wait_condition(|s| !s.pending.is_empty()).await?;
             Ok::<_, temporalio_sdk::WorkflowCancellationError>(
-                ctx.state_mut(|s| s.pending.pop_front()).unwrap_or_else(|| "lost".into()),
+                ctx.state_mut(|s| s.pending.pop_front())
+                    .unwrap_or_else(|| "lost".into()),
             )
         };
         let created_first = async {
@@ -143,6 +153,9 @@ impl NaiveTwoWaiters {
         };
         let began_first = naive_take();
         let (c, b) = join!(created_first, began_first);
-        Ok(BTreeMap::from([("created first".into(), c?), ("began first".into(), b?)]))
+        Ok(BTreeMap::from([
+            ("created first".into(), c?),
+            ("began first".into(), b?),
+        ]))
     }
 }
