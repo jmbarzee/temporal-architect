@@ -17,7 +17,6 @@ _ = try await context.startChildWorkflow(
 
 - A child start sets parent-close policy `.abandon`, so the parent's close does nothing to the child, and cancellation type `.abandon`, so the parent's cancellation is never requested of it (`Temporal/Worker/Workflow/ChildWorkflowOptions.swift:197,200`; `Temporal/Worker/Workflow/ChildWorkflowCancellationType.swift:48-53`). The defaults are `.terminate` and `.waitCancellationCompleted`.
 - `context.startChildWorkflow` (`Temporal/Worker/Workflow/WorkflowContext.swift:860`) returns the handle once the start resolves, and a failed start throws from it, failing the caller (`Temporal/Worker/Workflow/WorkflowStateMachineStorage.swift:357-386`). Discard the handle: its `result()` waits for completion.
-- A client start, `client.startWorkflow(type:options:input:)` (`Temporal/Client/TemporalClient+WorkflowHandle.swift:46`), has no parent: it starts the run and returns a handle whose result is never read.
 
 ```twf
 detach nexus GreeterEndpoint GreeterService.Greet(friend)

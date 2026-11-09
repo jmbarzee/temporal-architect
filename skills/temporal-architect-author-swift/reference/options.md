@@ -36,7 +36,7 @@ let result = try await context.executeActivity(
     ServiceActivities.Activities.UnreliableService.self, options: options, input: data)
 ```
 
-`ActivityOptions` (`Temporal/Worker/Workflow/ActivityOptions.swift:61-165`) has two initializers, one led by `startToCloseTimeout` and one by `scheduleToCloseTimeout` (`:184,225`), so every call sets one of them; with no `options:` anywhere, set `startToCloseTimeout`. Each field reaches the `ScheduleActivity` command as named (`Temporal/Extensions/ScheduleActivity+Proto.swift:33-60`).
+`ActivityOptions` (`Temporal/Worker/Workflow/ActivityOptions.swift:61-165`) has two initializers, one led by `startToCloseTimeout` and one by `scheduleToCloseTimeout` (`:184,225`), so every call sets one of them; with no `options:` anywhere, set `startToCloseTimeout`. Each field reaches the `ScheduleActivity` command (`Temporal/Extensions/ScheduleActivity+Proto.swift:33-60`).
 
 | TWF | `ActivityOptions` |
 |-----|---------------------------|
@@ -83,9 +83,9 @@ let childResult = try await context.executeChildWorkflow(
 | `priority` | `priority` |
 | `parent_close_policy` | `parentClosePolicy`: `.terminate` (the default, `:197`), `.requestCancel` or `.abandon`, from `Api.Enums.V1.ParentClosePolicy` |
 
-`ChildWorkflowOptions` also carries `id`, the full workflow ID from the type's `id_scheme:` ([workflow-call.md](./workflow-call.md)), and `cancellationType`, which belongs to [detach](./detach.md) alone. Each field reaches the start command as named (`Temporal/Extensions/ChildWorkflowOptions+Proto.swift:33-78`).
+`ChildWorkflowOptions` also carries `id`, the full workflow ID from the type's `id_scheme:` ([workflow-call.md](./workflow-call.md)), and `cancellationType`, which belongs to [detach](./detach.md) alone. Each field reaches the start command (`Temporal/Extensions/ChildWorkflowOptions+Proto.swift:33-78`).
 
-A client start's `WorkflowOptions` (`Temporal/Client/WorkflowService/Model/Workflows/WorkflowOptions.swift:166-183`) takes `id` and `taskQueue` (both required), `retryPolicy`, `runTimeout`, `taskTimeout`, `priority`, `idReusePolicy` and `idConflictPolicy`, and spells the execution timeout **`executionTimeOut`**, capital `O` (`:170`). It has no `parentClosePolicy`.
+A client start is client code outside the design: a `.twf` client start needs Nexus ([nexus.md](./nexus.md)). Its `WorkflowOptions` (`Temporal/Client/WorkflowService/Model/Workflows/WorkflowOptions.swift:166-183`) takes `id` and `taskQueue` (both required), `retryPolicy`, `runTimeout`, `taskTimeout`, `priority`, `idReusePolicy` and `idConflictPolicy`, and spells the execution timeout **`executionTimeOut`**, capital `O` (`:170`). It has no `parentClosePolicy`.
 
 ## Nexus operation options
 
@@ -137,7 +137,7 @@ workflow Cart(customerId: string):
 
 `workflow_id_reuse_policy` → `idReusePolicy: .allowDuplicate`; `workflow_id_conflict_policy` → `idConflictPolicy: .useExisting` (`.fail`, `.useExisting`, `.terminateExisting`). Both enums are `Api.Enums.V1`'s. Where each lands depends on the start kind:
 
-- **Client start** (client code): both, on the client's `WorkflowOptions` (`WorkflowOptions.swift:181-182`; unset, `.allowDuplicate` and `.fail`), from the type's start-options function ([workflow-def.md](./workflow-def.md#id_scheme)).
+- **Client start** (client code outside the design): both, on the client's `WorkflowOptions` (`WorkflowOptions.swift:181-182`; unset, `.allowDuplicate` and `.fail`), from the type's start-options function ([workflow-def.md](./workflow-def.md#id_scheme)).
 - **Child start**: `ChildWorkflowOptions` has no conflict policy, so it takes the reuse policy only; a start onto a running ID throws `WorkflowAlreadyStartedError` (`Temporal/Worker/Workflow/WorkflowStateMachineStorage.swift:368-370`).
 
 ## Worker options
