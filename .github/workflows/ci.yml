@@ -203,8 +203,9 @@ jobs:
           tools: composer:v2
 
       # setup-swift verifies Swiftly against swift.org's signing keys, which the runner lacks.
+      # swift-keys.asc is https://www.swift.org/keys/all-keys.asc; refresh it when swift.org adds a signing key.
       - if: matrix.sdk == 'swift'
-        run: curl -fsSL https://www.swift.org/keys/all-keys.asc | gpg --import -
+        run: gpg --import .github/swift-keys.asc
       - uses: swift-actions/setup-swift@v3.0.0-beta.1
         if: matrix.sdk == 'swift'
         with:

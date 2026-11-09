@@ -51,6 +51,7 @@ This skill owns the `.twf` ↔ Elixir translation: call shapes, wire names, opti
 | errors | [idioms.md § errors](./reference/idioms.md#errors) |
 | data | [idioms.md § data](./reference/idioms.md#data) |
 | versioning | [idioms.md § versioning](./reference/idioms.md#versioning) |
+| signals and queries | [idioms.md § signals and queries](./reference/idioms.md#signals-and-queries) |
 
 ## Process
 
@@ -129,6 +130,8 @@ Load only what the current layer needs.
 | `if` / `for` / `switch` / `break` / `continue`, `x = expr` | `if`, `Enum`, recursion, `case`, `reduce_while` | [control-flow.md](./reference/control-flow.md) |
 | `close complete` / `fail` / `continue_as_new` | `complete_workflow_execution` / `fail_workflow_execution` / `continue_as_new_workflow` | [close.md](./reference/close.md) |
 | `heartbeat(details)` | `heartbeat([details])`, with `handle_heartbeat/1` and `handle_cancel/1` | [heartbeat.md](./reference/heartbeat.md) |
+| SDK idioms | the SDK's hexdocs and `temporal_sdk_samples`, by topic | [idioms.md](./reference/idioms.md) |
+| recovered `.twf` (code → `.twf`) | project roots, registration, concurrency, codegen, for mix and rebar3 | [discovery.md](./reference/discovery.md) |
 
 The spec states only what `detach` guarantees (`twf spec statement-syntax`); the author maps it to these mechanics:
 
