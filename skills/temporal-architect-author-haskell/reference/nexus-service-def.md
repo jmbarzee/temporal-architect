@@ -39,11 +39,12 @@ Registration on the **handler** worker (the target namespace's), not the caller:
 
 ## sync
 
-`sync Op(param) -> (T):` → `syncOperation body`, the corpus's typed helper over `NexusOperationHandler`: it decodes the one JSON input, runs the body in `IO`, and answers the start with its JSON result, or with a failed operation when the body throws. Copy it with the corpus's imports (`corpus/nexus/haskell/Greeter.hs`), plus `tryAny` from `UnliftIO.Exception` and `SomeException`, `displayException`, `fromException` from `Control.Exception`:
+`sync Op(param) -> (T):` → `syncOperation body`, the corpus's typed helper over `NexusOperationHandler`: it decodes the one JSON input, runs the body in `IO`, and answers the start with its JSON result; a thrown `ApplicationFailure` fails the operation, and any other exception is a retryable handler error. Copy it with the corpus's imports (`corpus/nexus/haskell/Greeter.hs`), plus `tryAny` from `UnliftIO.Exception`, `displayException` and `fromException` from `Control.Exception`, and `Proto.Temporal.Api.Enums.V1.Nexus` qualified as `NexusEnum`:
 
 ```haskell
 -- | A sync operation over the SDK's raw handler: decodes the one input, runs f,
--- and answers the start with its JSON result, or as failed when f throws.
+-- and answers the start with its JSON result. A thrown ApplicationFailure fails
+-- the operation; any other exception is a retryable handler error.
 syncOperation :: (FromJSON i, FromJSON o, ToJSON o, Typeable o) => (i -> IO o) -> NexusOperationHandler
 syncOperation f =
   NexusOperationHandler
@@ -51,23 +52,28 @@ syncOperation f =
         Left err -> pure (badRequest err)
         Right i -> do
           r <- tryAny (f i)
-          let start = case r of
-                Right o -> defMessage & Nexus.syncSuccess .~ (defMessage & Nexus.payload .~ convertToProtoPayload (encodeJSON o))
-                Left e -> defMessage & Nexus.operationError .~ operationFailed e
-          pure (CoreNexus.NexusTaskCompletion'Completed (defMessage & Nexus.startOperation .~ start))
+          pure case r of
+            Right o -> started (defMessage & Nexus.syncSuccess .~ (defMessage & Nexus.payload .~ convertToProtoPayload (encodeJSON o)))
+            Left e
+              | Just ApplicationFailure {message} <- fromException e -> started (defMessage & Nexus.operationError .~ operationFailed message)
+              | otherwise -> retryableError (T.pack (displayException e))
     , handleCancelOperation = \_ -> pure (CoreNexus.NexusTaskCompletion'AckCancel True)
     }
   where
-    operationFailed e =
+    started s = CoreNexus.NexusTaskCompletion'Completed (defMessage & Nexus.startOperation .~ s)
+    operationFailed msg =
       defMessage
         & Nexus.operationState .~ "failed"
-        & Nexus.failure .~ (defMessage & Nexus.message .~ failureMessage e)
+        & Nexus.failure .~ (defMessage & Nexus.message .~ msg)
 
--- | An ApplicationFailure's message, else the exception rendered.
-failureMessage :: SomeException -> Text
-failureMessage e = case fromException e of
-  Just ApplicationFailure {message} -> message
-  Nothing -> T.pack (displayException e)
+retryableError :: Text -> CoreNexus.NexusTaskCompletion'Status
+retryableError msg =
+  CoreNexus.NexusTaskCompletion'Error
+    ( defMessage
+        & Nexus.errorType .~ "INTERNAL"
+        & Nexus.retryBehavior .~ NexusEnum.NEXUS_HANDLER_ERROR_RETRY_BEHAVIOR_RETRYABLE
+        & Nexus.failure .~ (defMessage & Nexus.message .~ msg)
+    )
 
 badRequest :: String -> CoreNexus.NexusTaskCompletion'Status
 badRequest msg =
@@ -91,4 +97,7 @@ The body holds only client forms, each a call on a `WorkflowClient` the handler 
 
 `id:` is the whole workflow ID (`twf spec cross-workflow-signals`), so `RefundPayment` signals the workflow `ChargePayment` starts by calling the ID function its starts use, `billingChargeWorkflowId`.
 
-**The helper must catch.** The SDK runs each Nexus task in an `async` it never waits and completes the task only from the handler's returned status (`Nexus/Worker.hs:62,66-80`): an exception that escapes the handler leaves the task unanswered, and the server retries it until the caller's `schedule_to_close_timeout`. So `syncOperation` catches the body's synchronous exceptions with `tryAny` and answers the start with the response's `operationError` variant, state `failed`, carrying the `ApplicationFailure`'s message (`temporal-api-protos`, `Proto/Temporal/Api/Nexus/V1/Message.hs:3553-3556,4279-4282`). The caller's call then throws `NexusOperationStartFailed` (`WorkflowInstance.hs:895-897`), so `close fail(e)` is a thrown `ApplicationFailure`.
+**The helper must catch.** The SDK runs each Nexus task in an `async` it never waits and completes the task only from the handler's returned status (`Nexus/Worker.hs:62,66-80`): an exception that escapes the handler leaves the task unanswered, and the server retries it until the caller's `schedule_to_close_timeout`. So `syncOperation` catches the body's synchronous exceptions with `tryAny` and answers every one:
+
+- **Only an `ApplicationFailure` is `close fail(e)`.** It answers the start with the response's `operationError` variant, state `failed`, carrying the failure's message (`temporal-api-protos`, `Proto/Temporal/Api/Nexus/V1/Message.hs:3553-3556,4279-4282`); the caller's call throws `NexusOperationStartFailed` (`WorkflowInstance.hs:895-897`).
+- **Any other exception**, such as an `RpcError` from `C.signal` or `C.start` during an outage, is a retryable `INTERNAL` handler error, the shape of the SDK's own `handlerErrorStatus` (`Nexus/Worker.hs:122-133`), so the server retries the start instead of failing the operation.
