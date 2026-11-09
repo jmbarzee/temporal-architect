@@ -11,9 +11,9 @@ This skill does not design or author; it routes to the specialists:
 |-------|------|
 | `temporal-architect-design` | The `.twf` design (workflows, activities, namespaces, Nexus), forward and recovered from code. Never SDK code. |
 | `temporal-architect-author-infra` | Control-plane provisioning (namespaces, Nexus endpoints, search attributes). Orthogonal to language authoring. |
-| `temporal-developer` | Temporal's official skill: SDK idioms, testing, determinism, errors, data, versioning. Each language author names the topics it hands there. |
+| `temporal-developer` | Temporal's official skill: SDK idioms, testing, determinism, errors, data, versioning. |
 
-Language authors, one per SDK, each built from [reference/author-template.md](reference/author-template.md):
+An author owns the `.twf` ↔ SDK translation (call shapes, wire names, options, layout, verify) and hands SDK idioms to `temporal-developer`, or to the community SDK's own docs where `temporal-developer` has none. Language authors, one per SDK, each built from [reference/author-template.md](reference/author-template.md):
 
 | `@sdk` | Author |
 |--------|--------|

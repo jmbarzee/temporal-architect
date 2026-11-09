@@ -29,6 +29,9 @@ addition — a `MANIFEST.json` at the root:
 ```
 skills/
   MANIFEST.json
+  temporal-architect/
+    SKILL.md
+    reference/...
   temporal-architect-design/
     SKILL.md
     reference/...
