@@ -10,9 +10,9 @@ defmodule Messages.Approval do
   @impl true
   def execute(_context, [request]) do
     Process.put(:status, "submitted")
-    publish()
-    Arrivals.on("Open", fn _ -> Process.put(:status, "open") end)
+    Arrivals.on("Open", fn [] -> Process.put(:status, "open") end)
     Arrivals.on("Approve", fn [_approver] -> Process.put(:status, "approved") end)
+    publish()
     start_execution(:status_query)
 
     Arrivals.take("Open")
@@ -23,14 +23,14 @@ defmodule Messages.Approval do
     publish()
 
     complete_workflow_execution([
-      %{request: request, approver: approver, note: nil, status: Process.get(:status)}
+      %{"request" => request, "approver" => approver, "note" => :null, "status" => Process.get(:status)}
     ])
   end
 
   # The query handler is a parallel execution answering from the state the main one publishes.
   def status_query(_context, _input) do
     case await({:query_request, "Status"}) do
-      {:ok, _} ->
+      {:ok, _request} ->
         {true, status} = is_awaited({:info, :status})
         respond_query({:query, "Status"}, [:wait, answer: [status]])
         status_query(%{}, [])
@@ -38,6 +38,19 @@ defmodule Messages.Approval do
       {:noevent, _} ->
         :ok
     end
+  end
+
+  # A closed run has no execution left, so the callback answers from its history.
+  @impl true
+  def handle_query(history, %{query_type: "Status"}), do: %{answer: [status_from(history)]}
+
+  # The signal bodies' effects, applied over the run's signal events in history order.
+  defp status_from(history) do
+    Enum.reduce(history, "submitted", fn
+      {_, :EVENT_TYPE_WORKFLOW_EXECUTION_SIGNALED, %{signal_name: "Open"}, _}, _ -> "open"
+      {_, :EVENT_TYPE_WORKFLOW_EXECUTION_SIGNALED, %{signal_name: "Approve"}, _}, _ -> "approved"
+      _, status -> status
+    end)
   end
 
   defp publish, do: set_info(Process.get(:status), info_id: :status)
