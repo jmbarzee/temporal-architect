@@ -69,6 +69,9 @@ skills/
   temporal-architect-author-elixir/
     SKILL.md
     reference/...
+  temporal-architect-author-swift/
+    SKILL.md
+    reference/...
   temporal-architect-author-infra/
     SKILL.md
     reference/...
