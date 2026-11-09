@@ -51,7 +51,7 @@ end
 | inline timer | `Arrivals.timer_ready_at(t)`, `t = start_timer(d)` started before the race | `t` | — |
 | activity, child workflow, promise | `task_at(p)`, below | `p` | `wait(p)`, matched on `:completed` |
 | timer promise | `Arrivals.timer_ready_at(p)` | `p` | — |
-| condition | [condition.md](./condition.md) | — | — |
+| condition | `Process.get(:c)`, the task recorded by its `set`, after syncing the signals whose bodies set or unset it; set in the workflow body, unmapped ([condition.md](./condition.md#as-an-await-one-case)) | `{:signal_request, name}` of each of those signals | — |
 | nested `await all:` | the latest of its branches' tasks, `nil` while any is | each branch | each `wait` |
 | update, nexus | unsupported ([update-handler.md](./update-handler.md), [nexus.md](./nexus.md)) | — | — |
 
