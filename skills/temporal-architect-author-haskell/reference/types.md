@@ -28,7 +28,7 @@ The `.twf` type names are defined in `twf spec workflows` (Types). The SDK has n
 | `list[T]` / `map[string, V]` | `[T]` / `Map Text V` |
 | user type | a record deriving `Generic`, with `FromJSON` and `ToJSON` by `DeriveAnyClass`: `data Result = Result { status :: Text, trackingId :: Text }` |
 
-- **Field names go out as declared**, with no case transform: name each field as the `.twf` field (`trackingId` → `trackingId`). Two records sharing a field name need `DuplicateRecordFields`, as the corpus enables (`corpus/corpus.cabal`).
+- **Field names go out as declared**, with no case transform: name each field as the `.twf` field (`trackingId` → `trackingId`). Two records sharing a field name need `DuplicateRecordFields`, as the corpus enables (`corpus/corpus.cabal`). A field that clashes with a definition's value name, as `Report`'s `count` does with the `count` activity, needs `NoFieldSelectors` in that module, as the corpus turns on in `corpus/concurrency/haskell/Batch.hs`.
 - **Several returns** (`-> (A, B)`) are one record of the values. Never a tuple: Aeson writes one as a JSON array.
 - **No DSL return type** → `()`.
 
