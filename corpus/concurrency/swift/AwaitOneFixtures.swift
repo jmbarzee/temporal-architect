@@ -60,8 +60,8 @@ struct AwaitOneTie {
                 let winner = order.first { ready($0, acks) }!
                 if winner == "Ack" {
                     acks -= 1
-                    group.cancelAll()
                 }
+                group.cancelAll()
                 return winner
             }
         }

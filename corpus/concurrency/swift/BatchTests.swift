@@ -130,9 +130,9 @@ struct BatchTests {
                 #expect(
                     try await !self.has(h, .requestCancelExternalWorkflowExecutionInitiated),
                     "the parent's run requested its losing child's cancellation")
-                let sleeperID = try await h.fetchHistoryEvents()
-                    .first { $0.eventType == .childWorkflowExecutionStarted }!
-                    .childWorkflowExecutionStartedEventAttributes.workflowExecution.workflowID
+                let started = try #require(
+                    try await h.fetchHistoryEvents().first { $0.eventType == .childWorkflowExecutionStarted })
+                let sleeperID = started.childWorkflowExecutionStartedEventAttributes.workflowExecution.workflowID
                 let sleeper = client.untypedWorkflowHandle(id: sleeperID)
                 // Still running at parent close, the child meets the default parent_close_policy, TERMINATE.
                 let deadline = ContinuousClock.now + .seconds(10)
