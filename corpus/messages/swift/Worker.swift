@@ -1,15 +1,12 @@
 import Temporal
 
-/// The `.twf` worker approvalTypes: the types it registers and its configuration.
+/// The `.twf` worker approvalTypes: its types and configuration, shared by the worker process and the tests.
 enum ApprovalTypes {
+    static let taskQueue = "approvals"
     static let workflows: [any WorkflowDefinition.Type] = [Approval.self]
-    static let activities: [any ActivityDefinition] = []
 
-    static func configuration(namespace: String, taskQueue: String = "approvals", serverHostname: String) -> TemporalWorker.Configuration {
+    static func configuration(namespace: String = "default", serverHostname: String) -> TemporalWorker.Configuration {
         TemporalWorker.Configuration(
-            namespace: namespace,
-            taskQueue: taskQueue,
-            instrumentation: .init(serverHostname: serverHostname)
-        )
+            namespace: namespace, taskQueue: taskQueue, instrumentation: .init(serverHostname: serverHostname))
     }
 }

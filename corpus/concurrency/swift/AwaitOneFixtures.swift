@@ -97,4 +97,39 @@ struct BoundDeadline {
     }
 }
 
-let awaitOneFixtures: [any WorkflowDefinition.Type] = [AwaitOneTie.self, BoundDeadline.self]
+/// await one over timer(1s) and an inline workflow Sleeper, listed in that order; returns the winner.
+@Workflow
+struct LosingChild {
+    mutating func run(context: WorkflowContext<Self>, input: Void) async throws -> String {
+        let done = Flag()
+        async let slept: Void = {
+            defer { done.isSet = true }
+            try await context.executeChildWorkflow(Sleeper.self, options: .init(cancellationType: .abandon), input: ())
+        }()
+        let winner = try await withThrowingTaskGroup(of: Void.self) { group in
+            let timer = Flag()
+            group.addTask {
+                try await context.sleep(for: .seconds(1))
+                timer.isSet = true
+            }
+            try await context.condition { _ in timer.isSet || done.isSet }
+            group.cancelAll()  // a losing inline timer is cancelled
+            return timer.isSet ? "timer" : "Sleeper"
+        }
+        if winner == "Sleeper" {
+            try await slept
+        }
+        return winner
+    }
+}
+
+@Workflow
+struct Sleeper {
+    mutating func run(context: WorkflowContext<Self>, input: Void) async throws {
+        try await context.sleep(for: .seconds(86_400))
+    }
+}
+
+let awaitOneFixtures: [any WorkflowDefinition.Type] = [
+    AwaitOneTie.self, BoundDeadline.self, LosingChild.self, Sleeper.self,
+]
