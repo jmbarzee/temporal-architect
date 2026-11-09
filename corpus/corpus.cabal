@@ -46,3 +46,19 @@ test-suite nexus
   hs-source-dirs: nexus/haskell haskell
   main-is:        Main.hs
   other-modules:  Greeter Caller Harness
+
+test-suite concurrency
+  import:         design
+  type:           exitcode-stdio-1.0
+  -- Arrivals is the messages design's helper, shared rather than copied.
+  hs-source-dirs: concurrency/haskell messages/haskell haskell
+  main-is:        Main.hs
+  other-modules:  Batch AwaitOneFixtures Arrivals Harness
+  build-depends:  mtl
+
+test-suite continue-as-new
+  import:         design
+  type:           exitcode-stdio-1.0
+  hs-source-dirs: continue-as-new/haskell haskell
+  main-is:        Main.hs
+  other-modules:  Counter Harness
