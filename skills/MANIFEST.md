@@ -54,6 +54,9 @@ skills/
   temporal-architect-author-clojure/
     SKILL.md
     reference/...
+  temporal-architect-author-php/
+    SKILL.md
+    reference/...
   temporal-architect-author-rust/
     SKILL.md
     reference/...
