@@ -108,6 +108,15 @@ Load only what the current layer needs.
 | `workflow Name(args) -> r` | `executeChildWorkflow` | [workflow-call.md](./reference/workflow-call.md) |
 | `detach workflow ...` / `detach nexus ...` | `startChildWorkflow` with both `Abandon`s + `waitChildWorkflowStart` / unsupported | [detach.md](./reference/detach.md) |
 | `nexus Endpoint Service.Op(args) -> r` | `executeNexusOperation (makeNexusClient …) "Op"` over `encodeJSON` / `decodeJSON` | [nexus.md](./reference/nexus.md) |
+| `signal Name(params):` | `KnownSignal` + `setSignalHandler`: body, then `A.add` | [signal-handler.md](./reference/signal-handler.md) |
+| `query Name(params) -> (T):` | `KnownQuery` + `setQueryHandler`, reading `StateVar`s only | [query-handler.md](./reference/query-handler.md) |
+| `update Name(params) -> (T):` | `KnownUpdate` + `setUpdateHandler`: body, then `A.add`, then the result | [update-handler.md](./reference/update-handler.md) |
+| `await signal\|update Name -> (...)` | `A.take`, over the corpus's positional `Arrivals` | [await-signal.md](./reference/await-signal.md) |
+| `promise p <- ...` | the call's `start…` handle, `wait`ed later; for a signal or update, `A.begin`, then `A.takeAt` | [promise.md](./reference/promise.md) |
+| `state:` / `condition` / `set` / `unset` | `StateVar Bool` + `waitCondition` | [condition.md](./reference/condition.md) |
+| `await all:` | `concurrently` / `traverseConcurrently` | [await-all.md](./reference/await-all.md) |
+| `await one:` | `race` in listed order; a message case claims only if it wins | [await-one.md](./reference/await-one.md) |
+| handler + condition + `await one` | worked compositions | [composite-patterns.md](./reference/composite-patterns.md) |
 | `signal handle.Name(args)` / `signal Type.Name(args)` + `id:` | `signal` on a `ChildWorkflowHandle` / `getExternalWorkflowHandle`, then `wait` | [signal-send.md](./reference/signal-send.md) |
 | `await timer(d)` | `sleep` | [await-timer.md](./reference/await-timer.md) |
 | `options:` / `default_options:` | `StartActivityOptions` / `StartChildWorkflowOptions` / `ScheduleNexusOperationOptions` | [options.md](./reference/options.md) |

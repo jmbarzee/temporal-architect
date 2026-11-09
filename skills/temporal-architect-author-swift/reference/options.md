@@ -83,7 +83,7 @@ let childResult = try await context.executeChildWorkflow(
 | `priority` | `priority` |
 | `parent_close_policy` | `parentClosePolicy`: `.terminate` (the default, `:197`), `.requestCancel` or `.abandon`, from `Api.Enums.V1.ParentClosePolicy` |
 
-`ChildWorkflowOptions` also carries `id`, the full workflow ID from the type's `id_scheme:` ([workflow-call.md](./workflow-call.md)), and `cancellationType`, which belongs to [detach](./detach.md) alone. Each field reaches the start command (`Temporal/Extensions/ChildWorkflowOptions+Proto.swift:33-78`).
+`ChildWorkflowOptions` also carries `id`, the full workflow ID from the type's `id_scheme:` ([workflow-call.md](./workflow-call.md)), and `cancellationType`, which belongs to [detach](./detach.md) and to an inline [`await one`](./await-one.md#notes) case alone. Each field reaches the start command (`Temporal/Extensions/ChildWorkflowOptions+Proto.swift:33-78`).
 
 A client start is client code outside the design: a `.twf` client start needs Nexus ([nexus.md](./nexus.md)). Its `WorkflowOptions` (`Temporal/Client/WorkflowService/Model/Workflows/WorkflowOptions.swift:166-183`) takes `id` and `taskQueue` (both required), `retryPolicy`, `runTimeout`, `taskTimeout`, `priority`, `idReusePolicy` and `idConflictPolicy`, and spells the execution timeout **`executionTimeOut`**, capital `O` (`:170`). It has no `parentClosePolicy`.
 
