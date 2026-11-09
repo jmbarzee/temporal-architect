@@ -79,3 +79,7 @@ corpus/deps/
 
 # Swift corpus build output
 corpus/.build/
+
+# Haskell corpus build output and the pinned hs-temporal-sdk clone
+corpus/dist-newstyle/
+corpus/.hs-temporal-sdk/

@@ -23,6 +23,7 @@ corpus/
   composer.json
   mix.exs                globs */elixir; elixir_support/ holds the Elixir support the designs share
   Package.swift          one test target per design, its path the design's swift/
+  cabal.project          with corpus.cabal and haskell/Harness.hs; builds the pinned hs-temporal-sdk checkout
   <design>/
     <design>.twf         the design, with no @sdk
     go/                  its Go output, per skills/temporal-architect-author-go
@@ -47,6 +48,8 @@ corpus/
       <design>.twf       the design plus only @sdk(elixir, …)
     swift/               its Swift output, a test target; nexus has none (Swift has no Nexus)
       <design>.twf       the design plus only @sdk(swift, …)
+    haskell/             its Haskell output, one test suite; nexus/haskell/ handles Hello only (Greet has no Haskell handler)
+      <design>.twf       the design plus only @sdk(haskell, …)
 ```
 
 Each SDK's copy of the design names only its own implementation, so no worker carries two SDKs. `check-corpus` checks every `.twf` file on its own (a directory check would load the copies together) and fails when a copy, its `@sdk` lines stripped, differs from the design.
@@ -68,6 +71,7 @@ make corpus-rust        # check the corpus, then cargo clippy (-D warnings) and 
 make corpus-php         # check the corpus, then composer install (locked), dload (rr, test server), PHPStan and PHPUnit
 make corpus-elixir      # check the corpus, then mix deps.get (locked), compile (warnings as errors) and mix test
 make corpus-swift       # check the corpus, then swift build (warnings are errors, resolved versions) and swift test
+make corpus-haskell     # check the corpus, then check out the pinned SDK and cabal test (-Werror, frozen)
 ```
 
 `corpus-elixir` needs a dev server at `TEMPORAL_ADDRESS` (default `127.0.0.1:7233`): `temporal server start-dev --headless --dynamic-config-value frontend.WorkflowTimeSkippingEnabled=true`.

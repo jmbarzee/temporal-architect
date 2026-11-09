@@ -229,6 +229,7 @@ vet:
 .PHONY: corpus-perl
 .PHONY: corpus-elixir
 .PHONY: corpus-swift
+.PHONY: corpus-haskell
 
 # A design is a corpus directory holding a .twf; node_modules is not one.
 CORPUS_DESIGNS := $(patsubst corpus/%/,%,$(sort $(dir $(wildcard corpus/*/*.twf))))
@@ -315,6 +316,18 @@ corpus-php: check-corpus
 ## TestKit's time-skipping server, against the packages pinned by Package.resolved.
 corpus-swift: check-corpus
 	cd corpus && swift build --build-tests --force-resolved-versions && swift test --skip-build
+
+## Check the corpus, then build (-Wall -Werror) and test its Haskell outputs, pinned by
+## cabal.project.freeze and the hs-temporal-sdk commit, which is checked out into corpus/ and
+## built as local packages (see corpus/cabal.project). The clone may already hold CI's cached
+## Rust target/, so it is initialized in place rather than cloned.
+HS_TEMPORAL_SDK_REV := e57a0ae8f7458777d06c82d77dfa8cde14eed58c
+corpus-haskell: check-corpus
+	test -d corpus/.hs-temporal-sdk/.git || git init -q corpus/.hs-temporal-sdk
+	git -C corpus/.hs-temporal-sdk cat-file -e $(HS_TEMPORAL_SDK_REV) 2>/dev/null || \
+		git -C corpus/.hs-temporal-sdk fetch -q --depth 1 https://github.com/MercuryTechnologies/hs-temporal-sdk $(HS_TEMPORAL_SDK_REV)
+	git -C corpus/.hs-temporal-sdk checkout -q $(HS_TEMPORAL_SDK_REV)
+	cd corpus && cabal test all
 
 # ── Docs targets ─────────────────────────────────────────────────────────────
 

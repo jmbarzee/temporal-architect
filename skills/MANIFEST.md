@@ -60,6 +60,9 @@ skills/
   temporal-architect-author-rust/
     SKILL.md
     reference/...
+  temporal-architect-author-perl/
+    SKILL.md
+    reference/...
   temporal-architect-author-infra/
     SKILL.md
     reference/...
