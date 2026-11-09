@@ -2,7 +2,7 @@
 
 Temporal's `temporal-developer` skill does not cover Erlang or Elixir. How to write Temporal Elixir well is the SDK's hexdocs and `andrzej-mag/temporal_sdk_samples` at `2bb0621`; read them there, never a copy here. The guides and samples show Elixir and Erlang side by side.
 
-- **The hexdocs links target the Hex release 0.2.20**, since hexdocs publishes Hex versions only. Its `docs/`, `guides/` and `src/` are identical to the pin's: `git diff v0.2.20 d2749c7` changes only the licence, the README and dependency versions. So read 0.2.20's pages, but never install it: it is BUSL-1.1 ([SKILL.md](../SKILL.md#orient)).
+- **The hexdocs links target the Hex release 0.2.20**, since hexdocs publishes Hex versions only. Its `docs/`, `guides/` and `src/` match the pin's, except `src/temporal_sdk.app.src`'s `vsn` and `description`. So read 0.2.20's pages, but never install it: it is BUSL-1.1 ([SKILL.md](../SKILL.md#orient)).
 - **The samples build against Hex 0.2.20** (samples `rebar.config:7`) and name types by module atom, which [Wire names](../SKILL.md#wire-names) overrides for the `.twf` mapping.
 
 Each topic adds only what those pages leave out.
