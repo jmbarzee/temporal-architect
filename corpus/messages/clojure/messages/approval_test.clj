@@ -75,6 +75,9 @@
   (let [wf (start "approval-3")]
     (is (thrown? Exception (c/update wf :Nope {})))
     (c/>! wf :Open {})
-    (c/>! wf :Approve {:approver "Grace"})
+    ;; Approve goes after Review returns: the test server tags an update with its workflow task's
+    ;; scheduled event, so a signal recorded between that event and the task's start would run
+    ;; after the update's handler and leave the final status at random.
     (is (= "reviewed" (c/update wf :Review {:note "LGTM"})))
-    (is (= "reviewed" (:status (result wf))))))
+    (c/>! wf :Approve {:approver "Grace"})
+    (is (= "approved" (:status (result wf))))))
