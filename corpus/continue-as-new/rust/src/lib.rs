@@ -5,9 +5,11 @@ use temporalio_sdk::{WorkerOptions, workflows::WorkflowRegistrationError};
 pub const COUNTERS_TASK_QUEUE: &str = "counters";
 
 /// The `counterTypes` worker's registrations, shared by the worker binary and the tests.
-pub fn counter_types() -> Result<WorkerOptions, WorkflowRegistrationError> {
+pub fn counter_types(
+    activities: counter::CounterActivities,
+) -> Result<WorkerOptions, WorkflowRegistrationError> {
     Ok(WorkerOptions::new(COUNTERS_TASK_QUEUE)
         .register_workflow::<counter::Counter>()?
-        .register_activities(counter::CounterActivities)
+        .register_activities(activities)
         .build())
 }

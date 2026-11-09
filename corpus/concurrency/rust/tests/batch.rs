@@ -2,7 +2,7 @@ use std::{io::Write, time::Duration};
 
 use corpus_concurrency::{
     BATCHES_TASK_QUEUE,
-    batch::{Batch, Report},
+    batch::{Batch, BatchActivities, Report},
     batch_types,
     fixtures::{AwaitOneTie, BoundDeadline, DroppedTimer},
 };
@@ -15,7 +15,7 @@ use temporalio_sdk::WorkerOptions;
 async fn batch_acknowledged() {
     local(async {
         let env = Env::start().await;
-        let w = env.worker(batch_types().unwrap());
+        let w = env.worker(batch_types(BatchActivities).unwrap());
         let h = env
             .client
             .start_workflow(
@@ -55,7 +55,7 @@ async fn batch_acknowledged() {
 async fn batch_times_out() {
     local(async {
         let env = Env::start().await;
-        let w = env.worker(batch_types().unwrap());
+        let w = env.worker(batch_types(BatchActivities).unwrap());
         let h = env
             .client
             .start_workflow(
@@ -139,10 +139,18 @@ fn tie_worker(env: &Env) -> corpus_testkit::RunningWorker {
     )
 }
 
-/// One try at the tie: AwaitOneTie with the timer fired and Ack sent while no worker runs, so
-/// both reach one workflow task. The setup is timing-dependent, so this returns the winner only
-/// if the tie landed.
-async fn tie(env: &Env, order: &[&str], attempt: u32) -> Option<String> {
+/// One try at the tie on a fresh test server: on a shared one, a stopped worker's open poll can
+/// take the timer's workflow task (#529).
+async fn tie(order: &[&str], attempt: u32) -> Option<String> {
+    let env = Env::start().await;
+    let won = tie_on(&env, order, attempt).await;
+    env.shutdown().await;
+    won
+}
+
+/// AwaitOneTie with the timer fired and Ack sent while no worker runs, so both reach one workflow
+/// task. The setup is timing-dependent, so this returns the winner only if the tie landed.
+async fn tie_on(env: &Env, order: &[&str], attempt: u32) -> Option<String> {
     let id = format!("tie-{}-{attempt}", order.join("-"));
     let h = env
         .client
@@ -192,10 +200,10 @@ async fn tie(env: &Env, order: &[&str], attempt: u32) -> Option<String> {
 
 /// Retries the tie's setup, with a bound, and asserts the winner only on a real tie: a setup that
 /// never lands is reported, never failed (#529).
-async fn first_listed_wins(env: &Env, order: &[&str]) {
+async fn first_listed_wins(order: &[&str]) {
     const ATTEMPTS: u32 = 5;
     for attempt in 1..=ATTEMPTS {
-        if let Some(won) = tie(env, order, attempt).await {
+        if let Some(won) = tie(order, attempt).await {
             assert_eq!(won, order[0], "{order:?}");
             return;
         }
@@ -247,10 +255,8 @@ async fn a_dropped_timer_is_not_cancelled() {
 #[tokio::test(flavor = "multi_thread")]
 async fn await_one_the_first_listed_of_several_ready_cases_wins() {
     local(async {
-        let env = Env::start().await;
-        first_listed_wins(&env, &["Ack", "timer"]).await;
-        first_listed_wins(&env, &["timer", "Ack"]).await;
-        env.shutdown().await;
+        first_listed_wins(&["Ack", "timer"]).await;
+        first_listed_wins(&["timer", "Ack"]).await;
     })
     .await
 }

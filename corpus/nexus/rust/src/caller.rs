@@ -62,9 +62,17 @@ impl Caller {
         let hello = call(ctx, "Hello", &name).await?;
         let greeting = call(ctx, "Greet", &name).await?;
         // detach: never request cancellation; wait for the start, never the result.
-        let pc = ctx.payload_converter().clone();
-        let mut detached = op(&pc, "Greet", &friend);
-        detached.cancellation_type = Some(NexusOperationCancellationType::Abandon);
+        let detached = NexusOperationOptions::builder()
+            .endpoint(ENDPOINT)
+            .service(SERVICE)
+            .operation("Greet")
+            .input(
+                RawValue::from_value(&friend, ctx.payload_converter())
+                    .payloads
+                    .remove(0),
+            )
+            .cancellation_type(NexusOperationCancellationType::Abandon)
+            .build();
         ctx.start_nexus_operation(detached)
             .await
             .map_err(|f| ApplicationFailure::new(f.message))?;
