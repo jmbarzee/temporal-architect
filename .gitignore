@@ -76,3 +76,6 @@ corpus/.phpunit.cache/
 # Elixir corpus deps and build output
 corpus/_build/
 corpus/deps/
+
+# Swift corpus build output
+corpus/.build/
