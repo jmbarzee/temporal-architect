@@ -102,8 +102,26 @@ Load only what the current layer needs.
 
 | DSL | Elixir | File |
 |-----|--------|------|
+| `workflow Name(...)` | a `use TemporalSdk.Workflow` module whose `execute(context, input)` takes the positional payload list | [workflow-def.md](./reference/workflow-def.md) |
+| `id_scheme: "..."` | one ID function on the workflow's module, called by every start | [workflow-def.md](./reference/workflow-def.md#id_scheme) |
+| `workflow_id_reuse_policy` / `workflow_id_conflict_policy` | start-options function; child gets reuse only | [options.md](./reference/options.md#workflow-id-policies) |
+| `activity Name(...)` | a `use TemporalSdk.Activity` module whose `execute/2` returns the result's payload list | [activity-def.md](./reference/activity-def.md) |
+| types (`int`, `time`, `bytes`, …), user types | what the default codec chain round-trips; maps with string keys, `:null` | [types.md](./reference/types.md) |
+| activity dependencies | dependency map, confirmed from the locked version | [dependency-resolution.md](./reference/dependency-resolution.md) |
+| `worker`, namespace worker `options:` | name→module maps and `start_<worker>` in `workers.ex`, `TemporalSdk.Worker.start/3` | [worker.md](./reference/worker.md) |
+| `nexus service Name:`, `async` / `sync` operations | unsupported | [nexus-service-def.md](./reference/nexus-service-def.md) |
+| `activity Name(args) -> r` | `start_activity("Name", [args], opts ++ [wait: true])`, matched on `:completed` | [activity-call.md](./reference/activity-call.md) |
+| `workflow Name(args) -> r` | `start_child_workflow(task_queue, "Name", input: [args], workflow_id: …, wait: true)` | [workflow-call.md](./reference/workflow-call.md) |
+| `detach workflow ...` / `detach nexus ...` | child with `ABANDON`, `awaitable_event: :start`, `await_open_before_close(false)` / unsupported | [detach.md](./reference/detach.md) |
+| `nexus Endpoint Service.Op(args) -> r` | unsupported | [nexus.md](./reference/nexus.md) |
+| `signal handle.Name(args)` / `signal Type.Name(args)` + `id:` | unsupported | [signal-send.md](./reference/signal-send.md) |
+| `await timer(d)` | `start_timer(d, [:wait])` | [await-timer.md](./reference/await-timer.md) |
+| `options:` / `default_options:` | the call's keyword list; `Keyword.merge` overrides a default | [options.md](./reference/options.md) |
+| `if` / `for` / `switch` / `break` / `continue`, `x = expr` | `if`, `Enum`, recursion, `case`, `reduce_while` | [control-flow.md](./reference/control-flow.md) |
+| `close complete` / `fail` / `continue_as_new` | `complete_workflow_execution` / `fail_workflow_execution` / `continue_as_new_workflow` | [close.md](./reference/close.md) |
+| `heartbeat(details)` | `heartbeat([details])`, with `handle_heartbeat/1` and `handle_cancel/1` | [heartbeat.md](./reference/heartbeat.md) |
 
 The spec states only what `detach` guarantees (`twf spec statement-syntax`); the author maps it to these mechanics:
 
-- **`detach workflow`**: `start_child_workflow(task_queue, "W", input: [...], workflow_id: …, parent_close_policy: :PARENT_CLOSE_POLICY_ABANDON, awaitable_event: :start, wait: true)` (`temporal_sdk/temporal_sdk_workflow.erl:261-286`), which returns at the child's start or its failed start (`api/awaitable/temporal_sdk_api_awaitable_index.erl:343-352`). On any state other than `:started`, close with `fail_workflow_execution(…)` (`temporal_sdk/temporal_sdk_workflow.erl:2236-2240`), so a failed start fails the caller; a failed match would raise, and a raise fails only the workflow task, which the server retries while the caller stays open (`executor/temporal_sdk_executor_workflow.erl:1370-1386,2256-2290`). Then `await_open_before_close(false)` (`temporal_sdk/temporal_sdk_workflow.erl:2883-2884`), since the default holds the caller's close until every open child closes (`executor/temporal_sdk_executor_workflow.erl:1106-1110`). Cancellation never reaches the child: the SDK has no command that cancels a child or an external workflow (`temporal_sdk/temporal_sdk_workflow.erl:32`). A client start just starts. Neither reads the result.
+- **`detach workflow`**: `start_child_workflow(task_queue, "W", input: [...], workflow_id: …, parent_close_policy: :PARENT_CLOSE_POLICY_ABANDON, awaitable_event: :start, wait: true)` (`temporal_sdk/temporal_sdk_workflow.erl:261-286`), which returns at the child's start, its failed start, or a later state the child has already reached (`api/awaitable/temporal_sdk_api_awaitable_index.erl:343-352`). On `:initiate_failed`, close with `fail_workflow_execution(…)` (`temporal_sdk/temporal_sdk_workflow.erl:2236-2240`), so a failed start fails the caller; any other state means the child started. A failed match would raise, and a raise fails only the workflow task, which the server retries while the caller stays open (`executor/temporal_sdk_executor_workflow.erl:1370-1386,2256-2290`). Then `await_open_before_close(false)` (`temporal_sdk/temporal_sdk_workflow.erl:2883-2884`), since the default holds the caller's close until every open child closes (`executor/temporal_sdk_executor_workflow.erl:1106-1110`). Cancellation never reaches the child: the SDK has no command that cancels a child or an external workflow (`temporal_sdk/temporal_sdk_workflow.erl:32`). A client start just starts. Neither reads the result.
 - **`detach nexus`**: unsupported: Nexus is not implemented (`TODO.md:15`), and there is no `cancel_nexus` (`temporal_sdk/temporal_sdk_workflow.erl:26`).

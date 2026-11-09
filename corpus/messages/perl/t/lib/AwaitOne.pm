@@ -18,7 +18,7 @@ class AwaitOne :isa(Temporalio::Workflow::Definition) {
         await Temporalio::Workflow::wait_condition(sub { $xs->ready || $timer->is_ready });
         if ($xs->ready) {    # first listed wins
             push @took, 'case ' . $xs->claim;
-            $timer->cancel;  # an inline timer that loses is cancelled
+            $timer->cancel unless $timer->is_ready;    # an inline timer that loses is cancelled
         }
         else {
             push @took, 'timer';

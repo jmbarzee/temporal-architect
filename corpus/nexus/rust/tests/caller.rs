@@ -44,6 +44,16 @@ impl Greet {
     }
 }
 
+impl Greet {
+    fn id(name: &str) -> String {
+        format!("greet-{name}")
+    }
+
+    fn start_options(name: &str) -> WorkflowStartOptions {
+        WorkflowStartOptions::new(GREETER_TASK_QUEUE, Self::id(name)).build()
+    }
+}
+
 /// Answers Nexus tasks until the test ends; records each (operation, input) it saw.
 async fn stub_handler(env: &Env, seen: Arc<Mutex<Vec<(String, String)>>>) {
     let pc = PayloadConverter::default();
@@ -92,19 +102,15 @@ async fn stub_handler(env: &Env, seen: Arc<Mutex<Vec<(String, String)>>>) {
                         })),
                         links: vec![],
                     };
+                    let mut options = Greet::start_options(&name);
+                    options.completion_callbacks = vec![callback];
                     env.client
-                        .start_workflow(
-                            Greet::run,
-                            name.clone(),
-                            WorkflowStartOptions::new(GREETER_TASK_QUEUE, format!("greet-{name}"))
-                                .completion_callbacks(vec![callback])
-                                .build(),
-                        )
+                        .start_workflow(Greet::run, name.clone(), options)
                         .await
                         .expect("Greet starts");
                 }
                 start_operation_response::Variant::AsyncSuccess(start_operation_response::Async {
-                    operation_token: format!("greet-{name}"),
+                    operation_token: Greet::id(&name),
                     ..Default::default()
                 })
             }

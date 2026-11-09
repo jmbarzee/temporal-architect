@@ -73,6 +73,10 @@ corpus/rr
 corpus/temporal-test-server
 corpus/.phpunit.cache/
 
+# Elixir corpus deps and build output
+corpus/_build/
+corpus/deps/
+
 # Haskell corpus build output and the pinned hs-temporal-sdk clone
 corpus/dist-newstyle/
 corpus/.hs-temporal-sdk/

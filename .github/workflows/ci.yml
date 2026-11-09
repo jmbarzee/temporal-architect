@@ -67,7 +67,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        sdk: [go, python, typescript, dotnet, java, ruby, clojure, rust, php, perl, haskell]
+        sdk: [go, python, typescript, dotnet, java, ruby, clojure, rust, php, perl, elixir, haskell]
     steps:
       - uses: actions/checkout@v4
 
@@ -168,6 +168,32 @@ jobs:
         if: matrix.sdk == 'rust'
         with:
           workspaces: corpus
+
+      - uses: erlef/setup-beam@v1
+        if: matrix.sdk == 'elixir'
+        with:
+          otp-version: '28'
+          elixir-version: '1.19.7'
+
+      - uses: actions/cache@v4
+        if: matrix.sdk == 'elixir'
+        with:
+          path: |
+            corpus/deps
+            corpus/_build
+          key: corpus-elixir-${{ hashFiles('corpus/mix.lock') }}
+
+      # Elixir's SDK has no test server: its tests run against a dev server, with time skipping on.
+      - uses: temporalio/setup-temporal@v0
+        if: matrix.sdk == 'elixir'
+        with:
+          version: '1.9.1'
+
+      - if: matrix.sdk == 'elixir'
+        timeout-minutes: 2
+        run: |
+          temporal server start-dev --headless --dynamic-config-value frontend.WorkflowTimeSkippingEnabled=true &
+          until temporal operator cluster health; do sleep 1; done
 
       - uses: shivammathur/setup-php@v2
         if: matrix.sdk == 'php'

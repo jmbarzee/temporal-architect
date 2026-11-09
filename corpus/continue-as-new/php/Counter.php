@@ -6,6 +6,7 @@ namespace Corpus\ContinueAsNew;
 
 use Temporal\Activity\ActivityOptions;
 use Temporal\Workflow;
+use Temporal\Workflow\ReturnType;
 use Temporal\Workflow\WorkflowInterface;
 use Temporal\Workflow\WorkflowMethod;
 
@@ -14,6 +15,7 @@ use Temporal\Workflow\WorkflowMethod;
 final class Counter
 {
     #[WorkflowMethod]
+    #[ReturnType('int')]
     public function run(int $count, int $limit): \Generator
     {
         yield Workflow::timer(60);

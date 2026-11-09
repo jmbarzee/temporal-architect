@@ -23,7 +23,7 @@ final class AwaitOne
         $ticket = $this->xs()->begin();
         $fired = false;
         // The inline timer runs in its own scope, to be cancelled when it loses (spec 06).
-        $timer = Workflow::async(function () use ($timeoutSeconds, &$fired): \Generator {
+        $timer = Workflow::async(static function () use ($timeoutSeconds, &$fired): \Generator {
             // The flag is set as the timer's result is applied, not when this scope next runs.
             yield Workflow::timer($timeoutSeconds)->then(static function () use (&$fired): void {
                 $fired = true;
