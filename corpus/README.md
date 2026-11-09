@@ -22,6 +22,7 @@ corpus/
   Cargo.toml             a workspace whose root package, testkit.rs, is Rust's time-skipping kit
   composer.json
   mix.exs                globs */elixir; elixir_support/ holds the Elixir support the designs share
+  Package.swift          one test target per design, its path the design's swift/
   <design>/
     <design>.twf         the design, with no @sdk
     go/                  its Go output, per skills/temporal-architect-author-go
@@ -44,6 +45,8 @@ corpus/
       <design>.twf       the design plus only @sdk(php, …)
     elixir/              its Elixir output, tests beside sources, recorded histories/ to replay; nexus has none (no Nexus at the pin)
       <design>.twf       the design plus only @sdk(elixir, …)
+    swift/               its Swift output, a test target; nexus has none (Swift has no Nexus)
+      <design>.twf       the design plus only @sdk(swift, …)
 ```
 
 Each SDK's copy of the design names only its own implementation, so no worker carries two SDKs. `check-corpus` checks every `.twf` file on its own (a directory check would load the copies together) and fails when a copy, its `@sdk` lines stripped, differs from the design.
@@ -64,16 +67,17 @@ make corpus-clojure     # check the corpus, then the clojure.test suites via the
 make corpus-rust        # check the corpus, then cargo clippy (-D warnings) and cargo test, locked
 make corpus-php         # check the corpus, then composer install (locked), dload (rr, test server), PHPStan and PHPUnit
 make corpus-elixir      # check the corpus, then mix deps.get (locked), compile (warnings as errors) and mix test
+make corpus-swift       # check the corpus, then swift build (warnings are errors, resolved versions) and swift test
 ```
 
 `corpus-elixir` needs a dev server at `TEMPORAL_ADDRESS` (default `127.0.0.1:7233`): `temporal server start-dev --headless --dynamic-config-value frontend.WorkflowTimeSkippingEnabled=true`.
 
 ## Add an SDK
 
-1. Author each design into `<design>/<sdk>/`, beside a copy of `<design>.twf` carrying only its `@sdk`, with the project file at the corpus root. A Maven SDK lists each design's source root in its pom; a Cargo SDK globs its members (`*/rust`), and mix its paths (`*/elixir`).
+1. Author each design into `<design>/<sdk>/`, beside a copy of `<design>.twf` carrying only its `@sdk`, with the project file at the corpus root. A Maven SDK lists each design's source root in its pom, and Swift each design in `Package.swift`; a Cargo SDK globs its members (`*/rust`), and mix its paths (`*/elixir`).
 2. Add a `corpus-<sdk>` target to the [Makefile](../Makefile) that depends on `check-corpus`, then builds and tests those outputs. The targets iterate `CORPUS_DESIGNS`, the designs found by `corpus/*/*.twf`, never a directory glob, so a dependency directory such as `node_modules` is never checked or built.
 3. Add `<sdk>` to the `corpus` job's matrix in [ci.yml](../.github/workflows/ci.yml), with a setup step if the runner lacks its toolchain. An SDK whose tests need a Temporal server, as Perl's and Elixir's do, adds `temporalio/setup-temporal` as a step gated on `matrix.sdk`.
 
 ## Add a design
 
-Write `<design>/<design>.twf`, then author it into every SDK as "Add an SDK" step 1 describes, adding its source root to the pom for a Maven SDK; a Cargo or mix SDK globs its members, so needs no edit.
+Write `<design>/<design>.twf`, then author it into every SDK as "Add an SDK" step 1 describes, adding its source root to the pom for a Maven SDK and its name to `Package.swift` for Swift; a Cargo or mix SDK globs its members, so needs no edit.
