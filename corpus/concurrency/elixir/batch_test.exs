@@ -5,11 +5,12 @@ defmodule Concurrency.BatchTest do
   @tq "batches-test"
 
   setup_all do
-    {:ok, _} = Concurrency.Workers.start_batch_types(@tq, :batch_test)
+    # The workflow and activity workers share the default worker ID, built from the queue.
+    {:ok, %{worker_id: id}} = Concurrency.Workers.start_batch_types(@tq)
 
     on_exit(fn ->
-      Corpus.Temporal.stop_worker(:workflow, :batch_test)
-      Corpus.Temporal.stop_worker(:activity, :batch_test)
+      Corpus.Temporal.stop_worker(:workflow, id)
+      Corpus.Temporal.stop_worker(:activity, id)
     end)
   end
 

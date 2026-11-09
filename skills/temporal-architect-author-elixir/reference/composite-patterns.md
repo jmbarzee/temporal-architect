@@ -36,8 +36,12 @@ defmodule Retention.ManageRetention do
 
   @impl true
   def execute(_context, [doc_id, retention_days]) do
-    Process.put(:cancelled, false)
-    Arrivals.on("CancelRetention", fn [] -> Process.put(:cancelled, true) end)
+    Process.put(:cancelled, nil)
+
+    Arrivals.on("CancelRetention", fn [] ->
+      Process.put(:cancelled, Process.get(:cancelled) || Arrivals.arrival_task())
+    end)
+
     t = start_timer({retention_days, :day})
     race(t)
 
@@ -48,10 +52,11 @@ defmodule Retention.ManageRetention do
     end
   end
 
-  # Listed order: the condition, then the timer. Only CancelRetention's body sets the condition,
-  # on every arrival, so it is ready in the task of that signal's oldest arrival.
+  # Listed order: the condition, then the timer.
   defp race(t) do
-    case Arrivals.first(cancelled: Arrivals.ready_at("CancelRetention"), timer: Arrivals.timer_ready_at(t)) do
+    Arrivals.sync("CancelRetention")
+
+    case Arrivals.first(cancelled: Process.get(:cancelled), timer: Arrivals.timer_ready_at(t)) do
       :cancelled ->
         if Arrivals.timer_ready_at(t) == nil, do: cancel_timer(t)
 
@@ -68,7 +73,7 @@ end
 
 ### Why this is tricky
 
-1. **The condition is ranked, not read**: reading `Process.get(:cancelled)` after a wake-up decides by what is visible now, which replay can see further ahead than the live run did; its signal's task is what both see ([await-one.md](./await-one.md))
+1. **The condition is ranked, not tested**: a `true` flag read after a wake-up decides by what is visible now, which replay can see further ahead than the live run did; the task of the arrival that set it is what both see ([await-one.md](./await-one.md))
 2. **The condition case never claims**: a condition is read, not taken, so the signal's arrivals stay for any waiter ([condition.md](./condition.md))
 3. **The losing timer is cancelled only if unfired**: cancelling a fired timer raises ([await-one.md](./await-one.md#notes))
 4. **Both branches run the same tail**: one `DeleteDocument` call after the race, rather than one per case
