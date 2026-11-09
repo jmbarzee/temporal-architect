@@ -1,6 +1,6 @@
 # Primitives across SDKs
 
-**This applies only where `twf check` reports `CROSS_SDK_CALL`**: a workflow, activity or Nexus call whose caller runs on a worker in one SDK and whose callee runs on a worker in another, and its return. It also applies to a signal sent to a workflow on another SDK, which `twf check` does not flag. Otherwise it does not apply; within one SDK, each author maps the `.twf` types by its own SDK's conventions.
+**This applies only where `twf check` reports `CROSS_SDK_CALL`**: a workflow, activity or Nexus call, or a signal send, whose caller runs on a worker in one SDK and whose callee runs on a worker in another, and a call's return. Otherwise it does not apply; within one SDK, each author maps the `.twf` types by its own SDK's conventions.
 
 The SDKs' default data converters write JSON, but not the same JSON for every `.twf` primitive. `string`, `bool`, a finite `float` and an `int` within ±2^53 cross unchanged, alone or in a `list`, `map` or struct. The types below do not.
 

@@ -132,8 +132,8 @@ parsed.
   not, and on every node it hosts, which take the SDK by registration. Which one
   a namespace runs is not modelled, so the whole set is carried. Omitted when the
   worker has none, and on an orphan workflow, activity, service or operation.
-  An `activityCall`, `workflowCall` or `nexusCall` edge whose two nodes both
-  carry `sdks` and share no SDK is a call between SDKs (`Graph.SDKCrossings`,
+  An `activityCall`, `workflowCall`, `nexusCall` or `signalSend` edge whose two
+  nodes both carry `sdks` and share no SDK crosses SDKs (`Graph.SDKCrossings`,
   behind the `CROSS_SDK_CALL` hint); a consumer marking those edges applies the
   same rule.
 - `orphan` (bool, optional) — `true` when the definition exists in the AST but

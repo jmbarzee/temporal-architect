@@ -955,7 +955,7 @@ type callSite struct {
 // sdkSides are the SDKs of a call site's callers and of its callees.
 type sdkSides struct{ from, to []string }
 
-// sdkCrossings indexes the graph's call edges between SDKs by call site. A
+// sdkCrossings indexes the graph's edges between SDKs by call site. A
 // caller deployed on several workers makes the call from each, so its call
 // site is between SDKs when any of its edges is, and names those edges' SDKs.
 func sdkCrossings(g *graph.Graph) map[callSite]*sdkSides {
@@ -981,7 +981,7 @@ func union(a, b []string) []string {
 	return a
 }
 
-// checkCrossSDK hints at a call between SDKs, once per call site.
+// checkCrossSDK hints at a call or signal send between SDKs, once per call site.
 func (v *validationCtx) checkCrossSDK(s ast.Statement, from caller) {
 	kind, name := callee(s)
 	k := callSite{from.def, s.NodeLine()}
@@ -1002,7 +1002,8 @@ func (v *validationCtx) checkCrossSDK(s ast.Statement, from caller) {
 }
 
 // callee returns the kind and written name of the activity, workflow or Nexus
-// operation s calls, or "" when it calls none.
+// operation s calls, or of the signal it sends under its receiver's type, or ""
+// when it calls none.
 func callee(s ast.Statement) (kind, name string) {
 	switch n := s.(type) {
 	case *ast.ActivityCall:
@@ -1011,6 +1012,11 @@ func callee(s ast.Statement) (kind, name string) {
 		return "workflow", n.Workflow.Name
 	case *ast.NexusCall:
 		return "nexus operation", n.Service.Name + "." + n.Operation.Name
+	case *ast.SignalSendStmt:
+		if wf := n.Target(); wf != nil {
+			return "signal", wf.Name + "." + n.Signal
+		}
+		return "", ""
 	}
 	switch t := ast.AsyncTargetOf(s).(type) {
 	case *ast.ActivityTarget:

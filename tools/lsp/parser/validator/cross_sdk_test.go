@@ -125,3 +125,43 @@ namespace ns:
 		"hint CROSS_SDK_CALL 2:2 A : activity A runs on python and its caller on go; read skills/temporal-architect/reference/cross-sdk.md",
 	})
 }
+
+// TestCrossSDKSignalSend: a signal sent across SDKs, by handle or by type, is
+// hinted at the send under its receiver's type.
+func TestCrossSDKSignalSend(t *testing.T) {
+	file := resolvedAllowingErrors(t, `workflow W():
+	promise h <- workflow R()
+	signal h.Go()
+	signal R.Go()
+		id: wid
+	close complete()
+
+workflow R():
+	default_options:
+		task_queue: "r"
+	signal Go():
+		x = 1
+	close complete()
+
+@sdk(go)
+worker goW:
+	workflow W
+
+@sdk(python)
+worker rW:
+	workflow R
+
+namespace ns:
+	worker goW
+		options:
+			task_queue: "go"
+	worker rW
+		options:
+			task_queue: "r"
+`)
+	checkRendered(t, render(Validate(file), ErrCrossSDKCall), []string{
+		"hint CROSS_SDK_CALL 2:2 R : workflow R runs on python and its caller on go; read skills/temporal-architect/reference/cross-sdk.md",
+		"hint CROSS_SDK_CALL 3:2 R.Go : signal R.Go runs on python and its caller on go; read skills/temporal-architect/reference/cross-sdk.md",
+		"hint CROSS_SDK_CALL 4:2 R.Go : signal R.Go runs on python and its caller on go; read skills/temporal-architect/reference/cross-sdk.md",
+	})
+}

@@ -109,7 +109,7 @@ Parse failures share the code `SYNTAX`; dispatch on the message until categorica
 | `INVALID_IMPL_PATH` | parse | error | An absolute path, a URL, a `\`, or an empty path | Write the entry file `/`-separated, relative to the module root (else the `.twf` file's directory) |
 | `IMPL_NOT_FOUND` | validate | warning | The path names no file | Fix the path, or drop it until the code exists: `@sdk(go)` |
 | `WORKER_MULTI_SDK` | validate | warning | `@sdk` in more than one SDK on one worker | Split it into one worker per SDK on its own queue, or justify the pattern next to the annotations ([task-queues.md](../topics/task-queues.md#one-worker-several-sdks)) |
-| `CROSS_SDK_CALL` | validate | hint | An activity, workflow or Nexus call between workers whose `@sdk` share no SDK | Settle the values that cross by [cross-sdk.md](../../temporal-architect/reference/cross-sdk.md) |
+| `CROSS_SDK_CALL` | validate | hint | An activity, workflow or Nexus call, or a signal send, between workers whose `@sdk` share no SDK | Settle the values that cross by [cross-sdk.md](../../temporal-architect/reference/cross-sdk.md) |
 
 `id_scheme:` and addressed-send codes (`ID_*`, `TYPE_NEEDS_ID`, `ADDRESS_MISPLACED`, `NOT_A_PARENT`, …) are tabled in `twf spec resolution-and-errors`; the design rules behind them are in [workflow-id-schemes.md](../topics/workflow-id-schemes.md).
 
