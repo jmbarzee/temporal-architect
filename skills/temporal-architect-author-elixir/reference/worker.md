@@ -30,19 +30,17 @@ defmodule Orders.Workers do
     {:ok, _} = start(:activity, task_queue, order_types_activities())
   end
 
-  defp start(type, task_queue, names, opts \\ []) do
+  defp start(type, task_queue, names) do
     TemporalSdk.Worker.start(@cluster, type,
-      [
-        namespace: "default",
-        task_queue: task_queue,
-        temporal_name_to_erlang: fn _cluster, name ->
-          case Map.fetch(names, to_string(name)) do
-            {:ok, module} -> {:ok, module}
-            :error -> {:error, {"not a .twf name of this worker", %{name: name}}}
-          end
-        end,
-        allowed_temporal_names: Map.keys(names)
-      ] ++ opts
+      namespace: "default",
+      task_queue: task_queue,
+      temporal_name_to_erlang: fn _cluster, name ->
+        case Map.fetch(names, to_string(name)) do
+          {:ok, module} -> {:ok, module}
+          :error -> {:error, {"not a .twf name of this worker", %{name: name}}}
+        end
+      end,
+      allowed_temporal_names: Map.keys(names)
     )
   end
 end
@@ -88,7 +86,8 @@ namespace aivearium:
 # workers.ex: one queue function per family, shared by the instance process and every caller.
 def sandbox_queue(sandbox_id), do: "sandbox-" <> sandbox_id
 
-# Called in the sidecar process, once per instance; start/4 as above, with namespace "aivearium".
+# Called in the sidecar process, once per instance. start/4 is start/3 above with namespace
+# "aivearium" and `++ opts` after its option list.
 def start_sidecar(sandbox_id) do
   start(:activity, sandbox_queue(sandbox_id), sidecar_activities(),
     worker_id: "sidecar-" <> sandbox_id,
