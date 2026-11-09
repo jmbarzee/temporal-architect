@@ -23,7 +23,7 @@ corpus/
   composer.json
   mix.exs                globs */elixir; elixir_support/ holds the Elixir support the designs share
   Package.swift          one test target per design, its path the design's swift/
-  cabal.project          with corpus.cabal and haskell/Harness.hs; builds the pinned hs-temporal-sdk checkout
+  cabal.project          with corpus.cabal; builds the pinned hs-temporal-sdk checkout; haskell/ holds the shared Harness.hs and Arrivals.hs
   <design>/
     <design>.twf         the design, with no @sdk
     go/                  its Go output, per skills/temporal-architect-author-go

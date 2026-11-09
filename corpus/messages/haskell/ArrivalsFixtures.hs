@@ -11,13 +11,14 @@ module ArrivalsFixtures
   ) where
 
 import Arrivals qualified as A
+import Data.Foldable (traverse_)
 import Data.Functor (($>))
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Sequence (Seq (..), (|>))
 import Data.Text (Text)
 import RequireCallStack (provideCallStack)
-import Temporal.Duration (Duration, hours, seconds)
+import Temporal.Duration (hours, seconds)
 import Temporal.Payload (JSON (..))
 import Temporal.Worker (Definitions, toDefinitions)
 import Temporal.Workflow
@@ -31,9 +32,6 @@ withX = do
   xs <- A.newArrivals
   setSignalHandler xSignal (A.add xs)
   pure xs
-
-timer :: RequireCallStack => Duration -> Workflow Timer
-timer d = maybe (error "a positive duration starts a timer") pure =<< createTimer d
 
 -- | Two waiters of X; the one listed first sleeps before it waits, so the other begins waiting first.
 twoWaiters :: ProvidedWorkflow (Workflow (Map Text Text))
@@ -75,12 +73,12 @@ awaitOneX :: ProvidedWorkflow (Int -> Workflow [Text])
 awaitOneX = provideCallStack $ provideWorkflow JSON "AwaitOneX" \timeoutSeconds -> do
   xs <- withX
   w <- A.begin xs
-  t <- timer (seconds (fromIntegral timeoutSeconds))
-  r <- race (waitCondition (A.ready xs w)) (wait t)
+  t <- createTimer (seconds (fromIntegral timeoutSeconds))
+  r <- race (waitCondition (A.ready xs w)) (traverse_ wait t)
   won <- case r of
     Left () -> do
       v <- A.claim xs w
-      cancel t -- a losing inline timer is cancelled (spec 06)
+      traverse_ cancel t -- a losing inline timer is cancelled (spec 06)
       pure ("case " <> v)
     Right () -> A.leave xs w $> "timer"
   v2 <- A.take xs
@@ -92,12 +90,12 @@ promiseBeforeAwaitOne = provideCallStack $ provideWorkflow JSON "PromiseBeforeAw
   xs <- withX
   p <- A.begin xs
   w <- A.begin xs
-  t <- timer (hours 1)
-  r <- race (waitCondition (A.ready xs w)) (wait t)
+  t <- createTimer (hours 1)
+  r <- race (waitCondition (A.ready xs w)) (traverse_ wait t)
   won <- case r of
     Left () -> do
       v <- A.claim xs w
-      cancel t
+      traverse_ cancel t
       pure ("case " <> v)
     Right () -> A.leave xs w $> "timer"
   promised <- A.takeAt xs p
@@ -109,10 +107,10 @@ awaitOneXTie :: ProvidedWorkflow ([Text] -> Workflow [Text])
 awaitOneXTie = provideCallStack $ provideWorkflow JSON "AwaitOneXTie" \order -> do
   xs <- withX
   w <- A.begin xs
-  t <- timer (hours 1)
+  t <- createTimer (hours 1)
   let caseX, caseTimer :: RequireCallStack => Workflow Text
       caseX = waitCondition (A.ready xs w) $> ("X" :: Text)
-      caseTimer = wait t $> "timer"
+      caseTimer = traverse_ wait t $> "timer"
   won <-
     either id id <$> case order of
       ["X", "timer"] -> race caseX caseTimer
@@ -121,7 +119,7 @@ awaitOneXTie = provideCallStack $ provideWorkflow JSON "AwaitOneXTie" \order -> 
     if won == "X"
       then do
         v <- A.claim xs w
-        cancel t
+        traverse_ cancel t
         pure ("case " <> v)
       else A.leave xs w $> "timer"
   -- A non-blocking check: race runs its left side first, and pure () is done at once.

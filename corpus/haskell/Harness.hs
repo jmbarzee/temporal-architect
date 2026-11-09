@@ -11,6 +11,9 @@ module Harness
 import Control.Monad.Logger (runNoLoggingT)
 import Control.Monad.Trans.Reader (ReaderT, runReaderT)
 import Data.Text qualified as T
+import System.Directory (createDirectoryIfMissing, getTemporaryDirectory)
+import System.Environment (getProgName)
+import System.FilePath ((</>))
 import System.IO.Unsafe (unsafePerformIO)
 import Temporal.Client qualified as C
 import Temporal.Client.TestService qualified as TestService
@@ -37,13 +40,16 @@ data Env = Env
   , core :: Client
   }
 
--- | Runs f against a fresh time-skipping test server, downloaded once and cached.
+-- | Runs f against a fresh time-skipping test server, downloaded once per suite
+-- into its own directory: suites run together never wait on another's download lock.
 withEnv :: (Env -> IO a) -> IO a
 withEnv f = do
   port <- getFreePort
+  dir <- (</>) <$> getTemporaryDirectory <*> (("twf-corpus-" <>) <$> getProgName)
+  createDirectoryIfMissing True dir
   let server =
         TemporalTestServerConfig
-          { exe = CachedDownload (Default (SDKDefault "community-haskell" "0.1.0.0")) Nothing Nothing
+          { exe = CachedDownload (Default (SDKDefault "community-haskell" "0.1.0.0")) (Just dir) Nothing
           , port = Just (fromIntegral port)
           , extraArgs = []
           }
@@ -53,7 +59,7 @@ withEnv f = do
     f Env {client, core}
 
 -- | Runs m with a worker polling; shuts the worker down after.
-withWorker :: Env -> WorkerConfig () -> IO a -> IO a
+withWorker :: Env -> WorkerConfig env -> IO a -> IO a
 withWorker env conf m = bracket (startWorker env.core conf) shutdown (const m)
 
 -- | Runs a client action.

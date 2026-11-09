@@ -18,7 +18,7 @@ setSignalHandler approveSignal \approver -> do
 approver <- A.take approves
 ```
 
-Every signal or update the design waits on gets an `Arrivals a`, `a` being its one param, a tuple of several (`(Text, Scientific)`, matched at the take), or `()` for none (`A.add opens ()`). Copy the module from the corpus's [`messages/haskell/Arrivals.hs`](https://github.com/jmbarzee/temporal-architect/blob/main/corpus/messages/haskell/Arrivals.hs) into the project and import it qualified; [`Approval.hs`](https://github.com/jmbarzee/temporal-architect/blob/main/corpus/messages/haskell/Approval.hs) beside it is the worked example.
+Every signal or update the design waits on gets an `Arrivals a`, `a` being its one param, a tuple of several (`(Text, Scientific)`, matched at the take), or `()` for none (`A.add opens ()`). Copy the module from the corpus's [`haskell/Arrivals.hs`](https://github.com/jmbarzee/temporal-architect/blob/main/corpus/haskell/Arrivals.hs) into the project and import it qualified; [`messages/haskell/Approval.hs`](https://github.com/jmbarzee/temporal-architect/blob/main/corpus/messages/haskell/Approval.hs), which uses it, is the worked example.
 
 | `Arrivals` | Does |
 |------------|------|
