@@ -62,11 +62,38 @@ defmodule Corpus.Temporal do
 
   @doc """
   Replays a recorded history (`temporal workflow show --output json`) against `names`, which maps
-  the workflow type, the file name's prefix before `--`, to its module.
+  the workflow type, the file name's prefix before `--`, to its module. The SDK's check compares
+  awaitables, never results, so a run that completed must replay to the result it recorded.
   """
   def replay(file, names) do
     [type | _] = file |> Path.basename() |> String.split("--")
-    :temporal_sdk.replay_file(@cluster, Map.fetch!(names, type), String.to_charlist(file))
+    replayed = :temporal_sdk.replay_file(@cluster, Map.fetch!(names, type), String.to_charlist(file))
+
+    case recorded_result(file) do
+      nil -> replayed
+      result when replayed == {:ok, {:completed, result}} -> replayed
+      result -> {:error, %{recorded: result, replayed: replayed}}
+    end
+  end
+
+  # The recorded completion's payloads, decoded as the SDK's default converter encodes them.
+  defp recorded_result(file) do
+    %{"events" => events} = file |> File.read!() |> JSON.decode!()
+
+    Enum.find_value(events, fn
+      %{"workflowExecutionCompletedEventAttributes" => %{"result" => result}} ->
+        result |> Map.get("payloads", []) |> Enum.map(&decode/1)
+
+      _ ->
+        nil
+    end)
+  end
+
+  defp decode(%{"metadata" => %{"encoding" => encoding}, "data" => data}) do
+    case Base.decode64!(encoding) do
+      "binary/plain" -> Base.decode64!(data)
+      "json/plain" -> :json.decode(Base.decode64!(data))
+    end
   end
 
   @doc "Awaits a workflow's result, following its continue-as-new chain to the last run."
