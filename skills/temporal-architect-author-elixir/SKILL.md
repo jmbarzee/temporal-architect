@@ -114,6 +114,15 @@ Load only what the current layer needs.
 | `workflow Name(args) -> r` | `start_child_workflow(task_queue, "Name", input: [args], workflow_id: …, wait: true)` | [workflow-call.md](./reference/workflow-call.md) |
 | `detach workflow ...` / `detach nexus ...` | child with `ABANDON`, `awaitable_event: :start`, `await_open_before_close(false)` / unsupported | [detach.md](./reference/detach.md) |
 | `nexus Endpoint Service.Op(args) -> r` | unsupported | [nexus.md](./reference/nexus.md) |
+| `signal Name(params):` | `Arrivals.on("Name", body)`: the body runs per arrival at sync | [signal-handler.md](./reference/signal-handler.md) |
+| `query Name(params) -> (T):` | a `start_execution` answering `{:query_request, "Name"}` from `set_info` state; `handle_query/2` for a closed run | [query-handler.md](./reference/query-handler.md) |
+| `update Name(params) -> (T):` | unsupported | [update-handler.md](./reference/update-handler.md) |
+| `await signal Name -> (...)` | `Arrivals.take("Name")` | [await-signal.md](./reference/await-signal.md) |
+| `promise p <- ...` | the call's handle, awaited with `wait(p)`; for a signal, `Arrivals.promise("Name")` | [promise.md](./reference/promise.md) |
+| `state:` / `condition` / `set` / `unset` | process-dictionary state in the main execution, awaited on the signals that set it | [condition.md](./reference/condition.md) |
+| `await all:` | `wait_all([...])` | [await-all.md](./reference/await-all.md) |
+| `await one:` | `Arrivals.first` over every case: earliest workflow task, then first listed | [await-one.md](./reference/await-one.md) |
+| handler + condition + `await one` | worked compositions | [composite-patterns.md](./reference/composite-patterns.md) |
 | `signal handle.Name(args)` / `signal Type.Name(args)` + `id:` | unsupported | [signal-send.md](./reference/signal-send.md) |
 | `await timer(d)` | `start_timer(d, [:wait])` | [await-timer.md](./reference/await-timer.md) |
 | `options:` / `default_options:` | the call's keyword list; `Keyword.merge` overrides a default | [options.md](./reference/options.md) |
