@@ -67,7 +67,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        sdk: [go, python, typescript, dotnet, java, ruby, clojure, rust, php, perl, elixir, swift]
+        sdk: [go, python, typescript, dotnet, java, ruby, clojure, rust, php, perl, elixir, swift, haskell]
     steps:
       - uses: actions/checkout@v4
 
@@ -215,6 +215,29 @@ jobs:
         with:
           path: corpus/.build
           key: swift-${{ runner.os }}-${{ hashFiles('corpus/Package.resolved') }}
+
+      # The runner's cargo builds the SDK's Rust bridge; protoc is for proto-lens-protobuf-types' Setup.
+      - uses: haskell-actions/setup@v2
+        if: matrix.sdk == 'haskell'
+        id: ghc
+        with:
+          ghc-version: 9.10.3
+          cabal-version: 3.16.1.0
+
+      - if: matrix.sdk == 'haskell'
+        run: sudo apt-get install -y protobuf-compiler
+
+      - uses: actions/cache@v4
+        if: matrix.sdk == 'haskell'
+        with:
+          path: |
+            ${{ steps.ghc.outputs.cabal-store }}
+            corpus/dist-newstyle
+            corpus/.hs-temporal-sdk/core/rust/target
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: corpus-haskell-${{ hashFiles('corpus/cabal.project*', 'corpus/corpus.cabal', 'Makefile') }}
+          restore-keys: corpus-haskell-
 
       - run: make corpus-${{ matrix.sdk }}
         env:
