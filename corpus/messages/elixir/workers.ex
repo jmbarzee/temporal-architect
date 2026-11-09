@@ -1,12 +1,28 @@
 defmodule Messages.Workers do
   @moduledoc """
-  worker approvalTypes: the `.twf` names each worker serves and the modules behind them. An Elixir
-  module's own name (`Elixir.Messages.Approval`) is its default Temporal type, so every worker maps
-  the `.twf` name with `temporal_name_to_erlang` and allows only these names.
+  Each .twf worker's types and start, shared by the worker process and the tests. The tests run
+  in the dev server's only namespace, "default", not the design's `approvals`.
   """
 
-  def approval_types, do: %{"Approval" => Messages.Approval}
+  @cluster :cluster_1
 
-  def start_approval_types(task_queue \\ "approvals", id \\ :approval_types),
-    do: Corpus.Temporal.start_worker(:workflow, id, task_queue, approval_types())
+  def approval_types_workflows, do: %{"Approval" => Messages.Approval}
+
+  def start_approval_types(task_queue \\ "approvals") do
+    {:ok, _} = start(:workflow, task_queue, approval_types_workflows())
+  end
+
+  defp start(type, task_queue, names) do
+    TemporalSdk.Worker.start(@cluster, type,
+      namespace: "default",
+      task_queue: task_queue,
+      temporal_name_to_erlang: fn _cluster, name ->
+        case Map.fetch(names, to_string(name)) do
+          {:ok, module} -> {:ok, module}
+          :error -> {:error, {"not a .twf name of this worker", %{name: name}}}
+        end
+      end,
+      allowed_temporal_names: Map.keys(names)
+    )
+  end
 end

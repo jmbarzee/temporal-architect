@@ -80,7 +80,9 @@ defmodule Concurrency.AwaitOneTest do
         end
 
       {:missed, misses} ->
-        @tag skip: "no one-task tie in 3 attempts: #{Enum.join(misses, "; ")}"
+        reason = "no one-task tie in 3 attempts: #{Enum.join(misses, "; ")}"
+        IO.warn("#{name}: #{reason}", [])
+        @tag skip: reason
         test name, do: :ok
     end
   end

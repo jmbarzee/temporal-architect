@@ -99,7 +99,12 @@ defmodule Corpus.Arrivals do
           |> Enum.filter(&(&1.event_id > st.seen))
           |> Enum.sort_by(& &1.event_id)
 
-        Enum.each(new, &st.handler.(&1.input))
+        Enum.each(new, fn a ->
+          Process.put({__MODULE__, :arrival}, a.event_id)
+          st.handler.(a.input)
+        end)
+
+        Process.delete({__MODULE__, :arrival})
         seen = Enum.reduce(new, st.seen, &max(&1.event_id, &2))
         put(name, assign(%{st | seen: seen, pending: st.pending ++ Enum.map(new, &{&1.event_id, &1.input})}))
         if data.state == :requested, do: W.admit_signal(name, [:wait])
@@ -125,6 +130,12 @@ defmodule Corpus.Arrivals do
       ids -> Enum.min(ids)
     end
   end
+
+  @doc """
+  In a handler body, the workflow task of the arrival it handles (see `task_of/1`). A body that
+  sets a condition records it, so an `await one` condition case ranks by the setting arrival.
+  """
+  def arrival_task, do: task_of(Process.get({__MODULE__, :arrival}))
 
   @doc "For an `await one` timer case: the task in which it fired, or nil."
   def timer_ready_at(t) do

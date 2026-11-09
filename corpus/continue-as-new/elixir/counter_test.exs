@@ -6,11 +6,12 @@ defmodule ContinueAsNew.CounterTest do
   @skip [time_skipping_config: %{enabled: true}]
 
   setup_all do
-    {:ok, _} = ContinueAsNew.Workers.start_counter_types(@tq, :counter_test)
+    # The workflow and activity workers share the default worker ID, built from the queue.
+    {:ok, %{worker_id: id}} = ContinueAsNew.Workers.start_counter_types(@tq)
 
     on_exit(fn ->
-      Corpus.Temporal.stop_worker(:workflow, :counter_test)
-      Corpus.Temporal.stop_worker(:activity, :counter_test)
+      Corpus.Temporal.stop_worker(:workflow, id)
+      Corpus.Temporal.stop_worker(:activity, id)
     end)
   end
 

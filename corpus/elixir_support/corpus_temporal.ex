@@ -1,7 +1,7 @@
 defmodule Corpus.Temporal do
-  @moduledoc "One SDK cluster against a dev server, the workers each design starts, and test helpers."
+  @moduledoc "One SDK cluster against a dev server, and the test helpers each design shares."
 
-  @cluster :corpus
+  @cluster :cluster_1
 
   def cluster, do: @cluster
 
@@ -11,7 +11,7 @@ defmodule Corpus.Temporal do
     {:ok, ip} = :inet.getaddr(String.to_charlist(host), :inet)
 
     Application.put_env(:temporal_sdk, :clusters,
-      corpus: [
+      cluster_1: [
         client: %{
           adapter: {:temporal_sdk_grpc_adapter_gun_pool, [endpoints: [{ip, String.to_integer(port)}]]}
         }
@@ -22,7 +22,7 @@ defmodule Corpus.Temporal do
     :ok
   end
 
-  @doc "Starts a worker; `names` maps each .twf name to the module that implements it."
+  @doc "Starts a test-only worker, such as a fixture's; `names` maps each .twf name to its module."
   def start_worker(type, id, task_queue, names, opts \\ []) do
     to_module = fn _cluster, name ->
       case Map.fetch(names, to_string(name)) do
