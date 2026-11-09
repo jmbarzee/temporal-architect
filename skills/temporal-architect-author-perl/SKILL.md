@@ -13,7 +13,7 @@ The mapping relies on [sdk-perl](https://github.com/MasonEgger/sdk-perl) at comm
 
 sdk-perl is community-maintained, not an official Temporal SDK, and pre-1.0: its API may still break (`README.md:23-34`). This skill supports it at Tier 3.
 
-Settle where the code lands. The project root is the directory whose `cpanfile` requires `Temporalio::Client` or `Temporalio::Worker`. In an existing repo its conventions are **requirements to match**; in greenfield, ask. The code is hand-written: no codegen variant is mapped.
+Settle where the code lands. The project root is the directory whose `cpanfile` requires `Temporalio::Client` or `Temporalio::Worker`; sdk-perl is not on CPAN, so where the `cpanfile` leaves it out, use the fallback in [discovery.md § Project roots](./reference/discovery.md#project-roots). In an existing repo its conventions are **requirements to match**; in greenfield, ask. The code is hand-written: no codegen variant is mapped.
 
 For an existing repo, dispatch the design skill's [project-discovery subagent](../temporal-architect-design/subagents/project-discovery.md) on the bounded slice in scope and work from its summary; don't re-scan in the main context. A target spanning several slices goes through the design skill's [reverse decompose](../temporal-architect-design/reference/reverse-engineering.md#decompose-a-large-repo-into-slices) first.
 
