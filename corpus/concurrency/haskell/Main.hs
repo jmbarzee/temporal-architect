@@ -14,17 +14,16 @@ import Proto.Temporal.Api.History.V1.Message (HistoryEvent, HistoryEvent'Attribu
 import Proto.Temporal.Api.History.V1.Message_Fields qualified as History
 import Temporal.Client qualified as C
 import Temporal.Duration (hours)
-import Temporal.Worker (ConfigM, WorkerConfig, configure, setMaxCachedWorkflows, setNamespace, setTaskQueue, shutdown, startWorker)
+import Temporal.Worker (ConfigM, WorkerConfig, configure, setMaxCachedWorkflows, setNamespace, setTaskQueue)
 import Temporal.Workflow (TaskQueue, WorkflowId (..), workflowRef)
 import Test.Hspec
-import UnliftIO.Exception (bracket)
 
 main :: IO ()
 main = hspec do
   describe "Batch" do
     it "takes Ack, cancels the losing timer, and returns while its detached Archive runs" $ withEnv \env -> do
       held <- newEmptyMVar
-      withBatchWorker env (batchTypes (BatchEnv (const (readMVar held))) (deploy "batches")) do
+      withWorker env (batchTypes (BatchEnv (const (readMVar held))) (deploy "batches")) do
         h <- run env (C.start batch "batch-ack" (C.startWorkflowOptions "batches") items)
         -- Ack after the timer starts: one started and cancelled in one workflow task leaves no events.
         untilEvent h TimerStarted `shouldReturn` True
@@ -47,7 +46,7 @@ main = hspec do
         C.waitWorkflowResult a `shouldReturn` ()
 
     it "returns on the timer when no Ack comes" $ withEnv \env ->
-      withBatchWorker env (batchTypes (BatchEnv (const (pure ()))) (deploy "batches")) do
+      withWorker env (batchTypes (BatchEnv (const (pure ()))) (deploy "batches")) do
         h <- run env (C.start batch "batch-timer" (C.startWorkflowOptions "batches") items)
         C.waitWorkflowResult h `shouldReturn` Report 2 True "unacknowledged"
         evs <- events h
@@ -77,10 +76,6 @@ items = ["a", "b"]
 
 deploy :: TaskQueue -> ConfigM env ()
 deploy q = setNamespace "default" >> setTaskQueue q
-
--- | withWorker for batchTypes, whose activities take a BatchEnv.
-withBatchWorker :: Env -> WorkerConfig BatchEnv -> IO a -> IO a
-withBatchWorker e conf m = bracket (startWorker e.core conf) shutdown (const m)
 
 fixturesWorker :: Int -> WorkerConfig ()
 fixturesWorker cached = configure () fixtures do

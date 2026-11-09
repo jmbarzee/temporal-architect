@@ -9,25 +9,44 @@ import Data.Text (Text)
 import Greeter qualified
 import Harness
 import Lens.Family2 ((&), (.~), (^.))
+import Proto.Temporal.Api.Enums.V1.Nexus qualified as NexusEnum
 import Proto.Temporal.Api.History.V1.Message (HistoryEvent'Attributes (..))
 import Proto.Temporal.Api.History.V1.Message_Fields qualified as History
+import Proto.Temporal.Api.Nexus.V1.Message (StartOperationRequest)
 import Proto.Temporal.Api.Nexus.V1.Message_Fields qualified as Nexus
 import Proto.Temporal.Sdk.Core.Nexus.Nexus qualified as CoreNexus
 import System.Timeout (timeout)
 import Temporal.Client qualified as C
+import Temporal.Exception (ApplicationFailure (..))
 import Temporal.Operator (createNexusEndpoint)
 import Temporal.Payload (convertFromProtoPayload, convertToProtoPayload, decodeJSON, encodeJSON)
 import Temporal.Worker (ConfigM, NexusOperationHandler (..), NexusServiceHandler (..), WorkerConfig, addNexusServiceHandler, configure, setNamespace, setTaskQueue)
 import Temporal.Workflow (TaskQueue)
 import Test.Hspec
+import UnliftIO.Exception (throwIO)
 
 main :: IO ()
 main = hspec do
   describe "nexus" do
     it "Greet" $ withEnv \env ->
       withWorker env (Greeter.greeterTypes (deploy Greeter.taskQueue)) do
-        r <- run env (C.execute Greeter.greet (Greeter.greetId "Ada") (C.startWorkflowOptions Greeter.taskQueue) "Ada")
+        r <- run env (C.execute Greeter.greet (Greeter.greetId "Ada") Greeter.greetStartOptions "Ada")
         r `shouldBe` ("Greetings, Ada" :: Text)
+
+    it "syncOperation: a thrown ApplicationFailure fails the operation (close fail)" do
+      st <- handleStartOperation (Greeter.syncOperation \(_ :: Text) -> throwIO refused :: IO Text) (startRequest "Ada")
+      case st of
+        CoreNexus.NexusTaskCompletion'Completed c -> do
+          let failed = c ^. Nexus.startOperation . Nexus.operationError
+          (failed ^. Nexus.operationState, failed ^. Nexus.failure . Nexus.message) `shouldBe` ("failed", "refused")
+        other -> expectationFailure (show other)
+
+    it "syncOperation: any other exception is a retryable INTERNAL handler error" do
+      st <- handleStartOperation (Greeter.syncOperation \(_ :: Text) -> throwIO (userError "outage") :: IO Text) (startRequest "Ada")
+      case st of
+        CoreNexus.NexusTaskCompletion'Error e ->
+          (e ^. Nexus.errorType, e ^. Nexus.retryBehavior) `shouldBe` ("INTERNAL", NexusEnum.NEXUS_HANDLER_ERROR_RETRY_BEHAVIOR_RETRYABLE)
+        other -> expectationFailure (show other)
 
     it "Caller: Hello, Greet, and a detached Greet it never waits for" $ withEnv \env -> do
       ep <- createNexusEndpoint env.core Greeter.endpoint "default" Greeter.taskQueue
@@ -47,6 +66,12 @@ main = hspec do
 
 deploy :: TaskQueue -> ConfigM () ()
 deploy q = setNamespace "default" >> setTaskQueue q
+
+startRequest :: Text -> StartOperationRequest
+startRequest name = defMessage & Nexus.payload .~ convertToProtoPayload (encodeJSON name)
+
+refused :: ApplicationFailure
+refused = ApplicationFailure {type' = "Refused", message = "refused", nonRetryable = True, details = [], stack = "", nextRetryDelay = Nothing}
 
 -- | greeterTypes with a stand-in for Greet. Greet (async … workflow) has no SDK
 -- handler at the pin, so the test answers it over the raw Nexus task API, as

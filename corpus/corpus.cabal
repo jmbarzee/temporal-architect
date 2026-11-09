@@ -3,7 +3,8 @@ name:          corpus
 version:       0
 build-type:    Simple
 
--- Each design's Haskell output is one test suite over corpus/<design>/haskell/.
+-- Each design's Haskell output is one test suite over corpus/<design>/haskell/
+-- and corpus/haskell/, which holds what every suite shares: Harness and Arrivals.
 common design
   default-language: GHC2021
   default-extensions:
@@ -20,6 +21,8 @@ common design
     , aeson
     , base
     , containers
+    , directory
+    , filepath
     , hspec
     , lens-family
     , monad-logger
@@ -50,8 +53,7 @@ test-suite nexus
 test-suite concurrency
   import:         design
   type:           exitcode-stdio-1.0
-  -- Arrivals is the messages design's helper, shared rather than copied.
-  hs-source-dirs: concurrency/haskell messages/haskell haskell
+  hs-source-dirs: concurrency/haskell haskell
   main-is:        Main.hs
   other-modules:  Batch AwaitOneFixtures Arrivals Harness
   build-depends:  mtl
