@@ -123,6 +123,7 @@ Load only what the current layer needs.
 | `if` / `for` / `switch` / `break` / `continue`, `x = expr` | bindings, `StateVar`s, recursion | [control-flow.md](./reference/control-flow.md) |
 | `close complete` / `fail` / `continue_as_new` | `pure` / `throwM ApplicationFailure` / `continueAsNew` | [close.md](./reference/close.md) |
 | `heartbeat(details)` | `withHeartbeat` | [heartbeat.md](./reference/heartbeat.md) |
+| recovered `.twf` (code → `.twf`) | project roots, registration, concurrency, codegen | [discovery.md](./reference/discovery.md) |
 | SDK idioms | the SDK's source and the cookbook, by topic | [idioms.md](./reference/idioms.md) |
 
 The spec states only what `detach` guarantees (`twf spec statement-syntax`); the author maps it to these mechanics:
