@@ -57,6 +57,9 @@ skills/
   temporal-architect-author-php/
     SKILL.md
     reference/...
+  temporal-architect-author-rust/
+    SKILL.md
+    reference/...
   temporal-architect-author-infra/
     SKILL.md
     reference/...

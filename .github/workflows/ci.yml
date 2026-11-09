@@ -67,7 +67,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        sdk: [go, python, typescript, dotnet, java, ruby, clojure, rust, php, perl, elixir, haskell]
+        sdk: [go, python, typescript, dotnet, java, ruby, clojure, rust, php, perl, elixir, swift, haskell]
     steps:
       - uses: actions/checkout@v4
 
@@ -201,6 +201,20 @@ jobs:
           php-version: '8.4'
           extensions: grpc, sockets, curl
           tools: composer:v2
+
+      # setup-swift verifies Swiftly against swift.org's signing keys, which the runner lacks.
+      - if: matrix.sdk == 'swift'
+        run: curl -fsSL https://www.swift.org/keys/all-keys.asc | gpg --import -
+      - uses: swift-actions/setup-swift@v3.0.0-beta.1
+        if: matrix.sdk == 'swift'
+        with:
+          swift-version: '6.2.3'
+
+      - uses: actions/cache@v4
+        if: matrix.sdk == 'swift'
+        with:
+          path: corpus/.build
+          key: swift-${{ runner.os }}-${{ hashFiles('corpus/Package.resolved') }}
 
       # The runner's cargo builds the SDK's Rust bridge; protoc is for proto-lens-protobuf-types' Setup.
       - uses: haskell-actions/setup@v2
