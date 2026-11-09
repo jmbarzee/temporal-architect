@@ -4,6 +4,7 @@
 |-----|--------|
 | `state:` `condition jobReady` | `Process.put(:job_ready, nil)` at the start of `execute/2`, in the main execution: `nil` while unset, else the workflow task that set it |
 | `set jobReady`, in a signal body | `Process.put(:job_ready, Process.get(:job_ready) \|\| Arrivals.arrival_task())` |
+| `set jobReady`, in the workflow body | the same; outside a handler it records `:infinity`, which `await jobReady` reads as set (raced in an `await one`, [unmapped](#as-an-await-one-case)) |
 | `unset jobReady` | `Process.put(:job_ready, nil)` |
 | `await jobReady` | `await_condition(["JobDone"], fn -> Process.get(:job_ready) != nil end)`, below |
 

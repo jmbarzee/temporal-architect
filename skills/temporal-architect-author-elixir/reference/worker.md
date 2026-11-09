@@ -87,7 +87,7 @@ namespace aivearium:
 def sandbox_queue(sandbox_id), do: "sandbox-" <> sandbox_id
 
 # Called in the sidecar process, once per instance. start/4 is start/3 above with namespace
-# "aivearium" and `++ opts` after its option list.
+# "aivearium" and its option list bracketed, `[...] ++ opts`.
 def start_sidecar(sandbox_id) do
   start(:activity, sandbox_queue(sandbox_id), sidecar_activities(),
     worker_id: "sidecar-" <> sandbox_id,
