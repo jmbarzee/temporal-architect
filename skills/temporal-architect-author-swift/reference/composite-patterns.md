@@ -71,7 +71,7 @@ struct HumanReview {
 
 1. **The condition is read, not taken**: it is a `Bool` in the predicate; nothing waits on the update itself, so it needs no `Arrivals` ([await-one.md](./await-one.md#cases))
 2. **Not `context.timeout(for: .seconds(172_800)) { try await context.condition { $0.reviewComplete } }`**: at a tie the timer wins although the condition is listed first ([await-one.md](./await-one.md))
-3. **The losing timer is cancelled**: spec 06 cancels a losing inline timer, so it is a child of the round's task group, which `cancelAll()` cancels; a losing activity or child case keeps running, so it starts outside that group ([await-one.md](./await-one.md#notes))
+3. **The losing timer is cancelled**: spec 06 cancels a losing inline timer, so it is a child of the round's task group, which `cancelAll()` cancels; a losing activity or child case keeps running, so it starts outside that group with `cancellationType: .abandon` ([await-one.md](./await-one.md#notes))
 4. **`context.allHandlersFinished` before returning** (`Temporal/Worker/Workflow/WorkflowContext.swift:165-177`), so an in-flight update is not abandoned ([update-handler.md](./update-handler.md))
 
 ## Pattern 2: Signal-set condition vs timer with a shared tail (ManageRetention)
