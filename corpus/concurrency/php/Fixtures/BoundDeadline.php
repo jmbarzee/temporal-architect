@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Corpus\Concurrency\Fixtures;
 
+use Corpus\Concurrency\Arrivals;
 use Temporal\Workflow;
 use Temporal\Workflow\SignalMethod;
 use Temporal\Workflow\WorkflowInterface;
@@ -13,12 +14,18 @@ use Temporal\Workflow\WorkflowMethod;
 #[WorkflowInterface]
 final class BoundDeadline
 {
-    private int $acks = 0; // pending arrivals of Ack
+    /** @var Arrivals<true> */
+    private Arrivals $acks;
+
+    public function __construct()
+    {
+        $this->acks = new Arrivals();
+    }
 
     #[SignalMethod(name: 'Ack')]
     public function ack(): void
     {
-        ++$this->acks;
+        $this->acks->add(true);
     }
 
     #[WorkflowMethod]
@@ -34,12 +41,14 @@ final class BoundDeadline
             });
         });
         while (true) {
+            $ticket = $this->acks->begin(); // a fresh ticket each round
             // A closure, not fn(): an arrow function captures $fired by value.
-            yield Workflow::await(function () use (&$fired): bool { return $this->acks > 0 || $fired; });
-            if ($this->acks === 0) {
+            yield Workflow::await(function () use ($ticket, &$fired): bool { return $this->acks->ready($ticket) || $fired; });
+            if (!$this->acks->ready($ticket)) {
+                $this->acks->leave($ticket);
                 return $counted;
             }
-            --$this->acks;
+            $this->acks->claim();
             ++$counted;
         }
     }

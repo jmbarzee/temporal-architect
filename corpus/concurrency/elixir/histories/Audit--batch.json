@@ -1,0 +1,108 @@
+{
+  "events": [
+    {
+      "eventId": "1",
+      "eventTime": "2026-11-08T19:35:27.753433Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_EXECUTION_STARTED",
+      "taskId": "1050682",
+      "workflowExecutionStartedEventAttributes": {
+        "workflowType": {
+          "name": "Audit"
+        },
+        "parentWorkflowNamespace": "default",
+        "parentWorkflowNamespaceId": "01a1bca2-7d36-7ea2-b0be-a13baa3434ba",
+        "parentWorkflowExecution": {
+          "workflowId": "Batch-1026-1794166527745",
+          "runId": "01a1bca8-9704-7441-b04e-262f7dd2af6c"
+        },
+        "parentInitiatedEventId": "7",
+        "taskQueue": {
+          "name": "batches-test",
+          "kind": "TASK_QUEUE_KIND_NORMAL"
+        },
+        "input": {
+          "payloads": [
+            {
+              "metadata": {
+                "encoding": "anNvbi9wbGFpbg=="
+              },
+              "data": "WyJhIl0="
+            }
+          ]
+        },
+        "workflowRunTimeout": "0s",
+        "workflowTaskTimeout": "10s",
+        "originalExecutionRunId": "01a1bca8-9709-7697-a747-b72e67c8311f",
+        "firstExecutionRunId": "01a1bca8-9709-7697-a747-b72e67c8311f",
+        "attempt": 1,
+        "firstWorkflowTaskBackoff": "0s",
+        "workflowId": "Batch-1026-1794166527745/audit",
+        "rootWorkflowExecution": {
+          "workflowId": "Batch-1026-1794166527745",
+          "runId": "01a1bca8-9704-7441-b04e-262f7dd2af6c"
+        },
+        "timeSkippingConfig": {
+          "enabled": true,
+          "maxSessionSkipCount": 200
+        }
+      }
+    },
+    {
+      "eventId": "2",
+      "eventTime": "2026-11-08T19:35:27.754174Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_SCHEDULED",
+      "taskId": "1050692",
+      "workflowTaskScheduledEventAttributes": {
+        "taskQueue": {
+          "name": "batches-test",
+          "kind": "TASK_QUEUE_KIND_NORMAL"
+        },
+        "startToCloseTimeout": "10s",
+        "attempt": 1
+      }
+    },
+    {
+      "eventId": "3",
+      "eventTime": "2026-11-08T19:35:27.755561Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_STARTED",
+      "taskId": "1050698",
+      "workflowTaskStartedEventAttributes": {
+        "scheduledEventId": "2",
+        "identity": "1c9076f7e4ea/nonode@nohost/corpus/batch_test/workflow/5",
+        "requestId": "b2edb90b-e21e-41ef-bd42-4cbd48bfa29c",
+        "historySizeBytes": "453"
+      }
+    },
+    {
+      "eventId": "4",
+      "eventTime": "2026-11-08T19:35:27.759276Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_COMPLETED",
+      "taskId": "1050715",
+      "workflowTaskCompletedEventAttributes": {
+        "scheduledEventId": "2",
+        "startedEventId": "3",
+        "identity": "1c9076f7e4ea/nonode@nohost/corpus/batch_test/workflow/5",
+        "workerVersion": {}
+      }
+    },
+    {
+      "eventId": "5",
+      "eventTime": "2026-11-08T19:35:27.759292Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_EXECUTION_COMPLETED",
+      "taskId": "1050716",
+      "workflowExecutionCompletedEventAttributes": {
+        "result": {
+          "payloads": [
+            {
+              "metadata": {
+                "encoding": "anNvbi9wbGFpbg=="
+              },
+              "data": "dHJ1ZQ=="
+            }
+          ]
+        },
+        "workflowTaskCompletedEventId": "4"
+      }
+    }
+  ]
+}

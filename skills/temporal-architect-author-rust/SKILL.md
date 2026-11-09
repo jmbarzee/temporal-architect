@@ -136,6 +136,7 @@ Load only what the current layer needs.
 | `close complete` / `fail` / `continue_as_new` | `Ok(v)` / `Err(ApplicationFailure…)` / `ctx.continue_as_new` | [close.md](./reference/close.md) |
 | `heartbeat(details)` | `ctx.record_heartbeat(details).await` | [heartbeat.md](./reference/heartbeat.md) |
 | (testing, determinism, errors, data, versioning) | the SDK's README, docs.rs and examples | [idioms.md](./reference/idioms.md) |
+| recovered `.twf` (code → `.twf`) | project roots, registration, concurrency, codegen | [discovery.md](./reference/discovery.md) |
 
 The spec states only what `detach` guarantees (`twf spec statement-syntax`); the author maps it to these mechanics:
 
