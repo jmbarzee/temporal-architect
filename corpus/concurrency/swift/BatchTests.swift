@@ -18,7 +18,9 @@ struct BatchTests {
     }
 
     func config(_ server: TemporalTestServer, _ taskQueue: String) -> TemporalWorker.Configuration {
-        BatchTypes.configuration(namespace: "default", taskQueue: taskQueue, serverHostname: server.host())
+        var config = BatchTypes.configuration(serverHostname: server.host())
+        config.taskQueue = taskQueue
+        return config
     }
 
     func has<W>(_ h: WorkflowHandle<W>, _ type: Api.Enums.V1.EventType) async throws -> Bool {
@@ -66,7 +68,7 @@ struct BatchTests {
     @Test
     func batchTheTimerWins() async throws {
         try await fresh { server, queue in
-            try await server.withWorker(config(server, queue), workflows: BatchTypes.workflows, activities: BatchTypes.activities()) { client in
+            try await server.withWorker(config(server, queue), workflows: BatchTypes.workflows, activities: BatchTypes.activities(BatchActivities())) { client in
                 let h = try await client.startWorkflow(
                     type: Batch.self, options: .init(id: "batch-timer", taskQueue: queue), input: Self.items)
                 let got = try await h.result()
@@ -79,7 +81,7 @@ struct BatchTests {
     @Test
     func auditAndArchive() async throws {
         try await fresh { server, queue in
-            try await server.withWorker(config(server, queue), workflows: BatchTypes.workflows, activities: BatchTypes.activities()) { client in
+            try await server.withWorker(config(server, queue), workflows: BatchTypes.workflows, activities: BatchTypes.activities(BatchActivities())) { client in
                 let audited = try await client.executeWorkflow(
                     type: Audit.self, options: .init(id: "audit", taskQueue: queue), input: ["a"])
                 #expect(audited)
@@ -100,7 +102,7 @@ struct BatchTests {
     @Test
     func aBoundPromiseSurvivesTheRoundsItLoses() async throws {
         try await fresh { server, queue in
-            try await server.withWorker(config(server, queue), workflows: awaitOneFixtures, activities: BatchTypes.activities()) { client in
+            try await server.withWorker(config(server, queue), workflows: awaitOneFixtures) { client in
                 let h = try await client.startWorkflow(
                     type: BoundDeadline.self, options: .init(id: "bound-1", taskQueue: queue))
                 for _ in 0..<2 {
@@ -111,6 +113,35 @@ struct BatchTests {
                 #expect(got == 2)
                 #expect(try await !self.has(h, .timerCanceled))
                 #expect(try await self.has(h, .timerFired), "the deadline never fired")
+            }
+        }
+    }
+
+    @Test
+    func aLosingInlineChildOutlivesItsParentsRun() async throws {
+        // A dev server, in real time: the time-skipping server applies no parent close policy.
+        try await TemporalTestServer.withTestServer { server in
+            let server = copy server
+            let queue = "batches-\(UUID())"
+            try await server.withWorker(config(server, queue), workflows: awaitOneFixtures) { client in
+                let h = try await client.startWorkflow(
+                    type: LosingChild.self, options: .init(id: "losing-child", taskQueue: queue))
+                #expect(try await h.result() == "timer")
+                #expect(
+                    try await !self.has(h, .requestCancelExternalWorkflowExecutionInitiated),
+                    "the parent's run requested its losing child's cancellation")
+                let started = try #require(
+                    try await h.fetchHistoryEvents().first { $0.eventType == .childWorkflowExecutionStarted })
+                let sleeperID = started.childWorkflowExecutionStartedEventAttributes.workflowExecution.workflowID
+                let sleeper = client.untypedWorkflowHandle(id: sleeperID)
+                // Still running at parent close, the child meets the default parent_close_policy, TERMINATE.
+                let deadline = ContinuousClock.now + .seconds(10)
+                var status = try await sleeper.describe().execution.status
+                while status == .running && ContinuousClock.now < deadline {
+                    try await Task.sleep(for: .milliseconds(20))
+                    status = try await sleeper.describe().execution.status
+                }
+                #expect(status == .terminated)
             }
         }
     }

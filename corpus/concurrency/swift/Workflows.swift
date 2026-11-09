@@ -41,8 +41,7 @@ struct Batch {
             input: input
         )
 
-        // await one: one condition over every case, then the first listed that is ready wins,
-        // so Ack wins a tie with the timer; the losing inline timer is cancelled.
+        // await one: one condition over every case, then the first listed that is ready wins.
         try await withThrowingTaskGroup(of: Void.self) { group in
             let timer = Flag()
             group.addTask {
@@ -50,10 +49,10 @@ struct Batch {
                 timer.isSet = true
             }
             try await context.condition { $0.acks > 0 || timer.isSet }
-            if acks > 0 {
+            if acks > 0 {  // listed first, so it wins a tie
                 acks -= 1
-                group.cancelAll()
             }
+            group.cancelAll()  // a losing inline timer is cancelled
         }
 
         return Report(count: count, audited: wasAudited, status: status)

@@ -12,8 +12,11 @@ struct CounterTests {
         _ body: sending @escaping (TemporalClient, String) async throws -> Result
     ) async throws -> sending Result {
         let q = "counters-\(UUID())"
-        let config = CounterTypes.configuration(namespace: "default", taskQueue: q, serverHostname: server.host())
-        return try await server.withWorker(config, workflows: CounterTypes.workflows, activities: CounterTypes.activities) {
+        var config = CounterTypes.configuration(serverHostname: server.host())
+        config.taskQueue = q
+        return try await server.withWorker(
+            config, workflows: CounterTypes.workflows, activities: CounterTypes.activities(CounterActivities())
+        ) {
             client in try await body(client, q)
         }
     }
@@ -24,7 +27,7 @@ struct CounterTests {
             try await client.executeWorkflow(
                 type: Counter.self,
                 options: .init(id: "counter-1", taskQueue: q),
-                input: CounterInput(count: 2, limit: 3)
+                input: Counter.Input(count: 2, limit: 3)
             )
         }
         #expect(got == 3)
@@ -36,7 +39,7 @@ struct CounterTests {
             let h = try await client.startWorkflow(
                 type: Counter.self,
                 options: .init(id: "counter-2", taskQueue: q),
-                input: CounterInput(count: 0, limit: 3)
+                input: Counter.Input(count: 0, limit: 3)
             )
             // result() follows the chain of runs to the last one's result.
             #expect(try await h.result() == 3)

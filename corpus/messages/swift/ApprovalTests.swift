@@ -8,7 +8,9 @@ struct ApprovalTests {
     let server = TemporalTestServer.timeSkippingTestServer!
 
     func config(_ q: String) -> TemporalWorker.Configuration {
-        ApprovalTypes.configuration(namespace: "default", taskQueue: q, serverHostname: server.host())
+        var config = ApprovalTypes.configuration(serverHostname: server.host())
+        config.taskQueue = q
+        return config
     }
 
     @Test

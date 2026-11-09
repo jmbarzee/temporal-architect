@@ -12,7 +12,8 @@ struct ArrivalsTests {
     where W.Input: Sendable, W.Output: Sendable {
         let server = self.server
         let q = "arrivals-\(UUID())"
-        let config = ApprovalTypes.configuration(namespace: "default", taskQueue: q, serverHostname: server.host())
+        var config = ApprovalTypes.configuration(serverHostname: server.host())
+        config.taskQueue = q
         return try await server.withWorker(config, workflows: arrivalsFixtures) { client in
             let h = try await client.startWorkflow(
                 type: type,
