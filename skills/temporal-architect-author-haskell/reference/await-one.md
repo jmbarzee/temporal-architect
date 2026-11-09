@@ -50,7 +50,7 @@ Spec 06's rules, mapped:
 
 ## Tie order at `e57a0ae`
 
-Spec 06 has the first listed ready case win. At the pin the SDK deviates in one case (#474's class): when a signal or update and a timer, activity, child or Nexus result reach the workflow in one activation, the message case, or a condition its handler sets, wins whatever the listing.
+Spec 06 has the first listed ready case win. At the pin the SDK deviates in one case (#474's class): when a signal or update whose handler runs to `A.add` (or its condition write) without blocking reaches the workflow in the same activation as a timer, activity, child or Nexus result, the message case, or the condition, wins whatever the listing. A handler that first blocks, as an update calling an activity does, adds its arrival in a later activation.
 
 `applyJobs` puts the activation's signal and update handlers on the run queue and holds its resolutions back (`WorkflowInstance.hs:700-730`, `Workflow/Eval.hs:279-287`). The run queue runs until it is empty, so a handler's `StateVar` write wakes its waiters and the race resumes, before `checkActivationResults` fills the resolutions' IVars (`Workflow/Eval.hs:197-261`). The race then sees only the message case done. Between two resolutions, every IVar is filled before any waiting job runs (`Workflow/Eval.hs:212-242`) and `race` tries its left side first, so first-listed holds.
 
