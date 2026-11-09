@@ -14,7 +14,7 @@ struct Arrivals<T: Sendable>: Sendable {
     }
 
     /// Begins a waiter. A promise begins at its binding; an await one case
-    /// checks `ready`, claims only if it wins, and leaves either way.
+    /// checks `ready`, claims if it wins, else leaves.
     mutating func begin() -> Int {
         defer { next += 1 }
         waiters.append(next)
