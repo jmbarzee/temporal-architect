@@ -99,7 +99,7 @@ The skills turn `.twf` into a deterministic harness for an AI agent — letting 
 - **[temporal-architect-author-perl](./skills/temporal-architect-author-perl/SKILL.md)** — Generate Perl code from a `.twf` design using the community Temporal Perl SDK.
 - **[temporal-architect-author-haskell](./skills/temporal-architect-author-haskell/SKILL.md)** — Generate Haskell code from a `.twf` design using the community Temporal Haskell SDK.
 - **[temporal-architect-author-elixir](./skills/temporal-architect-author-elixir/SKILL.md)** — Generate Elixir code from a `.twf` design using the community Temporal Erlang/Elixir SDK.
-- **[temporal-architect-author-swift](./skills/temporal-architect-author-swift/SKILL.md)** — Generate Swift code from a `.twf` design using the community Swift Temporal SDK.
+- **[temporal-architect-author-swift](./skills/temporal-architect-author-swift/SKILL.md)** — Generate Swift code from a `.twf` design using the community Temporal Swift SDK.
 - **[temporal-architect-author-infra](./skills/temporal-architect-author-infra/SKILL.md)** — Provision the control-plane resources a design needs — namespaces, Nexus endpoints, search attributes — via the Temporal Cloud Terraform provider or self-hosted `tcld` / `temporal operator`.
 
 The skills assume `twf` is **on PATH** (the extension puts it there on activation; otherwise use any install line above). An agent reads architecture through `twf graph --json`; the visual view stays human-facing — the `twf.visualize` command inside the editor, or `twf-view` (`brew install jmbarzee/twf/twf-view`), the live visualizer host, as a standalone view outside one.
