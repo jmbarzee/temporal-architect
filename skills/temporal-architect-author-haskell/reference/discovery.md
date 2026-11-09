@@ -33,7 +33,7 @@ The Haskell signals the design skill's [reverse engineering](../../temporal-arch
 | a handler appending to a `StateVar [a]`, each waiter `waitCondition (not . null <$> readStateVar q)` then popping | `await signal\|update Name`, with a comment that two waiters at once are served newest first, as a woken condition runs ([await-signal.md](./await-signal.md)) |
 | a `StateVar Bool` a handler sets (`writeStateVar flag True`; `False` is `unset`), awaited by `waitCondition (readStateVar flag)` | `condition` + `set` ([condition.md](./condition.md)), with a comment that repeated arrivals collapse into one: it is no `await signal` |
 | `concurrently a b`, `independently a b`, `runConcurrentWorkflowActions`, `sequenceConcurrently`; `traverseConcurrently` / `mapConcurrently` / `forConcurrently` and their `_` forms over `items` (`Workflow.hs:1783-1853,1924-1940`) | `await all`, branches in argument order; a `for` fan-out inside ([await-all.md](./await-all.md)) |
-| `race a b`, nested to the right (`race a (race b c)`), or `race_` (`Workflow.hs:1754-1777`) | `await one`, cases in that order ([await-one.md](./await-one.md#cases)), with a comment that a signal or update case, or a condition its handler sets, beats a timer, activity, child or Nexus result in the same activation whatever the listing ([await-one.md](./await-one.md#tie-order-at-e57a0ae)) |
+| `race a b`, nested to the right (`race a (race b c)`), or `race_` (`Workflow.hs:1754-1777`) | `await one`, cases in that order ([await-one.md](./await-one.md#cases)), with a comment that a signal or update case, or a condition its handler sets, beats a timer, activity, child or Nexus result in the same activation whatever the listing, when the handler reaches its `A.add` or condition write without blocking ([await-one.md](./await-one.md#tie-order-at-e57a0ae)) |
 | a `race` branch `waitCondition (A.ready xs w)` after `w <- A.begin xs`, the winner `A.claim`, every loser `A.leave` | a `signal\|update Name` case; a `w` begun earlier and not left is a promise's case ([await-one.md](./await-one.md#cases)) |
 | a `race` branch `waitCondition (readStateVar c)` | a `c:` case ([condition.md](./condition.md)) |
 | a `race` branch `traverse_ wait t` over `t <- createTimer d`, or `sleep d` | a `timer(d)` case, whether the losing timer is cancelled or left to fire; a `t` created before and read across rounds or after is `promise t <- timer(d)` with a `t:` case, which losing never cancels |
@@ -42,13 +42,19 @@ The Haskell signals the design skill's [reverse engineering](../../temporal-arch
 | `startChildWorkflow` with `parentClosePolicy = ParentClosePolicyAbandon`, then `waitChildWorkflowStart`, the handle never waited | `detach workflow` ([detach.md](./detach.md)); with `cancellationType = ChildWorkflowCancellationTryCancel` the caller's cancellation still reaches it, and without `waitChildWorkflowStart` a failed start goes unseen: record either in prose |
 | `C.start` in a sync Nexus handler, `C.waitWorkflowResult` never called | `detach workflow`; with it, a `workflow` call ([nexus-service-def.md](./nexus-service-def.md#sync)) |
 | `startNexusOperation`, its `Task` never waited | `detach nexus`, with a comment that the call is the forward form of an unsupported detach: the caller's cancellation reaches the operation, and a failed start goes unseen ([detach.md](./detach.md)) |
-| `signal h ref args` on a `ChildWorkflowHandle` | `signal h.Name(args)` on the `promise h <- workflow`; on a `getExternalWorkflowHandle wid mrid`, `signal Type.Name(args)` with `id:` (and `run_id:` from a `Just`), the type the ID function's scheme belongs to, and `id: parent` from `info`'s `parent` ([signal-send.md](./signal-send.md)) |
+| `signal h ref args` on a `ChildWorkflowHandle` | `signal h.Name(args)` on the `promise h <- workflow`; on a `getExternalWorkflowHandle wid mrid`, `signal Type.Name(args)` with `id:` (and `run_id:` from a `Just`), the type the ID function's scheme belongs to, and `id: parent` from `info`'s `parent`; for a learned ID (`WorkflowId stuck.workflowId`), the type with an ID function building it, else the workflow whose module defines the `KnownSignal` ([signal-send.md](./signal-send.md)) |
 | `continueAsNew wf opts args` | `close continue_as_new(args)` ([close.md](./close.md)); onto another workflow, record it in prose |
 | the body's final `pure r` | `close complete(r)` ([close.md](./close.md)) |
 | `throwM ApplicationFailure {…}`, an uncaught exception | `close fail(…)` ([close.md](./close.md)) |
 | `sleep d`, or `createTimer d` waited at once | `await timer(d)` ([await-timer.md](./await-timer.md)) |
 | `withHeartbeat codec \beat _ -> …`, `beat x` | `heartbeat(x)` ([heartbeat.md](./heartbeat.md)) |
-| `for_`, `when`, `case`, a recursive local `loop` | `for`, `if`, `switch`, `break` / `continue` ([control-flow.md](./control-flow.md)) |
+| `let x = expr`, `x <- action`, `writeStateVar x v` | `x = expr` ([control-flow.md](./control-flow.md)) |
+| `if c then … else …`, `when c …` | `if (c):` … `else:` |
+| `for_ items \item -> …` | `for (item in items):` |
+| a local `loop` that recurses while a condition holds (`when (retries < max) do …`) | `for (retries < max):` |
+| `forever …` | `for:` |
+| `case v of` | `switch (v):` |
+| a recursive `loop` that returns / calls itself | `break` / `continue` |
 
 ## Codegen
 
