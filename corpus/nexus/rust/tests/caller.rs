@@ -93,27 +93,10 @@ async fn stub_handler(env: &Env, seen: Arc<Mutex<Vec<(String, String)>>>) {
                     links: vec![],
                 })
             }
-            _ => {
-                if name != "Grace" {
-                    let callback = Callback {
-                        variant: Some(callback::Variant::Nexus(callback::Nexus {
-                            url: start.callback,
-                            header: start.callback_header,
-                        })),
-                        links: vec![],
-                    };
-                    let mut options = Greet::start_options(&name);
-                    options.completion_callbacks = vec![callback];
-                    env.client
-                        .start_workflow(Greet::run, name.clone(), options)
-                        .await
-                        .expect("Greet starts");
-                }
-                start_operation_response::Variant::AsyncSuccess(start_operation_response::Async {
-                    operation_token: Greet::id(&name),
-                    ..Default::default()
-                })
-            }
+            _ => start_operation_response::Variant::AsyncSuccess(start_operation_response::Async {
+                operation_token: Greet::id(&name),
+                ..Default::default()
+            }),
         };
         svc.respond_nexus_task_completed(tonic::Request::new(RespondNexusTaskCompletedRequest {
             namespace: "default".into(),
@@ -128,6 +111,23 @@ async fn stub_handler(env: &Env, seen: Arc<Mutex<Vec<(String, String)>>>) {
         }))
         .await
         .expect("respond");
+        // Started only after the start is answered: a completion callback that beats the start
+        // response leaves the server no operation to answer ("unknown Nexus operation").
+        if start.operation == "Greet" && name != "Grace" {
+            let callback = Callback {
+                variant: Some(callback::Variant::Nexus(callback::Nexus {
+                    url: start.callback,
+                    header: start.callback_header,
+                })),
+                links: vec![],
+            };
+            let mut options = Greet::start_options(&name);
+            options.completion_callbacks = vec![callback];
+            env.client
+                .start_workflow(Greet::run, name, options)
+                .await
+                .expect("Greet starts");
+        }
     }
 }
 
