@@ -1,4 +1,4 @@
-/* Global styles for the TWF Visualizer host: the reset, the host's block tokens, the page. The chrome's tokens are the library's (@temporal-architect/graph-view), published as --gv-*; the host reads them under the plain names aliased below. */
+/* Global styles for the TWF Visualizer host: the reset, the host's block tokens, the page. The chrome's tokens are the library's (@jmbarzee/force-graph), published as --gv-*; the host reads them under the plain names aliased below. */
 
 * {
   box-sizing: border-box;

@@ -253,7 +253,7 @@ never moved, so all existing install lines keep working.
 ```bash
 make build              # build the toolchain (binary + visualizer lib) for the current platform
 make test               # run Go tests
-make test-visualizer    # run the visualizer's and graph-view's unit tests (Vitest)
+make test-visualizer    # run the visualizer's unit tests (Vitest)
 make vet                # go vet
 make check-types        # fail if the generated wire types drifted from the Go DTOs
 make check-docs         # fail if the CLI command reference drifted

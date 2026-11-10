@@ -4,7 +4,7 @@
 // `graph.SDKCrossings`, held equal to it by the fixture `sdk.test.ts` shares
 // with the Go test.
 
-import type { Graph, NodeGroup } from '@temporal-architect/graph-view'
+import type { Graph, NodeGroup } from '@jmbarzee/force-graph'
 import type { ParserGraph, ParserNode } from '../types/parser-graph'
 import { dispatchOf } from './edge-types'
 

@@ -30,21 +30,15 @@ export default defineConfig({
         'src/types/**/*.ts',
         'src/components/**/*.tsx',
         'src/components/**/*.ts',
-        'src/filter/**/*.ts',
-        'src/graph/**/*.ts',
         'src/adapter/**/*.ts',
         'src/theme/**/*.ts',
       ],
-      exclude: ['src/App.tsx', 'src/main.tsx', '**/*.test.*', '../graph-view/**'],
-      // The program now reaches the library's source through the path map, so
-      // the shortest common directory of its files is `tools/`; pin the entry
-      // root or the declarations land under `dist-lib/visualizer/src/`.
-      entryRoot: resolve(__dirname, 'src'),
+      exclude: ['src/App.tsx', 'src/main.tsx', '**/*.test.*'],
       // The DTS plugin defaults to the same outDir as the JS build (dist-lib);
       // we ship the resulting `lib.d.ts` alongside `lib.js`.
     }),
   ],
-  resolve: libraryResolve(__dirname),
+  resolve: libraryResolve(),
   // Never copy a public/ directory into the published library.
   publicDir: false,
   build: {
@@ -63,13 +57,9 @@ export default defineConfig({
     rollupOptions: {
       // React is a peerDependency — host apps provide their own copy and
       // bundling ours would risk multiple-React-instance bugs (hooks would
-      // throw at runtime). Same for react-dom.
-      external: ['react', 'react-dom', 'react/jsx-runtime', 'react-dom/client'],
+      // throw at runtime). Same for react-dom and the engine, a dependency the consumer installs.
+      external: [/^react(-dom)?($|\/)/, /^@jmbarzee\/force-graph($|\/)/],
       output: {
-        globals: {
-          react: 'React',
-          'react-dom': 'ReactDOM',
-        },
         assetFileNames: (assetInfo) => {
           if (assetInfo.name?.endsWith('.css')) {
             return 'styles.css'

@@ -1,7 +1,7 @@
 {
   "name": "@temporal-architect/visualizer",
   "version": "0.0.0-dev",
-  "description": "React component for visualizing Temporal system architecture \u2014 namespaces, workers, workflows, and Nexus \u2014 as an interactive tree and dependency graph.",
+  "description": "React component for visualizing Temporal system architecture — namespaces, workers, workflows, and Nexus — as an interactive tree and dependency graph.",
   "type": "module",
   "license": "MIT",
   "homepage": "https://github.com/jmbarzee/temporal-architect/tree/main/tools/visualizer",
@@ -72,5 +72,8 @@
     "vite": "^6.0.5",
     "vite-plugin-dts": "^5.0.0",
     "vitest": "4.1.12"
+  },
+  "dependencies": {
+    "@jmbarzee/force-graph": "0.1.0"
   }
 }

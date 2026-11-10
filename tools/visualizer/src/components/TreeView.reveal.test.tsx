@@ -4,7 +4,7 @@
 // and CSS animations are stubbed (happy-dom lays nothing out), and recorded.
 
 import { act, cleanup, fireEvent, render, within } from '@testing-library/react'
-import { TaxonomyContext, useLinkedViews } from '@temporal-architect/graph-view'
+import { TaxonomyContext, useLinkedViews } from '@jmbarzee/force-graph'
 import React from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { DEFAULT_TAXONOMY } from '../adapter/node-types'

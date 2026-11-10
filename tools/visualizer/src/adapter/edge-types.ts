@@ -9,7 +9,7 @@
 // physics. The control panel's pull tokens and the spring defaults both resolve
 // from these entries (`resolvePhysics`), and nothing copies them.
 
-import { isContainment } from '@temporal-architect/graph-view'
+import { isContainment } from '@jmbarzee/force-graph'
 import type {
   AxisValue,
   GraphEdge,
@@ -17,7 +17,7 @@ import type {
   EdgeStroke,
   AxisId,
   SpringPhysics,
-} from '@temporal-architect/graph-view'
+} from '@jmbarzee/force-graph'
 import type { NodeType } from './node-types'
 
 /**

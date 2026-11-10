@@ -16,7 +16,7 @@ import {
   schemeVars,
   layoutFromJSON,
   layoutToJSON,
-} from '@temporal-architect/graph-view'
+} from '@jmbarzee/force-graph'
 import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION } from '../adapter/dimensions'
 import { definitionMaps } from './definitionMaps'
 import { useEditorTheme } from '../theme/useEditorTheme'
@@ -27,7 +27,7 @@ import type {
   LayoutState,
   NodeAction,
   ThemeChoice,
-} from '@temporal-architect/graph-view'
+} from '@jmbarzee/force-graph'
 import React from 'react'
 import { DEFAULT_TAXONOMY, nodeTypeForDefType } from '../adapter/node-types'
 import './WorkflowCanvas.css'

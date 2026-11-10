@@ -40,7 +40,7 @@ The product spec is the primary input. It defines the user questions the visuali
 
 Use sub-agents in parallel:
 - **Spec agent**: Read all three context documents. Build an inventory: every user question, every specced feature, every gap, every product pattern from the docs.
-- **Current state agent**: Read all TypeScript in `tools/visualizer/src/` and `tools/graph-view/src/`. For each component, note only: what it currently renders and what interactions it supports. Do not evaluate code quality.
+- **Current state agent**: Read all TypeScript in `tools/visualizer/src/` and in `src/` of `github.com/jmbarzee/force-graph` at the pinned version (the engine, `@jmbarzee/force-graph`). For each component, note only: what it currently renders and what interactions it supports. Do not evaluate code quality.
 
 ### Phase 2: Catalog
 

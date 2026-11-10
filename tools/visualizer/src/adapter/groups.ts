@@ -6,10 +6,10 @@
 // sub-divisions. This module turns "what the modal has
 // selected/expanded" into `NodeGroup`s over the whole graph — each section's
 // members mapped through the definitionKey -> sister-copies index — and the
-// view restricts them to what is visible and colours them (`graph/groups.ts`).
+// engine restricts them to what is visible and colours them.
 
 import type { Decomposition, Chunk, Division, Section } from '../types/decomposition'
-import type { NodeGroup } from '@temporal-architect/graph-view'
+import type { NodeGroup } from '@jmbarzee/force-graph'
 // GroupSelection is the persistent, user-driven overlay state owned by the host
 // canvas. The overlay is an **initially-off** feature: on load nothing glows
 // (initialized=false, glowEnabled=false, enabledChunks empty), so the canvas is
