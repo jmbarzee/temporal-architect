@@ -218,8 +218,8 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
 
   // The group overlay's selection and hover preview (GRAPH_VIEW.md
   // § Group Overlay) are the host's: what a group is comes from its
-  // decomposition or its SDK sets, and the view draws what it is handed. Both reset when
-  // a new decomposition arrives.
+  // decomposition or its SDK sets, and the view draws what it is handed. Both
+  // reset when a new decomposition arrives.
   const [groupSelection, setGroupSelection] = React.useState<GroupSelection>(() => initialGroupSelection(decomposition))
   const [groupHover, setGroupHover] = React.useState<GroupHover | null>(null)
   React.useEffect(() => {

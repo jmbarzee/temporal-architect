@@ -94,7 +94,7 @@ export function GroupsModal({
   const hasChunks = !!decomposition && sortedChunks.length > 0
   const hasSDKs = sdkGroups.length > 0
   const canRecompute = !!onRequestDecomposition
-  const sdkScheme = selection.scheme === 'sdks'
+  const sdkScheme = selection.scheme === 'sdks' && hasSDKs
   const hasGroups = sdkScheme ? hasSDKs : hasChunks
 
   const [open, setOpen] = React.useState(false)

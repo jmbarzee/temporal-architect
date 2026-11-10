@@ -1,8 +1,9 @@
 // The group overlay's host half: the selection model the Groups modal edits and
 // the derivation of the groups the Graph view is asked to glow, from the host's
-// decomposition or, under the SDK scheme, its SDK sets (`sdk.ts`). The decomposition (`twf graph chunks`) partitions definitions
-// into chunks -> ranked division options (one per strategy) -> sections ->
-// recursive sub-divisions. This module turns "what the modal has
+// decomposition or, under the SDK scheme, its SDK sets (`sdk.ts`). The
+// decomposition (`twf graph chunks`) partitions definitions into chunks ->
+// ranked division options (one per strategy) -> sections -> recursive
+// sub-divisions. This module turns "what the modal has
 // selected/expanded" into `NodeGroup`s over the whole graph — each section's
 // members mapped through the definitionKey -> sister-copies index — and the
 // view restricts them to what is visible and colours them (`graph/groups.ts`).

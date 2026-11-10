@@ -45,6 +45,15 @@ worker pyW:
 worker plainW:
 	activity Plain
 
+workflow M():
+	activity A()
+	close complete()
+
+@sdk(go)
+@sdk(python)
+worker bothW:
+	workflow M
+
 namespace ns:
 	worker goW
 		options:
@@ -55,6 +64,9 @@ namespace ns:
 	worker plainW
 		options:
 			task_queue: "plain"
+	worker bothW
+		options:
+			task_queue: "both"
 	nexus endpoint Ep
 		options:
 			task_queue: "py"

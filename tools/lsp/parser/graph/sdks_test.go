@@ -90,8 +90,9 @@ namespace shop:
 var update = flag.Bool("update", false, "rewrite testdata/cross_sdk.{graph,crossings}.json")
 
 // TestSDKCrossings: activity, workflow and Nexus call and signal-send edges
-// between disjoint declared SDK sets cross; a call within one SDK and a call to
-// a worker with no `@sdk` do not. The fixture's graph and its crossings, one
+// between disjoint declared SDK sets cross; a call within one SDK, a call from a
+// `{go, python}` worker to a `{python}` one, and a call to a worker with no
+// `@sdk` do not. The fixture's graph and its crossings, one
 // `[from, to, kind]` per edge pair, are committed beside it for the
 // visualizer's copy of the rule (`src/adapter/sdk.test.ts`) to check against.
 func TestSDKCrossings(t *testing.T) {

@@ -1,8 +1,8 @@
 {
   "summary": {
-    "nodes": 12,
-    "edges": 20,
-    "coarsenedEdges": 2,
+    "nodes": 14,
+    "edges": 23,
+    "coarsenedEdges": 3,
     "unresolved": 0,
     "diagnostics": 0
   },
@@ -69,6 +69,20 @@
       ]
     },
     {
+      "id": "worker:bothW/namespace:ns",
+      "definition": "worker:bothW",
+      "name": "bothW",
+      "queue": "both",
+      "sdks": [
+        {
+          "sdk": "go"
+        },
+        {
+          "sdk": "python"
+        }
+      ]
+    },
+    {
       "id": "worker:goW/namespace:ns",
       "definition": "worker:goW",
       "name": "goW",
@@ -101,6 +115,19 @@
       "definition": "workflow:C",
       "name": "C",
       "sdks": [
+        {
+          "sdk": "python"
+        }
+      ]
+    },
+    {
+      "id": "workflow:M/worker:bothW/namespace:ns",
+      "definition": "workflow:M",
+      "name": "M",
+      "sdks": [
+        {
+          "sdk": "go"
+        },
         {
           "sdk": "python"
         }
@@ -140,13 +167,13 @@
       "from": "nexusEndpoint:Ep/namespace:ns",
       "to": "namespace:ns",
       "kind": "containment",
-      "line": 58
+      "line": 70
     },
     {
       "from": "nexusOperation:Svc.Op/worker:pyW/namespace:ns",
       "to": "nexusEndpoint:Ep/namespace:ns",
       "kind": "nexusRoute",
-      "line": 58
+      "line": 70
     },
     {
       "from": "nexusOperation:Svc.Op/worker:pyW/namespace:ns",
@@ -168,28 +195,49 @@
       "line": 43
     },
     {
+      "from": "worker:bothW/namespace:ns",
+      "to": "namespace:ns",
+      "kind": "containment",
+      "line": 67
+    },
+    {
       "from": "worker:goW/namespace:ns",
       "to": "namespace:ns",
       "kind": "containment",
-      "line": 49
+      "line": 58
     },
     {
       "from": "worker:plainW/namespace:ns",
       "to": "namespace:ns",
       "kind": "containment",
-      "line": 55
+      "line": 64
     },
     {
       "from": "worker:pyW/namespace:ns",
       "to": "namespace:ns",
       "kind": "containment",
-      "line": 52
+      "line": 61
     },
     {
       "from": "workflow:C/worker:pyW/namespace:ns",
       "to": "worker:pyW/namespace:ns",
       "kind": "containment",
       "line": 42
+    },
+    {
+      "from": "workflow:M/worker:bothW/namespace:ns",
+      "to": "activity:A/worker:pyW/namespace:ns",
+      "kind": "activityCall",
+      "line": 49,
+      "routing": {
+        "explicit": "py"
+      }
+    },
+    {
+      "from": "workflow:M/worker:bothW/namespace:ns",
+      "to": "worker:bothW/namespace:ns",
+      "kind": "containment",
+      "line": 55
     },
     {
       "from": "workflow:W/worker:goW/namespace:ns",
@@ -258,6 +306,12 @@
     }
   ],
   "coarsenedEdges": [
+    {
+      "from": "worker:bothW/namespace:ns",
+      "to": "worker:pyW/namespace:ns",
+      "tier": "worker",
+      "weight": 1
+    },
     {
       "from": "worker:goW/namespace:ns",
       "to": "worker:plainW/namespace:ns",

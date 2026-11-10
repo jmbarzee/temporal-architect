@@ -29,7 +29,7 @@ describe('sdkCrossings', () => {
 describe('sdkGroupsOf', () => {
   it('groups nodes by SDK set and leaves nodes with no `@sdk` out', () => {
     const groups = sdkGroupsOf(pg)
-    expect(groups.map(g => g.id)).toEqual(['go', 'python'])
+    expect(groups.map(g => g.id)).toEqual(['go', 'python', 'go + python'])
     const grouped = new Set(groups.flatMap(g => [...g.nodeIds]))
     expect(grouped.has('worker:goW/namespace:ns')).toBe(true)
     expect(grouped.has('worker:plainW/namespace:ns')).toBe(false)
