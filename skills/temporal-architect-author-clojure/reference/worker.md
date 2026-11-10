@@ -107,10 +107,10 @@ The namespace worker's `options:` block maps onto the `worker/start` options map
 | `max_concurrent_activity_executions` | `:max-concurrent-activity-execution-size` (renamed) |
 | `max_concurrent_workflow_task_executions` | `:max-concurrent-workflow-task-execution-size` (renamed) |
 | `max_concurrent_local_activity_executions` | `:max-concurrent-local-activity-execution-size` (renamed) |
-| `max_concurrent_nexus_task_executions` | `:max-concurrent-nexus-execution-size` (renamed); moot without Nexus |
+| `max_concurrent_nexus_task_executions` | **unsupported**: `:max-concurrent-nexus-execution-size` is inert, since a worker registers only activities and workflows (`:28-35`) |
 | `max_concurrent_workflow_task_pollers` | `:max-concurrent-workflow-task-pollers` |
 | `max_concurrent_activity_task_pollers` | `:max-concurrent-activity-task-pollers` |
-| `max_concurrent_nexus_task_pollers` | `:max-concurrent-nexus-task-pollers`; moot without Nexus |
+| `max_concurrent_nexus_task_pollers` | **unsupported**: `:max-concurrent-nexus-task-pollers` is inert likewise |
 | `max_cached_workflows` | **not a worker key**: the factory option `:workflow-cache-size`, `worker/start`'s third argument (`:46,55`). The cache is the factory's, and each `worker/start` has its own, so the value is per worker |
 | `sticky_schedule_to_start_timeout` | **no key**: interop, below |
 | `max_heartbeat_throttle_interval` | `:max-heartbeat-throttle-interval` |

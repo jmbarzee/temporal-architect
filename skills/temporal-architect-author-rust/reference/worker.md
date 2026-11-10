@@ -119,10 +119,10 @@ The namespace worker's `options:` block maps onto `WorkerOptions` builder setter
 | `max_concurrent_activity_executions` | the `tuner`'s `activity_task_slot_supplier` (below) |
 | `max_concurrent_workflow_task_executions` | the `tuner`'s `workflow_task_slot_supplier` |
 | `max_concurrent_local_activity_executions` | the `tuner`'s `local_activity_task_slot_supplier` |
-| `max_concurrent_nexus_task_executions` | the `tuner`'s `nexus_task_slot_supplier`; moot, since a Rust worker polls no Nexus task |
+| `max_concurrent_nexus_task_executions` | **unsupported**: the `tuner`'s `nexus_task_slot_supplier` is inert, since the worker never polls Nexus (`enable_nexus: false`, `:727`) |
 | `max_concurrent_workflow_task_pollers` | `workflow_task_poller_behavior(PollerBehavior::SimpleMaximum(n))`; at least 2 while `max_cached_workflows` is above 0 (`:242-248`) |
 | `max_concurrent_activity_task_pollers` | `activity_task_poller_behavior(PollerBehavior::SimpleMaximum(n))` |
-| `max_concurrent_nexus_task_pollers` | `nexus_task_poller_behavior(…)`; moot likewise |
+| `max_concurrent_nexus_task_pollers` | **unsupported**: `nexus_task_poller_behavior` is inert likewise |
 | `max_cached_workflows` | `max_cached_workflows` (default 1000; `0` turns off sticky queues, `:231-237`) |
 | `sticky_schedule_to_start_timeout` | `sticky_queue_schedule_to_start_timeout` (renamed) |
 | `max_heartbeat_throttle_interval` | `max_heartbeat_throttle_interval` |

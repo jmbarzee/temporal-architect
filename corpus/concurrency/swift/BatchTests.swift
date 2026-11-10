@@ -151,18 +151,19 @@ struct BatchTests {
     ///
     /// In CI the setup sometimes misses: a workflow task starts between the timer firing and Ack
     /// arriving, most likely on a poll the stopped first worker left open at the test server. A miss
-    /// is retried on a fresh test server, at most 5 times; if every attempt misses, the test records
+    /// is retried on a fresh test server, at most 3 times; if every attempt misses, the test records
     /// a known issue and asserts nothing, so it never asserts the behaviour on a tie that was not set up.
     func tie(_ input: Tie) async throws -> String? {
+        let attempts = 3
         var missed: [String] = []
-        for _ in 1...5 {
+        for _ in 1...attempts {
             switch try await tieAttempt(input) {
             case .success(let winner): return winner
             case .failure(let miss): missed.append(miss.history)
             }
         }
         // Swift Testing 6.2 has no runtime skip; a known issue is reported without failing the test.
-        withKnownIssue { Issue.record("the tie was not set up in 5 attempts: \(missed.joined(separator: "; "))") }
+        withKnownIssue { Issue.record("the tie was not set up in \(attempts) attempts: \(missed.joined(separator: "; "))") }
         return nil
     }
 
@@ -184,10 +185,7 @@ struct BatchTests {
                 let started = try await server.withConnectedWorker(configuration: config, workflows: awaitOneFixtures, logger: quiet) { _ in
                     try await self.until(h, .timerStarted)
                 }
-                guard started else {
-                    try await h.terminate(reason: "tie setup missed")
-                    return .failure(Miss(history: "\(h.id): the timer never started"))
-                }
+                try #require(started, "\(h.id): the timer never started")
                 // Skip time past the timer; with no worker, nothing should read its workflow task.
                 // The skip ends only once no task is pending, so it is awaited after the workflow closes.
                 async let skip: Void = server.sleep(.seconds(7200))
@@ -201,12 +199,12 @@ struct BatchTests {
     }
 
     /// Sends Ack once the timer has fired; when the history shows no workflow task started between
-    /// the two, runs a worker for the winner, bounded in real time: a task taken by a stopped
-    /// worker's poll is a miss, not a hang.
+    /// the two, runs a worker for the winner, bounded in real time: a result that never comes
+    /// fails the test rather than hang it.
     func tieResult(
         _ server: TemporalTestServer, _ config: TemporalWorker.Configuration, _ h: WorkflowHandle<AwaitOneTie>
     ) async throws -> Result<String, Miss> {
-        guard try await until(h, .timerFired) else { return .failure(Miss(history: "\(h.id): the timer never fired")) }
+        try #require(try await until(h, .timerFired), "\(h.id): the timer never fired")
         try await h.signal(signalType: AwaitOneTie.Ack.self)
 
         let evs = try await h.fetchHistoryEvents()
@@ -225,8 +223,7 @@ struct BatchTests {
                 return try await group.next()!
             }
         }
-        guard let got else { return .failure(Miss(history: "\(h.id): no result within 20s")) }
-        return .success(got)
+        return .success(try #require(got, "\(h.id): no result within 20s"))
     }
 
     @Test

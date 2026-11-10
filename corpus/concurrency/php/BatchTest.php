@@ -77,7 +77,9 @@ final class BatchTest extends TimeSkippingWorkflowTestCase
     /**
      * Runs AwaitOneTie until its timer fired and Ack arrived in one workflow task, then returns the
      * winner. A setup that misses the tie is retried, at most TIE_ATTEMPTS times, and never fails
-     * the test: after the last miss the test is skipped.
+     * the test: after the last miss the test is skipped. Attempts share the test case's server: setup
+     * stops no worker (Hold holds a workflow task instead), so no stale poll can take the timer's
+     * task, and each attempt gets a fresh workflow ID (#529).
      *
      * @param list<string> $order
      */
@@ -90,14 +92,16 @@ final class BatchTest extends TimeSkippingWorkflowTestCase
                 return $got;
             }
         }
-        self::markTestSkipped('no tie landed: ' . \implode('; ', $misses));
+        self::markTestSkipped(
+            'the tie was not set up in ' . self::TIE_ATTEMPTS . ' attempts: ' . \implode('; ', $misses),
+        );
     }
 
     /**
      * Holds a workflow task (Hold blocks the single PHP workflow process for 5s) across the timer's
      * due time and Ack's arrival, so both reach the next workflow task. The timer (3s) runs in
-     * real time under the test case's time lock. Returns null, recording why in $misses, when the
-     * setup failed or the two did not share one task; the workflow's own failures throw.
+     * real time under the test case's time lock. Returns null, recording the history between the
+     * two in $misses, when they did not share one task; any other failure throws.
      *
      * @param list<string> $order
      * @param list<string> $misses
@@ -106,31 +110,26 @@ final class BatchTest extends TimeSkippingWorkflowTestCase
     {
         $wf = $this->stub('AwaitOneTie', 'await-one');
         $this->workflowClient->start($wf, $order, $form, 3);
-        try {
-            $this->until($wf, EventType::EVENT_TYPE_TIMER_STARTED);
-            $started = \microtime(true);
-            $wf->signal('Hold', 5000);
-            $this->until($wf, EventType::EVENT_TYPE_WORKFLOW_TASK_STARTED, 2); // the hold is running
-            \usleep((int) \max(0, (3.5 - (\microtime(true) - $started)) * 1_000_000)); // past the timer's due time
-            $wf->signal('Ack');
-        } catch (\Exception $e) {
-            $misses[] = 'setup: ' . $e->getMessage();
-            return null;
-        }
+        $this->until($wf, EventType::EVENT_TYPE_TIMER_STARTED);
+        $started = \microtime(true);
+        $wf->signal('Hold', 5000);
+        $this->until($wf, EventType::EVENT_TYPE_WORKFLOW_TASK_STARTED, 2); // the hold is running
+        \usleep((int) \max(0, (3.5 - (\microtime(true) - $started)) * 1_000_000)); // past the timer's due time
+        $wf->signal('Ack');
         $got = $wf->getResult('string', 30);
 
         // A real tie: Ack and the timer's firing reached history with no workflow task started between them.
         $types = $this->events($wf);
         $fired = \array_search(EventType::EVENT_TYPE_TIMER_FIRED, $types, true);
         $signals = \array_keys($types, EventType::EVENT_TYPE_WORKFLOW_EXECUTION_SIGNALED, true);
-        $ack = \end($signals); // Hold is the first signal, Ack the last
-        if (\is_int($fired) && \count($signals) >= 2) {
-            [$first, $last] = [\min($fired, $ack), \max($fired, $ack)];
-            if (!\in_array(EventType::EVENT_TYPE_WORKFLOW_TASK_STARTED, \array_slice($types, $first, $last - $first), true)) {
-                return $got;
-            }
+        self::assertIsInt($fired, 'the timer never fired');
+        self::assertCount(2, $signals, 'Hold and Ack were not both signaled');
+        $ack = $signals[1];
+        $between = \array_slice($types, \min($fired, $ack), \abs($ack - $fired));
+        if (!\in_array(EventType::EVENT_TYPE_WORKFLOW_TASK_STARTED, $between, true)) {
+            return $got;
         }
-        $misses[] = 'the timer and Ack reached different workflow tasks';
+        $misses[] = $wf->getExecution()->getID() . ': ' . \implode(',', \array_map(EventType::name(...), $between));
         return null;
     }
 

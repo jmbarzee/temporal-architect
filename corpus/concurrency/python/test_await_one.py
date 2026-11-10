@@ -1,14 +1,14 @@
 import asyncio
 import itertools
 import time
-from collections.abc import AsyncIterator, Callable
+from collections.abc import Callable
 from datetime import timedelta
 from typing import Any
 
 import pytest
-import pytest_asyncio
 import temporalio.worker._workflow as _wf
 import temporalio.worker._workflow_instance as _wi
+from temporalio.api.enums.v1 import EventType
 from temporalio.api.history.v1 import HistoryEvent
 from temporalio.client import WorkflowHandle
 from temporalio.testing import WorkflowEnvironment
@@ -18,12 +18,6 @@ from await_one_fixtures import AwaitOne
 
 TASK_QUEUE = "await-one"
 _ids = itertools.count()
-
-
-@pytest_asyncio.fixture
-async def env() -> AsyncIterator[WorkflowEnvironment]:
-    async with await WorkflowEnvironment.start_time_skipping() as env:
-        yield env
 
 
 async def events(h: WorkflowHandle[Any, Any]) -> list[HistoryEvent]:
@@ -39,31 +33,53 @@ async def until(h: WorkflowHandle[Any, Any], has: Callable[[HistoryEvent], bool]
         await asyncio.sleep(0.02)
 
 
-async def tie(env: WorkflowEnvironment, order: list[str]) -> str:
-    """Runs AwaitOne with the timer fired and Ack sent while no worker runs, so both reach one workflow task."""
+def worker(env: WorkflowEnvironment) -> Worker:
+    """No cache, so no sticky queue: the next workflow task goes to the normal queue, not a stopped worker."""
+    return Worker(env.client, task_queue=TASK_QUEUE, workflows=[AwaitOne], max_cached_workflows=0)
 
-    # No cache, so no sticky queue: the next workflow task goes to the normal queue, not a stopped worker.
-    def worker() -> Worker:
-        return Worker(env.client, task_queue=TASK_QUEUE, workflows=[AwaitOne], max_cached_workflows=0)
 
-    h = await env.client.start_workflow(AwaitOne.run, order, id=f"tie-{next(_ids)}", task_queue=TASK_QUEUE)
-    async with worker():
+async def tie(order: list[str]) -> str:
+    """Runs AwaitOne with the timer fired and Ack sent while no worker runs, so both reach one
+    workflow task, and returns the winner.
+
+    In CI the setup sometimes misses: a workflow task starts between the timer firing and Ack
+    arriving, most likely on a poll the stopped first worker left open at the test server (#529).
+    A miss is retried on a fresh test server; if every attempt misses, the test is skipped, so it
+    never asserts the behaviour on a tie that was not set up.
+    """
+    attempts = 3
+    missed: list[str] = []
+    for _ in range(attempts):
+        async with await WorkflowEnvironment.start_time_skipping() as env:
+            h = await env.client.start_workflow(AwaitOne.run, order, id=f"tie-{next(_ids)}", task_queue=TASK_QUEUE)
+            miss = await set_up_tie(env, h)
+            if miss is None:
+                async with worker(env):
+                    return await h.result()
+            missed.append(miss)
+    pytest.skip(f"the tie was not set up in {attempts} attempts: {'; '.join(missed)}")
+
+
+async def set_up_tie(env: WorkflowEnvironment, h: WorkflowHandle[Any, Any]) -> str | None:
+    """Fires the timer and sends Ack while no worker runs. Returns None when both reach one
+    workflow task, otherwise the history between them."""
+    async with worker(env):
         await until(h, lambda e: e.HasField("timer_started_event_attributes"))
     # Skip time past the timer; with no worker to take its workflow task, nothing runs.
     skip = asyncio.create_task(env.sleep(timedelta(hours=2)))
-    await until(h, lambda e: e.HasField("timer_fired_event_attributes"))
-    await h.signal(AwaitOne.ack)
-    async with worker():
-        got = await h.result()
-    skip.cancel()
+    try:
+        await until(h, lambda e: e.HasField("timer_fired_event_attributes"))
+        await h.signal(AwaitOne.ack)
+    finally:
+        skip.cancel()
 
-    # Both ready on one resume: no workflow task started between the timer firing and Ack arriving.
     evs = await events(h)
     fired = next(i for i, e in enumerate(evs) if e.HasField("timer_fired_event_attributes"))
     signaled = next(i for i, e in enumerate(evs) if e.HasField("workflow_execution_signaled_event_attributes"))
-    between = evs[min(fired, signaled) : max(fired, signaled)]
-    assert not any(e.HasField("workflow_task_started_event_attributes") for e in between)
-    return got
+    between = evs[fired:signaled]
+    if not any(e.HasField("workflow_task_started_event_attributes") for e in between):
+        return None
+    return f"{h.id}: {','.join(EventType.Name(e.event_type) for e in between)}"
 
 
 SINGLE_BATCH = _wi._WorkflowLogicFlag.PROCESS_WORKFLOW_ACTIVATION_JOBS_AS_SINGLE_BATCH
@@ -79,12 +95,12 @@ def activation(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) 
     return str(request.param)
 
 
-async def test_await_one_ack_listed_first_wins_a_tie(env: WorkflowEnvironment, activation: str) -> None:
-    assert await tie(env, ["Ack", "timer"]) == "Ack"
+async def test_await_one_ack_listed_first_wins_a_tie(activation: str) -> None:
+    assert await tie(["Ack", "timer"]) == "Ack"
 
 
-async def test_await_one_timer_listed_first_wins_a_tie(env: WorkflowEnvironment, activation: str) -> None:
+async def test_await_one_timer_listed_first_wins_a_tie(activation: str) -> None:
     # (#474) Under 1.35.0's default ordering Ack is already ready when the
     # workflow runs and the timer is not, so Ack wins; flag 2 gives first-listed.
     want = "timer" if activation == "single-batch" else "Ack"
-    assert await tie(env, ["timer", "Ack"]) == want
+    assert await tie(["timer", "Ack"]) == want

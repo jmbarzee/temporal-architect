@@ -128,22 +128,16 @@ tie first second = go (1 :: Int) []
           either (\miss -> go (n + 1) (miss : missed)) (pure . Right) r
 
 -- | Fires both timers while no worker runs. Returns Nothing when both reach one
--- workflow task, otherwise what happened instead.
+-- workflow task, otherwise the history between them.
 setUpTie :: Env -> C.WorkflowHandle a -> IO (Maybe String)
 setUpTie env h = do
   -- No cache, so no sticky queue: the next workflow task goes to the normal queue.
-  started <- withWorker env (fixturesWorker 0) (untilEvent h TimerStarted)
-  if not started
-    then pure (Just "no TimerStarted;")
-    else do
-      -- The timers fire in real time: a skip stops at the first, whose workflow task
-      -- then waits. With no worker, nothing reads that task.
-      fired <- untilEvents 2 h TimerFired
-      if not fired
-        then pure (Just "no second TimerFired;")
-        else do
-          between <- takeWhile (not . is TimerFired) . drop 1 . dropWhile (not . is TimerFired) <$> events h
-          pure
-            if any (is TaskStarted) between
-              then Just (show (map (^. History.eventType) between) <> ";")
-              else Nothing
+  withWorker env (fixturesWorker 0) (untilEvent h TimerStarted) `shouldReturn` True
+  -- The timers fire in real time: a skip stops at the first, whose workflow task
+  -- then waits. With no worker, nothing reads that task.
+  untilEvents 2 h TimerFired `shouldReturn` True
+  between <- takeWhile (not . is TimerFired) . drop 1 . dropWhile (not . is TimerFired) <$> events h
+  pure
+    if any (is TaskStarted) between
+      then Just (show (map (^. History.eventType) between) <> ";")
+      else Nothing
