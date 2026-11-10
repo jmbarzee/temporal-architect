@@ -1,5 +1,6 @@
 (ns concurrency.batch-test
-  (:require [clojure.test :refer [deftest is use-fixtures]]
+  (:require [clojure.string :as str]
+            [clojure.test :refer [deftest is use-fixtures]]
             [concurrency.batch :as b :refer [Batch]]
             [concurrency.workers :as workers]
             [promesa.core :as p]
@@ -129,21 +130,20 @@
     (.start f)
     f))
 
-(defn- index-of [evs t] (first (keep-indexed (fn [i ^HistoryEvent ev] (when (= t (.getEventType ev)) i)) evs)))
-
-(defn- tied?
-  "Whether the timer and Ack reached one workflow task: no task started between them."
+(defn- miss
+  "nil when the timer and Ack reached one workflow task, otherwise the history between them."
   [id]
-  (let [evs (events id)
-        fired (index-of evs EventType/EVENT_TYPE_TIMER_FIRED)
-        signaled (index-of evs EventType/EVENT_TYPE_WORKFLOW_EXECUTION_SIGNALED)]
-    (and fired signaled (> signaled fired)
-         (not-any? #(= EventType/EVENT_TYPE_WORKFLOW_TASK_STARTED (.getEventType ^HistoryEvent %))
-                   (subvec evs fired signaled)))))
+  (let [between (->> (events id)
+                     (map #(.getEventType ^HistoryEvent %))
+                     (drop-while #(not= EventType/EVENT_TYPE_TIMER_FIRED %))
+                     (take-while #(not= EventType/EVENT_TYPE_WORKFLOW_EXECUTION_SIGNALED %)))]
+    (when (some #{EventType/EVENT_TYPE_WORKFLOW_TASK_STARTED} between)
+      (str id ": " (str/join "," between)))))
 
 (defn- tie-once
   "Runs AwaitOneTie on a test env of its own, with the timer fired and Ack sent while no worker
-  runs, so both reach one workflow task; returns the winner, or nil when the setup missed the tie."
+  runs, so both reach one workflow task; returns {:won winner}, or {:miss history} when the setup
+  missed the tie."
   [id order mode]
   (let [env (e/create)]
     (try
@@ -161,19 +161,25 @@
             (.start))
           (until id EventType/EVENT_TYPE_TIMER_FIRED)
           (c/>! wf :Ack {})
-          (when (tied? id)
+          (if-let [m (miss id)]
+            {:miss m}
             (let [second-worker (tie-worker)]
-              (try (result wf) (finally (.shutdownNow second-worker)))))))
+              (try {:won (result wf)} (finally (.shutdownNow second-worker)))))))
       (finally (e/synchronized-stop env)))))
 
 (defn- on-a-tie
   "Asserts AwaitOneTie's winner on a real tie. The stopped worker's last poll may take the timer's
   task, so a missed setup is retried on a fresh env and workflow ID (a same-server retry can hang),
-  then skipped, never failed (#529)."
+  then skipped, never failed (#529); clojure.test has no skip, so the skip is printed."
   [expected order mode]
-  (if-let [won (some #(tie-once (str "tie-" order "-" mode "-" %) order mode) (range 3))]
-    (is (= expected won))
-    (println "skipped: no tie in 3 setups for" order mode)))
+  (let [attempts 3]
+    (loop [attempt 1 missed []]
+      (if (> attempt attempts)
+        (println "skipped: the tie was not set up in" attempts "attempts:" (str/join "; " missed))
+        (let [{:keys [won miss]} (tie-once (str "tie-" order "-" mode "-" attempt) order mode)]
+          (if miss
+            (recur (inc attempt) (conj missed miss))
+            (is (= expected won))))))))
 
 (deftest await-one-the-first-listed-of-several-ready-cases-wins
   (on-a-tie "Ack" ["Ack" "timer"] "await-one")
