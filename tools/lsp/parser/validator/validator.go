@@ -822,8 +822,8 @@ func (v *validationCtx) walkStatements(stmts []ast.Statement, from caller) {
 			v.checkCallerAllowed(n.Endpoint.Resolved, from, n.Line, n.Column)
 		case *ast.SignalSendStmt:
 			// A signal send is a *use* of its handle promise — no routing
-			// check applies (a signal is delivered to a child the sender
-			// already started, not task-queue-matched; see graph.emitSignalSend).
+			// check applies (a signal is delivered by workflow ID, not
+			// task-queue-matched; see graph.emitSignalSend).
 			// GUARD for future heuristics: there is no unused-promise /
 			// "result never consumed" check today, but when one is added it
 			// MUST treat `signal h.Name(...)` as consuming the promise `h`. A

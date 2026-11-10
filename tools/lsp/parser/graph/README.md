@@ -242,10 +242,10 @@ counts once toward coarsened weight.
 - **`asyncBacking`** — from the operation deployment to workflow deployments on
   the same namespace *and* the same queue deploy key as the operation: when the operation
   runs, Temporal starts the backing workflow on that task queue.
-- **`signalSend`** — **not** queue-routed. A signal is delivered to a specific
-  running child the sender already started, not dispatched by queue matching, so
-  it fans out to every deployment of the target workflow in the caller's
-  namespace. The target is reached through the resolved handle promise.
+- **`signalSend`** — **not** queue-routed. A signal is delivered by workflow
+  ID, not dispatched by queue matching, so it fans out to every deployment of
+  the target workflow in the caller's namespace. The target is the workflow a
+  handle's promise started, or a type head's workflow, addressed by `id:`.
 
 When no callee deployment matches, no edge is emitted and a
 `DISPATCH_NO_REACHABLE_DEPLOYMENT` warning is added (deduplicated by

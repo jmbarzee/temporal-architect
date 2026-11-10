@@ -83,8 +83,8 @@ namespace shop:
 }
 
 // TestSDKCrossings: activity, workflow and Nexus call and signal-send edges
-// between disjoint declared SDK sets cross; a call within one SDK and a call to a worker with no
-// `@sdk` do not.
+// between disjoint declared SDK sets cross; a call within one SDK and a call to
+// a worker with no `@sdk` do not.
 func TestSDKCrossings(t *testing.T) {
 	file, errs := parser.ParseFileAll(`workflow W():
 	activity A()
