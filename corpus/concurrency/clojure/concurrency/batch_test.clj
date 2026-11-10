@@ -18,7 +18,7 @@
            [io.temporal.worker WorkerFactory WorkerOptions]
            [io.temporal.workflow CancellationScope CompletablePromise Promise Workflow]
            [java.time Duration]
-           [java.util.concurrent TimeUnit]))
+           [java.util.concurrent CompletableFuture Executor TimeUnit]))
 
 ;; Batch's await one over Ack and timer(1h), the cases listed in :order; returns the winner.
 ;; :mode "await-one" is the mapped shape; "race" races them through temporal.promise/race
@@ -154,17 +154,22 @@
             (until id EventType/EVENT_TYPE_TIMER_STARTED)
             (.shutdownNow first-worker)
             (.awaitTermination first-worker 10 TimeUnit/SECONDS))
-          ;; Skip time past the timer. With no worker to take the timer's workflow task, the sleep
-          ;; may not return, so it runs on its own thread.
-          (doto (Thread. ^Runnable (fn [] (try (.sleep env (Duration/ofHours 1)) (catch RuntimeException _))))
-            (.setDaemon true)
-            (.start))
-          (until id EventType/EVENT_TYPE_TIMER_FIRED)
-          (c/>! wf :Ack {})
-          (if-let [m (miss id)]
-            {:miss m}
-            (let [second-worker (tie-worker)]
-              (try {:won (result wf)} (finally (.shutdownNow second-worker)))))))
+          ;; Skip time past the timer. The sleep returns only after a worker completes the timer's
+          ;; workflow task, so it runs on its own thread. It relocks time skipping as it returns,
+          ;; and getResult unlocks it, so getResult waits for the sleep: an unlock first is
+          ;; unbalanced, and the test server fails it (#689).
+          (let [skip (CompletableFuture/runAsync
+                      ^Runnable #(.sleep env (Duration/ofHours 1))
+                      (reify Executor (execute [_ r] (doto (Thread. r) (.setDaemon true) (.start)))))]
+            (until id EventType/EVENT_TYPE_TIMER_FIRED)
+            (c/>! wf :Ack {})
+            (if-let [m (miss id)]
+              {:miss m}
+              (let [second-worker (tie-worker)]
+                (try
+                  (.get skip 10 TimeUnit/SECONDS)
+                  {:won (result wf)}
+                  (finally (.shutdownNow second-worker))))))))
       (finally (e/synchronized-stop env)))))
 
 (defn- on-a-tie

@@ -15,6 +15,7 @@ import io.temporal.worker.WorkerOptions;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.AfterEach;
@@ -123,7 +124,7 @@ class BatchTest {
    * miss is retried on a fresh test server; if every attempt misses, the test is aborted (skipped),
    * so it never asserts the behaviour on a tie that was not set up.
    */
-  private String tie(List<String> order, boolean anyOf) throws InterruptedException {
+  private String tie(List<String> order, boolean anyOf) throws Exception {
     final int attempts = 3;
     List<String> missed = new ArrayList<>();
     for (int attempt = 1; attempt <= attempts; attempt++) {
@@ -136,10 +137,14 @@ class BatchTest {
                   "AwaitOneTie",
                   WorkflowOptions.newBuilder().setTaskQueue("await-one").setWorkflowId(id).build());
       h.start(order, anyOf);
-      String miss = setUpTie(id, h);
+      CompletableFuture<Void> skip = setUpTie(id, h);
+      String miss = miss(id);
       if (miss == null) {
         WorkerFactory second = worker();
         try {
+          // The sleep relocks time skipping as it returns, and getResult unlocks it, so getResult
+          // waits for the sleep: an unlock first is unbalanced, and the test server fails it (#689).
+          skip.get(10, TimeUnit.SECONDS);
           return h.getResult(String.class);
         } finally {
           second.shutdownNow();
@@ -152,31 +157,31 @@ class BatchTest {
   }
 
   /**
-   * Fires the timer and sends Ack while no worker runs. Returns null when both reach one workflow
-   * task, otherwise the history between them.
+   * Fires the timer and sends Ack while no worker runs. Returns the sleep that skipped time past
+   * the timer: it returns only after a worker completes the timer's workflow task, so it runs on
+   * its own thread.
    */
-  private String setUpTie(String id, WorkflowStub h) throws InterruptedException {
+  private CompletableFuture<Void> setUpTie(String id, WorkflowStub h) throws InterruptedException {
     WorkerFactory first = worker();
     until(id, EventType.EVENT_TYPE_TIMER_STARTED);
     first.shutdownNow();
     first.awaitTermination(10, TimeUnit.SECONDS);
-    // Skip time past the timer. With no worker to take the timer's workflow task, the
-    // sleep may not return, so it runs on its own thread.
     TestWorkflowEnvironment skipping = env;
-    Thread skip =
-        new Thread(
-            () -> {
-              try {
-                skipping.sleep(Duration.ofHours(1));
-              } catch (RuntimeException ignored) {
-                // the environment closed under it
-              }
+    CompletableFuture<Void> skip =
+        CompletableFuture.runAsync(
+            () -> skipping.sleep(Duration.ofHours(1)),
+            r -> {
+              Thread t = new Thread(r);
+              t.setDaemon(true);
+              t.start();
             });
-    skip.setDaemon(true);
-    skip.start();
     until(id, EventType.EVENT_TYPE_TIMER_FIRED);
     h.signal("Ack");
+    return skip;
+  }
 
+  /** Null when the timer and Ack reached one workflow task, otherwise the history between them. */
+  private String miss(String id) {
     List<HistoryEvent> between =
         events(id).stream()
             .dropWhile(e -> e.getEventType() != EventType.EVENT_TYPE_TIMER_FIRED)
@@ -189,13 +194,13 @@ class BatchTest {
   }
 
   @Test
-  void awaitOneTheFirstListedOfSeveralReadyCasesWins() throws InterruptedException {
+  void awaitOneTheFirstListedOfSeveralReadyCasesWins() throws Exception {
     assertEquals("Ack", tie(List.of("Ack", "timer"), false));
     assertEquals("timer", tie(List.of("timer", "Ack"), false));
   }
 
   @Test
-  void promiseAnyOfIsNotListedOrder() throws InterruptedException {
+  void promiseAnyOfIsNotListedOrder() throws Exception {
     // Ack is listed first, but the timer's promise completes as its event is applied, before
     // Ack's handler runs on a callback thread.
     assertEquals("timer", tie(List.of("Ack", "timer"), true));
