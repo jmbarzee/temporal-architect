@@ -61,7 +61,7 @@ start_child_workflow(TaskQueue, ~"ChildWorkflow", [
 ])
 ```
 
-`TaskQueue` and `Wid` come from the caller's context ([workflow-def.md](./workflow-def.md)). The task queue is positional, `workflow_id` is always passed, `namespace` defaults to `"default"`, and the keys: [author-elixir § Child workflow options](../../temporal-architect-author-elixir/reference/options.md#child-workflow-options).
+The call itself: [workflow-call.md](./workflow-call.md). The keys: [author-elixir § Child workflow options](../../temporal-architect-author-elixir/reference/options.md#child-workflow-options).
 
 ## Nexus operation options
 
