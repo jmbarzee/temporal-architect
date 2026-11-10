@@ -30,8 +30,6 @@ export default defineConfig({
         'src/types/**/*.ts',
         'src/components/**/*.tsx',
         'src/components/**/*.ts',
-        'src/filter/**/*.ts',
-        'src/graph/**/*.ts',
         'src/adapter/**/*.ts',
         'src/theme/**/*.ts',
       ],
@@ -40,7 +38,7 @@ export default defineConfig({
       // we ship the resulting `lib.d.ts` alongside `lib.js`.
     }),
   ],
-  resolve: libraryResolve(__dirname),
+  resolve: libraryResolve(),
   // Never copy a public/ directory into the published library.
   publicDir: false,
   build: {
@@ -59,14 +57,9 @@ export default defineConfig({
     rollupOptions: {
       // React is a peerDependency — host apps provide their own copy and
       // bundling ours would risk multiple-React-instance bugs (hooks would
-      // throw at runtime). Same for react-dom. The engine is a dependency the
-      // consumer installs, its stylesheet included, so it is never inlined.
+      // throw at runtime). Same for react-dom and the engine, a dependency the consumer installs.
       external: [/^react(-dom)?($|\/)/, /^@jmbarzee\/force-graph($|\/)/],
       output: {
-        globals: {
-          react: 'React',
-          'react-dom': 'ReactDOM',
-        },
         assetFileNames: (assetInfo) => {
           if (assetInfo.name?.endsWith('.css')) {
             return 'styles.css'

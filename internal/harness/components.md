@@ -23,10 +23,7 @@ Review prompts referenced below live at `.claude/skills/dev-cycle/references/<na
 | `sampler` | `tools/sampler/` | `internal/changes/sampler/` | `review-quality-sampler` | — | — (leaf) |
 | `skills` | `skills/` | `internal/changes/skills/` | `review-quality-skill` (per skill) | `review-alignment-design-skill`, `review-alignment-author-skills` | — (leaf) |
 
-The visualizer's graph engine is the external package `@jmbarzee/force-graph`
-(`github.com/jmbarzee/force-graph`), exact-pinned in `tools/visualizer/package.json`. Engine
-work lands in that repository and reaches the visualizer as a pin bump, so it is no component
-here.
+The graph engine, `@jmbarzee/force-graph`, is a dependency of `tools/visualizer/`; engine changes arrive as a version bump, so no edge reaches it.
 
 `sampler` (`tools/sampler/`) is a **leaf consumer of `parser`**, not a schema owner. The
 observed-graph wire shape is `observe.ObservedGraph`, which lives in `tools/lsp/parser/observe` —

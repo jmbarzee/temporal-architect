@@ -32,7 +32,7 @@ PLATFORMS := \
 
 .PHONY: build
 
-## Build the toolchain for the local platform (binary + the two npm libraries)
+## Build the toolchain for the local platform (binary + the visualizer library)
 build: build-lsp build-visualizer-lib
 
 # ── Build targets ────────────────────────────────────────────────────────────
@@ -160,17 +160,15 @@ publish-npm-libs:
 ## Run every typecheck gate
 typecheck: typecheck-visualizer
 
-## Install the visualizer from its lockfile, the engine (@jmbarzee/force-graph)
-## among its dependencies, whenever the lockfile moves past the install.
+## Install the visualizer from its lockfile whenever the lockfile moves past the install.
 tools/visualizer/node_modules/.package-lock.json: tools/visualizer/package-lock.json
 	cd tools/visualizer && npm ci
 
-## Typecheck the visualizer (strict tsc, no emit) against the pinned engine.
+## Typecheck the visualizer (strict tsc, no emit).
 typecheck-visualizer: tools/visualizer/node_modules/.package-lock.json
 	cd tools/visualizer && ./node_modules/.bin/tsc --noEmit
 
-## Run the visualizer's unit tests (Vitest, `src/**/*.test.ts`). Not part of
-## `make test`, which is Go-only.
+## Run the visualizer's unit tests. Not part of `make test`, which is Go-only.
 test-visualizer: tools/visualizer/node_modules/.package-lock.json
 	cd tools/visualizer && npm test
 

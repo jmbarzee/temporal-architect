@@ -9,7 +9,7 @@ This review is about the *consumer* of the parser's JSON contract — the webvie
 Before starting, read:
 - in-flight files in `internal/changes/parser/` — understand the current parser contract, what's changing
 - `tools/visualizer/spec/TREE_VIEW.md` — Tree View requirements and current implementation
-- `tools/visualizer/spec/GRAPH_VIEW.md` — Graph View requirements and planned behavior. The engine owns, and this review does not cover, § The model (its shapes), § Layout: Force-Directed Simulation, § Control Panel, § Edge Graduation and § Interaction States; the host owns § Data Flow: Two Views, Two Commands, § Graph Construction, and the tree view
+- `tools/visualizer/spec/GRAPH_VIEW.md` — Graph View requirements; this review covers the host's § Data Flow: Two Views, Two Commands and § Graph Construction
 - All existing files in `internal/changes/visualizer/` — both `*_REVISIONS_*.md` and `CHANGES_*.md` — to avoid re-reporting issues already tracked or addressed
 
 ## Review Rubric
@@ -23,7 +23,6 @@ Before starting, read:
 - Component boundaries: is each component responsible for one thing?
 - Data flow: is there a clear separation between data fetching, transformation, and rendering?
 - Are there hand-written TypeScript types that duplicate the generated `@temporal-architect/wire-types` (which should be the single source) or diverge from the Go DTOs?
-- Does the host reach the engine only through the `@jmbarzee/force-graph` entry, with no deep imports?
 
 ### 3. TypeScript Quality
 - Type safety: are there `any` casts or unsafe assertions that hide real type errors?
@@ -70,7 +69,7 @@ Write the grouped plan to `internal/changes/{component}/quality_REVISIONS_{NNN}.
 - One `## Group N: Title` section per group
 - Each group: findings addressed, files touched, change type (`Schema` | `API` | `Internal`), parallelism notes
 
-TypeScript changes here are almost always `Internal` unless they expose a new API surface to the extension, or change the engine's public entry (`API`, which reaches the host).
+TypeScript changes here are almost always `Internal` unless they expose a new API surface to the extension.
 
 **Return the REVISIONS file path and a one-line summary of each group.** Do not begin executing them — that is `.claude/skills/dev-cycle/references/address-review.md`, dispatched separately.
 

@@ -1,11 +1,9 @@
-// Unit tests (`npm test`): `src/**/*.test.{ts,tsx}`, resolving as the app and
-// library builds do. They run under node; a test that
-// renders names its DOM (`// @vitest-environment happy-dom`).
+// Unit tests run under node; a test that renders names its DOM (`// @vitest-environment happy-dom`).
 import { defineConfig } from 'vitest/config'
 import { libraryResolve } from './vite.shared'
 
 export default defineConfig({
-  resolve: libraryResolve(__dirname),
+  resolve: libraryResolve(),
   test: {
     include: ['src/**/*.test.{ts,tsx}'],
   },

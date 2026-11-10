@@ -7,9 +7,9 @@ The Graph view's engine — a force-directed graph view with composable
 axes that knows nothing of Temporal — is the library
 [`@jmbarzee/force-graph`](https://github.com/jmbarzee/force-graph). This
 package is its first host: it reads parser output into the library's `Graph`
-and declares the Temporal taxonomy. It depends on an exact version of the
-library, which npm installs beside it; this package's `lib.js` imports the
-library's stylesheet, so a bundler collects it with `styles.css`.
+and declares the Temporal taxonomy. It depends on the library, which npm
+installs beside it; this package's `lib.js` imports the library's stylesheet,
+so a bundler collects it with `styles.css`.
 
 This is the npm-publishable surface of the visualizer that ships inside the
 [Temporal Architect VS Code extension](https://github.com/jmbarzee/temporal-architect).

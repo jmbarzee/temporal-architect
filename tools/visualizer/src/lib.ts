@@ -5,14 +5,9 @@
 // version bump. When adding new exports, prefer a deliberate, named re-export
 // to `export *` so the public API is grep-able in one place.
 
-// Global layout / filter-bar / graph-overlay / control-panel / groups-modal
-// styles. Imported here (not just in the standalone main.tsx) so the published
-// library's single `styles.css` is complete — host webviews load only that
-// sibling stylesheet, so anything omitted here is simply unstyled for them.
-// Component-level CSS (blocks.css, style-guide.css) is pulled in transitively
-// by the components below and folds into the same bundle. The engine's
-// stylesheet stays an external import, so the consumer's bundler collects it
-// beside this one.
+// Global host styles, imported here as well as in main.tsx so the published
+// styles.css carries them; component CSS folds in transitively. The engine's
+// stylesheet stays an import the consumer's bundler collects.
 import '@jmbarzee/force-graph/styles.css'
 import './styles/index.css'
 

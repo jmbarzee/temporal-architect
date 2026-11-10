@@ -49,7 +49,7 @@ jobs:
       - name: Verify visualizer
         run: make verify-visualizer
 
-      - name: Build toolchain (binary + the two npm libraries)
+      - name: Build toolchain (binary + the visualizer library)
         run: make build
 
       - name: Verify release artifacts pack
