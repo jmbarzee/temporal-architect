@@ -55,7 +55,7 @@ Highlight what matters; push everything else to the background. Hover a graph no
 
 ### Direct manipulation
 
-Drag nodes, scrub sliders, click to expand — all with immediate visual feedback. The graph's force simulation responds live to slider changes. Tree blocks expand and collapse on click. The control panel's sliders animating during kind transitions is intended, not built ([#186](https://github.com/jmbarzee/temporal-architect/issues/186)). The user acts on the visualization directly, not through menus or dialogs.
+Drag nodes, scrub sliders, click to expand — all with immediate visual feedback. The graph's force simulation responds live to slider changes. Tree blocks expand and collapse on click. The control panel's sliders animating during kind transitions is intended, not built ([force-graph#8](https://github.com/jmbarzee/force-graph/issues/8)). The user acts on the visualization directly, not through menus or dialogs.
 
 ### Glanceable summaries
 
@@ -65,7 +65,7 @@ Summaries are secondary information — smaller, muted, never competing with the
 
 ### Density management
 
-The visualizer must remain useful as the system it displays grows. Filters and progressive disclosure handle moderate scale, but large projects (100+ definitions, 50+ visible graph nodes) require explicit density strategies: label elision at zoom levels and detail reduction at distance. Virtualized rendering for long lists is **not** implemented — deferred as [#87](https://github.com/jmbarzee/temporal-architect/issues/87). Each view defines its own density thresholds (see TREE_VIEW.md § Scale Behavior and GRAPH_VIEW.md § Performance Considerations). The goal is graceful degradation — the experience gets simpler at high density, never broken.
+The visualizer must remain useful as the system it displays grows. Filters and progressive disclosure handle moderate scale, but large projects (100+ definitions, 50+ visible graph nodes) require explicit density strategies: label elision at zoom levels and detail reduction at distance. Virtualized rendering for long lists is **not** implemented — deferred as [#87](https://github.com/jmbarzee/temporal-architect/issues/87). Each view defines its own density thresholds (see TREE_VIEW.md § Scale Behavior and GRAPH_VIEW.md § Visual Density). The goal is graceful degradation — the experience gets simpler at high density, never broken.
 
 
 ## Visual Identity

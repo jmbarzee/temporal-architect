@@ -9,7 +9,7 @@ This review is about the *consumer* of the parser's JSON contract — the webvie
 Before starting, read:
 - in-flight files in `internal/changes/parser/` — understand the current parser contract, what's changing
 - `tools/visualizer/spec/TREE_VIEW.md` — Tree View requirements and current implementation
-- `tools/visualizer/spec/GRAPH_VIEW.md` — Graph View requirements; this review covers the host's § Data Flow: Two Views, Two Commands and § Graph Construction
+- `tools/visualizer/spec/GRAPH_VIEW.md` — Graph View host requirements
 - All existing files in `internal/changes/visualizer/` — both `*_REVISIONS_*.md` and `CHANGES_*.md` — to avoid re-reporting issues already tracked or addressed
 
 ## Review Rubric

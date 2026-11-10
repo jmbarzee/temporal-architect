@@ -133,7 +133,7 @@ Common options: `--json` (structured output) and `--lenient` (continue past reso
 A React + TypeScript webview that renders the system defined in `.twf`. Runs standalone or embedded in the VS Code extension.
 
 - **[Tree View](./tools/visualizer/spec/TREE_VIEW.md)** — every definition as a collapsible, color-coded block; expand a call to see the target's body inline; filter and search.
-- **[Graph View](./tools/visualizer/spec/GRAPH_VIEW.md)** — a force-directed graph with three node levels (namespace → worker → workflow) and dependency edges; semantic zoom selects which levels are visible.
+- **[Graph View](./tools/visualizer/spec/GRAPH_VIEW.md)** — the deployment graph, force-directed: namespaces, workers, workflows, activities and Nexus, joined by containment and call edges; kind chips choose what is shown.
 
 <details>
 <summary><strong>Full Temporal feature coverage</strong> (every construct in the notation)</summary>

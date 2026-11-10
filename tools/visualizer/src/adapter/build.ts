@@ -230,7 +230,7 @@ export function buildGraph(parserGraph: ParserGraph, astLookup: AstLookup): Grap
   // --- Edges (containment + dispatch), one per (caller, callee, kind) ---
   //
   // The parser emits one edge per call site; this graph answers "does X reach
-  // Y, and how" (GRAPH_VIEW.md § Edges), so repeated call sites fold into one
+  // Y, and how" (GRAPH_VIEW.md § Fundamental Edges), so repeated call sites fold into one
   // edge here and the first keeps its routing payload as the representative.
   // This fold is the host's: the library draws every edge it is given, two
   // edges between one pair being two facts. What is NOT folded is two
