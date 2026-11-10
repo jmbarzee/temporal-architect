@@ -1,0 +1,60 @@
+workflow W():
+	activity A()
+	workflow C()
+	nexus Ep Svc.Op()
+	activity Same()
+	activity Plain()
+	promise c <- workflow C()
+	signal c.Go()
+	close complete()
+
+activity A():
+	default_options:
+		task_queue: "py"
+	return x
+
+activity Same():
+	return x
+
+activity Plain():
+	default_options:
+		task_queue: "plain"
+	return x
+
+workflow C():
+	default_options:
+		task_queue: "py"
+	signal Go():
+		x = 1
+	close complete()
+
+nexus service Svc:
+	async Op workflow C
+
+@sdk(go)
+worker goW:
+	workflow W
+	activity Same
+
+@sdk(python)
+worker pyW:
+	activity A
+	workflow C
+	nexus service Svc
+
+worker plainW:
+	activity Plain
+
+namespace ns:
+	worker goW
+		options:
+			task_queue: "go"
+	worker pyW
+		options:
+			task_queue: "py"
+	worker plainW
+		options:
+			task_queue: "plain"
+	nexus endpoint Ep
+		options:
+			task_queue: "py"

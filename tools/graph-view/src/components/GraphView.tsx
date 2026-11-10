@@ -132,6 +132,8 @@ export interface GraphViewProps {
   groups?: readonly NodeGroup[]
   /** The host's control for its groups (`GroupLegend`, or its own), rendered inside the pane — which sets `--gv-toolbar-height` on its root so a control can anchor under the bar — and handed the groups as drawn, colours included, and the view's `emphasize`. */
   groupsControl?: (active: readonly ActiveGroup[], control: GroupsControl) => React.ReactNode
+  /** Edges to mark, by id, with a dashed band behind their stroke; a graduated edge is marked when the edge it stands for is. */
+  markedEdges?: ReadonlySet<string>
   /** The host's action for a node, offered in the hover box: one for every node, or the host's answer per node (null for none). */
   nodeAction?: NodeAction | ((node: GraphNode) => NodeAction | null)
   /** Which parts of the pane's chrome are offered. Default: everything, the lock toggles only when `locks` is controlled with its callback. */
@@ -259,6 +261,7 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
   findings,
   groups,
   groupsControl,
+  markedEdges,
   nodeAction,
   chrome,
   searchTitle = 'Search nodes (/)',
@@ -540,8 +543,15 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
 
   // Visible subgraph derived from the live sim (filter + edge graduation +
   // summaries + downstream-depth scores), recomputed on filter / sim-rebuild.
-  const { visibleNodes, visibleEdges, visibleIds, edgeTypes, nodeSummaries, downstreamScores } =
+  const { visibleNodes, visibleEdges, visibleIds, edgeTypes, origins, nodeSummaries, downstreamScores } =
     useVisibleGraph(simRef, simVersion, filter, filterAxes, taxonomy)
+
+  // The visible edges the host marks, each through its original.
+  const visibleMarked = React.useMemo(() => {
+    const out = new Set<string>()
+    if (markedEdges) for (const edge of visibleEdges) if (markedEdges.has(origins.get(edge.id)!)) out.add(edge.id)
+    return out
+  }, [markedEdges, visibleEdges, origins])
 
   // Every visible edge's stroke, from the type the derivation resolved on the
   // edge's ORIGINAL endpoints, once, not per frame. An edge no type claims
@@ -1018,6 +1028,7 @@ export const GraphView = React.forwardRef<GraphViewHandle, GraphViewProps>(funct
             activePullEdge={activePullEdge}
             nodeScale={nodeScale}
             groupGlows={glowGroups}
+            markedEdges={visibleMarked}
           />
         </CanvasErrorBoundary>
         <GraphHoverTooltip

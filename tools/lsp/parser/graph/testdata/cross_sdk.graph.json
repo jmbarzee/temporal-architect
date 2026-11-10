@@ -1,0 +1,276 @@
+{
+  "summary": {
+    "nodes": 12,
+    "edges": 20,
+    "coarsenedEdges": 2,
+    "unresolved": 0,
+    "diagnostics": 0
+  },
+  "nodes": [
+    {
+      "id": "activity:A/worker:pyW/namespace:ns",
+      "definition": "activity:A",
+      "name": "A",
+      "sdks": [
+        {
+          "sdk": "python"
+        }
+      ]
+    },
+    {
+      "id": "activity:Plain/worker:plainW/namespace:ns",
+      "definition": "activity:Plain",
+      "name": "Plain"
+    },
+    {
+      "id": "activity:Same/worker:goW/namespace:ns",
+      "definition": "activity:Same",
+      "name": "Same",
+      "sdks": [
+        {
+          "sdk": "go"
+        }
+      ]
+    },
+    {
+      "id": "namespace:ns",
+      "definition": "namespace:ns",
+      "name": "ns"
+    },
+    {
+      "id": "nexusEndpoint:Ep/namespace:ns",
+      "definition": "nexusEndpoint:Ep",
+      "name": "Ep",
+      "queue": "py"
+    },
+    {
+      "id": "nexusOperation:Svc.Op/worker:pyW/namespace:ns",
+      "definition": "nexusOperation:Svc.Op",
+      "name": "Svc.Op",
+      "worker": "worker:pyW",
+      "queue": "py",
+      "sdks": [
+        {
+          "sdk": "python"
+        }
+      ]
+    },
+    {
+      "id": "nexusService:Svc/worker:pyW/namespace:ns",
+      "definition": "nexusService:Svc",
+      "name": "Svc",
+      "worker": "worker:pyW",
+      "namespace": "namespace:ns",
+      "queue": "py",
+      "sdks": [
+        {
+          "sdk": "python"
+        }
+      ]
+    },
+    {
+      "id": "worker:goW/namespace:ns",
+      "definition": "worker:goW",
+      "name": "goW",
+      "queue": "go",
+      "sdks": [
+        {
+          "sdk": "go"
+        }
+      ]
+    },
+    {
+      "id": "worker:plainW/namespace:ns",
+      "definition": "worker:plainW",
+      "name": "plainW",
+      "queue": "plain"
+    },
+    {
+      "id": "worker:pyW/namespace:ns",
+      "definition": "worker:pyW",
+      "name": "pyW",
+      "queue": "py",
+      "sdks": [
+        {
+          "sdk": "python"
+        }
+      ]
+    },
+    {
+      "id": "workflow:C/worker:pyW/namespace:ns",
+      "definition": "workflow:C",
+      "name": "C",
+      "sdks": [
+        {
+          "sdk": "python"
+        }
+      ]
+    },
+    {
+      "id": "workflow:W/worker:goW/namespace:ns",
+      "definition": "workflow:W",
+      "name": "W",
+      "sdks": [
+        {
+          "sdk": "go"
+        }
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "activity:A/worker:pyW/namespace:ns",
+      "to": "worker:pyW/namespace:ns",
+      "kind": "containment",
+      "line": 41
+    },
+    {
+      "from": "activity:Plain/worker:plainW/namespace:ns",
+      "to": "worker:plainW/namespace:ns",
+      "kind": "containment",
+      "line": 46
+    },
+    {
+      "from": "activity:Same/worker:goW/namespace:ns",
+      "to": "worker:goW/namespace:ns",
+      "kind": "containment",
+      "line": 37
+    },
+    {
+      "from": "nexusEndpoint:Ep/namespace:ns",
+      "to": "namespace:ns",
+      "kind": "containment",
+      "line": 58
+    },
+    {
+      "from": "nexusOperation:Svc.Op/worker:pyW/namespace:ns",
+      "to": "nexusEndpoint:Ep/namespace:ns",
+      "kind": "nexusRoute",
+      "line": 58
+    },
+    {
+      "from": "nexusOperation:Svc.Op/worker:pyW/namespace:ns",
+      "to": "nexusService:Svc/worker:pyW/namespace:ns",
+      "kind": "containment",
+      "line": 32
+    },
+    {
+      "from": "nexusOperation:Svc.Op/worker:pyW/namespace:ns",
+      "to": "workflow:C/worker:pyW/namespace:ns",
+      "kind": "asyncBacking",
+      "line": 32,
+      "routing": {}
+    },
+    {
+      "from": "nexusService:Svc/worker:pyW/namespace:ns",
+      "to": "worker:pyW/namespace:ns",
+      "kind": "containment",
+      "line": 43
+    },
+    {
+      "from": "worker:goW/namespace:ns",
+      "to": "namespace:ns",
+      "kind": "containment",
+      "line": 49
+    },
+    {
+      "from": "worker:plainW/namespace:ns",
+      "to": "namespace:ns",
+      "kind": "containment",
+      "line": 55
+    },
+    {
+      "from": "worker:pyW/namespace:ns",
+      "to": "namespace:ns",
+      "kind": "containment",
+      "line": 52
+    },
+    {
+      "from": "workflow:C/worker:pyW/namespace:ns",
+      "to": "worker:pyW/namespace:ns",
+      "kind": "containment",
+      "line": 42
+    },
+    {
+      "from": "workflow:W/worker:goW/namespace:ns",
+      "to": "activity:A/worker:pyW/namespace:ns",
+      "kind": "activityCall",
+      "line": 2,
+      "routing": {
+        "explicit": "py"
+      }
+    },
+    {
+      "from": "workflow:W/worker:goW/namespace:ns",
+      "to": "activity:Plain/worker:plainW/namespace:ns",
+      "kind": "activityCall",
+      "line": 6,
+      "routing": {
+        "explicit": "plain"
+      }
+    },
+    {
+      "from": "workflow:W/worker:goW/namespace:ns",
+      "to": "activity:Same/worker:goW/namespace:ns",
+      "kind": "activityCall",
+      "line": 5,
+      "routing": {}
+    },
+    {
+      "from": "workflow:W/worker:goW/namespace:ns",
+      "to": "nexusOperation:Svc.Op/worker:pyW/namespace:ns",
+      "kind": "nexusCall",
+      "line": 4,
+      "routing": {
+        "nexusEndpoint": "nexusEndpoint:Ep/namespace:ns"
+      }
+    },
+    {
+      "from": "workflow:W/worker:goW/namespace:ns",
+      "to": "worker:goW/namespace:ns",
+      "kind": "containment",
+      "line": 36
+    },
+    {
+      "from": "workflow:W/worker:goW/namespace:ns",
+      "to": "workflow:C/worker:pyW/namespace:ns",
+      "kind": "signalSend",
+      "line": 8,
+      "routing": {}
+    },
+    {
+      "from": "workflow:W/worker:goW/namespace:ns",
+      "to": "workflow:C/worker:pyW/namespace:ns",
+      "kind": "workflowCall",
+      "line": 3,
+      "routing": {
+        "explicit": "py"
+      }
+    },
+    {
+      "from": "workflow:W/worker:goW/namespace:ns",
+      "to": "workflow:C/worker:pyW/namespace:ns",
+      "kind": "workflowCall",
+      "line": 7,
+      "routing": {
+        "explicit": "py"
+      }
+    }
+  ],
+  "coarsenedEdges": [
+    {
+      "from": "worker:goW/namespace:ns",
+      "to": "worker:plainW/namespace:ns",
+      "tier": "worker",
+      "weight": 1
+    },
+    {
+      "from": "worker:goW/namespace:ns",
+      "to": "worker:pyW/namespace:ns",
+      "tier": "worker",
+      "weight": 5
+    }
+  ],
+  "unresolved": [],
+  "diagnostics": []
+}

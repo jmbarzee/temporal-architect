@@ -263,8 +263,10 @@ the console. Everything else is optional.
   palette's), `groupsControl` for a legend inside the pane (anchor it under
   `--gv-toolbar-height`, and handed the groups as drawn and `emphasize`;
   `GroupLegend` is one — items, the active groups, a toggle and the
-  emphasis), a `nodeAction` for the hover box (`{ label, onSelect }`, or a
-  function of the node answering one or null), `chrome` to turn parts of
+  emphasis), `markedEdges` (edge ids drawn with a dashed band behind their
+  stroke, a graduated edge when the edge it stands for is), a `nodeAction`
+  for the hover box (`{ label, onSelect }`, or a function of the node
+  answering one or null), `chrome` to turn parts of
   the pane off — `controls` (the control panel), `themeToggle` (the theme
   button), `search`, `locks` (the lock toggles; off until the host controls
   `locks` with `onLocksChange`), `transport` (the Fit / theme / Play / count

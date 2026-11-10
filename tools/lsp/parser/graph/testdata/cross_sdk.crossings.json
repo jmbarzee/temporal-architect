@@ -1,0 +1,22 @@
+[
+  [
+    "workflow:W/worker:goW/namespace:ns",
+    "activity:A/worker:pyW/namespace:ns",
+    "activityCall"
+  ],
+  [
+    "workflow:W/worker:goW/namespace:ns",
+    "nexusOperation:Svc.Op/worker:pyW/namespace:ns",
+    "nexusCall"
+  ],
+  [
+    "workflow:W/worker:goW/namespace:ns",
+    "workflow:C/worker:pyW/namespace:ns",
+    "signalSend"
+  ],
+  [
+    "workflow:W/worker:goW/namespace:ns",
+    "workflow:C/worker:pyW/namespace:ns",
+    "workflowCall"
+  ]
+]

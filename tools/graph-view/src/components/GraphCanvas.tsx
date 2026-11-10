@@ -46,6 +46,12 @@ function glowSwell(strength: number): number {
   return 1 + Math.max(0, strength - 1) * GROUP_GLOW_FOCUS_SWELL
 }
 
+// A marked edge's band, behind its own stroke so the edge keeps its type's
+// colour and dash: dashed in the label ink, the one colour no glow hue takes.
+const MARK_DASH = [6, 4]
+const MARK_WIDTH = 6
+const MARK_ALPHA = 0.55
+
 const ICON_FONT_FAMILY = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
 const LABEL_FONT_PX = 11
 // Slight translucency on node labels so they don't read as the only bright
@@ -178,6 +184,8 @@ interface GraphCanvasProps {
   nodeScale: NodeScaleParams
   // Decomposition group glow layer (drawn behind everything). Empty = no overlay.
   groupGlows: GroupGlow[]
+  /** The visible edges drawn with a marking band, by id. */
+  markedEdges: ReadonlySet<string>
 }
 
 /**
@@ -210,6 +218,7 @@ interface DrawData {
   nodeMap: Map<string, SimNode>
   viewport: Viewport
   groupGlows: GroupGlow[]
+  markedEdges: ReadonlySet<string>
   highlightedNodes: Set<string> | null
   highlightedEdges: Set<string> | null
   hoveredNodeId: string | null
@@ -244,7 +253,7 @@ export function GraphCanvas({
   highlightedNodes, highlightedEdges,
   hoveredNodeId, selectedNodeId, focusedNodeId, searchMatchIds,
   running, forceParams, resolved, overlay, theme, edgeStrokes, edgeOffsets, activeSection, activePushBucket,
-  activeGravityBucket, activePullEdge, nodeScale, groupGlows,
+  activeGravityBucket, activePullEdge, nodeScale, groupGlows, markedEdges,
 }: GraphCanvasProps) {
   const canvasRef = React.useRef<HTMLCanvasElement>(null)
   const containerRef = React.useRef<HTMLDivElement>(null)
@@ -292,14 +301,14 @@ export function GraphCanvas({
   // --- Ref-based draw data (updated every render, read by draw loop) ---
   const drawData = React.useRef<DrawData>({
     taxonomy,
-    nodes, edges, nodeMap, viewport, groupGlows, highlightedNodes, highlightedEdges,
+    nodes, edges, nodeMap, viewport, groupGlows, markedEdges, highlightedNodes, highlightedEdges,
     hoveredNodeId, selectedNodeId, focusedNodeId, searchMatchIds,
     forceParams, resolved, overlay, theme, edgeStrokes, edgeOffsets, activeSection, activePushBucket, activeGravityBucket, activePullEdge, nodeScale, running,
     dupNodeIds, activeDupDefKey,
   })
   drawData.current = {
     taxonomy,
-    nodes, edges, nodeMap, viewport, groupGlows, highlightedNodes, highlightedEdges,
+    nodes, edges, nodeMap, viewport, groupGlows, markedEdges, highlightedNodes, highlightedEdges,
     hoveredNodeId, selectedNodeId, focusedNodeId, searchMatchIds,
     forceParams, resolved, overlay, theme, edgeStrokes, edgeOffsets, activeSection, activePushBucket, activeGravityBucket, activePullEdge, nodeScale, running,
     dupNodeIds, activeDupDefKey,
@@ -557,10 +566,21 @@ export function GraphCanvas({
           (!d.searchMatchIds.has(edge.sourceId) || !d.searchMatchIds.has(edge.targetId))
         // Highlights override the per-style alpha so the active subgraph
         // pops; dim non-highlighted/non-matching edges down to DIM_ALPHA.
-        ctx.globalAlpha = hasHighlight
-          ? (edgeHighlighted ? 1 : dimAlpha)
-          : (edgeSearchDimmed ? dimAlpha : baseAlpha)
+        const edgeDimmed = hasHighlight ? !edgeHighlighted : edgeSearchDimmed
+        const edgeAlpha = hasHighlight && edgeHighlighted ? 1 : edgeDimmed ? dimAlpha : baseAlpha
 
+        if (d.markedEdges.has(edge.id)) {
+          ctx.globalAlpha = edgeDimmed ? dimAlpha : MARK_ALPHA
+          ctx.beginPath()
+          ctx.setLineDash(MARK_DASH)
+          ctx.strokeStyle = labelColor
+          ctx.lineWidth = MARK_WIDTH
+          ctx.moveTo(sx, sy)
+          ctx.lineTo(tx, ty)
+          ctx.stroke()
+        }
+
+        ctx.globalAlpha = edgeAlpha
         ctx.beginPath()
         ctx.setLineDash([...style.dash])
         ctx.strokeStyle = style.color[d.theme]
