@@ -7,7 +7,7 @@ Write your architecture in `.twf` and a real parser, language server, and visual
 Every Temporal SDK has an authoring skill:
 
 - **Official:** [Go](./skills/temporal-architect-author-go/SKILL.md), [TypeScript](./skills/temporal-architect-author-typescript/SKILL.md), [Python](./skills/temporal-architect-author-python/SKILL.md), [Java](./skills/temporal-architect-author-java/SKILL.md), [.NET](./skills/temporal-architect-author-dotnet/SKILL.md), [Ruby](./skills/temporal-architect-author-ruby/SKILL.md), [PHP](./skills/temporal-architect-author-php/SKILL.md), [Rust](./skills/temporal-architect-author-rust/SKILL.md)
-- **Community:** [Swift](./skills/temporal-architect-author-swift/SKILL.md), [Haskell](./skills/temporal-architect-author-haskell/SKILL.md), [Clojure](./skills/temporal-architect-author-clojure/SKILL.md), [Perl](./skills/temporal-architect-author-perl/SKILL.md), [Elixir](./skills/temporal-architect-author-elixir/SKILL.md)
+- **Community:** [Swift](./skills/temporal-architect-author-swift/SKILL.md), [Haskell](./skills/temporal-architect-author-haskell/SKILL.md), [Clojure](./skills/temporal-architect-author-clojure/SKILL.md), [Perl](./skills/temporal-architect-author-perl/SKILL.md), [Elixir](./skills/temporal-architect-author-elixir/SKILL.md), [Erlang](./skills/temporal-architect-author-erlang/SKILL.md)
 
 Each owns the `.twf` ↔ SDK translation (call shapes, wire names, options, layout, verify) and hands SDK idioms to Temporal's [`temporal-developer`](https://github.com/temporalio/skill-temporal-developer) skill, or to the community SDK's own docs where `temporal-developer` has none.
 

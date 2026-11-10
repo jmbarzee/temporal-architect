@@ -30,6 +30,7 @@ An author owns the `.twf` ↔ SDK translation (call shapes, wire names, options,
 | `clojure` | `temporal-architect-author-clojure` |
 | `perl` | `temporal-architect-author-perl` (Tier 3: community, pre-1.0) |
 | `elixir` | `temporal-architect-author-elixir` (Tier 3: community, partial) |
+| `erlang` | `temporal-architect-author-erlang` (Tier 3: community, partial) |
 
 Its job is to protect the main agent's context: keep it on the architecture at 10,000 ft (workloads, scaling, reliability, availability) and dispatch code-scale authoring to subagents that each see only their chunk. The main agent is not always the design agent — sometimes it is authoring or reverse-engineering.
 
