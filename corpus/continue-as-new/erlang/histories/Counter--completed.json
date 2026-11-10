@@ -1,0 +1,283 @@
+{
+  "events": [
+    {
+      "eventId": "1",
+      "eventTime": "2026-11-10T17:17:53.045769Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_EXECUTION_STARTED",
+      "taskId": "1049055",
+      "workflowExecutionStartedEventAttributes": {
+        "workflowType": {
+          "name": "Counter"
+        },
+        "taskQueue": {
+          "name": "counters-test-erlang",
+          "kind": "TASK_QUEUE_KIND_NORMAL"
+        },
+        "input": {
+          "payloads": [
+            {
+              "metadata": {
+                "encoding": "anNvbi9wbGFpbg=="
+              },
+              "data": "Mg=="
+            },
+            {
+              "metadata": {
+                "encoding": "anNvbi9wbGFpbg=="
+              },
+              "data": "Mw=="
+            }
+          ]
+        },
+        "workflowTaskTimeout": "10s",
+        "originalExecutionRunId": "01a1c677-5a15-7bb8-8684-8cba851f2d10",
+        "identity": "812a4fc53c2e/nonode@nohost/cluster_1/<0.3198.0>",
+        "firstExecutionRunId": "01a1c677-5a15-7bb8-8684-8cba851f2d10",
+        "attempt": 1,
+        "firstWorkflowTaskBackoff": "0s",
+        "workflowId": "Counter-completed-1539-1794331073041",
+        "timeSkippingConfig": {
+          "enabled": true,
+          "maxSessionSkipCount": 200
+        }
+      }
+    },
+    {
+      "eventId": "2",
+      "eventTime": "2026-11-10T17:17:53.045850Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_SCHEDULED",
+      "taskId": "1049056",
+      "workflowTaskScheduledEventAttributes": {
+        "taskQueue": {
+          "name": "counters-test-erlang",
+          "kind": "TASK_QUEUE_KIND_NORMAL"
+        },
+        "startToCloseTimeout": "10s",
+        "attempt": 1
+      }
+    },
+    {
+      "eventId": "3",
+      "eventTime": "2026-11-10T17:17:53.048532Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_STARTED",
+      "taskId": "1049061",
+      "workflowTaskStartedEventAttributes": {
+        "scheduledEventId": "2",
+        "identity": "812a4fc53c2e/nonode@nohost/cluster_1/default/counters-test-erlang/workflow/5",
+        "requestId": "4bf6d3cc-124b-464b-bb86-bb863e4dfdbc",
+        "historySizeBytes": "364"
+      }
+    },
+    {
+      "eventId": "4",
+      "eventTime": "2026-11-10T17:17:53.052560Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_COMPLETED",
+      "taskId": "1049065",
+      "workflowTaskCompletedEventAttributes": {
+        "scheduledEventId": "2",
+        "startedEventId": "3",
+        "identity": "812a4fc53c2e/nonode@nohost/cluster_1/default/counters-test-erlang/workflow/5",
+        "workerVersion": {}
+      }
+    },
+    {
+      "eventId": "5",
+      "eventTime": "2026-11-10T17:17:53.052600Z",
+      "eventType": "EVENT_TYPE_TIMER_STARTED",
+      "taskId": "1049066",
+      "timerStartedEventAttributes": {
+        "timerId": "main/0/noname/0",
+        "startToFireTimeout": "60s",
+        "workflowTaskCompletedEventId": "4"
+      }
+    },
+    {
+      "eventId": "6",
+      "eventTime": "2026-11-10T17:17:53.052615Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_EXECUTION_TIME_SKIPPING_TRANSITIONED",
+      "taskId": "1049067",
+      "workerMayIgnore": true,
+      "workflowExecutionTimeSkippingTransitionedEventAttributes": {
+        "targetTime": "2026-11-10T17:18:53.052600Z",
+        "wallClockTime": "2026-11-10T17:17:53.052615Z"
+      }
+    },
+    {
+      "eventId": "7",
+      "eventTime": "2026-11-10T17:18:54.049232Z",
+      "eventType": "EVENT_TYPE_TIMER_FIRED",
+      "taskId": "1049072",
+      "timerFiredEventAttributes": {
+        "timerId": "main/0/noname/0",
+        "startedEventId": "5"
+      }
+    },
+    {
+      "eventId": "8",
+      "eventTime": "2026-11-10T17:18:54.049257Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_SCHEDULED",
+      "taskId": "1049073",
+      "workflowTaskScheduledEventAttributes": {
+        "taskQueue": {
+          "name": "nonode@nohost/<0.3045.0>/bb0458db-f13a-4f70-b883-95ef1d8b69ea/2",
+          "kind": "TASK_QUEUE_KIND_STICKY",
+          "normalName": "counters-test-erlang"
+        },
+        "startToCloseTimeout": "10s",
+        "attempt": 1
+      }
+    },
+    {
+      "eventId": "9",
+      "eventTime": "2026-11-10T17:18:54.051217Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_STARTED",
+      "taskId": "1049077",
+      "workflowTaskStartedEventAttributes": {
+        "scheduledEventId": "8",
+        "identity": "812a4fc53c2e/nonode@nohost/cluster_1/default/counters-test-erlang/sticky_queue/2",
+        "requestId": "62fc41c8-c7c4-45f3-b4ab-d522906d7dcb",
+        "historySizeBytes": "891"
+      }
+    },
+    {
+      "eventId": "10",
+      "eventTime": "2026-11-10T17:18:54.055587Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_COMPLETED",
+      "taskId": "1049081",
+      "workflowTaskCompletedEventAttributes": {
+        "scheduledEventId": "8",
+        "startedEventId": "9",
+        "identity": "812a4fc53c2e/nonode@nohost/cluster_1/default/counters-test-erlang/workflow/5",
+        "workerVersion": {}
+      }
+    },
+    {
+      "eventId": "11",
+      "eventTime": "2026-11-10T17:18:54.055702Z",
+      "eventType": "EVENT_TYPE_ACTIVITY_TASK_SCHEDULED",
+      "taskId": "1049082",
+      "activityTaskScheduledEventAttributes": {
+        "activityId": "main/1/<<\"Increment\">>/0",
+        "activityType": {
+          "name": "Increment"
+        },
+        "taskQueue": {
+          "name": "counters-test-erlang",
+          "kind": "TASK_QUEUE_KIND_NORMAL"
+        },
+        "input": {
+          "payloads": [
+            {
+              "metadata": {
+                "encoding": "anNvbi9wbGFpbg=="
+              },
+              "data": "Mg=="
+            }
+          ]
+        },
+        "scheduleToCloseTimeout": "0s",
+        "scheduleToStartTimeout": "0s",
+        "startToCloseTimeout": "600s",
+        "heartbeatTimeout": "0s",
+        "workflowTaskCompletedEventId": "10",
+        "retryPolicy": {
+          "initialInterval": "1s",
+          "backoffCoefficient": 2,
+          "maximumInterval": "100s"
+        }
+      }
+    },
+    {
+      "eventId": "12",
+      "eventTime": "2026-11-10T17:18:54.056844Z",
+      "eventType": "EVENT_TYPE_ACTIVITY_TASK_STARTED",
+      "taskId": "1049089",
+      "activityTaskStartedEventAttributes": {
+        "scheduledEventId": "11",
+        "identity": "812a4fc53c2e/nonode@nohost/cluster_1/default/counters-test-erlang/activity/1",
+        "requestId": "1495b366-ee50-4d34-818c-1c21b98f1aad",
+        "attempt": 1,
+        "workerVersion": {}
+      }
+    },
+    {
+      "eventId": "13",
+      "eventTime": "2026-11-10T17:18:54.063788Z",
+      "eventType": "EVENT_TYPE_ACTIVITY_TASK_COMPLETED",
+      "taskId": "1049090",
+      "activityTaskCompletedEventAttributes": {
+        "result": {
+          "payloads": [
+            {
+              "metadata": {
+                "encoding": "anNvbi9wbGFpbg=="
+              },
+              "data": "Mw=="
+            }
+          ]
+        },
+        "scheduledEventId": "11",
+        "startedEventId": "12",
+        "identity": "812a4fc53c2e/nonode@nohost/cluster_1/default/counters-test-erlang/activity/1"
+      }
+    },
+    {
+      "eventId": "14",
+      "eventTime": "2026-11-10T17:18:54.063799Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_SCHEDULED",
+      "taskId": "1049091",
+      "workflowTaskScheduledEventAttributes": {
+        "taskQueue": {
+          "name": "nonode@nohost/<0.3045.0>/bb0458db-f13a-4f70-b883-95ef1d8b69ea/2",
+          "kind": "TASK_QUEUE_KIND_STICKY",
+          "normalName": "counters-test-erlang"
+        },
+        "startToCloseTimeout": "10s",
+        "attempt": 1
+      }
+    },
+    {
+      "eventId": "15",
+      "eventTime": "2026-11-10T17:18:54.064419Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_STARTED",
+      "taskId": "1049095",
+      "workflowTaskStartedEventAttributes": {
+        "scheduledEventId": "14",
+        "identity": "812a4fc53c2e/nonode@nohost/cluster_1/default/counters-test-erlang/sticky_queue/2",
+        "requestId": "e6b4b3db-e7f2-41bb-a08a-17c267875d41",
+        "historySizeBytes": "1717"
+      }
+    },
+    {
+      "eventId": "16",
+      "eventTime": "2026-11-10T17:18:54.066757Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_COMPLETED",
+      "taskId": "1049099",
+      "workflowTaskCompletedEventAttributes": {
+        "scheduledEventId": "14",
+        "startedEventId": "15",
+        "identity": "812a4fc53c2e/nonode@nohost/cluster_1/default/counters-test-erlang/workflow/5",
+        "workerVersion": {}
+      }
+    },
+    {
+      "eventId": "17",
+      "eventTime": "2026-11-10T17:18:54.066772Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_EXECUTION_COMPLETED",
+      "taskId": "1049100",
+      "workflowExecutionCompletedEventAttributes": {
+        "result": {
+          "payloads": [
+            {
+              "metadata": {
+                "encoding": "anNvbi9wbGFpbg=="
+              },
+              "data": "Mw=="
+            }
+          ]
+        },
+        "workflowTaskCompletedEventId": "16"
+      }
+    }
+  ]
+}

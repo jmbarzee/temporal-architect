@@ -1,0 +1,27 @@
+-module(concurrency_replay_SUITE).
+-moduledoc "Replays every recorded history in histories/, each completed run to its recorded result.".
+
+-include_lib("stdlib/include/assert.hrl").
+
+-export([all/0, init_per_suite/1, end_per_suite/1, replays/1]).
+
+all() -> [replays].
+
+init_per_suite(Config) ->
+    ok = corpus_temporal:start(),
+    Config.
+
+end_per_suite(_Config) -> ok.
+
+names() ->
+    maps:put(~"AwaitOneTie", concurrency_await_one_tie, concurrency_workers:batch_types_workflows()).
+
+replays(_Config) ->
+    Source = proplists:get_value(source, ?MODULE:module_info(compile)),
+    Files = filelib:wildcard(filename:join(filename:dirname(Source), "histories/*.json")),
+    ?assertNotEqual([], Files),
+    Failed = [
+        {filename:basename(F), R}
+     || F <- Files, R <- [corpus_temporal:replay(F, names())], element(1, R) =/= ok
+    ],
+    ?assertEqual([], Failed).

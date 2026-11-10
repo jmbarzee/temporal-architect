@@ -1,0 +1,214 @@
+{
+  "events": [
+    {
+      "eventId": "1",
+      "eventTime": "2026-11-10T17:21:33.287864Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_EXECUTION_STARTED",
+      "taskId": "1049644",
+      "workflowExecutionStartedEventAttributes": {
+        "workflowType": {
+          "name": "Approval"
+        },
+        "taskQueue": {
+          "name": "messages-test-erlang",
+          "kind": "TASK_QUEUE_KIND_NORMAL"
+        },
+        "input": {
+          "payloads": [
+            {
+              "metadata": {
+                "encoding": "YmluYXJ5L3BsYWlu"
+              },
+              "data": "cmVxLTE="
+            }
+          ]
+        },
+        "workflowTaskTimeout": "10s",
+        "originalExecutionRunId": "01a1c67a-b667-7d2b-b40f-d8c5bfcafe4c",
+        "identity": "83ab44796da0/nonode@nohost/cluster_1/<0.946.0>",
+        "firstExecutionRunId": "01a1c67a-b667-7d2b-b40f-d8c5bfcafe4c",
+        "attempt": 1,
+        "firstWorkflowTaskBackoff": "0s",
+        "workflowId": "Approval-open-approve-388-1794331293111"
+      }
+    },
+    {
+      "eventId": "2",
+      "eventTime": "2026-11-10T17:21:33.287970Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_SCHEDULED",
+      "taskId": "1049645",
+      "workflowTaskScheduledEventAttributes": {
+        "taskQueue": {
+          "name": "messages-test-erlang",
+          "kind": "TASK_QUEUE_KIND_NORMAL"
+        },
+        "startToCloseTimeout": "10s",
+        "attempt": 1
+      }
+    },
+    {
+      "eventId": "3",
+      "eventTime": "2026-11-10T17:21:33.291564Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_STARTED",
+      "taskId": "1049650",
+      "workflowTaskStartedEventAttributes": {
+        "scheduledEventId": "2",
+        "identity": "83ab44796da0/nonode@nohost/cluster_1/default/messages-test-erlang/workflow/4",
+        "requestId": "36bb9c5c-651f-45f9-9096-343232352391",
+        "historySizeBytes": "338"
+      }
+    },
+    {
+      "eventId": "4",
+      "eventTime": "2026-11-10T17:21:33.326455Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_COMPLETED",
+      "taskId": "1049654",
+      "workflowTaskCompletedEventAttributes": {
+        "scheduledEventId": "2",
+        "startedEventId": "3",
+        "identity": "83ab44796da0/nonode@nohost/cluster_1/default/messages-test-erlang/workflow/4",
+        "workerVersion": {}
+      }
+    },
+    {
+      "eventId": "5",
+      "eventTime": "2026-11-10T17:21:33.326532Z",
+      "eventType": "EVENT_TYPE_TIMER_STARTED",
+      "taskId": "1049655",
+      "timerStartedEventAttributes": {
+        "timerId": "arrivals-keep-open",
+        "startToFireTimeout": "315360000s",
+        "workflowTaskCompletedEventId": "4"
+      }
+    },
+    {
+      "eventId": "6",
+      "eventTime": "2026-11-10T17:21:33.411357Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_EXECUTION_SIGNALED",
+      "taskId": "1049659",
+      "workflowExecutionSignaledEventAttributes": {
+        "signalName": "Open",
+        "input": {},
+        "identity": "83ab44796da0/nonode@nohost/cluster_1/<0.946.0>",
+        "requestId": "cluster_1-baa91142-3f76-4efe-9b94-96e47af69be5"
+      }
+    },
+    {
+      "eventId": "7",
+      "eventTime": "2026-11-10T17:21:33.411367Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_SCHEDULED",
+      "taskId": "1049660",
+      "workflowTaskScheduledEventAttributes": {
+        "taskQueue": {
+          "name": "nonode@nohost/<0.776.0>/951f0637-e31e-460e-9d4e-e7737e668d4d/3",
+          "kind": "TASK_QUEUE_KIND_STICKY",
+          "normalName": "messages-test-erlang"
+        },
+        "startToCloseTimeout": "10s",
+        "attempt": 1
+      }
+    },
+    {
+      "eventId": "8",
+      "eventTime": "2026-11-10T17:21:33.413430Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_STARTED",
+      "taskId": "1049664",
+      "workflowTaskStartedEventAttributes": {
+        "scheduledEventId": "7",
+        "identity": "83ab44796da0/nonode@nohost/cluster_1/default/messages-test-erlang/sticky_queue/3",
+        "requestId": "cd6ffd20-460e-4961-8712-1128a5d10e0b",
+        "historySizeBytes": "907"
+      }
+    },
+    {
+      "eventId": "9",
+      "eventTime": "2026-11-10T17:21:33.419382Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_COMPLETED",
+      "taskId": "1049668",
+      "workflowTaskCompletedEventAttributes": {
+        "scheduledEventId": "7",
+        "startedEventId": "8",
+        "identity": "83ab44796da0/nonode@nohost/cluster_1/default/messages-test-erlang/workflow/4",
+        "workerVersion": {}
+      }
+    },
+    {
+      "eventId": "10",
+      "eventTime": "2026-11-10T17:21:34.935225Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_EXECUTION_SIGNALED",
+      "taskId": "1049671",
+      "workflowExecutionSignaledEventAttributes": {
+        "signalName": "Approve",
+        "input": {
+          "payloads": [
+            {
+              "metadata": {
+                "encoding": "YmluYXJ5L3BsYWlu"
+              },
+              "data": "YW5u"
+            }
+          ]
+        },
+        "identity": "83ab44796da0/nonode@nohost/cluster_1/<0.946.0>",
+        "requestId": "cluster_1-7129beb7-31ad-4496-883e-c405f23465f2"
+      }
+    },
+    {
+      "eventId": "11",
+      "eventTime": "2026-11-10T17:21:34.935236Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_SCHEDULED",
+      "taskId": "1049672",
+      "workflowTaskScheduledEventAttributes": {
+        "taskQueue": {
+          "name": "messages-test-erlang",
+          "kind": "TASK_QUEUE_KIND_NORMAL"
+        },
+        "startToCloseTimeout": "10s",
+        "attempt": 1
+      }
+    },
+    {
+      "eventId": "12",
+      "eventTime": "2026-11-10T17:21:34.936948Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_STARTED",
+      "taskId": "1049675",
+      "workflowTaskStartedEventAttributes": {
+        "scheduledEventId": "11",
+        "identity": "83ab44796da0/nonode@nohost/cluster_1/default/messages-test-erlang/workflow/3",
+        "requestId": "cbdb9311-6f00-408a-a7b1-3852df3a4e60",
+        "historySizeBytes": "1396"
+      }
+    },
+    {
+      "eventId": "13",
+      "eventTime": "2026-11-10T17:21:34.949097Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_COMPLETED",
+      "taskId": "1049679",
+      "workflowTaskCompletedEventAttributes": {
+        "scheduledEventId": "11",
+        "startedEventId": "12",
+        "identity": "83ab44796da0/nonode@nohost/cluster_1/default/messages-test-erlang/workflow/4",
+        "workerVersion": {}
+      }
+    },
+    {
+      "eventId": "14",
+      "eventTime": "2026-11-10T17:21:34.949145Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_EXECUTION_COMPLETED",
+      "taskId": "1049680",
+      "workflowExecutionCompletedEventAttributes": {
+        "result": {
+          "payloads": [
+            {
+              "metadata": {
+                "encoding": "anNvbi9wbGFpbg=="
+              },
+              "data": "eyJhcHByb3ZlciI6ImFubiIsIm5vdGUiOm51bGwsInJlcXVlc3QiOiJyZXEtMSIsInN0YXR1cyI6ImFwcHJvdmVkIn0="
+            }
+          ]
+        },
+        "workflowTaskCompletedEventId": "13"
+      }
+    }
+  ]
+}
