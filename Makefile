@@ -125,15 +125,18 @@ pack-wire-types:
 # npm-pack-stamped <module-dir> <label>: stamp the release version from VERSION
 # (leading "v" stripped) into the module's manifest, npm pack into dist/, then
 # restore the manifest to its pre-stamp contents. VERSION empty -> pack the
-# 0.0.0-dev placeholder. `npm version` rewrites package.json AND package-lock.json,
-# so both are backed up by content (not `git checkout`, which would clobber any
-# uncommitted manifest edits) and restored regardless of pack success.
+# 0.0.0-dev placeholder.
+# Each `file:` dependency (unresolvable from a tarball) is pinned to that version.
+# `npm version` rewrites package.json AND package-lock.json, so both are backed up
+# by content (not `git checkout`, which would clobber any uncommitted manifest
+# edits) and restored regardless of pack success.
 define npm-pack-stamped
 VER=$$(echo "$(VERSION)" | sed 's/^v//'); \
 cd $(1) && \
 cp package.json .pack-bak.package.json; \
 [ -f package-lock.json ] && cp package-lock.json .pack-bak.package-lock.json; \
 if [ -n "$$VER" ]; then npm version "$$VER" --no-git-tag-version --allow-same-version >/dev/null; fi; \
+node -e 'const fs=require("fs"),p=JSON.parse(fs.readFileSync("package.json"));for(const d in p.dependencies)if(p.dependencies[d].startsWith("file:"))p.dependencies[d]=p.version;fs.writeFileSync("package.json",JSON.stringify(p,null,2)+"\n")'; \
 npm pack --pack-destination ../../dist; status=$$?; \
 mv .pack-bak.package.json package.json; \
 [ -f .pack-bak.package-lock.json ] && mv .pack-bak.package-lock.json package-lock.json; \
@@ -144,13 +147,23 @@ endef
 ## Publish the toolchain's two libraries to npm from their packed tarballs.
 ## CI-only: relies on OIDC trusted publishing (no NPM_TOKEN). --provenance
 ## succeeds because each package's repository.url points at this repo. Requires
-## the dist/*.tgz produced by pack-visualizer-lib + pack-wire-types.
+## the dist/*.tgz produced by pack-visualizer-lib + pack-wire-types. A version
+## npm already serves is skipped, so a re-run finishes a partial publish; the
+## recipe then waits until npm serves both, since a new publish 404s for minutes.
 ## Usage: make publish-npm-libs VERSION=1.2.3
 publish-npm-libs:
 	@VER=$$(echo "$(VERSION)" | sed 's/^v//'); \
 	if [ -z "$$VER" ]; then echo "Error: VERSION not set"; exit 1; fi; \
-	npm publish --access public --provenance ./dist/temporal-architect-wire-types-$$VER.tgz; \
-	npm publish --access public --provenance ./dist/temporal-architect-visualizer-$$VER.tgz; \
+	{ npm view @temporal-architect/wire-types@$$VER version >/dev/null 2>&1 || \
+		npm publish --access public --provenance ./dist/temporal-architect-wire-types-$$VER.tgz; } && \
+	{ npm view @temporal-architect/visualizer@$$VER version >/dev/null 2>&1 || \
+		npm publish --access public --provenance ./dist/temporal-architect-visualizer-$$VER.tgz; } && \
+	for p in wire-types visualizer; do \
+		i=0; until npm view @temporal-architect/$$p@$$VER version >/dev/null 2>&1; do \
+			i=$$((i+1)); if [ $$i -ge 30 ]; then echo "Error: npm does not serve @temporal-architect/$$p@$$VER"; exit 1; fi; \
+			sleep 10; \
+		done; \
+	done && \
 	echo "Published wire-types + visualizer $$VER to npm"
 
 # ── Test targets ─────────────────────────────────────────────────────────────
