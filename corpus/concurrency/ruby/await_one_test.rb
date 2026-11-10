@@ -45,7 +45,7 @@ module Concurrency
         end
         return got if got
       end
-      skip("no real tie in #{ATTEMPTS} attempts: #{misses.join('; ')}")
+      skip("the tie was not set up in #{ATTEMPTS} attempts: #{misses.join('; ')}")
     end
 
     # One attempt: the winner when the timer firing and Ack land in one workflow task, else nil

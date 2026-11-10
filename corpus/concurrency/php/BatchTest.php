@@ -77,7 +77,9 @@ final class BatchTest extends TimeSkippingWorkflowTestCase
     /**
      * Runs AwaitOneTie until its timer fired and Ack arrived in one workflow task, then returns the
      * winner. A setup that misses the tie is retried, at most TIE_ATTEMPTS times, and never fails
-     * the test: after the last miss the test is skipped.
+     * the test: after the last miss the test is skipped. Attempts share the test case's server: setup
+     * stops no worker (Hold holds a workflow task instead), so no stale poll can take the timer's
+     * task, and each attempt gets a fresh workflow ID (#529).
      *
      * @param list<string> $order
      */
@@ -90,7 +92,9 @@ final class BatchTest extends TimeSkippingWorkflowTestCase
                 return $got;
             }
         }
-        self::markTestSkipped('no tie landed: ' . \implode('; ', $misses));
+        self::markTestSkipped(
+            'the tie was not set up in ' . self::TIE_ATTEMPTS . ' attempts: ' . \implode('; ', $misses),
+        );
     }
 
     /**
