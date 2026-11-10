@@ -55,17 +55,17 @@ Highlight what matters; push everything else to the background. Hover a graph no
 
 ### Direct manipulation
 
-Drag nodes, scrub sliders, click to expand — all with immediate visual feedback. The graph's force simulation responds live to slider changes. Tree blocks expand and collapse on click. The control panel's sliders animating during kind transitions is intended, not built ([#186](https://github.com/jmbarzee/temporal-architect/issues/186)). The user acts on the visualization directly, not through menus or dialogs.
+Drag nodes, scrub sliders, click to expand — all with immediate visual feedback. The graph's force simulation responds live to slider changes. Tree blocks expand and collapse on click. The user acts on the visualization directly, not through menus or dialogs.
 
 ### Glanceable summaries
 
 Every item — a collapsed tree block, a graph node, a filter chip — should communicate its structural role without requiring interaction. A collapsed workflow header that reads "MyWorkflow(params) → Type" tells you the signature; a summary annotation like "12 steps · 3 calls · 2 handlers" tells you the shape. A graph node labeled "OrderService" tells you the name and, through its color/icon/size, its type and tier at a glance; finer structural detail (connectivity like "→3 ←5", composition counts) surfaces in the hover box so the zoomed-out canvas stays legible.
 
-Summaries are secondary information — smaller, muted, never competing with the primary label. They answer "is this worth drilling into?" and reduce the need for speculative expand/collapse. Each view defines its own summary content (see TREE_VIEW.md § Block Summaries and GRAPH_VIEW.md § Node Summaries).
+Summaries are secondary information — smaller, muted, never competing with the primary label. They answer "is this worth drilling into?" and reduce the need for speculative expand/collapse. Each view defines its own summary content (see TREE_VIEW.md § Block Summaries; a graph node's is its `summaryKind`, in the hover box).
 
 ### Density management
 
-The visualizer must remain useful as the system it displays grows. Filters and progressive disclosure handle moderate scale, but large projects (100+ definitions, 50+ visible graph nodes) require explicit density strategies: label elision at zoom levels and detail reduction at distance. Virtualized rendering for long lists is **not** implemented — deferred as [#87](https://github.com/jmbarzee/temporal-architect/issues/87). Each view defines its own density thresholds (see TREE_VIEW.md § Scale Behavior and GRAPH_VIEW.md § Performance Considerations). The goal is graceful degradation — the experience gets simpler at high density, never broken.
+The visualizer must remain useful as the system it displays grows. Filters and progressive disclosure handle moderate scale, but large projects (100+ definitions, 50+ visible graph nodes) require explicit density strategies: label elision at zoom levels and detail reduction at distance. Virtualized rendering for long lists is **not** implemented — deferred as [#87](https://github.com/jmbarzee/temporal-architect/issues/87). Each view defines its own density thresholds (see TREE_VIEW.md § Scale Behavior; the graph's are the engine's, [SPEC § Appearance](https://github.com/jmbarzee/force-graph/blob/main/SPEC.md#appearance)). The goal is graceful degradation — the experience gets simpler at high density, never broken.
 
 
 ## Visual Identity
@@ -112,7 +112,7 @@ Tree-block icons are defined in a central theme map (`temporal-theme.tsx`); grap
 
 ### Node shapes (Graph View)
 
-Every node is drawn as a disc of its value's declared radius (`size.r`, the taxonomy's), with its icon inside and its name beside it: 20 for a namespace, worker or nexus service; 15 for a nexus endpoint; 11 for a workflow or nexus operation; 8 for an activity. The containers and hosts read as the large discs, the orchestrators and leaves as the small ones; within a size, colour and icon tell the values apart.
+Every node is a disc of its value's declared radius (`size.r`, `NODE_TYPE_REGISTRY`): containers and hosts large, orchestrators and leaves small; within a size, colour and icon tell the values apart.
 
 ### Node badges (Graph View)
 
@@ -122,7 +122,7 @@ Badges are node **adornments** — small markers drawn beside a graph node, dist
 |-------|-----------|---------|
 | `?` unresolved | — | **Deferred** ([#185](https://github.com/jmbarzee/temporal-architect/issues/185)): unresolved references reach the graph only as warnings in the findings bar (one carried unchecked through an import of a package outside the tree is a hint, which the bars leave out); the tree's `?` badge (§ Border conventions) has no graph counterpart yet |
 | Orphan ring | Workers, orchestrators and leaves | A dashed ring around a node not contained by any parent (see GRAPH_VIEW.md § Orphan Definitions) |
-| Cardinality (`× {param}`) | Namespace / NexusEndpoint / Worker | The node is a parameterized family: one chip per entry in its `templateParams` (see GRAPH_VIEW.md § Visual Encoding → Node Appearance). |
+| Cardinality (`× {param}`) | Namespace / NexusEndpoint / Worker | The node is a parameterized family: one chip per entry in its `templateParams` (see GRAPH_VIEW.md § Node Appearance). |
 
 ### Edge styles (Graph View)
 

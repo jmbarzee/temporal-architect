@@ -9,7 +9,8 @@ Code quality belongs in `.claude/skills/dev-cycle/references/review-quality-visu
 - `tools/visualizer/spec/TREE_VIEW.md` — Tree View spec (authoritative)
 - `tools/visualizer/spec/GRAPH_VIEW.md` — Graph View spec (authoritative)
 - `tools/visualizer/spec/` (all other files) — product patterns, view framework
-- `tools/visualizer/src/` (the host) and `src/` of `github.com/jmbarzee/force-graph` at the version `tools/visualizer/package.json` pins (the graph engine, `@jmbarzee/force-graph`) — TypeScript implementation (targets under review)
+- `tools/visualizer/src/` — the host's TypeScript implementation (target under review)
+- `README.md` and `SPEC.md` of `github.com/jmbarzee/force-graph` at the version `tools/visualizer/package.json` pins — the graph engine's contract, which the host configures (read-only context, not a target)
 - in-flight files in `internal/changes/parser/` — parser changes in flight that may affect data availability
 - All existing files in `internal/changes/visualizer/` — both `*_REVISIONS_*.md` and `CHANGES_*.md` — to avoid re-reporting known gaps or already-addressed issues
 
@@ -19,13 +20,11 @@ Code quality belongs in `.claude/skills/dev-cycle/references/review-quality-visu
 
 Briefly scan all spec files and the TypeScript source directory structure. Confirm the comparison units below still apply — add topics for new spec features, note any topics now unblocked by recent parser changes. Mark any topic that requires parser data not yet emitted as `blocked`.
 
-The engine owns GRAPH_VIEW.md § The model (its shapes), § Layout: Force-Directed Simulation, § Control Panel, § Edge Graduation and § Interaction States; the host owns § Data Flow: Two Views, Two Commands, § Graph Construction, the taxonomy in `adapter/`, and the tree view. Elsewhere the spec names each half inline.
-
-**Standard comparison units** (targets relative to `tools/visualizer/src/`; a `gv:` prefix means relative to the engine's `src/`):
+**Standard comparison units** (targets relative to `tools/visualizer/src/`):
 
 | # | Topic | Source (spec) | Target (TypeScript) |
 |---|-------|---------------|---------------------|
-| 1 | Header & filter controls | TREE_VIEW.md §Header and filtering | `components/TreeView.tsx`, `gv:components/FilterBar.tsx`, `gv:filter/` |
+| 1 | Header & filter controls | TREE_VIEW.md §Header and filtering | `components/TreeView.tsx` |
 | 2 | Block rendering & anatomy | TREE_VIEW.md §Block rendering | `components/blocks/`: `DefinitionBlock.tsx`, `StatementBlock.tsx`, every block file, `blocks.css` |
 | 3 | Definition types & color scheme | `PRODUCT.md` §Visual Identity; TREE_VIEW.md §Definition types | `theme/temporal-theme.tsx`, `components/blocks/blocks.css` CSS variables, `adapter/node-types.ts` |
 | 4 | Statement block routing & dispatch | TREE_VIEW.md §Statement types | `components/blocks/StatementBlock.tsx` dispatch logic + every specialized block file |
@@ -34,11 +33,10 @@ The engine owns GRAPH_VIEW.md § The model (its shapes), § Layout: Force-Direct
 | 7 | Workflow content (state, handlers, body sections) | TREE_VIEW.md §Workflow (`workflowDef`) | `components/blocks/WorkflowContent.tsx` |
 | 8 | Keyboard navigation | TREE_VIEW.md §Keyboard Navigation | Key handlers in `components/TreeView.tsx` + block components, focus ring styling |
 | 9 | Cross-reference reverse index & navigation | TREE_VIEW.md §Contextual navigation buttons | `components/blocks/ContextualNav.tsx`, `components/WorkflowCanvas.tsx` |
-| 10 | View framework & tab switching | `VIEW_FRAMEWORK.md` §View Model, §View Transitions, §Unified Filter Bar | `components/WorkflowCanvas.tsx`, `components/TreeView.tsx`, `gv:components/GraphView.tsx`, `gv:components/graph-view/useLinkedViews.ts`, `gv:filter/` |
+| 10 | View framework & tab switching | `VIEW_FRAMEWORK.md` §View Model, §View Transitions, §Unified Filter Bar | `components/WorkflowCanvas.tsx`, `components/TreeView.tsx` |
 | 11 | Error handling & display | TREE_VIEW.md §Error and warning bars; `VIEW_FRAMEWORK.md` §Error Handling | `components/ErrorBars.tsx`, `types/ast.ts` FileError |
-| 12 | Live reload & state preservation | `VIEW_FRAMEWORK.md` §Live Reload | Reload logic in `components/VisualizerHost.tsx`/`components/WorkflowCanvas.tsx`; `gv:components/graph-view/useSimulation.ts`, `gv:components/graph-view/useViewport.ts` |
-| 13 | Graph view model, layout & interaction (engine) | GRAPH_VIEW.md, the engine's sections | `gv:components/` (`GraphView.tsx`, `GraphCanvas.tsx`, `GraphControlPanel.tsx`, `controls/`), `gv:components/graph-view/`, `gv:graph/`, `gv:filter/` |
-| 14 | Graph construction & taxonomy (host) | GRAPH_VIEW.md, the host's sections; §Group Overlay | `adapter/`, `components/GroupsModal.tsx` |
+| 12 | Live reload & state preservation | `VIEW_FRAMEWORK.md` §Live Reload | Reload logic in `components/VisualizerHost.tsx`/`components/WorkflowCanvas.tsx` |
+| 13 | Graph construction & taxonomy | GRAPH_VIEW.md | `adapter/`, `components/GroupsModal.tsx` |
 
 ### Phase 2: Parallel Alignment
 

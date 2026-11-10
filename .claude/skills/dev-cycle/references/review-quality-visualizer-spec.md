@@ -10,6 +10,7 @@ Before starting, read:
 - `tools/visualizer/spec/TREE_VIEW.md` — Tree View requirements and current behavior
 - `tools/visualizer/spec/GRAPH_VIEW.md` — Graph View requirements and planned behavior
 - `tools/visualizer/spec/PRODUCT.md` — the product spec: framing, the user questions the visualizer must answer, the patterns to apply, the priorities
+- `SPEC.md` of `github.com/jmbarzee/force-graph` at the version `tools/visualizer/package.json` pins — the graph engine's behaviour, which GRAPH_VIEW.md configures (read-only)
 
 The product spec is the primary input. It defines the user questions the visualizer must answer, the UX patterns that should be applied, and the priorities. This review evaluates whether the view specs and current behavior deliver on those goals.
 
@@ -39,7 +40,7 @@ The product spec is the primary input. It defines the user questions the visuali
 ### Phase 1: Explore
 
 Use sub-agents in parallel:
-- **Spec agent**: Read all three context documents. Build an inventory: every user question, every specced feature, every gap, every product pattern from the docs.
+- **Spec agent**: Read the context documents. Build an inventory: every user question, every specced feature, every gap, every product pattern from the docs.
 - **Current state agent**: Read all TypeScript in `tools/visualizer/src/` and in `src/` of `github.com/jmbarzee/force-graph` at the pinned version (the engine, `@jmbarzee/force-graph`). For each component, note only: what it currently renders and what interactions it supports. Do not evaluate code quality.
 
 ### Phase 2: Catalog
@@ -74,7 +75,7 @@ Write the grouped plan to `internal/changes/visualizer-spec/quality_REVISIONS_{N
 - One `## Group N: Title` section per feature set
 - Each group: user questions addressed, target experience, data requirements, spec additions needed, change type (`Schema` | `Internal`)
 
-Mark groups blocked on missing parser data as `Schema` — they require upstream changes before they can be executed.
+Mark groups blocked on missing parser data as `Schema` — they require upstream changes before they can be executed. A gap in the engine's UX is an issue on `jmbarzee/force-graph`, not a group.
 
 **Return the REVISIONS file path and a one-line summary of each group.** Do not begin executing them — that is `.claude/skills/dev-cycle/references/address-review.md`, dispatched separately.
 

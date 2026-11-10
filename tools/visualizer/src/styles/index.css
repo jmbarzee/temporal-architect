@@ -84,7 +84,7 @@ body {
 }
 
 /* Tree-view: definition blocks dimmed because they don't match the
-   active search query (spec § Search Behavior — search dims, not hides). */
+   active search query (VIEW_FRAMEWORK.md § Search Scope — search dims, not hides). */
 .search-dimmed {
   opacity: 0.3;
   transition: opacity 0.2s ease;
