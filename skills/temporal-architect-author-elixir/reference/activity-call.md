@@ -6,7 +6,7 @@ activity ValidateOrder(order) -> validated
 
 ```elixir
 with %{state: :completed, result: [validated]} <-
-       start_activity("ValidateOrder", [order], start_to_close_timeout: {1, :minute}, wait: true) do
+       start_activity("ValidateOrder", [order], wait: true) do
   # ... the rest of the workflow, using validated
 else
   %{state: state} -> fail_workflow_execution(%{message: "ValidateOrder #{state}"})
