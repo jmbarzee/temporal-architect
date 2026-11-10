@@ -1,15 +1,7 @@
 -module(corpus_arrivals).
 -moduledoc """
-A signal's pending arrivals and the waiters for them, kept in the calling workflow execution.
-
-The SDK keeps one index entry per signal name: a later arrival overwrites the entry and the
-earlier ones survive only in its `history` list, and `{signal, Name}` stays ready forever. So
-arrivals are read from that entry by event id, each runs its handler once, and the index is
-admitted so `{signal_request, Name}` blocks until the next one.
-
-Every waiter of a name lives in one execution (the main one): a promise takes a ticket at its
-binding and gets arrivals in ticket order; an `await one` case peeks and claims only if it wins.
-Names are binaries.
+A port of `Corpus.Arrivals` (`corpus/elixir_support/arrivals.ex`), which carries the rationale.
+Names are binaries, and `undefined` stands for nil.
 """.
 
 -export([
@@ -120,10 +112,8 @@ sync(Name) ->
     ok.
 
 -doc """
-The workflow task that first saw history event `Eid`: the first WorkflowTaskStarted after it.
-Replay applies history up to the next commanded event, not task by task, so a run that resumed
-with no command can see later events on replay than it did live. An `await one` decided by
-"which case became ready in the earliest task, then the first listed" sees the same as live.
+The workflow task that first saw history event `Eid`: the first WorkflowTaskStarted after it
+(why replay needs this: `Corpus.Arrivals.task_of/1`).
 """.
 task_of(Eid) ->
     Spec = [{{'$1', 'EVENT_TYPE_WORKFLOW_TASK_STARTED', '_', '_'}, [{'>', '$1', Eid}], ['$1']}],

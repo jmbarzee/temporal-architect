@@ -22,7 +22,7 @@ corpus/
   Cargo.toml             a workspace whose root package, testkit.rs, is Rust's time-skipping kit
   composer.json
   mix.exs                globs */elixir; elixir_support/ holds the Elixir support the designs share
-  rebar.config           with rebar.config.script, globs */erlang; erlang_support/ holds the Erlang support the designs share
+  rebar.config           with rebar.config.script, globs */erlang; erlang_support/ holds the Erlang support the designs share, erlang_test/ its suite
   Package.swift          one test target per design, its path the design's swift/
   cabal.project          with corpus.cabal; builds the pinned hs-temporal-sdk checkout; haskell/ holds the shared Harness.hs and Arrivals.hs
   <design>/
