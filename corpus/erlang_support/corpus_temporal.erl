@@ -89,6 +89,10 @@ result(WE) ->
         {ok, {continued_as_new, #{new_execution_run_id := Run}}} -> result(WE#{run_id => Run})
     end.
 
+-doc """
+Waits for the run to close and returns its history, since `get_workflow_history/2` awaits the
+close by default. `[{await_all_close, false}]` gives an open run's history so far.
+""".
 history(WE) ->
     {ok, H} = temporal_sdk:get_workflow_history(?CLUSTER, WE),
     H.

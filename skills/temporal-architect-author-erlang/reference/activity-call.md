@@ -5,7 +5,7 @@ activity ValidateOrder(order) -> validated
 ```
 
 ```erlang
-case start_activity(~"ValidateOrder", [Order], [{start_to_close_timeout, {1, minute}}, wait]) of
+case start_activity(~"ValidateOrder", [Order], [wait]) of
     #{state := completed, result := [Validated]} ->
         %% ... the rest of the workflow, using Validated
         ok;
