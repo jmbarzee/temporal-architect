@@ -59,7 +59,6 @@
     "react-dom": "^18 || ^19"
   },
   "devDependencies": {
-    "@temporal-architect/wire-types": "file:../wire-types",
     "@testing-library/dom": "10.4.2",
     "@testing-library/react": "16.3.3",
     "@types/react": "^18.3.12",
@@ -74,6 +73,7 @@
     "vitest": "4.1.12"
   },
   "dependencies": {
-    "@jmbarzee/force-graph": "0.1.0"
+    "@jmbarzee/force-graph": "0.1.0",
+    "@temporal-architect/wire-types": "file:../wire-types"
   }
 }

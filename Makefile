@@ -113,7 +113,7 @@ pack-visualizer-lib: build-visualizer-lib
 	@# local builds across versions otherwise accumulate (the dist repo's
 	@# file: copy then matches more than one and breaks).
 	@rm -f dist/temporal-architect-visualizer-*.tgz
-	@$(call npm-pack-stamped,tools/visualizer,visualizer lib)
+	@$(call npm-pack-stamped,tools/visualizer,visualizer lib,@temporal-architect/wire-types)
 
 ## Pack the wire-types type-only package into a release tarball (dist/).
 ## Version handling matches pack-visualizer-lib (stamped from VERSION at pack).
@@ -122,18 +122,22 @@ pack-wire-types:
 	@rm -f dist/temporal-architect-wire-types-*.tgz
 	@$(call npm-pack-stamped,tools/wire-types,wire-types)
 
-# npm-pack-stamped <module-dir> <label>: stamp the release version from VERSION
-# (leading "v" stripped) into the module's manifest, npm pack into dist/, then
-# restore the manifest to its pre-stamp contents. VERSION empty -> pack the
-# 0.0.0-dev placeholder. `npm version` rewrites package.json AND package-lock.json,
-# so both are backed up by content (not `git checkout`, which would clobber any
-# uncommitted manifest edits) and restored regardless of pack success.
+# npm-pack-stamped <module-dir> <label> [<in-tree deps>]: stamp the release
+# version from VERSION (leading "v" stripped) into the module's manifest, npm pack
+# into dist/, then restore the manifest to its pre-stamp contents. VERSION empty ->
+# pack the 0.0.0-dev placeholder. Each in-tree dependency's file: spec, which no
+# tarball can resolve, is pinned to the packed version, the placeholder included,
+# so the tarball installs beside the sibling tarball packed at that version.
+# `npm version` rewrites package.json AND package-lock.json, so both are backed up
+# by content (not `git checkout`, which would clobber any uncommitted manifest
+# edits) and restored regardless of pack success.
 define npm-pack-stamped
 VER=$$(echo "$(VERSION)" | sed 's/^v//'); \
 cd $(1) && \
 cp package.json .pack-bak.package.json; \
 [ -f package-lock.json ] && cp package-lock.json .pack-bak.package-lock.json; \
 if [ -n "$$VER" ]; then npm version "$$VER" --no-git-tag-version --allow-same-version >/dev/null; fi; \
+for d in $(3); do npm pkg set "dependencies.$$d=$$(npm pkg get version | tr -d '"')"; done; \
 npm pack --pack-destination ../../dist; status=$$?; \
 mv .pack-bak.package.json package.json; \
 [ -f .pack-bak.package-lock.json ] && mv .pack-bak.package-lock.json package-lock.json; \
