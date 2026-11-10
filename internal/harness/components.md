@@ -65,6 +65,7 @@ command in its `SKILL.md` `## Verify` section. Adding an SDK is one row.
 | `perl` | community Temporal Perl SDK |
 | `haskell` | community Temporal Haskell SDK |
 | `elixir` | community Temporal Erlang/Elixir SDK |
+| `erlang` | community Temporal Erlang/Elixir SDK |
 | `swift` | community Temporal Swift SDK |
 
 `internal/changes/orchestrator/` is **not** a cycle component — it is coordination scratch for the

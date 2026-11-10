@@ -76,6 +76,9 @@ skills/
   temporal-architect-author-elixir/
     SKILL.md
     reference/...
+  temporal-architect-author-erlang/
+    SKILL.md
+    reference/...
   temporal-architect-author-infra/
     SKILL.md
     reference/...

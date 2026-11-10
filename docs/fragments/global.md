@@ -8,7 +8,7 @@ Write your architecture in `.twf` and a real parser, language server, and visual
 Every Temporal SDK has an authoring skill:
 
 - **Official:** Go, TypeScript, Python, Java, .NET, Ruby, PHP, Rust
-- **Community:** Swift, Haskell, Clojure, Perl, Elixir
+- **Community:** Swift, Haskell, Clojure, Perl, Elixir, Erlang
 
 Each owns the `.twf` ↔ SDK translation (call shapes, wire names, options, layout, verify) and hands SDK idioms to Temporal's [`temporal-developer`](https://github.com/temporalio/skill-temporal-developer) skill, or to the community SDK's own docs where `temporal-developer` has none.
 
