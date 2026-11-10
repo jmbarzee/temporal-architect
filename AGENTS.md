@@ -1,6 +1,6 @@
 # temporal-architect
 
-A toolchain for designing, visualizing, and code-generating entire Temporal systems — namespaces, workers, workflows, and Nexus — with `.twf` as the parseable source of truth. See [README](./README.md) for full details.
+A toolchain for designing, visualizing, and code-generating entire Temporal systems — namespaces, workers, workflows, and Nexus — in every Temporal SDK, with `.twf` as the parseable source of truth. See [README](./README.md) for full details.
 
 ## North Star
 

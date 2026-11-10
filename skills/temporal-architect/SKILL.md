@@ -1,6 +1,6 @@
 ---
 name: temporal-architect
-description: Entry point for designing, building, adopting, or evolving Temporal systems — start here. Coordinates the temporal-architect skill set (design, per-SDK authoring, infrastructure): orients the design↔code direction, decomposes a `.twf` design into independently-implementable chunks at contract boundaries, and dispatches the right specialist skills. Use at the start of any Temporal architecture, workflow, worker, or Temporal-adoption task.
+description: Entry point for designing, building, adopting, or evolving Temporal systems in every Temporal SDK — start here. Coordinates the temporal-architect skill set (design, per-SDK authoring, infrastructure): orients the design↔code direction, decomposes a `.twf` design into independently-implementable chunks at contract boundaries, and dispatches the right specialist skills. Use at the start of any Temporal architecture, workflow, worker, or Temporal-adoption task.
 ---
 
 # Temporal Architect
@@ -19,17 +19,17 @@ An author owns the `.twf` ↔ SDK translation (call shapes, wire names, options,
 |--------|--------|
 | `go` | `temporal-architect-author-go` |
 | `typescript` | `temporal-architect-author-typescript` |
-| `dotnet` | `temporal-architect-author-dotnet` |
 | `python` | `temporal-architect-author-python` |
 | `java` | `temporal-architect-author-java` |
+| `dotnet` | `temporal-architect-author-dotnet` |
 | `ruby` | `temporal-architect-author-ruby` |
-| `clojure` | `temporal-architect-author-clojure` |
 | `php` | `temporal-architect-author-php` |
 | `rust` | `temporal-architect-author-rust` |
-| `perl` | `temporal-architect-author-perl` |
-| `haskell` | `temporal-architect-author-haskell` |
-| `elixir` | `temporal-architect-author-elixir` (Tier 3: community, partial) |
 | `swift` | `temporal-architect-author-swift` |
+| `haskell` | `temporal-architect-author-haskell` |
+| `clojure` | `temporal-architect-author-clojure` |
+| `perl` | `temporal-architect-author-perl` |
+| `elixir` | `temporal-architect-author-elixir` (Tier 3: community, partial) |
 
 Its job is to protect the main agent's context: keep it on the architecture at 10,000 ft (workloads, scaling, reliability, availability) and dispatch code-scale authoring to subagents that each see only their chunk. The main agent is not always the design agent — sometimes it is authoring or reverse-engineering.
 

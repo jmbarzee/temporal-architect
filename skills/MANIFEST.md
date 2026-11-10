@@ -1,7 +1,8 @@
 # Skills Bundle Manifest
 
 Each `v*` release of `temporal-architect` attaches a deterministic tarball of
-the `skills/` tree as a GitHub Release asset, so downstream consumers
+the `skills/` tree — design, infra, and an authoring skill for every Temporal
+SDK — as a GitHub Release asset, so downstream consumers
 (prompt builders, doc tooling, non-Go runtimes) can pin a single archive +
 checksum instead of vendoring individual files or scraping raw GitHub URLs.
 
@@ -42,19 +43,16 @@ skills/
   temporal-architect-author-typescript/
     SKILL.md
     reference/...
-  temporal-architect-author-dotnet/
-    SKILL.md
-    reference/...
   temporal-architect-author-python/
     SKILL.md
     reference/...
   temporal-architect-author-java/
     SKILL.md
     reference/...
-  temporal-architect-author-ruby/
+  temporal-architect-author-dotnet/
     SKILL.md
     reference/...
-  temporal-architect-author-clojure/
+  temporal-architect-author-ruby/
     SKILL.md
     reference/...
   temporal-architect-author-php/
@@ -63,16 +61,19 @@ skills/
   temporal-architect-author-rust/
     SKILL.md
     reference/...
-  temporal-architect-author-perl/
+  temporal-architect-author-swift/
     SKILL.md
     reference/...
   temporal-architect-author-haskell/
     SKILL.md
     reference/...
-  temporal-architect-author-elixir/
+  temporal-architect-author-clojure/
     SKILL.md
     reference/...
-  temporal-architect-author-swift/
+  temporal-architect-author-perl/
+    SKILL.md
+    reference/...
+  temporal-architect-author-elixir/
     SKILL.md
     reference/...
   temporal-architect-author-infra/

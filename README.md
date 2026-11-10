@@ -1,8 +1,13 @@
 # temporal-architect
 
-**Design, visualize, and implement entire Temporal systems — namespaces, workers, workflows, and Nexus — as a visual source of truth, verifiable from 10,000 ft.**
+**Design, visualize, and implement entire Temporal systems — namespaces, workers, workflows, and Nexus — in every Temporal SDK, as a visual source of truth, verifiable from 10,000 ft.**
 
 Write your architecture in `.twf` and a real parser, language server, and visualizer give you (and your AI agent) compiler-grade feedback on the *whole system* before you write a line of SDK code — then generate the workers and provision the infra from the same design.
+
+Every Temporal SDK has an authoring skill:
+
+- **Official:** [Go](./skills/temporal-architect-author-go/SKILL.md), [TypeScript](./skills/temporal-architect-author-typescript/SKILL.md), [Python](./skills/temporal-architect-author-python/SKILL.md), [Java](./skills/temporal-architect-author-java/SKILL.md), [.NET](./skills/temporal-architect-author-dotnet/SKILL.md), [Ruby](./skills/temporal-architect-author-ruby/SKILL.md), [PHP](./skills/temporal-architect-author-php/SKILL.md), [Rust](./skills/temporal-architect-author-rust/SKILL.md)
+- **Community:** [Swift](./skills/temporal-architect-author-swift/SKILL.md), [Haskell](./skills/temporal-architect-author-haskell/SKILL.md), [Clojure](./skills/temporal-architect-author-clojure/SKILL.md), [Perl](./skills/temporal-architect-author-perl/SKILL.md), [Elixir](./skills/temporal-architect-author-elixir/SKILL.md)
 
 <!-- [SCREENSHOT: S1 — Graph View, full system, namespace→worker→workflow with dependency edges] → docs/images/graph-view-system.png -->
 <!-- [SCREENSHOT: S2 — Tree View, one workflow expanded with inline call expansion] → docs/images/tree-view-expanded.png -->
@@ -12,7 +17,7 @@ Write your architecture in `.twf` and a real parser, language server, and visual
 - **Catch design errors before code.** A real parser and language server validate the whole system — undefined activities, broken Nexus routing, misplaced determinism — while it's still a design, not a production incident.
 - **See the whole deployment.** An interactive graph of namespaces → workers → workflows, plus a tree view that expands calls inline. Architecture you can actually look at.
 - **One parseable source of truth.** `.twf` is a file every teammate and every tool reads and validates — not architecture prose buried in a prompt.
-- **Design → running system.** Generate workers in any of the [supported Temporal SDKs](#skills) and provision control-plane infra from the same `.twf` — or recover a deployment graph straight from production history with the sampler.
+- **Design → running system.** Generate workers in any Temporal SDK and provision control-plane infra from the same `.twf` — or recover a deployment graph straight from production history with the sampler.
 
 ## What `.twf` looks like
 
@@ -88,7 +93,7 @@ The skills turn `.twf` into a deterministic harness for an AI agent — letting 
 
 - **[temporal-architect](./skills/temporal-architect/SKILL.md)** — The entry point: orients the design↔code direction, decomposes a `.twf` into chunks, and routes each to the specialists below.
 - **[temporal-architect-design](./skills/temporal-architect-design/SKILL.md)** — Design entire Temporal systems in `.twf` — workflows, activities, workers, namespaces, and Nexus — with parser/LSP validation and visualization.
-- **`temporal-architect-author-<sdk>`** — Generate a worker from a `.twf` design, one skill per SDK: [Go](./skills/temporal-architect-author-go/SKILL.md), [TypeScript](./skills/temporal-architect-author-typescript/SKILL.md), [.NET](./skills/temporal-architect-author-dotnet/SKILL.md), [Python](./skills/temporal-architect-author-python/SKILL.md), [Java](./skills/temporal-architect-author-java/SKILL.md), [Ruby](./skills/temporal-architect-author-ruby/SKILL.md), [Clojure](./skills/temporal-architect-author-clojure/SKILL.md), [PHP](./skills/temporal-architect-author-php/SKILL.md), [Rust](./skills/temporal-architect-author-rust/SKILL.md), [Perl](./skills/temporal-architect-author-perl/SKILL.md), [Haskell](./skills/temporal-architect-author-haskell/SKILL.md), [Elixir](./skills/temporal-architect-author-elixir/SKILL.md), [Swift](./skills/temporal-architect-author-swift/SKILL.md). Each owns the `.twf` ↔ SDK translation (call shapes, wire names, options, layout, verify) and hands SDK idioms to Temporal's [`temporal-developer`](https://github.com/temporalio/skill-temporal-developer) skill, or to the community SDK's own docs where `temporal-developer` has none.
+- **`temporal-architect-author-<sdk>`** — Generate a worker from a `.twf` design, one skill per SDK [listed above](#temporal-architect). Each owns the `.twf` ↔ SDK translation (call shapes, wire names, options, layout, verify) and hands SDK idioms to Temporal's [`temporal-developer`](https://github.com/temporalio/skill-temporal-developer) skill, or to the community SDK's own docs where `temporal-developer` has none.
 - **[temporal-architect-author-infra](./skills/temporal-architect-author-infra/SKILL.md)** — Provision the control-plane resources a design needs — namespaces, Nexus endpoints, search attributes — via the Temporal Cloud Terraform provider or self-hosted `tcld` / `temporal operator`.
 
 The skills assume `twf` is **on PATH** (the extension puts it there on activation; otherwise use any install line above). An agent reads architecture through `twf graph --json`; the visual view stays human-facing — the `twf.visualize` command inside the editor, or `twf-view` (`brew install jmbarzee/twf/twf-view`), the live visualizer host, as a standalone view outside one.
