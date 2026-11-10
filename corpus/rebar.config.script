@@ -1,0 +1,3 @@
+Dirs = ["erlang_support" | filelib:wildcard("*/erlang")],
+Config = lists:keystore(src_dirs, 1, CONFIG, {src_dirs, Dirs}),
+lists:keystore(ct_opts, 1, Config, {ct_opts, [{dir, Dirs}]}).

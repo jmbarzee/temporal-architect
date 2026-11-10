@@ -77,6 +77,9 @@ corpus/.phpunit.cache/
 corpus/_build/
 corpus/deps/
 
+# Erlang corpus suites, which rebar3 ct compiles in place (each suite directory is also a source directory)
+corpus/**/*.beam
+
 # Swift corpus build output
 corpus/.build/
 
