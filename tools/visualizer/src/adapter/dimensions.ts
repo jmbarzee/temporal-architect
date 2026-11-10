@@ -4,7 +4,7 @@
 // persisted filter state is keyed by, so they are unchanged from when the
 // library declared them.
 
-import type { AxisId } from '@temporal-architect/graph-view'
+import type { AxisId } from '@jmbarzee/force-graph'
 
 /**
  * The axis the visibility chips select node kinds on: a projection of the

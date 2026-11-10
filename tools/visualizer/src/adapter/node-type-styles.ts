@@ -8,7 +8,7 @@
 // module only mounts it for the shipped taxonomy.
 
 import { DEFAULT_TAXONOMY } from './node-types'
-import { schemeStylesheet } from '@temporal-architect/graph-view'
+import { schemeStylesheet } from '@jmbarzee/force-graph'
 /** The CSS string to inject for the shipped taxonomy. */
 export function buildNodeTypeCSS(): string {
   return schemeStylesheet(DEFAULT_TAXONOMY)

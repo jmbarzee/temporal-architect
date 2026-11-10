@@ -20,7 +20,7 @@ import {
   type GroupHover,
   type GroupScheme,
 } from '../adapter/groups'
-import type { ActiveGroup, NodeGroup } from '@temporal-architect/graph-view'
+import type { ActiveGroup, NodeGroup } from '@jmbarzee/force-graph'
 type GroupsTab = 'groups' | 'params'
 
 const SCHEMES: readonly { id: GroupScheme; label: string }[] = [

@@ -4,11 +4,12 @@ A React component for visualizing Temporal system architecture — namespaces,
 workers, workflows, and Nexus — as an interactive tree and dependency graph.
 
 The Graph view's engine — a force-directed graph view with composable
-axes that knows nothing of Temporal — is the sibling library
-[`@temporal-architect/graph-view`](../graph-view/README.md). This package is
-its first host: it reads parser output into the library's `Graph`, declares
-the Temporal taxonomy, and bundles the library into its own artifact, so
-consumers of this package install nothing else.
+axes that knows nothing of Temporal — is the library
+[`@jmbarzee/force-graph`](https://github.com/jmbarzee/force-graph). This
+package is its first host: it reads parser output into the library's `Graph`
+and declares the Temporal taxonomy. It depends on an exact version of the
+library, which npm installs beside it; this package's `lib.js` imports the
+library's stylesheet, so a bundler collects it with `styles.css`.
 
 This is the npm-publishable surface of the visualizer that ships inside the
 [Temporal Architect VS Code extension](https://github.com/jmbarzee/temporal-architect).
@@ -165,7 +166,7 @@ or load it dynamically with `{ ssr: false }`.
   carries `relation` and `dispatch` on edges as values, and declares the
   Temporal taxonomy — its hand-tuned spring table included — through the
   library's `createTaxonomy`. The library itself knows nothing of Temporal
-  (see [`../graph-view/DESIGN.md`](../graph-view/DESIGN.md)).
+  (see its [`DESIGN.md`](https://github.com/jmbarzee/force-graph/blob/main/DESIGN.md)).
 - The tree and the graph share one state through the library's
   `useLinkedViews`: each view's filter, locks and axes, the view shown, the
   search, and the focus a switch asks of the graph. What differs per view (the

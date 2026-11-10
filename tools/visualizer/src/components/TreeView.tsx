@@ -4,9 +4,9 @@ import {
   passesSelection,
   selectionFor,
   FilterBar,
-} from '@temporal-architect/graph-view'
+} from '@jmbarzee/force-graph'
 import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION } from '../adapter/dimensions'
-import type { AxisValues, FocusTarget, LinkedViewProps, Theme } from '@temporal-architect/graph-view'
+import type { AxisValues, FocusTarget, LinkedViewProps, Theme } from '@jmbarzee/force-graph'
 import React from 'react'
 import './TreeView.css'
 import type { TWFFile, Definition } from '../types/ast'

@@ -1,6 +1,6 @@
 # Review Visualizer TypeScript Code Quality
 
-Review the React + TypeScript implementation in `tools/visualizer/src/` (the host) and `tools/graph-view/src/` (the graph engine it consumes).
+Review the React + TypeScript implementation in `tools/visualizer/src/`, the host of the graph engine `@jmbarzee/force-graph`.
 
 This review is about the *consumer* of the parser's JSON contract — the webview that renders Tree View and Graph View panels in VS Code / Cursor.
 
@@ -9,8 +9,8 @@ This review is about the *consumer* of the parser's JSON contract — the webvie
 Before starting, read:
 - in-flight files in `internal/changes/parser/` — understand the current parser contract, what's changing
 - `tools/visualizer/spec/TREE_VIEW.md` — Tree View requirements and current implementation
-- `tools/visualizer/spec/GRAPH_VIEW.md` — Graph View requirements and planned behavior. The engine owns § The model (its shapes), § Layout: Force-Directed Simulation, § Control Panel, § Edge Graduation and § Interaction States; the host owns § Data Flow: Two Views, Two Commands, § Graph Construction, and the tree view
-- All existing files in `internal/changes/visualizer/` and `internal/changes/graph-view/` — both `*_REVISIONS_*.md` and `CHANGES_*.md` — to avoid re-reporting issues already tracked or addressed
+- `tools/visualizer/spec/GRAPH_VIEW.md` — Graph View requirements and planned behavior. The engine owns, and this review does not cover, § The model (its shapes), § Layout: Force-Directed Simulation, § Control Panel, § Edge Graduation and § Interaction States; the host owns § Data Flow: Two Views, Two Commands, § Graph Construction, and the tree view
+- All existing files in `internal/changes/visualizer/` — both `*_REVISIONS_*.md` and `CHANGES_*.md` — to avoid re-reporting issues already tracked or addressed
 
 ## Review Rubric
 
@@ -23,7 +23,7 @@ Before starting, read:
 - Component boundaries: is each component responsible for one thing?
 - Data flow: is there a clear separation between data fetching, transformation, and rendering?
 - Are there hand-written TypeScript types that duplicate the generated `@temporal-architect/wire-types` (which should be the single source) or diverge from the Go DTOs?
-- Does the host reach the engine only through its public entry (`tools/graph-view/src/index.ts`), and does the engine stay free of Temporal vocabulary?
+- Does the host reach the engine only through the `@jmbarzee/force-graph` entry, with no deep imports?
 
 ### 3. TypeScript Quality
 - Type safety: are there `any` casts or unsafe assertions that hide real type errors?
@@ -42,7 +42,7 @@ Before starting, read:
 ### Phase 1: Explore
 
 Use sub-agents to read all source in parallel:
-- One agent each for `tools/visualizer/src/` and `tools/graph-view/src/` — all TypeScript files, evaluating against all four rubric lenses
+- One agent for `tools/visualizer/src/` — all TypeScript files, evaluating against all four rubric lenses
 - One agent for the context files: `tools/visualizer/spec/TREE_VIEW.md`, `tools/visualizer/spec/GRAPH_VIEW.md`, and any in-flight files in `internal/changes/parser/`
 
 Agents should work from source code only. Do not run the visualizer or evaluate visual output — that is the domain of `.claude/skills/dev-cycle/references/review-quality-visualizer-spec.md`.
@@ -64,7 +64,7 @@ Group findings by theme. Order by critical severity first, then contract mismatc
 
 ### Phase 4: Write to `internal/changes/{component}/quality_REVISIONS_{NNN}.md`
 
-Write the grouped plan to `internal/changes/{component}/quality_REVISIONS_{NNN}.md`, filing each group under the component whose source scope it touches — host files under `visualizer`, `tools/graph-view/src/` under `graph-view` (create the directory if needed). A group touching both goes under the component this review was dispatched for; run directly, with none named, that is `visualizer`. Use the sequence number the dispatching agent gave you. If none was given (a human running this directly), use `_001` and increment past any file that already exists.
+Write the grouped plan to `internal/changes/{component}/quality_REVISIONS_{NNN}.md`, with `{component}` as `visualizer`; a finding in the engine is an issue on `jmbarzee/force-graph`, not a group. Use the sequence number the dispatching agent gave you. If none was given (a human running this directly), use `_001` and increment past any file that already exists.
 - `**Source:**` immediately after the H1 — the upstream `CHANGES` path when this review was triggered by a propagation, `—` when it was not. Required; `propagate-changes` dedups on it. See `.claude/skills/dev-cycle/SKILL.md` § REVISIONS file contract.
 - Brief summary: scope of this review, what was found
 - One `## Group N: Title` section per group

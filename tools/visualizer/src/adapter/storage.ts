@@ -9,7 +9,7 @@
 // `filterToJSON` writes it (each axis's selection an array of strings) and read
 // back through `filterFromJSON`.
 
-import type { LayoutJSON } from '@temporal-architect/graph-view'
+import type { LayoutJSON } from '@jmbarzee/force-graph'
 
 /**
  * Where and how this state is persisted — supplied by the host.

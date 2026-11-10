@@ -33,11 +33,11 @@ PLATFORMS := \
 .PHONY: build
 
 ## Build the toolchain for the local platform (binary + the two npm libraries)
-build: build-lsp build-graph-view-lib build-visualizer-lib
+build: build-lsp build-visualizer-lib
 
 # ── Build targets ────────────────────────────────────────────────────────────
 
-.PHONY: build-lsp build-twf-archive build-skills-archive build-visualizer-lib build-graph-view-lib
+.PHONY: build-lsp build-twf-archive build-skills-archive build-visualizer-lib
 
 ## Build the twf binary for the current (or specified) platform
 build-lsp:
@@ -87,16 +87,9 @@ build-skills-archive:
 ## Build the visualizer as a publishable npm library (ESM + types + sibling CSS).
 ## The VS Code webview IIFE bundle is built in the distribution repo from this
 ## published library (packages/webview); the toolchain no longer builds it.
-build-visualizer-lib: tools/graph-view/node_modules/.package-lock.json
+build-visualizer-lib: tools/visualizer/node_modules/.package-lock.json
 	cd tools/visualizer && npm run build:lib
 	@echo "Built visualizer (npm library)"
-
-## Build the graph-view library — the visualizer's engine in its own package
-## (tools/graph-view). The visualizer consumes it from source through its build's
-## alias, so this is the standalone artifact, not a prerequisite of the above.
-build-graph-view-lib: tools/graph-view/node_modules/.package-lock.json
-	cd tools/graph-view && npm run build:lib
-	@echo "Built graph-view (npm library)"
 
 # ── Release asset packaging + library publish ────────────────────────────────
 # The toolchain cuts a GitHub Release of primitive artifacts that the
@@ -106,7 +99,7 @@ build-graph-view-lib: tools/graph-view/node_modules/.package-lock.json
 # can consume them at build time via file: — and publishes to npm itself, where
 # their repository.url matches and provenance succeeds.
 
-.PHONY: pack-visualizer-lib pack-graph-view-lib pack-wire-types publish-npm-libs
+.PHONY: pack-visualizer-lib pack-wire-types publish-npm-libs
 
 ## Pack the visualizer npm library into a release tarball (dist/).
 ## The published version is stamped from VERSION at pack time (never committed —
@@ -121,16 +114,6 @@ pack-visualizer-lib: build-visualizer-lib
 	@# file: copy then matches more than one and breaks).
 	@rm -f dist/temporal-architect-visualizer-*.tgz
 	@$(call npm-pack-stamped,tools/visualizer,visualizer lib)
-
-## Pack the graph-view library into a release tarball (dist/). CI packs it; the
-## release workflow (_build-artifacts.yml) does not yet install the sibling or
-## attach this tarball — that workflow is outside the refactor's write bounds
-## (#187). Not published to npm by publish-npm-libs: publishing a new package
-## under the org's scope is a release decision.
-pack-graph-view-lib: build-graph-view-lib
-	@mkdir -p dist
-	@rm -f dist/temporal-architect-graph-view-*.tgz
-	@$(call npm-pack-stamped,tools/graph-view,graph-view lib)
 
 ## Pack the wire-types type-only package into a release tarball (dist/).
 ## Version handling matches pack-visualizer-lib (stamped from VERSION at pack).
@@ -172,39 +155,26 @@ publish-npm-libs:
 
 # ── Test targets ─────────────────────────────────────────────────────────────
 
-.PHONY: test vet typecheck typecheck-visualizer typecheck-graph-view typecheck-catalog test-visualizer verify-visualizer
+.PHONY: test vet typecheck typecheck-visualizer test-visualizer verify-visualizer
 
 ## Run every typecheck gate
-typecheck: typecheck-graph-view typecheck-visualizer typecheck-catalog
+typecheck: typecheck-visualizer
 
-## The visualizer's TypeScript program reaches the library's source, whose files
-## resolve React from the sibling's own node_modules: with the sibling not
-## installed, tsc prints 77 errors and the declarations build swallows them.
-## Every target that compiles either package installs the sibling first, so a
-## job that installs only the visualizer still builds correctly.
-tools/graph-view/node_modules/.package-lock.json: tools/graph-view/package-lock.json
-	cd tools/graph-view && npm ci
+## Install the visualizer from its lockfile, the engine (@jmbarzee/force-graph)
+## among its dependencies, whenever the lockfile moves past the install.
+tools/visualizer/node_modules/.package-lock.json: tools/visualizer/package-lock.json
+	cd tools/visualizer && npm ci
 
-## Typecheck the visualizer (strict tsc, no emit). Its path map reaches the
-## library's source, so this checks the host against the engine as written.
-typecheck-visualizer: tools/graph-view/node_modules/.package-lock.json
+## Typecheck the visualizer (strict tsc, no emit) against the pinned engine.
+typecheck-visualizer: tools/visualizer/node_modules/.package-lock.json
 	cd tools/visualizer && ./node_modules/.bin/tsc --noEmit
 
-## Typecheck the graph-view library on its own (strict tsc, no emit)
-typecheck-graph-view: tools/graph-view/node_modules/.package-lock.json
-	cd tools/graph-view && ./node_modules/.bin/tsc --noEmit
-
-## Typecheck the library's example host, which the library's own program does not include
-typecheck-catalog: tools/graph-view/node_modules/.package-lock.json
-	cd tools/graph-view && ./node_modules/.bin/tsc --noEmit -p examples/course-catalog/tsconfig.json
-
-## Run the unit tests (Vitest, `src/**/*.test.ts`) of the visualizer and the
-## graph-view library. Not part of `make test`, which is Go-only.
-test-visualizer: tools/graph-view/node_modules/.package-lock.json
-	cd tools/graph-view && npm test
+## Run the visualizer's unit tests (Vitest, `src/**/*.test.ts`). Not part of
+## `make test`, which is Go-only.
+test-visualizer: tools/visualizer/node_modules/.package-lock.json
 	cd tools/visualizer && npm test
 
-## The visualizer gate CI runs: its unit tests and the library's.
+## The visualizer gate CI runs: its unit tests.
 verify-visualizer: test-visualizer
 
 ## Run Go tests
@@ -415,6 +385,6 @@ release:
 
 ## Remove all build artifacts
 clean:
-	rm -rf dist/ tools/visualizer/dist tools/visualizer/dist-lib tools/graph-view/dist-lib
-	rm -f tools/visualizer/LICENSE tools/wire-types/LICENSE tools/graph-view/LICENSE tools/visualizer/FRAGMENT.md
+	rm -rf dist/ tools/visualizer/dist tools/visualizer/dist-lib
+	rm -f tools/visualizer/LICENSE tools/wire-types/LICENSE tools/visualizer/FRAGMENT.md
 	@echo "Cleaned"

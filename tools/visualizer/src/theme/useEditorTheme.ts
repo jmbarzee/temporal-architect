@@ -6,7 +6,7 @@
 // a `data-theme` on its root, which is the one signal the library reads.
 
 import React from 'react'
-import type { Theme } from '@temporal-architect/graph-view'
+import type { Theme } from '@jmbarzee/force-graph'
 
 const EDITOR_CLASSES = ['vscode-light', 'vscode-dark', 'vscode-high-contrast', 'vscode-high-contrast-light']
 

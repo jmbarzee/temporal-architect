@@ -10,7 +10,10 @@
 // library's single `styles.css` is complete — host webviews load only that
 // sibling stylesheet, so anything omitted here is simply unstyled for them.
 // Component-level CSS (blocks.css, style-guide.css) is pulled in transitively
-// by the components below and folds into the same bundle.
+// by the components below and folds into the same bundle. The engine's
+// stylesheet stays an external import, so the consumer's bundler collects it
+// beside this one.
+import '@jmbarzee/force-graph/styles.css'
 import './styles/index.css'
 
 export { WorkflowCanvas as Visualizer } from './components/WorkflowCanvas'

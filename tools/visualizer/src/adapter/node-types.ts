@@ -37,7 +37,7 @@ export type NodeType =
   | 'nexusOperation'
   | 'activity'
 
-import { createTaxonomy, payloadString } from '@temporal-architect/graph-view'
+import { createTaxonomy, payloadString } from '@jmbarzee/force-graph'
 import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION } from './dimensions'
 import type {
   GraphEdge,
@@ -49,7 +49,7 @@ import type {
   NodeStyle,
   AxisDescriptor,
   FilterChip,
-} from '@temporal-architect/graph-view'
+} from '@jmbarzee/force-graph'
 import { ALL_EDGE_TYPES, edgeTypeFor } from './edge-types'
 
 /**

@@ -9,9 +9,9 @@ Code quality belongs in `.claude/skills/dev-cycle/references/review-quality-visu
 - `tools/visualizer/spec/TREE_VIEW.md` — Tree View spec (authoritative)
 - `tools/visualizer/spec/GRAPH_VIEW.md` — Graph View spec (authoritative)
 - `tools/visualizer/spec/` (all other files) — product patterns, view framework
-- `tools/visualizer/src/` (the host) and `tools/graph-view/src/` (the graph engine) — TypeScript implementation (targets under review)
+- `tools/visualizer/src/` (the host) and `src/` of `github.com/jmbarzee/force-graph` at the version `tools/visualizer/package.json` pins (the graph engine, `@jmbarzee/force-graph`) — TypeScript implementation (targets under review)
 - in-flight files in `internal/changes/parser/` — parser changes in flight that may affect data availability
-- All existing files in `internal/changes/visualizer/` and `internal/changes/graph-view/` — both `*_REVISIONS_*.md` and `CHANGES_*.md` — to avoid re-reporting known gaps or already-addressed issues
+- All existing files in `internal/changes/visualizer/` — both `*_REVISIONS_*.md` and `CHANGES_*.md` — to avoid re-reporting known gaps or already-addressed issues
 
 ## Workflow
 
@@ -21,7 +21,7 @@ Briefly scan all spec files and the TypeScript source directory structure. Confi
 
 The engine owns GRAPH_VIEW.md § The model (its shapes), § Layout: Force-Directed Simulation, § Control Panel, § Edge Graduation and § Interaction States; the host owns § Data Flow: Two Views, Two Commands, § Graph Construction, the taxonomy in `adapter/`, and the tree view. Elsewhere the spec names each half inline.
 
-**Standard comparison units** (targets relative to `tools/visualizer/src/`; a `gv:` prefix means relative to `tools/graph-view/src/`):
+**Standard comparison units** (targets relative to `tools/visualizer/src/`; a `gv:` prefix means relative to the engine's `src/`):
 
 | # | Topic | Source (spec) | Target (TypeScript) |
 |---|-------|---------------|---------------------|
@@ -60,7 +60,7 @@ Merge all findings. For each issue:
 - **Severity**: how far the implementation diverges from what the spec claims — a spec that asserts a behavior the code lacks outranks an unbuilt enhancement the spec marks as deferred
 - **Data dependency**: if `blocked`, describe the parser JSON fields required
 
-Drop anything already tracked in existing `*_REVISIONS_*.md` or `CHANGES_*.md` files under `internal/changes/visualizer/` or `internal/changes/graph-view/`.
+Drop anything already tracked in existing `*_REVISIONS_*.md` or `CHANGES_*.md` files under `internal/changes/visualizer/`.
 
 ### Phase 4: Group & Prioritize
 
@@ -68,7 +68,7 @@ Group by feature area. Order by severity first, then unblocked work before block
 
 ### Phase 5: Write to `internal/changes/{component}/alignment_REVISIONS_{NNN}.md`
 
-Write the grouped plan to `internal/changes/{component}/alignment_REVISIONS_{NNN}.md`, filing each group under the component whose source scope it touches — host files under `visualizer`, `tools/graph-view/src/` under `graph-view` (create the directory if needed). A group touching both goes under the component this review was dispatched for; run directly, with none named, that is `visualizer`. Use the sequence number the dispatching agent gave you. If none was given (a human running this directly), use `_001` and increment past any file that already exists.
+Write the grouped plan to `internal/changes/{component}/alignment_REVISIONS_{NNN}.md`, with `{component}` as `visualizer`; a gap in the engine is an issue on `jmbarzee/force-graph`, not a group. Use the sequence number the dispatching agent gave you. If none was given (a human running this directly), use `_001` and increment past any file that already exists.
 - `**Source:**` immediately after the H1 — the upstream `CHANGES` path when this review was triggered by a propagation, `—` when it was not. Required; `propagate-changes` dedups on it. See `.claude/skills/dev-cycle/SKILL.md` § REVISIONS file contract.
 - Brief summary: coverage state per spec file, how many features are blocked on parser data
 - One `## Group N: Title` section per group

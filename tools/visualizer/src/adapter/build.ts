@@ -26,14 +26,14 @@ import type {
 // The axes this domain projects a node onto. Names, not concepts, belong to the
 // host: the library never mentions any of these ids.
 import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION } from './dimensions'
-import { nodesById } from '@temporal-architect/graph-view'
+import { nodesById } from '@jmbarzee/force-graph'
 import type {
   Graph,
   GraphEdge,
   GraphNode,
   Relation,
   AxisValues,
-} from '@temporal-architect/graph-view'
+} from '@jmbarzee/force-graph'
 import type { NodeType } from './node-types'
 import { NODE_TYPE_REGISTRY, TEMPORAL_TYPE_DIMENSION } from './node-types'
 import { DISPATCH_DIMENSION } from './edge-types'

@@ -11,7 +11,7 @@ import type { TWFFile, FileError, Diagnostic } from '../types/ast'
 import type { ParserGraph } from '../types/parser-graph'
 import { buildAstLookup, buildGraph, nodeLabel, type AstLookup } from './build'
 import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION } from './dimensions'
-import type { Graph } from '@temporal-architect/graph-view'
+import type { Graph } from '@jmbarzee/force-graph'
 // graphFindingsToDiagnostics lifts graph-stage findings (parserGraph.diagnostics
 // and parserGraph.unresolved) into the AST Diagnostic shape so the existing
 // findings bars render them with no new UI. These are the primary way
