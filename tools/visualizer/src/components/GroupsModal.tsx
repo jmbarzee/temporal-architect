@@ -1,7 +1,8 @@
-// Groups modal for the Graph view's decomposition overlay.
-// Implements GRAPH_VIEW.md § Decomposition Group Overlay: a collapsible
-// floating panel (collapsed by default) with two tabs — a tree browser of
-// chunk -> division options -> sections, and a read-only parameter readout.
+// Groups modal for the Graph view's group overlay.
+// Implements GRAPH_VIEW.md § Group Overlay: a collapsible floating panel
+// (collapsed by default) with a Chunks | SDKs scheme switch and two tabs — the
+// scheme's groups (a tree browser of chunk -> division options -> sections, or
+// one row per SDK set and the crossing count), and a parameter readout.
 // It mirrors GraphControlPanel's collapse/tab structure and reuses its CSS.
 
 // Borrows the library's panel chrome — `.gv-graph-control-panel*`, `.gv-switch*` and
@@ -17,9 +18,15 @@ import {
   initializedSelection,
   type GroupSelection,
   type GroupHover,
+  type GroupScheme,
 } from '../adapter/groups'
-import type { ActiveGroup } from '@temporal-architect/graph-view'
+import type { ActiveGroup, NodeGroup } from '@temporal-architect/graph-view'
 type GroupsTab = 'groups' | 'params'
+
+const SCHEMES: readonly { id: GroupScheme; label: string }[] = [
+  { id: 'chunks', label: 'Chunks' },
+  { id: 'sdks', label: 'SDKs' },
+]
 
 // Decomposition strategies the `by` multi-select offers, mirroring the Go
 // `decompose` strategy names a host translates into `twf graph chunks --by`.
@@ -27,6 +34,11 @@ const STRATEGY_OPTIONS = ['tree', 'nexus', 'worker', 'namespace', 'service', 'su
 
 interface GroupsModalProps {
   decomposition?: Decomposition
+  // The SDK scheme: one group per SDK set (`sdkGroupsOf`), how many edges cross
+  // SDKs, and the view's emphasis for the row under the pointer.
+  sdkGroups: readonly NodeGroup[]
+  crossingCount: number
+  onEmphasize: (id: string | null) => void
   selection: GroupSelection
   onSelectionChange: (next: GroupSelection) => void
   hover: GroupHover | null
@@ -52,6 +64,9 @@ function shortSectionId(id: string): string {
 
 export function GroupsModal({
   decomposition,
+  sdkGroups,
+  crossingCount,
+  onEmphasize,
   selection,
   onSelectionChange,
   hover,
@@ -74,25 +89,27 @@ export function GroupsModal({
     [decomposition],
   )
 
-  // Capability vs. data: chunks to overlay, and whether a host can service a
-  // recompute request. The panel renders when either holds; it stays absent
-  // (today's behaviour) only when there is neither a decomposition nor an action.
+  // Capability vs. data: chunks to overlay, SDK sets to overlay, and whether a
+  // host can service a recompute request. The panel renders when any holds.
   const hasChunks = !!decomposition && sortedChunks.length > 0
+  const hasSDKs = sdkGroups.length > 0
   const canRecompute = !!onRequestDecomposition
+  const sdkScheme = selection.scheme === 'sdks' && hasSDKs
+  const hasGroups = sdkScheme ? hasSDKs : hasChunks
 
   const [open, setOpen] = React.useState(false)
   // Default to the Params tab when there's nothing to browse yet but a recompute
   // can be requested — that's where the first request is made.
-  const [tab, setTab] = React.useState<GroupsTab>(hasChunks ? 'groups' : 'params')
+  const [tab, setTab] = React.useState<GroupsTab>(hasChunks || hasSDKs ? 'groups' : 'params')
 
-  if (!hasChunks && !canRecompute) return null
+  if (!hasChunks && !hasSDKs && !canRecompute) return null
 
   // First engagement bootstraps the overlay (glow on, every chunk enabled); see
   // initializedSelection. Opening the panel and flipping the master switch on are
-  // both "engage" actions. No-op when there's no decomposition to engage with
-  // (the bootstrap-only panel).
+  // both "engage" actions. No-op when the scheme has nothing to glow (the
+  // bootstrap-only panel).
   const engage = () => {
-    if (!decomposition) return
+    if (!hasGroups) return
     onSelectionChange(initializedSelection(selection, decomposition))
   }
 
@@ -151,14 +168,31 @@ export function GroupsModal({
         <button
           className="gv-graph-control-panel-toggle"
           onClick={handleToggleOpen}
-          title="Toggle decomposition groups panel"
+          title="Toggle groups panel"
         >
           {open ? '\u25BC Groups' : '\u25B6 Groups'}
         </button>
-        {/* The master glow switch only makes sense with a decomposition to glow;
-            in the bootstrap-only panel (action wired, no chunks yet) it is
-            omitted so no dead control is offered. */}
-        {hasChunks && (
+        {/* The scheme switch, when the design declares SDKs: chunks or SDK
+            sets, never both, as a node glows in one group at a time. */}
+        {hasSDKs && (hasChunks || canRecompute) && (
+          <div className="groups-scheme" role="radiogroup" aria-label="Group by">
+            {SCHEMES.map(s => (
+              <button
+                key={s.id}
+                role="radio"
+                aria-checked={selection.scheme === s.id}
+                className={`groups-scheme-option${selection.scheme === s.id ? ' on' : ''}`}
+                onClick={() => onSelectionChange({ ...selection, scheme: s.id })}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
+        )}
+        {/* The master glow switch only makes sense with groups to glow; in the
+            bootstrap-only panel (action wired, no chunks yet) it is omitted so
+            no dead control is offered. */}
+        {hasGroups && (
           <label
             className={`gv-switch${selection.glowEnabled ? ' on' : ''}`}
             title="Show group glow on the canvas"
@@ -185,23 +219,41 @@ export function GroupsModal({
             >
               Groups
             </button>
-            <button
-              role="tab"
-              aria-selected={tab === 'params'}
-              className={`gv-graph-control-tab${tab === 'params' ? ' active' : ''}`}
-              onClick={() => setTab('params')}
-            >
-              Params
-            </button>
+            {/* The decomposition's parameters; an SDK-only panel has none. */}
+            {(hasChunks || canRecompute) && (
+              <button
+                role="tab"
+                aria-selected={tab === 'params'}
+                className={`gv-graph-control-tab${tab === 'params' ? ' active' : ''}`}
+                onClick={() => setTab('params')}
+              >
+                Params
+              </button>
+            )}
           </div>
 
-          {tab === 'groups' && !hasChunks && (
+          {tab === 'groups' && sdkScheme && (
+            <div className="groups-tree" onMouseLeave={() => onEmphasize(null)}>
+              {sdkGroups.map(g => (
+                <div key={g.id} className="groups-section-row" onMouseEnter={() => onEmphasize(g.id)}>
+                  <span className="groups-swatch" style={{ background: colorById.get(g.id) ?? 'transparent' }} />
+                  <span className="groups-section-name">{g.id}</span>
+                  <span className="groups-section-meta">{g.nodeIds.size}n</span>
+                </div>
+              ))}
+              <p className="groups-params-note">
+                {crossingCount} cross-SDK {crossingCount === 1 ? 'call' : 'calls'}
+              </p>
+            </div>
+          )}
+
+          {tab === 'groups' && !sdkScheme && !hasChunks && (
             <div className="groups-tree groups-tree-empty">
               No decomposition yet. Set parameters on the Params tab and Recompute.
             </div>
           )}
 
-          {tab === 'groups' && hasChunks && (
+          {tab === 'groups' && !sdkScheme && hasChunks && (
             <div className="groups-tree" onMouseLeave={() => onHover(null)}>
               {sortedChunks.map(chunk => {
                 const divisions = chunk.divisions ?? []

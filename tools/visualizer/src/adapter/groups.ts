@@ -1,8 +1,9 @@
 // The group overlay's host half: the selection model the Groups modal edits and
 // the derivation of the groups the Graph view is asked to glow, from the host's
-// decomposition. The decomposition (`twf graph chunks`) partitions definitions
-// into chunks -> ranked division options (one per strategy) -> sections ->
-// recursive sub-divisions. This module turns "what the modal has
+// decomposition or, under the SDK scheme, its SDK sets (`sdk.ts`). The
+// decomposition (`twf graph chunks`) partitions definitions into chunks ->
+// ranked division options (one per strategy) -> sections -> recursive
+// sub-divisions. This module turns "what the modal has
 // selected/expanded" into `NodeGroup`s over the whole graph — each section's
 // members mapped through the definitionKey -> sister-copies index — and the
 // view restricts them to what is visible and colours them (`graph/groups.ts`).
@@ -26,6 +27,9 @@ import type { NodeGroup } from '@temporal-architect/graph-view'
 // selected division's section list is collapsed in the modal tree — purely a
 // browsing/disclosure concern (it does NOT change what glows).
 export interface GroupSelection {
+  // Which grouping glows: the decomposition's chunks, or the SDK sets
+  // (`sdk.ts`), whose crossing edges are marked as well.
+  scheme: GroupScheme
   initialized: boolean
   glowEnabled: boolean
   activeStrategyByChunk: Record<string, string>
@@ -33,6 +37,8 @@ export interface GroupSelection {
   expandedSections: Set<string>
   collapsedChunks: Set<string>
 }
+
+export type GroupScheme = 'chunks' | 'sdks'
 
 // GroupHover is the transient preview: hovering a division option previews that
 // division for its chunk (overriding the active/enabled state); hovering a
@@ -52,11 +58,11 @@ export function defaultStrategyForChunk(chunk: Chunk): string | undefined {
 
 // initialGroupSelection is the **off / uninitialized** state: nothing enabled,
 // glow off. The overlay stays dark until the user first engages it (see
-// initializedSelection), so a freshly-loaded design isn't blanketed in glow. The
-// decomposition arg is unused now (kept for call-site symmetry with the reset
-// effect that rebuilds this on every new decomposition).
-export function initialGroupSelection(_decomposition?: Decomposition): GroupSelection {
+// initializedSelection), so a freshly-loaded design isn't blanketed in glow. It
+// opens on the chunks when there is a decomposition, else on the SDKs.
+export function initialGroupSelection(decomposition?: Decomposition): GroupSelection {
   return {
+    scheme: decomposition ? 'chunks' : 'sdks',
     initialized: false,
     glowEnabled: false,
     activeStrategyByChunk: {},
@@ -120,14 +126,18 @@ function frontierSections(division: Division, expanded: Set<string>): Section[] 
 // division's frontier sections become groups, with members mapped through the
 // copy index (`copyGroups(graph)`: definition key -> every deployment copy's
 // node id). The hovered section is emphasised. The view restricts each group
-// to the visible set and colours what is left, in this order.
+// to the visible set and colours what is left, in this order. Under the SDK
+// scheme the groups are `sdkGroups`, as given.
 export function nodeGroupsOf(
   decomposition: Decomposition | undefined,
+  sdkGroups: readonly NodeGroup[],
   selection: GroupSelection,
   hover: GroupHover | null,
   duplicateGroups: ReadonlyMap<string, ReadonlySet<string>>,
-): NodeGroup[] {
-  if (!decomposition || !selection.glowEnabled) return []
+): readonly NodeGroup[] {
+  if (!selection.glowEnabled) return []
+  if (selection.scheme === 'sdks') return sdkGroups
+  if (!decomposition) return []
 
   const groups: NodeGroup[] = []
   for (const chunk of decomposition.chunks) {

@@ -40,6 +40,8 @@ export interface VisibleGraph {
    * declare — `validateGraph` names those; here they draw neutral.
    */
   edgeTypes: Map<string, EdgeTypeId | undefined>
+  /** Each visible edge's original: the host's edge it is, or the one a graduated edge stands for. */
+  origins: Map<string, string>
   nodeSummaries: Map<string, string>
   downstreamScores: Map<string, number>
 }
@@ -59,6 +61,7 @@ export const EMPTY_VISIBLE_GRAPH: VisibleGraph = {
   visibleEdges: [],
   visibleIds: new Set<string>(),
   edgeTypes: new Map<string, EdgeTypeId | undefined>(),
+  origins: new Map<string, string>(),
   nodeSummaries: new Map<string, string>(),
   downstreamScores: new Map<string, number>(),
 }
@@ -217,6 +220,7 @@ export function computeVisibleGraph(
 
   const originalTypes = classifyEdges(sim, taxonomy)
   const edgeTypes = new Map<string, EdgeTypeId | undefined>()
+  const origins = new Map<string, string>()
 
   // Graduate edges across hidden nodes. Two passes over the host's edges: the
   // ones drawn as given first, then the projections, because a projection
@@ -236,12 +240,14 @@ export function computeVisibleGraph(
       if (tgtVisible) {
         kept.push(edge)
         edgeTypes.set(edge.id, originalTypes.get(edge.id))
+        origins.set(edge.id, edge.id)
       } else {
         const ancestor = findNearestVisibleAncestor(edge.targetId, ids, getNode)
         if (ancestor) {
           const id = `grad:${edge.id}`
           kept.push({ ...edge, targetId: ancestor, id })
           edgeTypes.set(id, originalTypes.get(edge.id))
+          origins.set(id, edge.id)
         }
       }
     } else if (srcVisible && tgtVisible) {
@@ -249,6 +255,7 @@ export function computeVisibleGraph(
       // parallel one — two edges between two visible nodes are two facts.
       kept.push(edge)
       edgeTypes.set(edge.id, originalTypes.get(edge.id))
+      origins.set(edge.id, edge.id)
       originalPairs.add(`${edge.sourceId}→${edge.targetId}`)
     } else {
       projected.push(edge)
@@ -280,6 +287,7 @@ export function computeVisibleGraph(
   for (const { origin, edge } of graduated.values()) {
     vEdges.push(edge)
     edgeTypes.set(edge.id, originalTypes.get(origin.id))
+    origins.set(edge.id, origin.id)
   }
 
   const vNodeMap = new Map<string, SimNode>()
@@ -294,5 +302,5 @@ export function computeVisibleGraph(
   // over the whole graph is a layout axis (graph/scalar.ts).
   const downstreamScores = computeDownstreamReach({ nodes: vNodes, edges: vEdges, getNode: id => vNodeMap.get(id) })
 
-  return { visibleNodes: vNodes, visibleEdges: vEdges, visibleIds: ids, edgeTypes, nodeSummaries, downstreamScores }
+  return { visibleNodes: vNodes, visibleEdges: vEdges, visibleIds: ids, edgeTypes, origins, nodeSummaries, downstreamScores }
 }

@@ -43,6 +43,7 @@ import { ErrorBars } from './ErrorBars'
 import { focusedFiles } from '../adapter/files'
 import { useGraphModel, definitionCounts, sourceFilesOf } from '../adapter/useGraphModel'
 import { initialGroupSelection, nodeGroupsOf, type GroupSelection, type GroupHover } from '../adapter/groups'
+import { crossingEdgeIds, sdkCrossings, sdkGroupsOf } from '../adapter/sdk'
 
 interface WorkflowCanvasProps {
   /** Parsed TWF AST to visualize. Produced by `twf parse` (the `definitions`
@@ -57,8 +58,8 @@ interface WorkflowCanvasProps {
    * `twf graph` output (older extension builds, AST-only fixtures). */
   parserGraph?: ParserGraph
   /** Decomposition from `twf graph chunks` — drives the Graph view's group
-   * overlay. Optional and additive: when absent the overlay is inert (no
-   * Groups modal content). The tree view does not consume it. */
+   * overlay's chunks scheme. Optional and additive: when absent that scheme
+   * is inert. The tree view does not consume it. */
   decomposition?: Decomposition
   /** Invoked when the user narrows the file filter to exactly one file —
    * a hint to host applications (e.g. VS Code) to focus that file in their
@@ -216,9 +217,9 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
   const graphCounts = React.useMemo(() => definitionCounts(ast, selectionFor(graphFilter, SOURCE_FILE_DIMENSION)), [ast, graphFilter])
 
   // The group overlay's selection and hover preview (GRAPH_VIEW.md
-  // § Decomposition Group Overlay) are the host's: what a group is comes from
-  // its decomposition, and the view draws what it is handed. Both reset when
-  // a new decomposition arrives.
+  // § Group Overlay) are the host's: what a group is comes from its
+  // decomposition or its SDK sets, and the view draws what it is handed. Both
+  // reset when a new decomposition arrives.
   const [groupSelection, setGroupSelection] = React.useState<GroupSelection>(() => initialGroupSelection(decomposition))
   const [groupHover, setGroupHover] = React.useState<GroupHover | null>(null)
   React.useEffect(() => {
@@ -228,10 +229,15 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
   // Every node's deployment copies by their shared key, derived from the graph
   //; the group overlay maps a decomposition's members through it.
   const copies = React.useMemo(() => copyGroups(model.graph), [model.graph])
+  // The SDK scheme's groups, and its crossings as keys and as the view edges they fold into.
+  const sdkGroups = React.useMemo(() => sdkGroupsOf(graphInput), [graphInput])
+  const crossings = React.useMemo(() => sdkCrossings(graphInput), [graphInput])
+  const crossingEdges = React.useMemo(() => crossingEdgeIds(model.graph, crossings), [model.graph, crossings])
   const nodeGroups = React.useMemo(
-    () => nodeGroupsOf(decomposition, groupSelection, groupHover, copies),
-    [decomposition, groupSelection, groupHover, copies],
+    () => nodeGroupsOf(decomposition, sdkGroups, groupSelection, groupHover, copies),
+    [decomposition, sdkGroups, groupSelection, groupHover, copies],
   )
+  const sdkSchemeShown = groupSelection.scheme === 'sdks' && groupSelection.glowEnabled
 
   // The search is one query applied identically to both views (spec § Search
   // Scope), held by the hook — started from the persisted query — and handed
@@ -477,9 +483,13 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
               counts={graphCounts}
               findings={<ErrorBars errors={model.errors} diagnostics={model.diagnostics} selectedFiles={selectionFor(graphFilter, SOURCE_FILE_DIMENSION)} sourceFiles={sourceFilesOf(ast)} />}
               groups={nodeGroups}
-              groupsControl={active => (
+              markedEdges={sdkSchemeShown ? crossingEdges : undefined}
+              groupsControl={(active, control) => (
                 <GroupsModal
                   decomposition={decomposition}
+                  sdkGroups={sdkGroups}
+                  crossingCount={crossings.size}
+                  onEmphasize={control.emphasize}
                   selection={groupSelection}
                   onSelectionChange={setGroupSelection}
                   hover={groupHover}

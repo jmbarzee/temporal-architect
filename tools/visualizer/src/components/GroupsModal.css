@@ -3,7 +3,7 @@
    Groups modal (decomposition overlay). Reuses the .gv-graph-control-panel
    collapse/tab chrome but anchors top-right (below the toolbar) instead of
    bottom-right; the Control Panel sits bottom-right, so the two never collide.
-   See GRAPH_VIEW.md § Decomposition Group Overlay.
+   See GRAPH_VIEW.md § Group Overlay.
    --------------------------------------------------------------------------- */
 .groups-modal {
   /* Anchored to the real bottom of the toolbar (measured into --gv-toolbar-height
@@ -31,6 +31,30 @@
 
 .groups-modal-header .gv-graph-control-panel-toggle {
   flex: 1;
+}
+
+/* The Chunks | SDKs scheme switch, a two-segment pill beside the glow switch. */
+.groups-scheme {
+  display: inline-flex;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.groups-scheme-option {
+  padding: 2px 6px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.groups-scheme-option.on {
+  background: var(--color-border);
+  color: var(--color-text);
 }
 
 .groups-tree {

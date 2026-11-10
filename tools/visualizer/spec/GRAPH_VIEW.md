@@ -352,6 +352,8 @@ Each node displays **only its name** as a label — all other detail (compositio
 
 Every edge is stroked by its **resolved edge type** — the same classification that picks its spring — through the stroke the taxonomy declares for that type (`EdgeType.style`: colour per theme, alpha, dash, width). There is one classifier: a spliced caller-to-backing edge, whose operation is filtered out, draws as the workflow dependency its type says it is.
 
+An edge the host marks (`markedEdges`; here, a cross-SDK call under the SDK scheme, § Group Overlay) gets a **dashed band behind its own stroke** in the theme's label ink — the one colour no glow hue takes — so it keeps its type's colour and dash. A graduated edge is marked when the edge it stands for is. Marking leaves the edge's type, and so its spring and the layout, untouched.
+
 **Arrowheads are visible at rest.** Direction encoding is essential for answering "what depends on what?" (Q7) without hovering. Arrowheads point from the dependent node toward the dependency (A → B means "A depends on B"). They are drawn at a fixed screen size (8 px), so they stay legible at any zoom without dominating close up. Containment edges have no arrowhead (the relationship is symmetric membership).
 
 Edge opacity and thickness can be secondary signals — thicker or more opaque for higher-traffic connections if multiplicity data is available in the future.
@@ -721,13 +723,20 @@ The graph view uses modifier keys for interaction variants (e.g., Shift+hover fo
 
 ---
 
-## Decomposition Group Overlay
+## Group Overlay
 
-The graph view can overlay the **chunk decomposition** (`twf graph chunks`) — the
-topology-based grouping of definitions into independently-authorable units — as a
-**non-destructive glow highlight**. It answers "what are the composable groups of
-work, and which nodes belong to each?" This is **graph-view only**; the tree view
-is unaffected.
+The graph view can overlay a grouping of its nodes as a **non-destructive glow
+highlight**, in one of two **schemes**, never both, since a node glows in one group
+at a time:
+
+- **Chunks** — the **chunk decomposition** (`twf graph chunks`), the
+  topology-based grouping of definitions into independently-authorable units. It
+  answers "what are the composable groups of work, and which nodes belong to
+  each?" Most of this section is this scheme.
+- **SDKs** — the SDK set of the worker each node deploys on (§ SDK Scheme). It
+  answers "which language runs what, and where do calls cross languages?"
+
+This is **graph-view only**; the tree view is unaffected.
 
 v1 consumes a **precomputed** decomposition (the ranked portfolio at a host-chosen
 ceiling). There is no in-view recompute — changing the analysis parameters
@@ -761,7 +770,10 @@ reads "Groups"), mirroring the Control Panel's pattern (§ Control Panel). Its
 header carries an **always-visible glow switch** (the Control Panel's sliding
 switch style) — the master on/off for the overlay, shown whether the panel is
 collapsed or open, so the glow can be toggled without expanding the panel. When
-off, nothing glows regardless of the selection below.
+off, nothing glows regardless of the selection below. Beside it, when the design
+declares any `@sdk`, a **Chunks | SDKs** switch picks the scheme the Groups tab
+lists and the canvas glows; it opens on Chunks when there is a decomposition, else
+on SDKs, and the panel shows for SDKs alone.
 
 **Initially off, then normal.** The overlay is an opt-in feature: on load nothing
 glows (the switch reads off, no chunks selected), so a freshly-loaded design isn't
@@ -801,6 +813,24 @@ The browser shows the **full partition**, not just the splittable chunks:
 
 The modal **is the legend**: a group's identity ("which group is this?") is read
 from the modal (hover a section row to make it glow), not decoded from color.
+
+### SDK Scheme
+
+One group per distinct **SDK set** among the graph nodes' `sdks` — a worker's
+`@sdk` set, carried by every node it hosts — labelled by its SDKs (`go`,
+`go + python`). A multi-SDK worker's set is its own group, keeping one group per
+node. Groups take palette slots in a fixed order, single-SDK sets first, then by
+label, so a design's colours hold across reloads. A node with no `sdks`
+(a namespace, an endpoint, an orphan, an unannotated worker and what it hosts) is
+in no group and glows neutral.
+
+The Groups tab lists one row per set (color bar, label, node count; hovering a row
+emphasises its group) and, beneath them, **N cross-SDK calls**: the activity,
+workflow and Nexus call and signal-send edges whose two nodes both carry `sdks`
+and share none — the rule of `twf check`'s `CROSS_SDK_CALL` hint
+(`graph.SDKCrossings`). While the scheme glows, the view marks those edges
+(§ Edge Appearance). The visualizer's copy of the rule (`src/adapter/sdk.ts`) and the Go one are tested
+against one fixture, `tools/lsp/parser/graph/testdata/cross_sdk.*`.
 
 ### Glow Display
 

@@ -16,7 +16,7 @@ auto-applied.
 Two other consumers read the same output. The visualizer renders the
 decomposition as a non-destructive group overlay in the graph view (spec:
 [`tools/visualizer/spec/GRAPH_VIEW.md`](../../../visualizer/spec/GRAPH_VIEW.md)
-§ Decomposition Group Overlay). The VS Code extension — in the separate repo
+§ Group Overlay). The VS Code extension — in the separate repo
 `jmbarzee/temporal-architect-dist` — runs `twf graph chunks --json --ceiling N`
 and bundles the result into the webview payload, gated by the
 `twf.decompose.ceiling` setting.

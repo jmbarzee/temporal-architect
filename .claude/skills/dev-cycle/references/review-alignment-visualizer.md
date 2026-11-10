@@ -38,7 +38,7 @@ The engine owns GRAPH_VIEW.md § The model (its shapes), § Layout: Force-Direct
 | 11 | Error handling & display | TREE_VIEW.md §Error and warning bars; `VIEW_FRAMEWORK.md` §Error Handling | `components/ErrorBars.tsx`, `types/ast.ts` FileError |
 | 12 | Live reload & state preservation | `VIEW_FRAMEWORK.md` §Live Reload | Reload logic in `components/VisualizerHost.tsx`/`components/WorkflowCanvas.tsx`; `gv:components/graph-view/useSimulation.ts`, `gv:components/graph-view/useViewport.ts` |
 | 13 | Graph view model, layout & interaction (engine) | GRAPH_VIEW.md, the engine's sections | `gv:components/` (`GraphView.tsx`, `GraphCanvas.tsx`, `GraphControlPanel.tsx`, `controls/`), `gv:components/graph-view/`, `gv:graph/`, `gv:filter/` |
-| 14 | Graph construction & taxonomy (host) | GRAPH_VIEW.md, the host's sections; §Decomposition Group Overlay | `adapter/`, `components/GroupsModal.tsx` |
+| 14 | Graph construction & taxonomy (host) | GRAPH_VIEW.md, the host's sections; §Group Overlay | `adapter/`, `components/GroupsModal.tsx` |
 
 ### Phase 2: Parallel Alignment
 

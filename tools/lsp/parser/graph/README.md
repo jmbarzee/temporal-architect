@@ -135,7 +135,7 @@ parsed.
   An `activityCall`, `workflowCall`, `nexusCall` or `signalSend` edge whose two
   nodes both carry `sdks` and share no SDK crosses SDKs (`Graph.SDKCrossings`,
   behind the `CROSS_SDK_CALL` hint); a consumer marking those edges applies the
-  same rule.
+  same rule, checked against `testdata/cross_sdk.*` as the visualizer's is.
 - `orphan` (bool, optional) — `true` when the definition exists in the AST but
   has no deployment. Implies no deployment-context fields at all. Omitted when
   false.
