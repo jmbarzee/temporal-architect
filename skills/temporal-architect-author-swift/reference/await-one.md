@@ -52,6 +52,7 @@ One `context.condition` over every case blocks until any is ready; then the firs
 | inline activity, child workflow, nested `await all:` | `async let p = { defer { done.isSet = true }; return try await … }()` at the run's scope, outside the round's task group, each call with `cancellationType: .abandon` | `done.isSet` | `try await p` |
 | promise | its `async let` sets a `Flag` the same way, as `BoundDeadline`'s `fired` sets `deadline` | `deadline.isSet` | `try await fired` |
 | condition | — | the condition | — |
+| nexus | unsupported ([nexus.md](./nexus.md)) | — | — |
 
 A message case waits without taking: `ready` checks its `Arrivals` ([await-signal.md](./await-signal.md)), and only the winner claims the arrival. A losing case must `leave`, or it holds its place and blocks later waiters. The predicate only reads (`Temporal/Worker/Workflow/WorkflowContext.swift:359-360`); `claim` and `leave` come after the `condition`. The `defer` sets the `Flag` of a failed call too; the winner's `try await` throws its failure.
 

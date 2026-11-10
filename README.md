@@ -1,8 +1,15 @@
 # temporal-architect
 
-**Design, visualize, and implement entire Temporal systems — namespaces, workers, workflows, and Nexus — as a visual source of truth, verifiable from 10,000 ft.**
+**Design, visualize, and implement entire Temporal systems in every Temporal SDK — namespaces, workers, workflows, and Nexus — as a visual source of truth, verifiable from 10,000 ft.**
 
 Write your architecture in `.twf` and a real parser, language server, and visualizer give you (and your AI agent) compiler-grade feedback on the *whole system* before you write a line of SDK code — then generate the workers and provision the infra from the same design.
+
+Every Temporal SDK has an authoring skill:
+
+- **Official:** [Go](./skills/temporal-architect-author-go/SKILL.md), [TypeScript](./skills/temporal-architect-author-typescript/SKILL.md), [Python](./skills/temporal-architect-author-python/SKILL.md), [Java](./skills/temporal-architect-author-java/SKILL.md), [.NET](./skills/temporal-architect-author-dotnet/SKILL.md), [Ruby](./skills/temporal-architect-author-ruby/SKILL.md), [PHP](./skills/temporal-architect-author-php/SKILL.md), [Rust](./skills/temporal-architect-author-rust/SKILL.md)
+- **Community:** [Swift](./skills/temporal-architect-author-swift/SKILL.md), [Haskell](./skills/temporal-architect-author-haskell/SKILL.md), [Clojure](./skills/temporal-architect-author-clojure/SKILL.md), [Perl](./skills/temporal-architect-author-perl/SKILL.md), [Elixir](./skills/temporal-architect-author-elixir/SKILL.md)
+
+Each owns the `.twf` ↔ SDK translation (call shapes, wire names, options, layout, verify) and hands SDK idioms to Temporal's [`temporal-developer`](https://github.com/temporalio/skill-temporal-developer) skill, or to the community SDK's own docs where `temporal-developer` has none.
 
 <!-- [SCREENSHOT: S1 — Graph View, full system, namespace→worker→workflow with dependency edges] → docs/images/graph-view-system.png -->
 <!-- [SCREENSHOT: S2 — Tree View, one workflow expanded with inline call expansion] → docs/images/tree-view-expanded.png -->
@@ -12,7 +19,7 @@ Write your architecture in `.twf` and a real parser, language server, and visual
 - **Catch design errors before code.** A real parser and language server validate the whole system — undefined activities, broken Nexus routing, misplaced determinism — while it's still a design, not a production incident.
 - **See the whole deployment.** An interactive graph of namespaces → workers → workflows, plus a tree view that expands calls inline. Architecture you can actually look at.
 - **One parseable source of truth.** `.twf` is a file every teammate and every tool reads and validates — not architecture prose buried in a prompt.
-- **Design → running system.** Generate Temporal Go SDK code and provision control-plane infra from the same `.twf` — or recover a deployment graph straight from production history with the sampler.
+- **Design → running system.** Generate workers in any Temporal SDK and provision control-plane infra from the same `.twf` — or recover a deployment graph straight from production history with the sampler.
 
 ## What `.twf` looks like
 
@@ -58,7 +65,7 @@ Pick the install line for your environment:
 | Audience / tool | Install |
 |---|---|
 | **Cursor / VS Code** | Install **Temporal Architect** from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=jmbarzee.twf-syntax) or [Open VSX](https://open-vsx.org/extension/jmbarzee/twf-syntax). Bundles the `twf` binary, the system-design skills (auto-installed to `~/.cursor/skills/`), and the architecture visualizer. |
-| **Claude Code** | `/plugin marketplace add jmbarzee/temporal-architect-dist` then `/plugin install temporal-architect@temporal-architect`. Bundles the design, Go-authoring, TypeScript-authoring, .NET-authoring, Python-authoring, Java-authoring, Ruby-authoring, Clojure-authoring, PHP-authoring, Rust-authoring, Perl-authoring, Haskell-authoring, Elixir-authoring, Swift-authoring, and infra-provisioning skills plus the `twf` MCP server. |
+| **Claude Code** | `/plugin marketplace add jmbarzee/temporal-architect-dist` then `/plugin install temporal-architect@temporal-architect`. Bundles every skill below plus the `twf` MCP server. |
 | **Any MCP-compatible client** (Claude Desktop, Cursor MCP, Continue, Windsurf, Zed) | Add to your MCP client config: `{"twf": {"command": "npx", "args": ["-y", "@temporal-architect/twf", "mcp"]}}` |
 | **Node / JS / TS projects** | `npx -y @temporal-architect/twf check workflows.twf` (zero-install) or `npm install -g @temporal-architect/twf` |
 | **Python projects** | `pip install twf-cli` |
@@ -86,20 +93,9 @@ In an editor with the extension, you also get live diagnostics, completions, and
 
 The skills turn `.twf` into a deterministic harness for an AI agent — letting it reason at *system* scale instead of code scale.
 
+- **[temporal-architect](./skills/temporal-architect/SKILL.md)** — The entry point: orients the design↔code direction, decomposes a `.twf` into chunks, and routes each to the specialists below.
 - **[temporal-architect-design](./skills/temporal-architect-design/SKILL.md)** — Design entire Temporal systems in `.twf` — workflows, activities, workers, namespaces, and Nexus — with parser/LSP validation and visualization.
-- **[temporal-architect-author-go](./skills/temporal-architect-author-go/SKILL.md)** — Generate Go code from a `.twf` design using the Temporal Go SDK.
-- **[temporal-architect-author-typescript](./skills/temporal-architect-author-typescript/SKILL.md)** — Generate TypeScript code from a `.twf` design using the Temporal TypeScript SDK.
-- **[temporal-architect-author-dotnet](./skills/temporal-architect-author-dotnet/SKILL.md)** — Generate C# code from a `.twf` design using the Temporal .NET SDK.
-- **[temporal-architect-author-python](./skills/temporal-architect-author-python/SKILL.md)** — Generate Python code from a `.twf` design using the Temporal Python SDK.
-- **[temporal-architect-author-java](./skills/temporal-architect-author-java/SKILL.md)** — Generate Java code from a `.twf` design using the Temporal Java SDK.
-- **[temporal-architect-author-ruby](./skills/temporal-architect-author-ruby/SKILL.md)** — Generate Ruby code from a `.twf` design using the Temporal Ruby SDK.
-- **[temporal-architect-author-clojure](./skills/temporal-architect-author-clojure/SKILL.md)** — Generate Clojure code from a `.twf` design using the community Temporal Clojure SDK.
-- **[temporal-architect-author-php](./skills/temporal-architect-author-php/SKILL.md)** — Generate PHP code from a `.twf` design using the Temporal PHP SDK.
-- **[temporal-architect-author-rust](./skills/temporal-architect-author-rust/SKILL.md)** — Generate Rust code from a `.twf` design using the Temporal Rust SDK.
-- **[temporal-architect-author-perl](./skills/temporal-architect-author-perl/SKILL.md)** — Generate Perl code from a `.twf` design using the community Temporal Perl SDK.
-- **[temporal-architect-author-haskell](./skills/temporal-architect-author-haskell/SKILL.md)** — Generate Haskell code from a `.twf` design using the community Temporal Haskell SDK.
-- **[temporal-architect-author-elixir](./skills/temporal-architect-author-elixir/SKILL.md)** — Generate Elixir code from a `.twf` design using the community Temporal Erlang/Elixir SDK.
-- **[temporal-architect-author-swift](./skills/temporal-architect-author-swift/SKILL.md)** — Generate Swift code from a `.twf` design using the community Temporal Swift SDK.
+- **`temporal-architect-author-<sdk>`** — Generate a worker from a `.twf` design, one skill per SDK [listed above](#temporal-architect).
 - **[temporal-architect-author-infra](./skills/temporal-architect-author-infra/SKILL.md)** — Provision the control-plane resources a design needs — namespaces, Nexus endpoints, search attributes — via the Temporal Cloud Terraform provider or self-hosted `tcld` / `temporal operator`.
 
 The skills assume `twf` is **on PATH** (the extension puts it there on activation; otherwise use any install line above). An agent reads architecture through `twf graph --json`; the visual view stays human-facing — the `twf.visualize` command inside the editor, or `twf-view` (`brew install jmbarzee/twf/twf-view`), the live visualizer host, as a standalone view outside one.
@@ -107,7 +103,6 @@ The skills assume `twf` is **on PATH** (the extension puts it there on activatio
 <details>
 <summary><strong>Planned skills</strong></summary>
 
-- **More implementers** — Additional authorship skills beyond Go, TypeScript, .NET, Python, Java, Ruby, Clojure, PHP, Rust, Perl, Haskell, Elixir, Swift, and infra.
 - **Translators** — Analyze existing systems (event-based architectures, SQS/Lambda, etc.) and generate equivalent `.twf` designs.
 - **Debuggers & Optimizers** — Assist with debugging, profiling, and optimizing existing Temporal systems.
 
@@ -188,7 +183,7 @@ Registry **identifiers** are unchanged by the split (npm scope `@temporal-archit
 | **Homebrew tap** | `jmbarzee/homebrew-twf` formula `twf` | `brew install jmbarzee/twf/twf` | `twf` binary | formula auto-bumped by `internal/release/bump-brew/` (dist repo) against the tap repo |
 | **GitHub Release assets** | `twf-vX.Y.Z-<goos>-<goarch>.{tar.gz,zip}` + `skills-vX.Y.Z.tar.gz` + visualizer + wire-types tarballs + `SHA256SUMS` | `curl -sSL https://raw.githubusercontent.com/jmbarzee/temporal-architect-dist/main/packages/install.sh \| bash` (binary only; the installer lives in the dist repo and downloads these assets) or download individually | platform binary; `skills/` tree with `MANIFEST.json`; visualizer + wire-types tarballs (consumed by the dist repo at build time) | cut **here** by [`.github/workflows/release.yml`](./.github/workflows/release.yml) from [`tools/lsp/`](./tools/lsp/), [`tools/visualizer/`](./tools/visualizer/), [`tools/wire-types/`](./tools/wire-types/), and [`skills/`](./skills/) |
 | **Go install** | `github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf` | `go install github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf@latest` (or `@vX.Y.Z`), or from a clone: `cd tools/lsp && go install ./cmd/twf` | `twf` binary (built from source) | [`tools/lsp/cmd/twf/`](./tools/lsp/cmd/twf/) |
-| **Skill files (direct)** | files under `skills/` at any pinned ref | `git clone` / vendor / `curl -L <raw URL>` | one `SKILL.md` per skill + `reference/` + `topics/` | [`skills/temporal-architect-design/`](./skills/temporal-architect-design/), [`skills/temporal-architect-author-go/`](./skills/temporal-architect-author-go/), [`skills/temporal-architect-author-typescript/`](./skills/temporal-architect-author-typescript/), [`skills/temporal-architect-author-dotnet/`](./skills/temporal-architect-author-dotnet/), [`skills/temporal-architect-author-python/`](./skills/temporal-architect-author-python/), [`skills/temporal-architect-author-java/`](./skills/temporal-architect-author-java/), [`skills/temporal-architect-author-ruby/`](./skills/temporal-architect-author-ruby/), [`skills/temporal-architect-author-clojure/`](./skills/temporal-architect-author-clojure/), [`skills/temporal-architect-author-php/`](./skills/temporal-architect-author-php/), [`skills/temporal-architect-author-rust/`](./skills/temporal-architect-author-rust/), [`skills/temporal-architect-author-perl/`](./skills/temporal-architect-author-perl/), [`skills/temporal-architect-author-haskell/`](./skills/temporal-architect-author-haskell/), [`skills/temporal-architect-author-elixir/`](./skills/temporal-architect-author-elixir/), [`skills/temporal-architect-author-swift/`](./skills/temporal-architect-author-swift/), and [`skills/temporal-architect-author-infra/`](./skills/temporal-architect-author-infra/) |
+| **Skill files (direct)** | files under `skills/` at any pinned ref | `git clone` / vendor / `curl -L <raw URL>` | one `SKILL.md` per skill + `reference/` + `topics/` | [`skills/`](./skills/) |
 | **MCP** | `twf mcp` over stdio | configure any MCP client to launch `npx -y @temporal-architect/twf mcp` (or `twf mcp` if installed) | tools wrapping `check`/`parse`/`symbols`/`graph`/`graph chunks`/`spec`; resources for spec sections (`twf://spec`, `twf://spec/<slug>`) | [`tools/lsp/cmd/twf/internal/command/mcp/`](./tools/lsp/cmd/twf/internal/command/mcp/) |
 | **Smithery MCP registry** (planned) | listing pointing at the `twf mcp` install line | discover and install via the Smithery UI / CLI | (registry listing only — no payload) | submission only; no source in this repo |
 

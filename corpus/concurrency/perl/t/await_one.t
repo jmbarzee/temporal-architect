@@ -28,9 +28,11 @@ sub index_of ($events, $which, $nth = 1) {
     die "no #$nth $which\n";
 }
 
-sub no_task_between ($events, $i, $j) {
+# undef when no workflow task started between events $i and $j, otherwise the events between them.
+sub miss ($events, $i, $j) {
     ($i, $j) = sort { $a <=> $b } $i, $j;
-    return !grep { CorpusEnv::kind($_) eq 'workflow_task_started_event_attributes' } @$events[$i .. $j];
+    my @between = map { CorpusEnv::kind($_) } @$events[$i .. $j];
+    return (grep { $_ eq 'workflow_task_started_event_attributes' } @between) ? join(',', @between) : undef;
 }
 
 # No time skipping: a short timer fires while no worker runs, then Ack arrives, so
@@ -46,9 +48,8 @@ sub ack_tie ($client, $type, @args) {
     my $got = wait_for($h->result);
     CorpusEnv::stop_worker($tw);
     my @ev = CorpusEnv::events($h);
-    my $tied = no_task_between(\@ev, index_of(\@ev, 'timer_fired_event_attributes'),
-        index_of(\@ev, 'workflow_execution_signaled_event_attributes'));
-    return ($got, $tied);
+    return ($got, miss(\@ev, index_of(\@ev, 'timer_fired_event_attributes'),
+        index_of(\@ev, 'workflow_execution_signaled_event_attributes')));
 }
 
 sub timer_tie ($client, $form, $order) {
@@ -65,25 +66,24 @@ sub timer_tie ($client, $form, $order) {
     my $got = wait_for($h->result);
     CorpusEnv::stop_worker($tw);
     my @ev = CorpusEnv::events($h);
-    my $tied = no_task_between(\@ev, index_of(\@ev, 'timer_fired_event_attributes', 1),
-        index_of(\@ev, 'timer_fired_event_attributes', 2));
-    return ($got, $tied);
+    return ($got, miss(\@ev, index_of(\@ev, 'timer_fired_event_attributes', 1),
+        index_of(\@ev, 'timer_fired_event_attributes', 2)));
 }
 
 # (#529) The setup is real-time and can miss: a stopped worker's open poll can take
 # the timer's task. Retry it, up to 3 times, each on a fresh dev server and workflow
-# ID, until history shows a real tie, and assert only then. A setup that times out
-# is a miss, not a failure; a setup that never ties skips.
+# ID, until history shows a real tie, and assert only then. Any other failure dies;
+# a setup that never ties skips.
 sub at_tie ($name, $want, $setup, @args) {
+    my @missed;
     for my $attempt (1 .. 3) {
         my $client = CorpusEnv::start();
-        my ($got, $tied) = eval { $setup->($client, @args) };
-        diag("$name: setup attempt $attempt missed: $@") if $@;
+        my ($got, $miss) = $setup->($client, @args);
         CorpusEnv::teardown();
-        return is($got, $want, $name) if $tied;
+        return is($got, $want, $name) unless defined $miss;
+        push @missed, $miss;
     }
-    diag "$name: skipped, no tie after 3 setups";
-    SKIP: { skip "$name: no tie landed in one workflow task after 3 setups", 1 }
+    SKIP: { skip "$name: the tie was not set up in 3 attempts: " . join('; ', @missed), 1 }
     return;
 }
 

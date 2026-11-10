@@ -1,6 +1,6 @@
 # temporal-architect
 
-A toolchain for designing, visualizing, and code-generating entire Temporal systems — namespaces, workers, workflows, and Nexus — with `.twf` as the parseable source of truth. See [README](./README.md) for full details.
+A toolchain for designing, visualizing, and code-generating entire Temporal systems — namespaces, workers, workflows, and Nexus — in every Temporal SDK, with `.twf` as the parseable source of truth. See [README](./README.md) for full details.
 
 ## North Star
 
@@ -46,7 +46,7 @@ skills/                 AI skill definitions (canonical source; cut into the ski
 
 # Dev — release tooling and dev-cycle apparatus
 internal/release/
-  gen-skills-manifest/  Go tool that emits skills/MANIFEST.md + release tarball
+  gen-skills-manifest/  Go tool that emits the skills release tarball + its MANIFEST.json (contract: skills/MANIFEST.md)
 internal/changes/       Scratch space for an in-flight dev cycle: REVISIONS_NNN, CHANGES_NNN. Gitignored; absent between cycles.
 internal/harness/       Dev-cycle component manifest (components.md), shared by the /dev-cycle skill and the orchestrator
 internal/orchestrator/  Temporal workflow design for the automated dev cycle (the durable twin of the /dev-cycle skill)
@@ -94,7 +94,7 @@ When the parser's JSON output changes, the Go DTO structs are the single source 
 
 The authoritative component graph — scopes, review mappings, propagation routing, and wave ordering — lives in `internal/harness/components.md`. Keep it there and only there.
 
-The contract on each edge: the parser exposes token types, AST node types, and the resolver error model to the LSP server; the JSON output of `twf parse`/`twf symbols` to the visualizer; DSL syntax and semantics (per `tools/spec/sections/`) to the design skill, whose constructs each author skill maps to its Temporal SDK. The VS Code extension lives in the distribution repo and consumes the toolchain only across the published `@temporal-architect/wire-types` + visualizer release artifacts — a cross-repo version-pin seam, not an in-tree edge.
+The contract on each edge: the parser exposes token types, AST node types, and the resolver error model to the LSP server; the JSON output of `twf parse`/`twf symbols` to the visualizer; DSL syntax and semantics (per `tools/spec/sections/`) to the design skill, whose constructs each author skill maps to its Temporal SDK. An author skill owns the `.twf` ↔ SDK translation (call shapes, wire names, options, layout, verify) and hands SDK idioms to `temporal-developer`, or to the community SDK's own docs where `temporal-developer` has none. The VS Code extension lives in the distribution repo and consumes the toolchain only across the published `@temporal-architect/wire-types` + visualizer release artifacts — a cross-repo version-pin seam, not an in-tree edge.
 
 The spec is consumed three ways: (1) as embedded content via `twf spec [--list|<slug>]`, (2) as files in `tools/spec/sections/` for skill prompts and review commands, and (3) as the importable Go package `github.com/jmbarzee/temporal-architect/tools/spec`.
 

@@ -14,15 +14,14 @@ module Concurrency
       handle.fetch_history_events.map(&:event_type)
     end
 
-    # Waits up to 10s of real time for an event of type; false rather than hang.
+    # Waits up to 10s of real time for an event of type; raises rather than hang.
     def until_event(handle, type)
       deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 10
       until event_types(handle).include?(type)
-        return false if Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
+        raise "#{handle.id}: #{type} never reached history" if Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
 
         sleep 0.02
       end
-      true
     end
 
     # No cache, so no sticky queue: the next workflow task goes to the normal queue, not a stopped worker.
@@ -31,7 +30,7 @@ module Concurrency
                              max_cached_workflows: 0)
     end
 
-    ATTEMPTS = 5
+    ATTEMPTS = 3
 
     # Runs workflow until a real tie lands — the timer fired and Ack sent while no worker runs, so
     # both reach one workflow task — and returns its winner. The setup is timing-dependent, so a
@@ -46,20 +45,18 @@ module Concurrency
         end
         return got if got
       end
-      skip("no real tie in #{ATTEMPTS} attempts: #{misses.join('; ')}")
+      skip("the tie was not set up in #{ATTEMPTS} attempts: #{misses.join('; ')}")
     end
 
     # One attempt: the winner when the timer firing and Ack land in one workflow task, else nil
     # with the miss added to misses.
     def attempt_tie(env, workflow, order, misses)
       h = env.client.start_workflow(workflow, order, id: "tie-#{SecureRandom.uuid}", task_queue: TASK_QUEUE)
-      started = worker(env).run { until_event(h, :EVENT_TYPE_TIMER_STARTED) }
-      return miss(misses, h, 'timer never started') unless started
+      worker(env).run { until_event(h, :EVENT_TYPE_TIMER_STARTED) }
 
       # Skip time past the timer; with no worker to take its workflow task, nothing runs.
       skipper = Thread.new { env.sleep(7200) }
-      return miss(misses, h, 'timer never fired') unless until_event(h, :EVENT_TYPE_TIMER_FIRED)
-
+      until_event(h, :EVENT_TYPE_TIMER_FIRED)
       h.signal(workflow.ack)
       got = worker(env).run { h.result }
 

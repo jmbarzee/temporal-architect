@@ -48,7 +48,7 @@ corpus/
       <design>.twf       the design plus only @sdk(elixir, …)
     swift/               its Swift output, a test target; nexus has none (Swift has no Nexus)
       <design>.twf       the design plus only @sdk(swift, …)
-    haskell/             its Haskell output, one test suite; nexus/haskell/ handles Hello only (Greet has no Haskell handler)
+    haskell/             its Haskell output, one test suite; nexus/haskell/ handles Hello only (Greet has no Haskell handler) and stands in for detach nexus (TryCancel, because ABANDON is unreachable at the pin; see skills/temporal-architect-author-haskell/reference/detach.md)
       <design>.twf       the design plus only @sdk(haskell, …)
 ```
 

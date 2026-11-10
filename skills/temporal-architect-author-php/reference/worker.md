@@ -144,10 +144,10 @@ The namespace worker's `options:` block maps onto `WorkerOptions::new()` (`Worke
 | `max_concurrent_activity_executions` | `withMaxConcurrentActivityExecutionSize` (renamed) |
 | `max_concurrent_workflow_task_executions` | `withMaxConcurrentWorkflowTaskExecutionSize` (renamed) |
 | `max_concurrent_local_activity_executions` | `withMaxConcurrentLocalActivityExecutionSize` (renamed) |
-| `max_concurrent_nexus_task_executions` | `withMaxConcurrentNexusTaskExecutionSize` (renamed; moot without Nexus) |
+| `max_concurrent_nexus_task_executions` | **unsupported**: `withMaxConcurrentNexusTaskExecutionSize` is inert, since a worker registers only workflows and activities (`Worker/WorkerInterface.php:36-74`) |
 | `max_concurrent_workflow_task_pollers` | `withMaxConcurrentWorkflowTaskPollers` |
 | `max_concurrent_activity_task_pollers` | `withMaxConcurrentActivityTaskPollers` |
-| `max_concurrent_nexus_task_pollers` | `withMaxConcurrentNexusTaskPollers` (moot without Nexus) |
+| `max_concurrent_nexus_task_pollers` | **unsupported**: `withMaxConcurrentNexusTaskPollers` is inert likewise |
 | `worker_activity_rate_limit` | `withWorkerActivitiesPerSecond` (renamed) |
 | `task_queue_activity_rate_limit` | `withTaskQueueActivitiesPerSecond` (renamed) |
 | `max_cached_workflows` | no field: `.rr.yaml` `temporal.cache_size` (default 10000; roadrunner-temporal `config.go`), one value for the whole RoadRunner process, not per `.twf` worker |

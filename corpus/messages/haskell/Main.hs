@@ -151,22 +151,16 @@ tie order = go (1 :: Int) []
           either (\miss -> go (n + 1) (miss : missed)) (pure . Right) r
 
 -- | Fires the timer and sends X "1" while no worker runs. Returns Nothing when both
--- reach one workflow task, otherwise what happened instead.
+-- reach one workflow task, otherwise the history between them.
 setUpTie :: Env -> C.WorkflowHandle a -> IO (Maybe String)
 setUpTie env h = do
   -- No cache, so no sticky queue: the next workflow task goes to the normal queue.
-  started <- withWorker env (fixturesWorker 0) (untilEvent h TimerStarted)
-  if not started
-    then pure (Just "no TimerStarted;")
-    else do
-      -- Skip time past the timer; with no worker, nothing reads its workflow task.
-      fired <- withAsync (skip env (hours 1)) \_ -> untilEvent h TimerFired
-      if not fired
-        then pure (Just "no TimerFired;")
-        else do
-          run env (C.signal h xSignal C.defaultSignalOptions "1")
-          between <- takeWhile (not . is Signaled) . dropWhile (not . is TimerFired) <$> events h
-          pure
-            if any (is TaskStarted) between
-              then Just (show (map (^. History.eventType) between) <> ";")
-              else Nothing
+  withWorker env (fixturesWorker 0) (untilEvent h TimerStarted) `shouldReturn` True
+  -- Skip time past the timer; with no worker, nothing reads its workflow task.
+  withAsync (skip env (hours 1)) (\_ -> untilEvent h TimerFired) `shouldReturn` True
+  run env (C.signal h xSignal C.defaultSignalOptions "1")
+  between <- takeWhile (not . is Signaled) . dropWhile (not . is TimerFired) <$> events h
+  pure
+    if any (is TaskStarted) between
+      then Just (show (map (^. History.eventType) between) <> ";")
+      else Nothing
