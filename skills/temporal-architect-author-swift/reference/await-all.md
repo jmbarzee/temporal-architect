@@ -19,6 +19,7 @@ let (count, wasAudited) = try await (counted, audited)
 - One `async let` per branch, whatever its kind ([promise.md](./promise.md)), then one `try await` over the tuple, as the corpus's [`Batch`](https://github.com/jmbarzee/temporal-architect/blob/main/corpus/concurrency/swift/Workflows.swift) does. Structured concurrency in workflows: DocC [`Workflow-Concurrency.md` § Use Structured Concurrency patterns](https://github.com/apple/swift-temporal-sdk/blob/1.5.0/Sources/Temporal/Documentation.docc/Workflows/Workflow-Concurrency.md#use-structured-concurrency-patterns).
 - The tuple is awaited element by element, so a failure surfaces when its element is reached; the throw then leaves the scope, which cancels and awaits the branches still running. To keep them running after a failure, bind them in an outer scope.
 - A `detach` branch is its start, `startChildWorkflow`, done once the child has started ([detach.md](./detach.md)).
+- A `nexus` branch is unsupported ([nexus.md](./nexus.md)).
 
 ## Fan-out
 
