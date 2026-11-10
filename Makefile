@@ -208,7 +208,7 @@ vet:
 
 .PHONY: check-corpus corpus-go corpus-python corpus-typescript corpus-dotnet corpus-java corpus-ruby corpus-clojure corpus-rust corpus-php
 .PHONY: corpus-perl
-.PHONY: corpus-elixir
+.PHONY: corpus-elixir corpus-erlang
 .PHONY: corpus-swift
 .PHONY: corpus-haskell
 
@@ -285,6 +285,12 @@ corpus-rust: check-corpus
 ## --dynamic-config-value frontend.WorkflowTimeSkippingEnabled=true.
 corpus-elixir: check-corpus
 	cd corpus && MIX_ENV=test mix deps.get --check-locked && MIX_ENV=test mix compile && mix test
+
+## Check the corpus, then fetch (pinned by rebar.lock; a fetch that changes it fails), compile
+## (warnings as errors) and run the Common Test suites of its Erlang outputs against the same dev
+## server as corpus-elixir. rebar3 builds under corpus/_build/rebar3/, clear of mix's.
+corpus-erlang: check-corpus
+	cd corpus && rebar3 compile && git diff --exit-code rebar.lock && rebar3 ct
 
 ## Check the corpus, then install (composer.lock), fetch rr and the test server (dload.xml),
 ## analyse (PHPStan) and test its PHP outputs; the PHPUnit bootstrap starts both binaries.

@@ -63,7 +63,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        sdk: [go, python, typescript, dotnet, java, ruby, clojure, rust, php, perl, elixir, swift, haskell]
+        sdk: [go, python, typescript, dotnet, java, ruby, clojure, rust, php, perl, elixir, erlang, swift, haskell]
     steps:
       - uses: actions/checkout@v4
 
@@ -179,13 +179,25 @@ jobs:
             corpus/_build
           key: corpus-elixir-${{ hashFiles('corpus/mix.lock') }}
 
-      # Elixir's SDK has no test server: its tests run against a dev server, with time skipping on.
+      - uses: erlef/setup-beam@v1
+        if: matrix.sdk == 'erlang'
+        with:
+          otp-version: '28'
+          rebar3-version: '3.28.0'
+
+      - uses: actions/cache@v4
+        if: matrix.sdk == 'erlang'
+        with:
+          path: corpus/_build/rebar3
+          key: corpus-erlang-${{ hashFiles('corpus/rebar.lock') }}
+
+      # The Elixir and Erlang SDK has no test server: their tests run against a dev server, with time skipping on.
       - uses: temporalio/setup-temporal@v0
-        if: matrix.sdk == 'elixir'
+        if: matrix.sdk == 'elixir' || matrix.sdk == 'erlang'
         with:
           version: '1.9.1'
 
-      - if: matrix.sdk == 'elixir'
+      - if: matrix.sdk == 'elixir' || matrix.sdk == 'erlang'
         timeout-minutes: 2
         run: |
           temporal server start-dev --headless --dynamic-config-value frontend.WorkflowTimeSkippingEnabled=true &
