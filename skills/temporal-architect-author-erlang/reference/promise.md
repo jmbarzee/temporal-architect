@@ -9,7 +9,7 @@ await handleA -> resultA
 ```
 
 ```erlang
-HandleA = start_activity(~"ProcessA", [maps:get(~"a", Items)], activity_opts()),
+HandleA = start_activity(~"ProcessA", [maps:get(~"a", Items)], [{start_to_close_timeout, {1, minute}}]),
 %% ... do other work ...
 case wait(HandleA) of
     #{state := completed, result := [ResultA]} ->

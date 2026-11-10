@@ -75,4 +75,3 @@ A closed activity or child carries its closing event's ID (`api/awaitable/tempor
 - **Losing cases** (spec 06): a losing inline timer is cancelled only if unfired, since cancelling a fired timer raises (`api/awaitable/temporal_sdk_api_awaitable_index_table.erl:308`). Losing inline activities and children keep running until the run ends, and a bound promise is never cancelled for losing a round ([author-elixir § Notes](../../temporal-architect-author-elixir/reference/await-one.md#notes)).
 - Every case lives in the main execution, the race included ([signal-handler.md](./signal-handler.md)).
 - An empty case body → the winner's `claim` or `wait` alone.
-- Event-driven/entity workflows repeat the race in a loop, ranking afresh each round; a bound deadline survives the rounds it loses ([composite-patterns.md](./composite-patterns.md)).

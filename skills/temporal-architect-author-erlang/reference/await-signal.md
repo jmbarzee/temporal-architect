@@ -20,4 +20,3 @@ Every signal the design waits on is registered with `corpus_arrivals:on` ([signa
 - Not `wait({signal, ~"Approve"})` per waiter: the index holds only the latest arrival (`api/awaitable/temporal_sdk_api_awaitable_index.erl:381-384,863-868`).
 - An `await one` case uses `ready_at` and `claim` instead, so it takes only if it wins ([await-one.md](./await-one.md)).
 - `await update` is unsupported ([author-elixir update-handler.md](../../temporal-architect-author-elixir/reference/update-handler.md)).
-- Code after `take` sees current state, which bodies run at a later sync may have changed; per-arrival data comes from the taken list.

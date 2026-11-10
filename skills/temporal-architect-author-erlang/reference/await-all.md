@@ -7,7 +7,7 @@ await all:
 ```
 
 ```erlang
-Reserve = start_activity(~"ReserveInventory", [Order], activity_opts()),
+Reserve = start_activity(~"ReserveInventory", [Order], [{start_to_close_timeout, {1, minute}}]),
 Ship = start_child_workflow(TaskQueue, ~"ShipOrder", [
     {input, [Order]}, {workflow_id, <<Wid/binary, "/ShipOrder">>}
 ]),
@@ -37,7 +37,10 @@ await all:
 ```
 
 ```erlang
-Results = wait_all([start_activity(~"ProcessBatchItem", [I], activity_opts()) || I <- Items]),
+Results = wait_all([
+    start_activity(~"ProcessBatchItem", [I], [{start_to_close_timeout, {1, minute}}])
+ || I <- Items
+]),
 case lists:all(fun(#{state := S}) -> S =:= completed end, Results) of
     true ->
         %% ... the rest of the workflow
