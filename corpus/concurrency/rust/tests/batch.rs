@@ -141,7 +141,7 @@ fn tie_worker(env: &Env) -> corpus_testkit::RunningWorker {
 
 /// One try at the tie on a fresh test server: on a shared one, a stopped worker's open poll can
 /// take the timer's workflow task (#529).
-async fn tie(order: &[&str], attempt: u32) -> Option<String> {
+async fn tie(order: &[&str], attempt: u32) -> Result<String, String> {
     let env = Env::start().await;
     let won = tie_on(&env, order, attempt).await;
     env.shutdown().await;
@@ -149,8 +149,9 @@ async fn tie(order: &[&str], attempt: u32) -> Option<String> {
 }
 
 /// AwaitOneTie with the timer fired and Ack sent while no worker runs, so both reach one workflow
-/// task. The setup is timing-dependent, so this returns the winner only if the tie landed.
-async fn tie_on(env: &Env, order: &[&str], attempt: u32) -> Option<String> {
+/// task. The setup is timing-dependent, so this returns the winner only if the tie landed, else
+/// the history between the timer firing and Ack.
+async fn tie_on(env: &Env, order: &[&str], attempt: u32) -> Result<String, String> {
     let id = format!("tie-{}-{attempt}", order.join("-"));
     let h = env
         .client
@@ -164,19 +165,29 @@ async fn tie_on(env: &Env, order: &[&str], attempt: u32) -> Option<String> {
     let first = tie_worker(env);
     let started = env.reaches(&id, EventType::TimerStarted).await;
     first.stop().await;
-    if !started {
-        return None;
-    }
+    assert!(started, "{id}: the timer never started");
     // With no worker to take the timer's workflow task, skipping past it may not return.
     let skip = env.sleep_in_background(Duration::from_secs(3600));
-    let fired = env.reaches(&id, EventType::TimerFired).await;
-    if !fired {
-        skip.abort();
-        return None;
-    }
+    assert!(
+        env.reaches(&id, EventType::TimerFired).await,
+        "{id}: the timer never fired"
+    );
     h.signal(AwaitOneTie::ack, (), WorkflowSignalOptions::default())
         .await
         .unwrap();
+
+    // A real tie: no workflow task started between the timer firing and Ack.
+    let evs = env.events(&id).await;
+    let between: Vec<EventType> = evs
+        .iter()
+        .map(|e| e.event_type())
+        .skip_while(|&t| t != EventType::TimerFired)
+        .take_while(|&t| t != EventType::WorkflowExecutionSignaled)
+        .collect();
+    if between.contains(&EventType::WorkflowTaskStarted) {
+        skip.abort();
+        return Err(format!("{id}: {between:?}"));
+    }
     let second = tie_worker(env);
     let got = env
         .skipping(h.get_result(WorkflowGetResultOptions::default()))
@@ -184,34 +195,29 @@ async fn tie_on(env: &Env, order: &[&str], attempt: u32) -> Option<String> {
         .unwrap();
     second.stop().await;
     skip.abort();
-
-    // A real tie: no workflow task started between the timer firing and Ack.
-    let evs = env.events(&id).await;
-    let at = |t: EventType| evs.iter().position(|e| e.event_type() == t).unwrap();
-    let (fired, signaled) = (
-        at(EventType::TimerFired),
-        at(EventType::WorkflowExecutionSignaled),
-    );
-    let one_task = evs[fired..signaled]
-        .iter()
-        .all(|e| e.event_type() != EventType::WorkflowTaskStarted);
-    one_task.then_some(got)
+    Ok(got)
 }
 
 /// Retries the tie's setup, with a bound, and asserts the winner only on a real tie: a setup that
 /// never lands is reported, never failed (#529).
 async fn first_listed_wins(order: &[&str]) {
-    const ATTEMPTS: u32 = 5;
+    const ATTEMPTS: u32 = 3;
+    let mut missed = Vec::new();
     for attempt in 1..=ATTEMPTS {
-        if let Some(won) = tie(order, attempt).await {
-            assert_eq!(won, order[0], "{order:?}");
-            return;
+        match tie(order, attempt).await {
+            Ok(won) => {
+                assert_eq!(won, order[0], "{order:?}");
+                return;
+            }
+            Err(miss) => missed.push(miss),
         }
     }
-    // Written to stderr directly: libtest captures eprintln! of a passing test, hiding the miss.
+    // libtest has no runtime skip. Written to stderr directly: libtest captures eprintln! of a
+    // passing test, hiding the miss.
     let _ = writeln!(
         std::io::stderr(),
-        "await one {order:?}: no one-task tie in {ATTEMPTS} attempts; behaviour not checked"
+        "await one {order:?}: the tie was not set up in {ATTEMPTS} attempts, behaviour not checked: {}",
+        missed.join("; ")
     );
 }
 

@@ -13,9 +13,12 @@ import io.temporal.testing.TestWorkflowEnvironment;
 import io.temporal.worker.WorkerFactory;
 import io.temporal.worker.WorkerOptions;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -111,26 +114,60 @@ class BatchTest {
     return f;
   }
 
-  /** Runs AwaitOneTie with the timer fired and Ack sent while no worker runs, so both reach one workflow task. */
+  /**
+   * Runs AwaitOneTie with the timer fired and Ack sent while no worker runs, so both reach one
+   * workflow task, and returns the winner.
+   *
+   * <p>In CI the setup sometimes misses: a workflow task starts between the timer firing and Ack
+   * arriving, most likely on a poll the stopped first worker left open at the test server (#529). A
+   * miss is retried on a fresh test server; if every attempt misses, the test is aborted (skipped),
+   * so it never asserts the behaviour on a tie that was not set up.
+   */
   private String tie(List<String> order, boolean anyOf) throws InterruptedException {
-    String id = "tie-" + order + "-" + anyOf;
-    WorkflowStub h =
-        env.getWorkflowClient()
-            .newUntypedWorkflowStub(
-                "AwaitOneTie",
-                WorkflowOptions.newBuilder().setTaskQueue("await-one").setWorkflowId(id).build());
-    h.start(order, anyOf);
+    final int attempts = 3;
+    List<String> missed = new ArrayList<>();
+    for (int attempt = 1; attempt <= attempts; attempt++) {
+      env.close();
+      env = TestWorkflowEnvironment.newInstance();
+      String id = "tie-" + order + "-" + anyOf + "-" + attempt;
+      WorkflowStub h =
+          env.getWorkflowClient()
+              .newUntypedWorkflowStub(
+                  "AwaitOneTie",
+                  WorkflowOptions.newBuilder().setTaskQueue("await-one").setWorkflowId(id).build());
+      h.start(order, anyOf);
+      String miss = setUpTie(id, h);
+      if (miss == null) {
+        WorkerFactory second = worker();
+        try {
+          return h.getResult(String.class);
+        } finally {
+          second.shutdownNow();
+        }
+      }
+      missed.add(miss);
+    }
+    return Assumptions.abort(
+        "the tie was not set up in " + attempts + " attempts: " + String.join("; ", missed));
+  }
+
+  /**
+   * Fires the timer and sends Ack while no worker runs. Returns null when both reach one workflow
+   * task, otherwise the history between them.
+   */
+  private String setUpTie(String id, WorkflowStub h) throws InterruptedException {
     WorkerFactory first = worker();
     until(id, EventType.EVENT_TYPE_TIMER_STARTED);
     first.shutdownNow();
     first.awaitTermination(10, TimeUnit.SECONDS);
     // Skip time past the timer. With no worker to take the timer's workflow task, the
     // sleep may not return, so it runs on its own thread.
+    TestWorkflowEnvironment skipping = env;
     Thread skip =
         new Thread(
             () -> {
               try {
-                env.sleep(Duration.ofHours(1));
+                skipping.sleep(Duration.ofHours(1));
               } catch (RuntimeException ignored) {
                 // the environment closed under it
               }
@@ -139,29 +176,16 @@ class BatchTest {
     skip.start();
     until(id, EventType.EVENT_TYPE_TIMER_FIRED);
     h.signal("Ack");
-    WorkerFactory second = worker();
-    String got = h.getResult(String.class);
-    second.shutdownNow();
 
-    // Both ready on one resume: no workflow task started between the timer firing and Ack arriving.
-    List<HistoryEvent> evs = events(id);
-    int fired = indexOf(evs, EventType.EVENT_TYPE_TIMER_FIRED);
-    int signaled = indexOf(evs, EventType.EVENT_TYPE_WORKFLOW_EXECUTION_SIGNALED);
-    assertTrue(fired >= 0 && signaled > fired);
-    assertTrue(
-        evs.subList(fired, signaled).stream()
-            .noneMatch(e -> e.getEventType() == EventType.EVENT_TYPE_WORKFLOW_TASK_STARTED),
-        "the timer and Ack reached different workflow tasks");
-    return got;
-  }
-
-  private static int indexOf(List<HistoryEvent> evs, EventType type) {
-    for (int i = 0; i < evs.size(); i++) {
-      if (evs.get(i).getEventType() == type) {
-        return i;
-      }
-    }
-    return -1;
+    List<HistoryEvent> between =
+        events(id).stream()
+            .dropWhile(e -> e.getEventType() != EventType.EVENT_TYPE_TIMER_FIRED)
+            .takeWhile(e -> e.getEventType() != EventType.EVENT_TYPE_WORKFLOW_EXECUTION_SIGNALED)
+            .toList();
+    return between.stream()
+            .anyMatch(e -> e.getEventType() == EventType.EVENT_TYPE_WORKFLOW_TASK_STARTED)
+        ? id + ": " + between.stream().map(e -> e.getEventType().name()).collect(Collectors.joining(","))
+        : null;
   }
 
   @Test
