@@ -82,9 +82,9 @@ namespace shop:
 	}
 }
 
-// TestSDKCrossings: activity, workflow and Nexus call edges between disjoint
-// declared SDK sets cross; a call within one SDK and a call to a worker with no
-// `@sdk` do not.
+// TestSDKCrossings: activity, workflow and Nexus call and signal-send edges
+// between disjoint declared SDK sets cross; a call within one SDK and a call to
+// a worker with no `@sdk` do not.
 func TestSDKCrossings(t *testing.T) {
 	file, errs := parser.ParseFileAll(`workflow W():
 	activity A()
@@ -92,6 +92,8 @@ func TestSDKCrossings(t *testing.T) {
 	nexus Ep Svc.Op()
 	activity Same()
 	activity Plain()
+	promise c <- workflow C()
+	signal c.Go()
 	close complete()
 
 activity A():
@@ -110,6 +112,8 @@ activity Plain():
 workflow C():
 	default_options:
 		task_queue: "py"
+	signal Go():
+		x = 1
 	close complete()
 
 nexus service Svc:
@@ -154,7 +158,9 @@ namespace ns:
 	want := []string{
 		"activityCall workflow:W:2 [go]→[python]",
 		"nexusCall workflow:W:4 [go]→[python]",
+		"signalSend workflow:W:8 [go]→[python]",
 		"workflowCall workflow:W:3 [go]→[python]",
+		"workflowCall workflow:W:7 [go]→[python]",
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("SDKCrossings:\n got  %v\n want %v", got, want)

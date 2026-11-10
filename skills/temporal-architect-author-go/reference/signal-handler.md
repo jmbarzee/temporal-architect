@@ -34,7 +34,7 @@ func OrderWorkflow(ctx workflow.Context, orderId string) (OrderResult, error) {
 
 - Params become one struct; the signal name is the channel name. No params → `Receive(gCtx, nil)`.
 - The loop runs every arrival's body, whether or not anything waits, then adds the arrival to the signal's queue. It is the channel's only reader: `await signal`, a signal case and a signal promise take from the queue ([await-signal.md](./await-signal.md)), never from the channel.
-- Before `close continue_as_new`, let the loop drain the channel, `workflow.Await(ctx, func() bool { return paymentReceivedCh.Len() == 0 })`; never add a second `ReceiveAsync` reader. Arrivals queued but not yet taken: #420. The rest: `temporal-developer` `references/go/patterns.md` § Continue-as-New.
+- Before `close continue_as_new`, let the loop drain the channel, `workflow.Await(ctx, func() bool { return paymentReceivedCh.Len() == 0 })`; never add a second `ReceiveAsync` reader. Arrivals still pending at `close continue_as_new` are dropped, and the design passes what it needs as continue-as-new arguments (spec 06, Signal and update arrival). The rest: `temporal-developer` `references/go/patterns.md` § Continue-as-New.
 
 ## Handler options
 
