@@ -73,7 +73,7 @@
     "vitest": "4.1.12"
   },
   "dependencies": {
-    "@jmbarzee/force-graph": "0.1.0",
+    "@jmbarzee/force-graph": "0.1.1",
     "@temporal-architect/wire-types": "file:../wire-types"
   }
 }
