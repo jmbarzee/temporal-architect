@@ -52,10 +52,13 @@ a broken credential also publishes nothing. Fix it, then re-run the workflow.
 
 ## The dist handoff
 
-The release's last job, `dispatch-dist` (`_dispatch-dist.yml`), sends a
-`toolchain-release` repository_dispatch to `jmbarzee/temporal-architect-dist`,
-which opens dist's manifest-bump PR. It authenticates as a GitHub App, minting
-a short-lived installation token per run, so no credential expires.
+The release's last job, `dispatch-dist` (`_dispatch-dist.yml`), waits for the
+Release and the npm publish (a failed publish withholds the dispatch). The
+publish job waits until npm serves both libraries, and a re-run skips a version
+npm already serves. The dispatch then sends a `toolchain-release`
+repository_dispatch to `jmbarzee/temporal-architect-dist`, which opens dist's
+manifest-bump PR. It authenticates as a GitHub App, minting a short-lived
+installation token per run, so no credential expires.
 
 One-time setup:
 

@@ -98,10 +98,10 @@ jobs:
   # ── Hand off to the distribution repo ────────────────────────────────────
 
   dispatch-dist:
-    # Fires only after the Release (and its assets) exist, so dist can download
-    # them immediately. Lockstep is automatic: dist stamps the incoming version
-    # into its manifests and never tags independently.
-    needs: publish-github-release
+    # dist installs the visualizer, whose wire-types dependency comes from npm.
+    # Lockstep is automatic: dist stamps the incoming version into its manifests
+    # and never tags independently.
+    needs: [publish-github-release, publish-npm-libs]
     uses: ./.github/workflows/_dispatch-dist.yml
     with:
       version: ${{ github.ref_name }}

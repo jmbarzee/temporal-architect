@@ -22,6 +22,7 @@ corpus/
   Cargo.toml             a workspace whose root package, testkit.rs, is Rust's time-skipping kit
   composer.json
   mix.exs                globs */elixir; elixir_support/ holds the Elixir support the designs share
+  rebar.config           with rebar.config.script, globs */erlang; erlang_support/ holds the Erlang support the designs share, erlang_test/ its suite
   Package.swift          one test target per design, its path the design's swift/
   cabal.project          with corpus.cabal; builds the pinned hs-temporal-sdk checkout; haskell/ holds the shared Harness.hs and Arrivals.hs
   <design>/
@@ -46,6 +47,8 @@ corpus/
       <design>.twf       the design plus only @sdk(php, …)
     elixir/              its Elixir output, tests beside sources, recorded histories/ to replay; nexus has none (no Nexus at the pin)
       <design>.twf       the design plus only @sdk(elixir, …)
+    erlang/              its Erlang output, Common Test suites beside sources, recorded histories/ to replay; nexus has none (no Nexus at the pin)
+      <design>.twf       the design plus only @sdk(erlang, …)
     swift/               its Swift output, a test target; nexus has none (Swift has no Nexus)
       <design>.twf       the design plus only @sdk(swift, …)
     haskell/             its Haskell output, one test suite; nexus/haskell/ handles Hello only (Greet has no Haskell handler) and stands in for detach nexus (TryCancel, because ABANDON is unreachable at the pin; see skills/temporal-architect-author-haskell/reference/detach.md)
@@ -54,7 +57,7 @@ corpus/
 
 Each SDK's copy of the design names only its own implementation, so no worker carries two SDKs. `check-corpus` checks every `.twf` file on its own (a directory check would load the copies together) and fails when a copy, its `@sdk` lines stripped, differs from the design.
 
-Each output registers the `.twf` names, implements every workflow and activity, and tests each workflow with the SDK's time-skipping test environment, so no Temporal server is needed. Perl's tests need a dev server: sdk-perl has no time-skipping environment, so each test file starts `temporal server start-dev` on a free port and waits in real time. Elixir's need one too, started with the server's time skipping enabled, since its SDK has no test environment; it skips `nexus` and `messages`' `update Review`, which the SDK lacks.
+Each output registers the `.twf` names, implements every workflow and activity, and tests each workflow with the SDK's time-skipping test environment, so no Temporal server is needed. Perl's tests need a dev server: sdk-perl has no time-skipping environment, so each test file starts `temporal server start-dev` on a free port and waits in real time. Elixir's need one too, started with the server's time skipping enabled, since its SDK has no test environment; it skips `nexus` and `messages`' `update Review`, which the SDK lacks. Erlang's run the same way on the same SDK pin.
 
 ## Run
 
@@ -70,11 +73,12 @@ make corpus-clojure     # check the corpus, then the clojure.test suites via the
 make corpus-rust        # check the corpus, then cargo clippy (-D warnings) and cargo test, locked
 make corpus-php         # check the corpus, then composer install (locked), dload (rr, test server), PHPStan and PHPUnit
 make corpus-elixir      # check the corpus, then mix deps.get (locked), compile (warnings as errors) and mix test
+make corpus-erlang      # check the corpus, then rebar3 compile (warnings as errors, rebar.lock unchanged) and rebar3 ct
 make corpus-swift       # check the corpus, then swift build (warnings are errors, resolved versions) and swift test
 make corpus-haskell     # check the corpus, then check out the pinned SDK and cabal test (-Werror, frozen)
 ```
 
-`corpus-elixir` needs a dev server at `TEMPORAL_ADDRESS` (default `127.0.0.1:7233`): `temporal server start-dev --headless --dynamic-config-value frontend.WorkflowTimeSkippingEnabled=true`.
+`corpus-elixir` and `corpus-erlang` need a dev server at `TEMPORAL_ADDRESS` (default `127.0.0.1:7233`): `temporal server start-dev --headless --dynamic-config-value frontend.WorkflowTimeSkippingEnabled=true`. rebar3 builds under `_build/rebar3/`, clear of mix's `_build/<env>/`. It ignores a dependency's own lockfile, so `rebar.lock` and `mix.lock` resolve different `cowlib` versions for the one SDK pin.
 
 ## Add an SDK
 
