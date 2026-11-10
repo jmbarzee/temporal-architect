@@ -46,19 +46,19 @@ The "Show in [view]" action is a contextual action available on any identifiable
 
 **Trigger points:**
 - **Tree View:** the "Show in Graph" contextual navigation button on a definition block.
-- **Graph View:** A **"Show in Tree" button in the node's hover tooltip** (the tooltip is interactive — it stays open while the pointer is over it so the button is clickable). (Double-click is reserved for the graph's own framing — see [SPEC § Viewport](https://github.com/jmbarzee/force-graph/blob/main/SPEC.md#viewport).)
+- **Graph View:** the **Show in Tree** button in a node's hover box (GRAPH_VIEW.md § Hover). Double-click is the graph's own framing ([SPEC § Viewport](https://github.com/jmbarzee/force-graph/blob/main/SPEC.md#viewport)).
 
 **Sequence when invoked:**
 
 1. **Switch tab** — The target view becomes active (instant, no animation).
-2. **Reconcile** — Apply the `focus(target)` rule: minimum filter expansion to make the target visible. If a pin would block the expansion, the pin is overridden for this transition only.
-3. **Animate filter bar** — The bar flashes what the reconcile changed and the pins it bypassed ([SPEC § Linked views](https://github.com/jmbarzee/force-graph/blob/main/SPEC.md#linked-views)), so the user sees what changed.
+2. **Reconcile** — the `focus(target)` rule (§ Intents).
+3. **Animate filter bar** — The bar flashes what the reconcile changed and the pins it bypassed ([SPEC § Linked views](https://github.com/jmbarzee/force-graph/blob/main/SPEC.md#linked-views)).
 4. **Animate view to target:**
    - **Tree View:** Smooth scroll to the target definition. Expand the target block's ancestry (any collapsed parents that contain it). Expand the target block itself.
-   - **Graph View:** The view's `focusNode` ([SPEC § Linked views](https://github.com/jmbarzee/force-graph/blob/main/SPEC.md#linked-views)). Framing the immediate neighbours, holding the viewport and the flash of step 5 are [force-graph#21](https://github.com/jmbarzee/force-graph/issues/21).
-5. **Flash target** (Graph: force-graph#21) — After the view has settled, briefly highlight the target item (a pulse or glow effect) to draw the eye.
+   - **Graph View:** the view's own (below).
+5. **Flash target** (Graph: [force-graph#21](https://github.com/jmbarzee/force-graph/issues/21)) — After the view has settled, briefly highlight the target item (a pulse or glow effect) to draw the eye.
 
-For the Graph view as destination, the shell switches the tab, finds the node (the first deployment copy whose name and kind match) and calls `focusNode(id)` on the view's ref; steps 2 to 4 are the view's own. The Tree view's steps stay the shell's, through `reconcileFilter` and the tree's own pending-focus state.
+Into the Graph, the shell hands `linked.focus('graph', node)` the node whose `copyKey` is `${kind}:${name}`; steps 2 to 4 are the view's own. Into the Tree, the hook reconciles the Tree's filter and the shell's pending focus scrolls and flashes.
 
 ### Orientation
 
@@ -83,15 +83,13 @@ Both views display the same filter bar ([SPEC § The pane's chrome](https://gith
 
 **Source file chips** — One chip per `.twf` file in the AST. Click to toggle visibility. When the Tree's file filter narrows to a single file, the host is asked to open that file (`onOpenFile`). For **packaged** designs, a node's [`package`](../../../skills/temporal-architect-design/topics/packages.md) is recoverable from its qualified node-ID (see GRAPH_VIEW.md § Packages and Qualified Identity), so package is available as a **derived grouping lens** parallel to the source-file axis — no new wire data. Today "package" ≈ the source-file chip; an unpackaged design has a single implicit package, so the lens is inert for it.
 
-**Kind chips** — the Kind axis's chips as its descriptor declares them: five chips over seven kinds (Nexus groups the endpoint, service and operation kinds), each tinted with a style value's colour from the taxonomy (`FilterChip.tint`) and carrying its icon. Each chip shows/hides every item of its kinds. Both views render the same chips from the same descriptor — the graph has no separate tier selector.
-
-**Per-axis pin icons** — A small lock icon sits at the trailing edge of each axis's section in each view's filter bar. See § Per-Axis Pinning below.
+**Kind chips** — the Kind axis's chips as its descriptor declares them: five chips over seven kinds (Nexus is a `FilterChip.values` group of the endpoint, service and operation kinds), each tinted with a style value's colour from the taxonomy (`FilterChip.tint`) and carrying its icon. Each chip shows/hides every item of its kinds. Both views render the same chips from the same descriptor — the graph has no separate tier selector.
 
 **Name search** — Text input (toggled by `/` or `Ctrl+F`). Case-insensitive substring match against definition/node names. Search is **non-destructive in both views**: it dims non-matching items rather than hiding them. See § Search Scope below.
 
 ### Filter State Model
 
-The filter state is a map from axis to its selected values (`FilterState`), held as **per-view state** at the `WorkflowCanvas` level — one copy for the Tree view's filter, one copy for the Graph view's. What an empty selection means (File: everything; Kind: nothing) and what a node with no value on an axis does (File: stays visible) are each axis's declared policy, read in one place for both views. While a view is active, the user freely edits its filter without affecting the other view.
+The filter state is a map from axis to its selected values (`FilterState`), held as **per-view state** at the `WorkflowCanvas` level — one copy for the Tree view's filter, one copy for the Graph view's. What an empty selection means (File: everything, `emptyMeans: 'all'`; Kind: nothing, `emptyMeans: 'none'`) and what a node with no value on an axis does (File: stays visible, `absentMeans: 'visible'`) are each axis's declared policy, read in one place for both views. While a view is active, the user freely edits its filter without affecting the other view.
 
 On every view switch, the reconciler (§ View Transitions) decides how the destination view's filter responds to the source view's current state. The default behavior is **propagation**: edits in one view flow to the other so the views stay in sync. The user can opt out of propagation per axis by **pinning** that axis on the view they want to hold steady.
 
@@ -102,7 +100,7 @@ This design satisfies two competing intuitions:
 
 ### Per-Axis Pinning
 
-In the library's API a pinned axis is a **lock** — `locks` / `onLocksChange` on the views and the bar, `AxisLocks`, `lockedFor`, `withLock`, `overriddenLocks` — so that "pinned" names one thing, a node held in place. This document keeps the product's word, pin, for the toggle the user sees.
+In the library's API a pin is a **lock**; this document keeps the product's word.
 
 Each axis section in a view's filter bar carries a **pin icon**, unpinned (🔓) by default. What a pin holds, and how a focus overrides it for one transition, is the engine's lock ([SPEC § Linked views](https://github.com/jmbarzee/force-graph/blob/main/SPEC.md#linked-views)).
 
@@ -137,7 +135,7 @@ The filter bar is always first, so users always know where to find it regardless
 
 **Definition counts on chips.** Each file and kind chip carries a muted count of the top-level definitions it represents. Kind-chip counts respect the file filter (definitions from the selected files only, or all when none selected); file-chip counts are the per-file definition totals. The counts come from the AST, handed to the bar by the host, so they read alike in both views (not the graph's deployment-expanded node count); in history mode — a graph-only payload with no definitions — they read 0.
 
-**Graph view specifics:** in the Graph view the bar floats over the canvas, and the graph's own controls sit at its bottom ([SPEC § The pane's chrome](https://github.com/jmbarzee/force-graph/blob/main/SPEC.md#the-panes-chrome)). The Tree view has no simulation state to surface and uses normal vertical stack flow because its content scrolls within a fixed-width column where bleed-under provides no value.
+**Graph view specifics:** in the Graph view the bar floats over the canvas, and the graph's own controls sit at its bottom ([SPEC § The pane's chrome](https://github.com/jmbarzee/force-graph/blob/main/SPEC.md#the-panes-chrome)). The Tree view stacks the bar above its content: a fixed-width scrolling column gains nothing from content showing under the bar.
 
 ## Visual Consistency
 
@@ -180,7 +178,7 @@ Each view shows a centered, non-interactive message when there's nothing to disp
 | Condition | Message |
 |-----------|---------|
 | No payload | The host shell's `emptyState` slot (`VisualizerHost`); the standalone app's text is "Open a `.twf` file or connect to the extension to get started." |
-| AST loaded, nothing matches the current filters | Tree: "No definitions match the current filters." with a hint to adjust the chips. Graph: an empty canvas and `0 nodes, 0 edges` — a message is [force-graph#6](https://github.com/jmbarzee/force-graph/issues/6). |
+| AST loaded, nothing matches the current filters | Tree: "No definitions match the current filters." with a hint to adjust the chips. Graph: [SPEC § Which nodes are visible](https://github.com/jmbarzee/force-graph/blob/main/SPEC.md#which-nodes-are-visible). |
 | AST loaded, only parse errors | Show the error/warning bars (see § Error Handling below) with no content below. |
 
 The message is centred in the content area below the filter bar.
@@ -242,8 +240,6 @@ Definitions and nodes are matched across AST versions **by name**. A definition 
 **Tree View:**
 - New definitions appear in their natural position (sorted by type and order in AST), collapsed, with no special animation.
 - Removed definitions disappear immediately. If expanded, children vanish with them.
-
-**Graph View:** removed nodes disappear with their edges; a fade is [force-graph#8](https://github.com/jmbarzee/force-graph/issues/8).
 
 ### Transition Indicator
 

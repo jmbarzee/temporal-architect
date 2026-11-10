@@ -23,7 +23,7 @@ The visualizer's two views consume different parser outputs:
 
 The graph view is a **renderer over the parser-emitted deployment graph**. The parser owns deployment expansion (one node per definition × deployment context), dispatch routing (which deployment a call lands on), and tier coarsening (worker-tier and namespace-tier projections of dispatch edges). The visualizer does not re-walk the AST for any of this. Its **host half** — the adapter in `tools/visualizer/src/adapter/` — translates the parser's nodes and edges into the library's `Graph` and declares the Temporal taxonomy; its **library half** — `@jmbarzee/force-graph`, an external package — lays that graph out, filters, highlights and draws it, and never sees the parser or the AST.
 
-Two identities thread through the graph. `node.copyKey` (the parser's `definition` field — `${kind}:${name}`) groups a definition's deployment copies: the library indexes it (`copyGroups(graph)`), and hovering one copy halos every sister ([SPEC § Copies](https://github.com/jmbarzee/force-graph/blob/main/SPEC.md#copies)). A **cross-view focus** is the library's `FocusTarget { values }` — the axis values the host knows (its kind, its file), which the destination's filter widens to admit — plus the definition's name, which the host carries beside it in a type of its own (`TreeFocus`). That name is the definition's qualified name (`billing.Charge`; the bare name when unpackaged). Into the Graph, the host hands the view the first node of that name and kind — a definition's qualified name is its node's `name` — and the view centres on it, the sisters showing through the duplicate halo. Into the Tree, the host resolves the clicked node by its `copyKey` to the top-level definition that owns it — the definition itself, or, for a node nested inside one (a nexus operation, a nexus endpoint), its nexus service or namespace — and the focus names that definition and widens its kind; the view scrolls to it, or, for a nested node, expands it and scrolls to and flashes the operation or endpoint row inside (the focus's `child`). A node with no owning definition is offered no "Show in Tree".
+Two identities thread through the graph. `node.copyKey` groups a definition's deployment copies (§ The model). A **cross-view focus** is the library's `FocusTarget { values }` — the axis values the host knows (its kind, its file), which the destination's filter widens to admit — plus the definition's name, which the host carries beside it in a type of its own (`TreeFocus`). That name is the definition's qualified name (`billing.Charge`; the bare name when unpackaged). Into the Graph, the host focuses the node whose `copyKey` is `${kind}:${name}` (§ Packages and Qualified Identity). Into the Tree, the host resolves the clicked node by its `copyKey` to the top-level definition that owns it — the definition itself, or, for a node nested inside one (a nexus operation, a nexus endpoint), its nexus service or namespace — and the focus names that definition and widens its kind; the view scrolls to it, or, for a nested node, expands it and scrolls to and flashes the operation or endpoint row inside (the focus's `child`). A node with no owning definition is offered no "Show in Tree".
 
 For **packaged** designs the `name` element carries a package qualifier (`workflow:billing.Charge`, `nexusOperation:billing.Svc.Op`) — see § Packages and Qualified Identity. The contract is unchanged: the kind is still everything before the **first** `:`, and the package `.` is part of the name, never a new key segment.
 
@@ -160,34 +160,7 @@ The containment hierarchy assumes every orchestrator- and leaf-tier node belongs
 
 ---
 
-## Layout Values
-
-The layout is the engine's ([SPEC § Layout](https://github.com/jmbarzee/force-graph/blob/main/SPEC.md#layout)); push and pull open on the style axis, `temporalType`. This host declares the values: each type's charge, core radius and rest bands in `NODE_TYPE_REGISTRY` (`src/adapter/node-types.ts`), and a spring per edge type in `src/adapter/edge-types.ts`. Each nexus relationship is its own spring, and the workflow/operation dependency is two, by direction (`Wf→Op`, `Op→Wf`). `Wf→Sig` is weaker and longer than `Wf↔Wf`: a signal send couples two workflows without binding them, since the sender never waits on the receiver's handler.
-
----
-
-## Type Filtering
-
-The graph uses the **kind chips** of the shared filter bar to control which nodes are visible. Any combination is valid; there is no contiguity constraint.
-
-### Type Toggle Control
-
-The Kind axis's chips, as the host's descriptor declares them (`chipsFor`): **Namespaces** · **Workers** · **Nexus** · **Workflows** · **Activities** — five chips over seven kinds. The **Nexus** chip is a **group** (`FilterChip.values`) that controls three kinds together:
-- **NexusEndpoint** — the routing alias (container tier, parented to their namespace)
-- **NexusService** — the callable API surface (host tier, hosted on a worker)
-- **NexusOperation** — the per-operation callable handle (orchestrator tier, child of its service)
-
-Toggling the Nexus chip on turns all three on simultaneously; toggling it off hides all three and any nexus call edges that touch them. This keeps the filter bar compact. The filter state knows nothing of the grouping: it is the set of selected values on the Kind axis (`nexusEndpointDef`, `nexusServiceDef`, `nexusOperationDef`, individually), so the contract and persistence are unchanged — the chip is the descriptor's.
-
-Default state: the values the taxonomy declares default-visible — Workers and Workflows ON; everything else OFF.
-
-Both views render the same bar from the same descriptors, so the tree view shows the same five chips.
-
-### Which Nodes Are Visible
-
-The rule is the engine's ([SPEC § Which nodes are visible](https://github.com/jmbarzee/force-graph/blob/main/SPEC.md#which-nodes-are-visible)). On the Kind axis the selection is an allow-list (`emptyMeans: 'none'`); on the File axis an empty selection means everything, and a node with no source file is never hidden by it (`emptyMeans: 'all'`, `absentMeans: 'visible'`).
-
-### Edge Graduation
+## Edge Graduation
 
 Graduation is the engine's ([README § Collapse rules](https://github.com/jmbarzee/force-graph/blob/main/README.md#collapse-rules)). This host's choices: every value `ascend`s but the operation, which `splice`s, so with operations hidden caller → operation → backing draws as caller → backing; a visible workflow's call to a hidden activity re-points to the activity's worker, a mixed-tier edge the parser's coarsening never emits; and at a coarse tier the parser's coarsened edge is the one drawn. When two graduated edges land on one pair, this host's `collapse` keeps the one carrying routing metadata, in either edge order.
 
@@ -197,31 +170,11 @@ Graduation is the engine's ([README § Collapse rules](https://github.com/jmbarz
 
 ### Node Appearance
 
-A value's radius, icon and colours are its registry entry's (`src/adapter/node-types.ts`). The small discs — workflow and operation, activity — are told apart by colour and icon, matching the tree view's colour system.
-
-**Parameterized-family nodes (cardinality badge).** A node with `templateParams` (§ Graph Data Model) is drawn once, as its static counterpart is, with one `× {param}` chip per entry (`× org`, `× region` for `["org","region"]`). The chips are an **adornment** beside the orphan ring ([PRODUCT.md](./PRODUCT.md) § Node badges), **not** the name label; a namespace or endpoint label keeps its parameters, under the 15/12-character elision. The workflows, activities and nexus services a family worker hosts carry no chip: the family is the worker.
+**Parameterized-family nodes (cardinality badge).** A node with `templateParams` (§ Graph Data Model) is drawn once, as its static counterpart is, with one `× {param}` chip per entry (`× org`, `× region` for `["org","region"]`). The chips are an **adornment**, not the name label ([PRODUCT.md](./PRODUCT.md) § Node badges); a namespace or endpoint label keeps its parameters. The workflows, activities and nexus services a family worker hosts carry no chip: the family is the worker.
 
 *A worker instantiated more than once in a namespace* is one node: its chips are the union of its instantiations' parameters and its queue the first's, so a chip can sit beside a static queue in its context line (§ Hover).
 
 *Deferred:* drawing a family's members (`fabric-shard-acme`, `sandbox-8f3a`, …) as their own nodes — [#258](https://github.com/jmbarzee/temporal-architect/issues/258).
-
-### Edge Appearance
-
-An edge type's stroke — colour per theme, alpha, dash, width — is its entry in `src/adapter/edge-types.ts`: a nexus dependency has its own colour, a signal send is long-dashed signal red, and a spliced caller-to-backing edge draws as the workflow dependency its type says it is. Nexus call edges carry endpoint, service and operation as hover metadata (§ Nexus Routing Association). Under the SDK scheme the host marks cross-SDK calls (`markedEdges`, § SDK Scheme).
-
-### Color
-
-See [PRODUCT.md](./PRODUCT.md) § Visual Identity for the palette; the registry carries it per theme.
-
-### Node Summaries
-
-Whether a value summarises its children (namespace, worker, nexus service), its degree, or neither (endpoint) is its registry entry's `summaryKind`; the hover box shows it ([SPEC § Hover and selection](https://github.com/jmbarzee/force-graph/blob/main/SPEC.md#hover-and-selection)). See [PRODUCT.md](./PRODUCT.md) § Glanceable summaries.
-
----
-
-## Errors Header
-
-The graph view surfaces parse errors and warnings using the shared error handling pattern — the two severity bars (red errors, yellow warnings, collapsed by default) at the bottom of the shared filter bar. See [VIEW_FRAMEWORK.md](./VIEW_FRAMEWORK.md) § Error Handling. The bars fill the bar's findings slot ([SPEC § The pane's chrome](https://github.com/jmbarzee/force-graph/blob/main/SPEC.md#the-panes-chrome)), each with its own scrollable body. The canvas still renders whatever valid nodes and edges exist in the partial AST.
 
 ---
 
@@ -231,7 +184,7 @@ The graph view surfaces parse errors and warnings using the shared error handlin
 
 The context line is the taxonomy's `contextLine` (`contextLineFor`, `src/adapter/node-types.ts`): a worker or nexus node shows where it lives and the task queue that routes to it, a workflow or activity its worker, a namespace nothing.
 
-The hover box's button is this host's **Show in Tree** (`nodeAction`), which invokes the `focus(target)` view transition to the Tree view (see [VIEW_FRAMEWORK.md](./VIEW_FRAMEWORK.md) § View Transitions); the action is handed the node itself, so the host knows which deployment copy was clicked. It is offered on every node that has an owning definition (in a consistent payload, every node); an endpoint or operation, which has no tree block of its own, focuses the namespace or nexus service it is nested in and reveals its own row there (§ Data Flow: Two Views, Two Commands).
+The hover box's button is this host's **Show in Tree** (`nodeAction`), the `focus(target)` transition ([VIEW_FRAMEWORK.md](./VIEW_FRAMEWORK.md) § View Transitions); it is handed the node, so the host knows which copy was clicked, and lands where § Data Flow says.
 
 ### Nexus Routing Association (Hover)
 
@@ -274,14 +227,11 @@ and the library's `copyGroups(graph)` maps each member to all its sister deploym
 
 Group membership is **not** baked into the static graph; it is derived reactively
 from the decomposition plus the modal's current selection, exactly like the
-hover/search highlight sets. The split is the host's and the view's: the host
-turns its decomposition and the modal's selection into groups over the whole
-graph (an id, the node ids covered, how strongly to glow), and the view restricts
-each to the visible set, drops the empty, and colours what is left in order — so
-the palette cycles over the groups shown, and the host's legend reads the colours
-back from the groups as drawn. The glow only ever covers nodes that pass the
-current type/file filters (the visible set) — filter-as-source-of-truth. A group's hidden members do not pop into view; the glow extends
-what is already on screen.
+hover/search highlight sets. The host turns its decomposition and the modal's
+selection into groups over the whole graph (an id, the node ids covered, how
+strongly to glow); the view draws and colours them
+([SPEC § Group glow](https://github.com/jmbarzee/force-graph/blob/main/SPEC.md#group-glow)), and the host's legend reads the
+colours back from the groups as drawn.
 
 ### Groups Modal
 
@@ -350,7 +300,7 @@ emphasises its group) and, beneath them, **N cross-SDK calls**: the activity,
 workflow and Nexus call and signal-send edges whose two nodes both carry `sdks`
 and share none — the rule of `twf check`'s `CROSS_SDK_CALL` hint
 (`graph.SDKCrossings`). While the scheme glows, the view marks those edges
-(§ Edge Appearance). The visualizer's copy of the rule (`src/adapter/sdk.ts`) and the Go one are tested
+(`markedEdges`). The visualizer's copy of the rule (`src/adapter/sdk.ts`) and the Go one are tested
 against one fixture, `tools/lsp/parser/graph/testdata/cross_sdk.*`.
 
 ### Glow Display
@@ -366,24 +316,6 @@ these in the graph (e.g. a node badge) is **deferred**; see
 
 ---
 
-## Visual Density
-
-The kind filter is this host's primary density control: the default view (Workers and Workflows) is moderate, and the user opts into density by enabling kinds. See [PRODUCT.md](./PRODUCT.md) § Density management.
-
----
-
-## Live Reload
-
-See [VIEW_FRAMEWORK.md](./VIEW_FRAMEWORK.md) § Live Reload.
-
----
-
 ## Keyboard Navigation
 
 The keys are the engine's ([SPEC § Keyboard](https://github.com/jmbarzee/force-graph/blob/main/SPEC.md#keyboard)). This host listens globally, since the pane is the whole webview: the shell passes `global` while the Graph view is the active tab and `none` while it is the hidden one, kept mounted. See [VIEW_FRAMEWORK.md](./VIEW_FRAMEWORK.md) § Keyboard Modifier Vocabulary.
-
----
-
-## Cross-View Navigation
-
-The graph view participates in the visualizer's cross-view navigation system. See [VIEW_FRAMEWORK.md](./VIEW_FRAMEWORK.md) for view switching, "Show in Tree" actions, shared filter vocabulary, and other shared behaviors.
