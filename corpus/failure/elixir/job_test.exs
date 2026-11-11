@@ -15,13 +15,14 @@ defmodule Failure.JobTest do
 
   # A signal ahead of the first workflow task records a history the SDK cannot replay at the pin
   # (#524's upstream draft 1), so the test signals only once that task completed.
-  defp await_first_task(we) do
+  defp await_first_task(we, tries \\ 50) do
     {:ok, %{history: %{events: events}}} =
       TemporalSdk.get_workflow_history(Corpus.Temporal.cluster(), we, await_all_close: false)
 
     unless Enum.any?(events, &(&1.event_type == :EVENT_TYPE_WORKFLOW_TASK_COMPLETED)) do
+      assert tries > 0, "the first workflow task never completed"
       Process.sleep(100)
-      await_first_task(we)
+      await_first_task(we, tries - 1)
     end
   end
 
@@ -32,14 +33,22 @@ defmodule Failure.JobTest do
     await_first_task(we)
     TemporalSdk.signal_workflow(Corpus.Temporal.cluster(), we, "Proceed", input: [])
 
+    # Bounded: a wait-for-all run would fail only after Process's 5 s, with its completion recorded.
     assert {:ok, {:failed, %{failure: %{message: "rejected item-1", failure_info: {_, %{type: "Rejected"}}}}}} =
-             TemporalSdk.await_workflow(Corpus.Temporal.cluster(), we, timeout: {60, :second})
+             TemporalSdk.await_workflow(Corpus.Temporal.cluster(), we, timeout: {30, :second})
 
     {:ok, history} = TemporalSdk.get_workflow_history(Corpus.Temporal.cluster(), we)
     types = Enum.map(history, & &1.event_type)
     assert List.last(types) == :EVENT_TYPE_WORKFLOW_EXECUTION_FAILED
-    # The closed history holds Reject's failure and no close of Process: the run failed first.
-    assert :EVENT_TYPE_ACTIVITY_TASK_FAILED in types
+
+    # Process was scheduled before Reject failed, so the branches ran together, not in turn.
+    process_scheduled =
+      Enum.find_index(history, &match?(%{attributes: {_, %{activity_type: %{name: "Process"}}}}, &1))
+
+    assert process_scheduled, "Process was not scheduled"
+    assert process_scheduled < Enum.find_index(types, &(&1 == :EVENT_TYPE_ACTIVITY_TASK_FAILED))
+
+    # The closed history holds no close of Process, and no cancel request: the run failed first.
     refute :EVENT_TYPE_ACTIVITY_TASK_COMPLETED in types
     refute :EVENT_TYPE_ACTIVITY_TASK_CANCEL_REQUESTED in types
   end

@@ -19,7 +19,7 @@ case race(t) do
 
   :timer ->
     # activity CancelOrder(orderId), as an inline call, then:
-    fail_workflow_execution(%{message: "order cancelled", type: "OrderCancelled", details: [%{"status" => "cancelled"}]})
+    fail_workflow_execution(%{message: ~c"order cancelled", type: "OrderCancelled", details: [%{"status" => "cancelled"}]})
 end
 
 # Listed order: signal PaymentReceived, then the timer.
