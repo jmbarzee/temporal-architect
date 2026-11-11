@@ -42,8 +42,22 @@ defmodule Messages.MessagesTest do
 
   defp with_two_xs(type, input), do: with_signals(type, input, "X", [["1"], ["2"]])
 
+  # A signal ahead of the first workflow task records a history the SDK cannot replay at the pin
+  # (#524's upstream draft 1), so a test sends its first signal only once that task completed.
+  # `await_all_close: false` reads the history so far instead of awaiting the close.
+  defp await_first_task(we) do
+    {:ok, %{history: %{events: events}}} =
+      TemporalSdk.get_workflow_history(Corpus.Temporal.cluster(), we, await_all_close: false)
+
+    unless Enum.any?(events, &(&1.event_type == :EVENT_TYPE_WORKFLOW_TASK_COMPLETED)) do
+      Process.sleep(100)
+      await_first_task(we)
+    end
+  end
+
   test "Approval: Open before any waiter, Approve to the promise; Status reads state, open and closed" do
     we = start_workflow(@tq, "Approval", ["req-1"])
+    await_first_task(we)
     signal(we, "Open", [])
     Process.sleep(1_500)
     assert {:ok, %{query_result: ["open"]}} = query(we)
