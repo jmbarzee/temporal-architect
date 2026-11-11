@@ -13,7 +13,9 @@ await all:
 ```
 
 - One `@(tp/all [...])` over every branch's [promise](./promise.md), whatever its kind; it yields the results as a vector in branch order (`src/temporal/promise.clj:15-31`), as the corpus's `Batch` destructures `[cnt audited]`.
-- `tp/all` fails at the first failure (`src/temporal/promise.clj:18`); the other branches keep running. To cancel them, start the branches in a `CancellationScope` through interop and cancel it on failure: [author-java's await-all.md](../../temporal-architect-author-java/reference/await-all.md). `tp/all-settled` waits for every branch (`src/temporal/promise.clj:33-59`).
+- `tp/all` is sdk-java's `Promise/allOf` over the branches (`src/temporal/promise.clj:28-31`), which fails at the first branch failure, with that failure, and cancels nothing (sdk-java `internal/sync/AllOfPromise.java:33-53`): the other branches keep running, as spec 06 requires. When two fail, the first to fail surfaces; a later failure is dropped (`AllOfPromise.java:41-45`). Not `tp/all-settled`, which waits for every branch (`src/temporal/promise.clj:49-59`).
+- `allOf` skips a branch already complete (`AllOfPromise.java:34`), and `tp/all` reads it only once the rest succeed (`src/temporal/promise.clj:30-31`), so a branch that failed before `tp/all` was built surfaces late. Build it straight after the branches start, with no blocking call between, in both forms.
+- Left uncaught, the failure fails the run from the body (`src/temporal/internal/workflow.clj:119-121`), and only the update from an [update handler](./update-handler.md), through its `try+`. The corpus's `failure.job-test` asserts both.
 - A `detach workflow` branch is complete once started: its branch is `(p/promise (.getExecution stub))` on the child stub, which resolves at the start (`src/temporal/internal/promise.clj:126-128` wraps it for `tp/all`; the stub: [detach.md](./detach.md)).
 - A `nexus` branch is unsupported: the SDK has no Nexus API.
 

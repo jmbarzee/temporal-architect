@@ -116,7 +116,7 @@ Load only what the current layer needs.
 | `await timer(d)` | `workflow.Sleep` | [await-timer.md](./reference/await-timer.md) |
 | `promise p <- ...` | future, deferred `.Get`; for a signal or update, `workflow.NewFuture` settled from the binding | [promise.md](./reference/promise.md) |
 | `state:` / `condition` / `set` / `unset` | `bool` + `workflow.Await` | [condition.md](./reference/condition.md) |
-| `await all:` | `workflow.Go` + futures | [await-all.md](./reference/await-all.md) |
+| `await all:` | futures joined by `awaitAll`, a `Selector` that returns at the first error | [await-all.md](./reference/await-all.md) |
 | `await one:` | `workflow.Await` on any case ready; first listed wins | [await-one.md](./reference/await-one.md) |
 | `options:` / `default_options:` | `ActivityOptions` / `ChildWorkflowOptions` / `NexusOperationOptions` | [options.md](./reference/options.md) |
 | `if` / `for` / `switch` / `break` / `continue`, `x = expr` | Go equivalents | [control-flow.md](./reference/control-flow.md) |

@@ -13,7 +13,7 @@ class ProcessOrder:
         return Result(status="done")
 ```
 
-A `@workflow.defn` class in the worker's workflows module, named as the `.twf` names it ([SKILL.md](../SKILL.md#wire-names)), with one `@workflow.run async def run`. Params are positional, one payload each; no DSL return type → `-> None`; `-> (A, B)` → `-> tuple[A, B]`, one payload. Workflow state lives in `__init__`, since handlers can run before `run`.
+A `@workflow.defn` class in the worker's workflows module, named as the `.twf` names it ([SKILL.md](../SKILL.md#wire-names)), with one `@workflow.run async def run`. Params are positional, one payload each; no DSL return type → `-> None`; `-> (A, B)` → `-> tuple[A, B]`, one payload. Workflow state lives in `__init__`, since handlers can run before `run`. When a handler reads a workflow param, decorate `__init__` with `@workflow.init` so it takes `run`'s params too (`temporalio/workflow/_definition.py:104-121`).
 
 ## `id_scheme:`
 

@@ -3,10 +3,11 @@
 declare(strict_types=1);
 
 // The corpus worker process, started by RoadRunner (rr serve) for the PHP tests. Each design's
-// Workers class holds its .twf workers' registrations; the fixture queues are test-only.
+// Workers class holds its .twf workers' registrations; the fixtures are test-only.
 
 use Corpus\Concurrency\Fixtures\AwaitOneTie;
 use Corpus\Concurrency\Fixtures\BoundDeadline;
+use Corpus\Failure\Fixtures\HeldJobActivities;
 use Corpus\Messages\Fixtures\AwaitOne;
 use Corpus\Messages\Fixtures\CancelledWaiter;
 use Corpus\Messages\Fixtures\NaiveTwoWaiters;
@@ -26,6 +27,7 @@ $factory = WorkerFactory::create();
 Corpus\Messages\Workers::registerApprovalTypes($factory);
 Corpus\Concurrency\Workers::registerBatchTypes($factory);
 Corpus\ContinueAsNew\Workers::registerCounterTypes($factory);
+Corpus\Failure\Workers::registerJobTypes($factory, HeldJobActivities::class);
 
 $factory->newWorker('arrivals')->registerWorkflowTypes(
     TwoWaiters::class,

@@ -30,6 +30,7 @@ workflow Approval(request: string) -> (Decision):
 - Params travel as one value, the sender's first payload (`src/temporal/internal/utils.clj:146-150`): several params are one map keyed by param name, destructured as `{:keys [approver]}`, and no params is `{}`, never `nil` (#438; [signal-send.md](./signal-send.md)).
 - Register at the top of the `defworkflow` body, after the atoms it closes over and before the first blocking call. A signal that arrives earlier is buffered and replayed at registration (sdk-java `internal/sync/SignalDispatcher.java:77-80,133-137`).
 - The handler runs every arrival's body, whether or not anything waits, then adds the arrival with `arr/add!` ([await-signal.md](./await-signal.md)); no params adds `true`. A body that blocks (a timer, an activity) adds after its last blocking call: the arrival is pending only once the handler returns. A signal nothing waits on needs no arrivals.
+- A failure the handler leaves uncaught fails the run. A `TemporalFailure` does (sdk-java `internal/sync/WorkflowExecutionHandler.java:89-90,136`, `internal/replay/ReplayWorkflowExecutor.java:80-83`), but a stone fails the workflow task (`WorkflowExecutionHandler.java:145`), so a body that can fail runs in the `try+` and `forward` of an [update handler](./update-handler.md).
 
 ## Handler options
 
