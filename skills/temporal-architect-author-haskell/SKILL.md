@@ -114,7 +114,7 @@ Load only what the current layer needs.
 | `await signal\|update Name -> (...)` | `A.take`, over the corpus's positional `Arrivals` | [await-signal.md](./reference/await-signal.md) |
 | `promise p <- ...` | the call's `start…` handle, `wait`ed later; for a signal or update, `A.begin`, then `A.takeAt` | [promise.md](./reference/promise.md) |
 | `state:` / `condition` / `set` / `unset` | `StateVar Bool` + `waitCondition` | [condition.md](./reference/condition.md) |
-| `await all:` | `concurrently` / `traverseConcurrently` | [await-all.md](./reference/await-all.md) |
+| `await all:` | `concurrently` / `traverseConcurrently` inside `failFast` | [await-all.md](./reference/await-all.md) |
 | `await one:` | `race` in listed order; a message case claims only if it wins | [await-one.md](./reference/await-one.md) |
 | handler + condition + `await one` | worked compositions | [composite-patterns.md](./reference/composite-patterns.md) |
 | `signal handle.Name(args)` / `signal Type.Name(args)` + `id:` | `signal` on a `ChildWorkflowHandle` / `getExternalWorkflowHandle`, then `wait` | [signal-send.md](./reference/signal-send.md) |

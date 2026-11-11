@@ -1,0 +1,34 @@
+namespace jobs:
+	worker jobTypes
+		options:
+			task_queue: "jobs"
+
+@sdk(haskell, "Job.hs")
+worker jobTypes:
+	workflow Job
+	activity Reject
+	activity Process
+
+workflow Job(item: string):
+	state:
+		condition proceeding
+	signal Proceed():
+		set proceeding
+	update Attempt():
+		await all:
+			activity Reject(item)
+			activity Process(item)
+	await proceeding
+	await all:
+		activity Reject(item)
+		activity Process(item)
+	close complete
+
+activity Reject(item: string):
+	default_options:
+		retry_policy:
+			maximum_attempts: 1
+	reject(item)
+
+activity Process(item: string):
+	process(item)
