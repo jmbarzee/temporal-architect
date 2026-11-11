@@ -121,7 +121,7 @@ Load only what the current layer needs.
 | `await signal Name -> (...)` | `Arrivals.take("Name")` | [await-signal.md](./reference/await-signal.md) |
 | `promise p <- ...` | the call's handle, awaited with `wait(p)`; for a signal, `Arrivals.promise("Name")` | [promise.md](./reference/promise.md) |
 | `state:` / `condition` / `set` / `unset` | process-dictionary state in the main execution, awaited on the signals that set it | [condition.md](./reference/condition.md) |
-| `await all:` | `wait_all([...])` | [await-all.md](./reference/await-all.md) |
+| `await all:` | `wait_branches([...])`, a `wait_any` loop that closes at the first failed branch | [await-all.md](./reference/await-all.md) |
 | `await one:` | `Arrivals.first` over every case: earliest workflow task, then first listed | [await-one.md](./reference/await-one.md) |
 | handler + condition + `await one` | worked compositions | [composite-patterns.md](./reference/composite-patterns.md) |
 | `signal handle.Name(args)` / `signal Type.Name(args)` + `id:` | unsupported | [signal-send.md](./reference/signal-send.md) |
