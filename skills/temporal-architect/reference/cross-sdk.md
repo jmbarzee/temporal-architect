@@ -20,7 +20,7 @@ Read from the default converters of Go SDK v1.50.0, TypeScript SDK 1.25.0, Pytho
 Three SDKs break the JSON baseline before any type does:
 
 - **Clojure**'s default converter writes every non-nil value as Nippy, labelled `binary/plain`, which no other SDK reads. At a crossing the Clojure side needs its JSON converter (`temporal.converter.json`) or a codec; the rows below give that JSON converter.
-- **Elixir** and **Erlang**, one engine, send every binary, so every `string`, as `binary/plain` raw bytes, not a JSON string, which Go, Rust and Swift reject as a `string` param; an atom goes out as a string, so Elixir's `nil` as `"nil"` and Erlang's `undefined` as `"undefined"`, and only `null` is JSON null; a tuple, or a value holding one (Elixir's `DateTime`, Erlang's proplist or record), falls to `binary/erlang`, which no other SDK reads, so an Erlang struct is a map. Erlang's idiomatic string literal, a charlist (`"hi"`), goes out as a list of integers (`[104,105]`); write binaries (`~"hi"`).
+- **Elixir** and **Erlang**, one engine, send every binary, so every `string`, as `binary/plain` raw bytes, not a JSON string, which Go, Rust and Swift reject as a `string` param; Erlang's idiomatic charlist (`"hi"`) goes out as a list of integers (`[104,105]`), so write binaries (`~"hi"`). An atom goes out as a string (Elixir's `nil` as `"nil"`, Erlang's `undefined` as `"undefined"`); only `null` is JSON null. A tuple, or a value holding one (Elixir's `DateTime`, Erlang's proplist or record), falls to `binary/erlang`, which no other SDK reads, so write a user type as a map.
 
 | `.twf` | Hazard |
 |---|---|
