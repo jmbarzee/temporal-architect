@@ -1,6 +1,6 @@
 # promise
 
-A promise is a started call: the call starts when it is made, and `await` only waits for it. Default to an inline call (`try await` at once); use a promise when other work can proceed first, and for `await all:` / `await one:`.
+A promise is a started call: the call starts when it is made, and `await` only waits for it. Default to an inline call (`try await` at once); use a promise when other work can proceed first, and for `await one:`; an `await all:` branch is a task-group child instead ([await-all.md](./await-all.md)).
 
 ```twf
 promise handleA <- activity ProcessA(items.a)

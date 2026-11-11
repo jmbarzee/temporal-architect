@@ -12,6 +12,11 @@ final class Flag: @unchecked Sendable {
     var isSet = false
 }
 
+/// A branch result a task-group child sets; like `Flag`, it needs no lock.
+final class Slot<Value: Sendable>: @unchecked Sendable {
+    var value: Value?
+}
+
 @Workflow
 struct Batch {
     var status = "unacknowledged"
@@ -25,14 +30,23 @@ struct Batch {
     }
 
     mutating func run(context: WorkflowContext<Self>, input: [String]) async throws -> Report {
-        // await all
-        async let counted = context.executeActivity(
-            BatchActivities.Activities.Count.self,
-            options: .init(startToCloseTimeout: .seconds(60)),
-            input: input
-        )
-        async let audited = context.executeChildWorkflow(Audit.self, input: input)
-        let (count, wasAudited) = try await (counted, audited)
+        // await all: the first branch failure leaves the group, and .abandon leaves the other running.
+        let count = Slot<Int>()
+        let audited = Slot<Bool>()
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            group.addTask {
+                count.value = try await context.executeActivity(
+                    BatchActivities.Activities.Count.self,
+                    options: .init(startToCloseTimeout: .seconds(60), cancellationType: .abandon),
+                    input: input
+                )
+            }
+            group.addTask {
+                audited.value = try await context.executeChildWorkflow(
+                    Audit.self, options: .init(cancellationType: .abandon), input: input)
+            }
+            for try await _ in group {}
+        }
 
         // detach: abandon the child, never request its cancellation, and wait only for its start.
         _ = try await context.startChildWorkflow(
@@ -55,7 +69,7 @@ struct Batch {
             group.cancelAll()  // a losing inline timer is cancelled
         }
 
-        return Report(count: count, audited: wasAudited, status: status)
+        return Report(count: count.value!, audited: audited.value!, status: status)
     }
 }
 

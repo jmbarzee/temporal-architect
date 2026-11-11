@@ -3,7 +3,7 @@
 import PackageDescription
 
 // The corpus's Swift outputs: one test target per design, its path the design's swift/ directory.
-let designs = ["concurrency", "continue-as-new", "messages"]
+let designs = ["concurrency", "continue-as-new", "failure", "messages"]
 
 let package = Package(
     name: "Corpus",
