@@ -48,7 +48,7 @@ defmodule Retention.ManageRetention do
     with %{state: :completed} <- start_activity("DeleteDocument", [doc_id], @activity_opts ++ [wait: true]) do
       complete_workflow_execution([])
     else
-      %{state: state} -> fail_workflow_execution(%{message: "DeleteDocument #{state}"})
+      %{state: state} -> fail_workflow_execution(%{message: ~c"DeleteDocument #{state}"})
     end
   end
 

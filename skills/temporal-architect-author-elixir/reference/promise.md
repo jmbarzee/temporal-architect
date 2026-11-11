@@ -14,7 +14,7 @@ handle_a = start_activity("ProcessA", [items["a"]], @activity_opts)
 with %{state: :completed, result: [result_a]} <- wait(handle_a) do
   # ... the rest of the workflow, using result_a
 else
-  %{state: state} -> fail_workflow_execution(%{message: "ProcessA #{state}"})
+  %{state: state} -> fail_workflow_execution(%{message: ~c"ProcessA #{state}"})
 end
 ```
 

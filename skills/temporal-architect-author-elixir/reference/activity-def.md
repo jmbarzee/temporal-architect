@@ -19,7 +19,7 @@ end
 ```
 
 - A module per activity, `use TemporalSdk.Activity` (`lib/temporal_sdk/temporal_sdk_activity.ex:5-11`), with one `execute(context, input)` callback (`temporal_sdk/temporal_sdk_activity.erl:95-96`). Its type name is the `.twf` name, mapped to the module by the worker ([SKILL.md](../SKILL.md#wire-names)). `input` is the list of decoded payloads, so the params are positional; the return value is the result's payload list, `[result]`, and `[]` when the DSL has no return type.
-- A raise fails the attempt, which retries per the call's `retry_policy`; `fail(%{message: …, type: …, non_retryable: true})` fails it at once with an application failure (`temporal_sdk/temporal_sdk_activity.erl:160-177`, `temporal_sdk/temporal_sdk.erl:156-167`), and `handle_failure/4` may shape a raise's failure (`temporal_sdk/temporal_sdk_activity.erl:109-116`).
+- A raise fails the attempt, which retries per the call's `retry_policy`; `fail(%{message: ~c"…", type: …, non_retryable: true})` fails it at once with an application failure, its message a charlist ([close.md](./close.md)) (`temporal_sdk/temporal_sdk_activity.erl:160-177`, `temporal_sdk/temporal_sdk.erl:156-167`), and `handle_failure/4` may shape a raise's failure (`temporal_sdk/temporal_sdk_activity.erl:109-116`).
 - The `.twf` body is pseudocode — ask the user when the real logic is ambiguous.
 - Cancellation reaches a running activity only through heartbeats, as the optional `handle_cancel/1` callback (`temporal_sdk/temporal_sdk_activity.erl:103-104`; [heartbeat.md](./heartbeat.md)).
 
