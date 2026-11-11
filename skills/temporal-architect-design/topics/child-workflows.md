@@ -37,7 +37,7 @@ What happens to a running child when the parent closes is set by `parent_close_p
 
 A child that loses an `await one` race keeps running; its `parent_close_policy` decides its fate when the parent closes.
 
-A child that fails (after its retries) fails the parent; shape that with the child's `retry_policy` and timeouts. Error handling beyond that is SDK-level — when children run in a loop, collect results and alert on partial failure rather than swallowing errors.
+A child that fails (after its retries) fails the parent; shape that with the child's `retry_policy` and timeouts. Error handling beyond that is SDK-level. Children joined in `await all` fail it on the first failure, so a partial failure reaches the parent only as a returned value ([patterns.md](./patterns.md#fan-outfan-in)).
 
 ## Workflow ID Design
 

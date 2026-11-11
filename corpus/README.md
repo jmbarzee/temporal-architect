@@ -8,6 +8,7 @@ Small `.twf` designs, each authored into every supported SDK and built and teste
 | [`messages`](./messages/messages.twf) | signal, query and update handlers, `await signal`, `promise <- signal`, `await update` |
 | [`concurrency`](./concurrency/concurrency.twf) | `await all`, `await one`, `detach workflow`, child workflows, timers |
 | [`continue-as-new`](./continue-as-new/continue-as-new.twf) | `close continue_as_new`, `await timer` |
+| [`failure`](./failure/failure.twf) | a branch failure in `await all`, in the main body and in an update handler; no copy yet in go, typescript, python, java, dotnet, ruby, php, rust, clojure, perl, elixir, erlang, swift, haskell |
 
 ## Layout
 
@@ -83,7 +84,7 @@ make corpus-haskell     # check the corpus, then check out the pinned SDK and ca
 ## Add an SDK
 
 1. Author each design into `<design>/<sdk>/`, beside a copy of `<design>.twf` carrying only its `@sdk`, with the project file at the corpus root. A Maven SDK lists each design's source root in its pom, and Swift each design in `Package.swift`; a Cargo SDK globs its members (`*/rust`), and mix its paths (`*/elixir`).
-2. Add a `corpus-<sdk>` target to the [Makefile](../Makefile) that depends on `check-corpus`, then builds and tests those outputs. The targets iterate `CORPUS_DESIGNS`, the designs found by `corpus/*/*.twf`, never a directory glob, so a dependency directory such as `node_modules` is never checked or built.
+2. Add a `corpus-<sdk>` target to the [Makefile](../Makefile) that depends on `check-corpus`, then builds and tests those outputs. A target that names designs iterates `$(call corpus_designs,<sdk>)`, the designs found by `corpus/*/*.twf` that hold its copy, never a directory glob, so a dependency directory such as `node_modules` is never checked or built.
 3. Add `<sdk>` to the `corpus` job's matrix in [ci.yml](../.github/workflows/ci.yml), with a setup step if the runner lacks its toolchain. An SDK whose tests need a Temporal server, as Perl's and Elixir's do, adds `temporalio/setup-temporal` as a step gated on `matrix.sdk`.
 
 ## Add a design

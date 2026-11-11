@@ -214,6 +214,8 @@ vet:
 
 # A design is a corpus directory holding a .twf; node_modules is not one.
 CORPUS_DESIGNS := $(patsubst corpus/%/,%,$(sort $(dir $(wildcard corpus/*/*.twf))))
+# The designs that hold an SDK's copy: $(call corpus_designs,go).
+corpus_designs = $(patsubst corpus/%/$(1)/,%,$(wildcard $(CORPUS_DESIGNS:%=corpus/%/$(1)/)))
 
 ## Check each corpus design and each SDK's copy of it file by file (a directory
 ## check would load the copies together), and fail if a copy differs from its
@@ -222,6 +224,7 @@ check-corpus: build-lsp
 	for d in $(CORPUS_DESIGNS); do \
 		$(BIN_DIR)/twf check corpus/$$d/$$d.twf || exit 1; \
 		for c in corpus/$$d/*/$$d.twf; do \
+			[ -f $$c ] || continue; \
 			$(BIN_DIR)/twf check $$c || exit 1; \
 			grep -v '^@sdk' $$c | diff -u corpus/$$d/$$d.twf - || { echo "$$c drifts from corpus/$$d/$$d.twf"; exit 1; }; \
 		done; \
@@ -230,15 +233,16 @@ check-corpus: build-lsp
 ## Check the corpus, then vet and test its Go outputs. The corpus is a user's
 ## project, not part of the toolchain workspace, so go.work is off. The
 ## packages are named so that ./... does not walk corpus/node_modules.
+CORPUS_GO = $(patsubst %,./%/go/...,$(call corpus_designs,go))
 corpus-go: check-corpus
-	cd corpus && GOWORK=off go vet $(CORPUS_DESIGNS:%=./%/go/...) && GOWORK=off go test $(CORPUS_DESIGNS:%=./%/go/...)
+	cd corpus && GOWORK=off go vet $(CORPUS_GO) && GOWORK=off go test $(CORPUS_GO)
 
 ## Check the corpus, then typecheck and test its Python outputs, design by
 ## design: each design's modules (worker.py, workflows.py) are top-level, so
 ## one run over several designs would import one design's worker as another's.
 corpus-python: check-corpus
 	cd corpus && uv sync --locked
-	for d in $(CORPUS_DESIGNS); do \
+	for d in $(call corpus_designs,python); do \
 		( cd corpus/$$d/python && uv run --locked mypy . && uv run --locked pytest -q ) || exit 1; \
 	done
 
@@ -258,7 +262,7 @@ corpus-java: check-corpus
 ## (each design's modules are top-level). sdk-perl has no time-skipping
 ## environment, so each test file starts a dev server through the temporal CLI.
 corpus-perl: check-corpus
-	for d in $(CORPUS_DESIGNS); do \
+	for d in $(call corpus_designs,perl); do \
 		( cd corpus/$$d/perl && for m in *.pm; do perl -I. -I../../perl-lib -c $$m || exit 1; done && prove t ) || exit 1; \
 	done
 
@@ -266,7 +270,7 @@ corpus-perl: check-corpus
 ## outputs design by design, against the gems pinned by Gemfile.lock.
 corpus-ruby: check-corpus
 	cd corpus && BUNDLE_FROZEN=true bundle install --quiet
-	for d in $(CORPUS_DESIGNS); do \
+	for d in $(call corpus_designs,ruby); do \
 		( cd corpus/$$d/ruby && for f in *.rb; do ruby -wc $$f >/dev/null || exit 1; done && \
 		  BUNDLE_GEMFILE=../../Gemfile bundle exec ruby -e 'Dir["*_test.rb"].sort.each { |f| require File.expand_path(f) }' ) || exit 1; \
 	done
