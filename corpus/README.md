@@ -8,7 +8,7 @@ Small `.twf` designs, each authored into every supported SDK and built and teste
 | [`messages`](./messages/messages.twf) | signal, query and update handlers, `await signal`, `promise <- signal`, `await update` |
 | [`concurrency`](./concurrency/concurrency.twf) | `await all`, `await one`, `detach workflow`, child workflows, timers |
 | [`continue-as-new`](./continue-as-new/continue-as-new.twf) | `close continue_as_new`, `await timer` |
-| [`failure`](./failure/failure.twf) | a branch failure in `await all`, in the main body and in an update handler; no copy yet in go, dotnet, ruby, php, rust, clojure, perl, erlang, swift, haskell |
+| [`failure`](./failure/failure.twf) | a branch failure in `await all`, in the main body and in an update handler; no copy yet in dotnet, ruby, php, rust, clojure, perl, erlang, swift, haskell |
 
 ## Layout
 
