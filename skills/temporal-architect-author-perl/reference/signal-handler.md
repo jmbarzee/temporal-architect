@@ -46,7 +46,7 @@ async method run :Run ($order_id) {
 }
 ```
 
-- `run` races the workflow's body, an `async method`, against the failure; `also` keeps either from being cancelled ([await-all.md](./await-all.md)). A Temporal failure then fails the run (`Workflow/Runner.pm:4073-4077`).
+- `run` races the workflow's body, an `async method`, against the failure; `also` keeps either from being cancelled ([await-all.md](./await-all.md)). A Temporal failure then fails the run (`Workflow/Runner.pm:4073-4077`), and Future::AsyncAwait's "lost its returning future" warning for the still-suspended body is harmless.
 
 ## Handler options
 

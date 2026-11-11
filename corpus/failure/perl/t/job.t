@@ -33,7 +33,9 @@ sub rejected ($err) {
         or diag(defined $err ? "$err" : 'did not fail within 20s');
 }
 
-# Process was scheduled, and neither completed nor was asked to cancel.
+# Process was scheduled, and neither completed nor was asked to cancel. The update
+# case carries the no-cancel proof: when the run fails, sdk-perl drops that task's
+# state-changing commands, a cancel request included (Workflow/Runner.pm:4248-4253).
 sub process_still_running ($h) {
     my @events = CorpusEnv::events($h);
     ok((grep { CorpusEnv::kind($_) eq 'activity_task_scheduled_event_attributes'
