@@ -19,7 +19,7 @@ Temporalio::Workflow::Future.all_of(inventory, payment).wait
 
 - One `Workflow::Future.all_of(…).wait` over every branch's [promise](./promise.md), whatever its kind (`workflow/future.rb:33-40`); each result is then its future's `result`, as the corpus's `Batch` reads `count.result`.
 - `all_of` fails at the first branch failure, with that failure (`workflow/future.rb:33-40`), and cancels nothing: the other branches keep running, as spec 06 requires. Not `try_all_of`, which waits out every branch whatever its outcome (`workflow/future.rb:59-64`). The corpus's `JobTest` asserts the rule in the main body and in an [update handler](./update-handler.md).
-- The failure raised is the first in time: every fiber settles before a wait condition is checked (`internal/worker/workflow_instance/scheduler.rb:36-39,45-66`). Two that fail in the same workflow task surface the first in argument order (`workflow/future.rb:37`); the other is dropped.
+- The failure raised is the first in time: every fiber settles before a wait condition is checked (`internal/worker/workflow_instance.rb:204,214`, `internal/worker/workflow_instance/scheduler.rb:36-39,45-66`). Two that fail in the same workflow task surface in the SDK's wake order: an activity or timer branch wakes as its job is applied (`internal/worker/workflow_instance.rb:383,394`), a child or Nexus branch through its own wait condition (`internal/worker/workflow_instance/child_workflow_handle.rb:30`), so do not rely on argument order; the other failure is dropped.
 - A `detach` call's branch is a future over its start (`start_child_workflow` or `start_operation`), which resolves once the call has started ([detach.md](./detach.md)).
 
 ## Fan-out
