@@ -51,16 +51,15 @@ workflow.Go(ctx, func(gCtx workflow.Context) {
     result, bodyErr = orderBody(gCtx)
     bodyDone = true
 })
-if err := workflow.Await(ctx, func() bool { return bodyDone || signalErr != nil }); err != nil {
-    return OrderResult{}, err
-}
+dCtx, _ := workflow.NewDisconnectedContext(ctx)
+_ = workflow.Await(dCtx, func() bool { return bodyDone || signalErr != nil })
 if signalErr != nil {
     return OrderResult{}, signalErr
 }
 return result, bodyErr
 ```
 
-The workflow function's return completes the run (`internal/internal_workflow.go:557`, `:735`). The body's coroutine is then exited, not cancelled (`internal/internal_workflow.go:1367-1383`), so its calls end with the run.
+The workflow function's return completes the run (`internal/internal_workflow.go:557`, `:735`). The body's coroutine is then exited, not cancelled (`internal/internal_workflow.go:1367-1383`), so its calls end with the run. Await on a disconnected context: an `Await` on `ctx` returns as soon as the run is cancelled (`internal/workflow.go:675-681`), which would end the run before the body handles its cancellation through `gCtx`.
 
 ## Handler options
 

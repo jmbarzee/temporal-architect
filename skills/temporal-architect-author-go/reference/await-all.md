@@ -23,30 +23,13 @@ if err := paymentF.Get(ctx, &payment); err != nil {
 }
 ```
 
-```go
-// awaitAll waits for every future and returns at the first error, leaving the
-// rest running.
-func awaitAll(ctx workflow.Context, futures ...workflow.Future) error {
-    var err error
-    sel := workflow.NewSelector(ctx)
-    for _, f := range futures {
-        sel.AddFuture(f, func(f workflow.Future) { err = f.Get(ctx, nil) })
-    }
-    for range futures {
-        sel.Select(ctx)
-        if err != nil {
-            return err
-        }
-    }
-    return nil
-}
-```
+`awaitAll` joins the futures with a `workflow.Selector` and returns at the first error. Copy it from the corpus's [`failure/go/await_all.go`](https://github.com/jmbarzee/temporal-architect/blob/main/corpus/failure/go/await_all.go) into the workflow's package.
 
 - Every branch is a future, started before `awaitAll` and whatever its kind (activity, child workflow, Nexus). A branch that is not one call runs in `workflow.Go` and settles a `workflow.NewFuture`.
 - A `detach` call's branch is its `GetChildWorkflowExecution()` future, which completes once the call has started ([detach.md](./detach.md)).
 - **The first branch to fail fails the `await all` at once, with that failure** (`twf spec statement-syntax`, Await All Block). The branches still running are not cancelled, so never cancel their context: that is what sends a cancel request (sdk-go `internal/workflow.go:1062-1068`). Never join with `workflow.NewWaitGroup` or `.Get` in turn: `wg.Wait` blocks until every branch ends (`internal/internal_workflow.go:1981-1995`), and `.Get` in turn surfaces failures in listed order.
 - **When two branches fail**, the first failure in event order surfaces: a blocked `Select` runs the first future to settle (`internal/internal_workflow.go:1532-1541`). If several settled before `Select` was entered, the first listed runs (`internal/internal_workflow.go:1545-1555`).
-- Return `awaitAll`'s error. From the workflow function it fails the run; from an update handler it becomes that update's failure, and the run goes on (`internal/internal_update.go:316-317`). [`corpus/failure/go/job.go`](https://github.com/jmbarzee/temporal-architect/blob/main/corpus/failure/go/job.go) is the worked example.
+- Return `awaitAll`'s error. From the workflow function it fails the run; from an update handler it becomes that update's failure, and the run goes on (`internal/internal_update.go:316-317`). [`job.go`](https://github.com/jmbarzee/temporal-architect/blob/main/corpus/failure/go/job.go) beside it is the worked example.
 
 ## Fan-out
 
