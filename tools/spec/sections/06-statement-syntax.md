@@ -336,6 +336,8 @@ await_all_block ::= 'await' 'all' ':' NEWLINE
 
 Executes all contained statements concurrently and waits for ALL to complete before continuing. A [detached](#workflow-call) call is complete once started.
 
+A call fails once its retry policy is spent. The first branch to fail fails the `await all` at once, with that failure. The branches still running are not cancelled: like a [losing `await one` case](#await-one-block), they end with the run (a child per `parent_close_policy`).
+
 ## Await One Block
 
 ```
@@ -406,7 +408,7 @@ await one:
 		close fail("timeout")
 ```
 
-The case that completes first "wins" the race, its body executes (if present), and then execution continues after the `await one` block. A case already ready on entry, a pending arrival included, wins. Whenever more than one case is ready as the workflow resumes, on entry or later, the first listed wins.
+The case that completes first "wins" the race, its body executes (if present), and then execution continues after the `await one` block. A case already ready on entry, a pending arrival included, wins. Whenever more than one case is ready as the workflow resumes, on entry or later, the first listed wins. A case that fails before another wins fails the block, with that failure.
 
 **Lifecycle of non-winning cases:** When one case wins, execution continues after the `await one` block, and what a losing case started depends on how it was written:
 
@@ -482,6 +484,8 @@ Terminates workflow execution with an explicit exit state. Only valid in workflo
 - `close continue_as_new(args)` - Resets workflow history and continues with new arguments (for long-running workflows)
 
 **Important:** Signals and updates cannot call `close` - they can only mutate state. Only the main workflow body can terminate execution using `close`.
+
+**Unrouted failure.** A design routes a failure by returning it as a value that it checks. A failure that nothing routes fails the run in the main body or a signal handler. In an update handler it fails that update, and the run goes on.
 
 **Note:** `return` is still valid in queries (which must return values without terminating the workflow) and can be used in workflows for backward compatibility, but `close` is preferred for workflow termination as it makes the intent explicit.
 

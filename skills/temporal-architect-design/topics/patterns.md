@@ -25,11 +25,11 @@ Each forward step has a compensation; on failure, compensations run in **reverse
 | Create shipment | Cancel shipment |
 | Create resource | Delete resource |
 
-TWF has no try/catch or compensation stack. Model a failed step as a checked result (`if (hotel.failed):`) followed by the compensations, or hand them to a compensation child workflow (`CompensateBooking`); the SDK's error handling drives the real logic.
+TWF has no try/catch or compensation stack. A failure the design routes is a returned value: model a failed step as a checked result (`if (hotel.failed):`) followed by the compensations, or hand them to a compensation child workflow (`CompensateBooking`); the SDK's error handling drives the real logic. A failure nothing routes fails the run, or only the update when it happens in an update handler (`twf spec statement-syntax`, "Unrouted failure").
 
 ## Fan-Out/Fan-In
 
-`await all:` around a `for` fans out; a following step aggregates. The result variable inside `await all: for` is re-bound each iteration, so collecting results is SDK-level — the aggregation activity stands in for it. Partial failures must be handled at aggregation.
+`await all:` around a `for` fans out; a following step aggregates. The result variable inside `await all: for` is re-bound each iteration, so collecting results is SDK-level — the aggregation activity stands in for it. The first branch to fail fails the `await all`, so a partial failure reaches aggregation only as a returned value.
 
 Cap concurrency by fanning out per chunk:
 

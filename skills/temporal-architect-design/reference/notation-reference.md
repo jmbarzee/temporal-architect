@@ -14,7 +14,7 @@ A quick reference; the grammar itself is `twf spec` (`twf spec --list` for secti
 | `await signal Name` / `await update Name` | Wait for a signal / update |
 | `await nexus Endpoint Service.Op(args) -> result` | Wait for a Nexus call |
 | `await one:` | Race: first to complete wins (timeouts, signal-or-timer). A losing inline timer is cancelled; other losing inline cases run until the run ends; a bound `promise` survives losing |
-| `await all:` | Join: wait for all (parallel execution) |
+| `await all:` | Join: wait for all (parallel execution). The first branch to fail fails it at once; the rest are not cancelled and run until the run ends |
 | `state:` | Workflow state block (conditions and variable initializations) |
 | `condition name` | Named boolean awaitable (in `state:`) |
 | `set name` / `unset name` / `await name` | Set true / set false / await a condition (coordinates handlers and main body) |
