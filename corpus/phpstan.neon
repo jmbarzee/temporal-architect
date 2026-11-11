@@ -6,3 +6,4 @@ parameters:
         - messages/php
         - concurrency/php
         - continue-as-new/php
+        - failure/php

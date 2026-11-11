@@ -35,6 +35,7 @@ final class OrderWorkflow
 
 - A public `#[SignalMethod(name: '…')]` method returning `void` on the workflow class; senders call it through a stub ([signal-send.md](./signal-send.md)). `name:` sets the `.twf` name, since the default is the method name as is ([SKILL.md § Wire names](../SKILL.md#wire-names)). Params map positionally, one payload each.
 - The handler runs every arrival's body, whether or not anything waits, then adds the arrival to the signal's `Arrivals` ([await-signal.md](./await-signal.md)). A generator handler (one that `yield`s) adds after its last `yield`: the arrival is pending only once the handler returns. A signal nothing waits on needs no `Arrivals`.
+- A failure the handler leaves uncaught, such as an `await all` branch's, fails the run (`Internal/Workflow/Process/Process.php:142-147,276`); a PHP `\Error` fails the workflow task instead, as in an [update](./update-handler.md) (`:271-273`).
 
 ## Handler options
 

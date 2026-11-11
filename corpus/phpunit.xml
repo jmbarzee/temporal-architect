@@ -11,6 +11,7 @@
             <directory suffix="Test.php">messages/php</directory>
             <directory suffix="Test.php">concurrency/php</directory>
             <directory suffix="Test.php">continue-as-new/php</directory>
+            <directory suffix="Test.php">failure/php</directory>
         </testsuite>
     </testsuites>
     <php>
