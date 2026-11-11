@@ -8,7 +8,7 @@ Small `.twf` designs, each authored into every supported SDK and built and teste
 | [`messages`](./messages/messages.twf) | signal, query and update handlers, `await signal`, `promise <- signal`, `await update` |
 | [`concurrency`](./concurrency/concurrency.twf) | `await all`, `await one`, `detach workflow`, child workflows, timers |
 | [`continue-as-new`](./continue-as-new/continue-as-new.twf) | `close continue_as_new`, `await timer` |
-| [`failure`](./failure/failure.twf) | a branch failure in `await all`, in the main body and in an update handler; no copy yet in go, python, dotnet, ruby, php, rust, clojure, perl, erlang, swift, haskell |
+| [`failure`](./failure/failure.twf) | a branch failure in `await all`, in the main body and in an update handler; no copy yet in go, python, dotnet, ruby, php, rust, clojure, perl, erlang, swift |
 
 ## Layout
 
@@ -25,7 +25,7 @@ corpus/
   mix.exs                globs */elixir; elixir_support/ holds the Elixir support the designs share
   rebar.config           with rebar.config.script, globs */erlang; erlang_support/ holds the Erlang support the designs share, erlang_test/ its suite
   Package.swift          one test target per design, its path the design's swift/
-  cabal.project          with corpus.cabal; builds the pinned hs-temporal-sdk checkout; haskell/ holds the shared Harness.hs and Arrivals.hs
+  cabal.project          with corpus.cabal; builds the pinned hs-temporal-sdk checkout; haskell/ holds the shared Harness.hs, Arrivals.hs and FailFast.hs
   <design>/
     <design>.twf         the design, with no @sdk
     go/                  its Go output, per skills/temporal-architect-author-go

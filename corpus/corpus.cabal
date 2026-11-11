@@ -4,7 +4,7 @@ version:       0
 build-type:    Simple
 
 -- Each design's Haskell output is one test suite over corpus/<design>/haskell/
--- and corpus/haskell/, which holds what every suite shares: Harness and Arrivals.
+-- and corpus/haskell/, which holds what the suites share: Harness, Arrivals and FailFast.
 common design
   default-language: GHC2021
   default-extensions:
@@ -55,8 +55,8 @@ test-suite concurrency
   type:           exitcode-stdio-1.0
   hs-source-dirs: concurrency/haskell haskell
   main-is:        Main.hs
-  other-modules:  Batch AwaitOneFixtures Arrivals Harness
-  build-depends:  mtl
+  other-modules:  Batch AwaitOneFixtures Arrivals FailFast Harness
+  build-depends:  exceptions, mtl
 
 test-suite continue-as-new
   import:         design
@@ -64,3 +64,11 @@ test-suite continue-as-new
   hs-source-dirs: continue-as-new/haskell haskell
   main-is:        Main.hs
   other-modules:  Counter Harness
+
+test-suite failure
+  import:         design
+  type:           exitcode-stdio-1.0
+  hs-source-dirs: failure/haskell haskell
+  main-is:        Main.hs
+  other-modules:  Job FailFast Harness
+  build-depends:  exceptions, mtl
