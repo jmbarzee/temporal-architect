@@ -19,7 +19,7 @@ execute(_Context, [Order]) ->
 ```
 
 - A module per activity, named for its design, including `activity.hrl`, which declares `-behaviour(temporal_sdk_activity)` and imports the activity API, `heartbeat/1` and `fail/1` among it (`include/activity.hrl:1-27`), with one exported `execute(Context, Input)` (`temporal_sdk/temporal_sdk_activity.erl:95-96`). `Input` is the positional payload list; the return value is the result's payload list, `[Result]`, and `[]` when the DSL has no return type.
-- A raise fails the attempt, which retries per the call's `retry_policy`; `fail(#{message => …, type => …, non_retryable => true})` fails it at once, and cancellation reaches the activity only through heartbeats ([heartbeat.md](./heartbeat.md)). The mechanics, with `handle_failure/4`: [author-elixir activity-def.md](../../temporal-architect-author-elixir/reference/activity-def.md).
+- A raise fails the attempt, which retries per the call's `retry_policy`; `fail(#{message => "…", type => …, non_retryable => true})` fails it at once, its message a charlist ([close.md](./close.md)), and cancellation reaches the activity only through heartbeats ([heartbeat.md](./heartbeat.md)). The mechanics, with `handle_failure/4`: [author-elixir activity-def.md](../../temporal-architect-author-elixir/reference/activity-def.md).
 - The `.twf` body is pseudocode — ask the user when the real logic is ambiguous.
 
 ## Activity Implementation Pattern

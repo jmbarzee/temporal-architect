@@ -36,6 +36,31 @@ func OrderWorkflow(ctx workflow.Context, orderId string) (OrderResult, error) {
 - The loop runs every arrival's body, whether or not anything waits, then adds the arrival to the signal's queue. It is the channel's only reader: `await signal`, a signal case and a signal promise take from the queue ([await-signal.md](./await-signal.md)), never from the channel.
 - Before `close continue_as_new`, let the loop drain the channel, `workflow.Await(ctx, func() bool { return paymentReceivedCh.Len() == 0 })`; never add a second `ReceiveAsync` reader. Arrivals still pending at `close continue_as_new` are dropped, and the design passes what it needs as continue-as-new arguments (spec 06, Signal and update arrival). The rest: `temporal-developer` `references/go/patterns.md` § Continue-as-New.
 
+## Unrouted failure
+
+A failure in a signal handler that nothing routes fails the run (`twf spec statement-syntax`, Close Statement). The loop cannot return it, and a panic does not fail the run: the coroutine recovers it (sdk-go `internal/internal_workflow.go:1239-1243`), and the default `BlockWorkflow` policy retries the workflow task instead (`internal/internal_task_handlers.go:1341-1345`, `internal/internal_worker.go:191-195`). When a handler can fail, the loop keeps the error and stops, and the workflow function returns it:
+
+```go
+var signalErr error
+// in the loop: if err := ...; err != nil { signalErr = err; return }
+
+var result OrderResult
+var bodyErr error
+bodyDone := false
+workflow.Go(ctx, func(gCtx workflow.Context) {
+    result, bodyErr = orderBody(gCtx)
+    bodyDone = true
+})
+dCtx, _ := workflow.NewDisconnectedContext(ctx)
+_ = workflow.Await(dCtx, func() bool { return bodyDone || signalErr != nil })
+if signalErr != nil {
+    return OrderResult{}, signalErr
+}
+return result, bodyErr
+```
+
+The workflow function's return completes the run (`internal/internal_workflow.go:557`, `:735`). The body's coroutine is then exited, not cancelled (`internal/internal_workflow.go:1367-1383`), so its calls end with the run. Await on a disconnected context: an `Await` on `ctx` returns as soon as the run is cancelled (`internal/workflow.go:675-681`), which would end the run before the body handles its cancellation through `gCtx`.
+
 ## Handler options
 
 ```twf

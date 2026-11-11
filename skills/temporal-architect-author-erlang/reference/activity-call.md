@@ -10,7 +10,7 @@ case start_activity(~"ValidateOrder", [Order], [wait]) of
         %% ... the rest of the workflow, using Validated
         ok;
     #{state := State} ->
-        fail_workflow_execution(#{message => <<"ValidateOrder ", (atom_to_binary(State))/binary>>})
+        fail_workflow_execution(#{message => "ValidateOrder " ++ atom_to_list(State)})
 end
 ```
 

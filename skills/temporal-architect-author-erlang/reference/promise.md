@@ -16,7 +16,7 @@ case wait(HandleA) of
         %% ... the rest of the workflow, using ResultA
         ok;
     #{state := State} ->
-        fail_workflow_execution(#{message => <<"ProcessA ", (atom_to_binary(State))/binary>>})
+        fail_workflow_execution(#{message => "ProcessA " ++ atom_to_list(State)})
 end
 ```
 

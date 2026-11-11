@@ -28,7 +28,7 @@ else {
 
 One `wait_condition` over every case blocks until any is ready; then the first listed ready case wins, checked in `.twf` order. The check sees the state that satisfied the wait, since the code after `await` runs inside the condition's `done` (`Workflow/Runner.pm:2045-2054`). [`corpus/concurrency/perl/Batch.pm`](https://github.com/jmbarzee/temporal-architect/blob/main/corpus/concurrency/perl/Batch.pm) is the worked example; its `t/await_one.t` holds the tie, and `AwaitOne.pm` in `corpus/messages/perl/t/lib/` the signal case above, using `Arrivals`.
 
-Not `Future->wait_any`: it resolves with the case that completes first, not the first listed, and cancels every other case (CPAN `Future` § wait_any, read at 0.54), which for an activity requests its cancellation (`Workflow.pm:218-222`); the corpus's two-timer tie returns the later-listed timer. Not `wait_condition(…, timeout => $s)`: it races the condition against its own timer, failing with `Temporalio::Exception::Timeout` when the timer resolves first (`Workflow/Runner.pm:1990-2006`), so job order, not listed order, decides.
+Not `Future->wait_any`: it resolves with the case that completes first, not the first listed, and cancels every other case (CPAN `Future` § wait_any, read at 0.54), which for an activity requests its cancellation (`Workflow/Runner.pm:4528-4539`); the corpus's two-timer tie returns the later-listed timer. Not `wait_condition(…, timeout => $s)`: it races the condition against its own timer, failing with `Temporalio::Exception::Timeout` when the timer resolves first (`Workflow/Runner.pm:1990-2006`), so job order, not listed order, decides.
 
 ## Cases
 
@@ -38,7 +38,7 @@ Not `Future->wait_any`: it resolves with the case that completes first, not the 
 | timer | `my $timer = Temporalio::Workflow::sleep($s)` | `$timer->is_ready` | — |
 | activity, child workflow, nexus, promise | its future `$p` ([promise.md](./promise.md)) | `$p->is_ready` | `await $p` |
 | condition | — | the condition | — |
-| nested `await all:` | `my $all = Future->needs_all(…)` | `$all->is_ready` | `await $all` |
+| nested `await all:` | `my $all = Future->needs_all(also => …)` ([await-all.md](./await-all.md)) | `$all->is_ready` | `await $all` |
 
 A message case waits without taking: `ready` checks its `Arrivals` ([await-signal.md](./await-signal.md)), and only the winner `claim`s the arrival; a losing case leaves it pending. An earlier waiter is served first, so a case waits behind it (`AwaitOneBehindPromise.pm`). `is_ready` is also true for a failed future; the winner's `await $p` dies with its failure.
 
