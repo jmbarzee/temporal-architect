@@ -114,7 +114,7 @@ Load only what the current layer needs.
 | `await signal\|update Name -> (...)` | `try await context.take(\.arrivals)` | [await-signal.md](./reference/await-signal.md) |
 | `promise p <- ...` | `async let`; for a signal or update, a ticket begun at the binding, then `async let` | [promise.md](./reference/promise.md) |
 | `state:` / `condition` / `set` / `unset` | stored `var` of the workflow struct + `context.condition` | [condition.md](./reference/condition.md) |
-| `await all:` | `async let` pair or `withThrowingTaskGroup` | [await-all.md](./reference/await-all.md) |
+| `await all:` | `withThrowingTaskGroup`, then `for try await _ in group {}` | [await-all.md](./reference/await-all.md) |
 | `await one:` | one `context.condition` over every case, then a listed-order check; first listed ready wins | [await-one.md](./reference/await-one.md) |
 | handler + condition + `await one` | worked compositions | [composite-patterns.md](./reference/composite-patterns.md) |
 | `signal handle.Name(args)` / `signal Type.Name(args)` + `id:` | the child handle's `signalWorkflow` / `context.getExternalWorkflowHandle(…)`'s | [signal-send.md](./reference/signal-send.md) |
