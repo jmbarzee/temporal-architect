@@ -20,17 +20,20 @@ import (
 // environment has none. It uses the temporal CLI on PATH, or StartDevServer
 // downloads one (sdk-go testsuite/devserver.go:76-123).
 func TestJob(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
 	opts := testsuite.DevServerOptions{}
 	if path, err := exec.LookPath("temporal"); err == nil {
 		opts.ExistingPath = path
 	}
-	server, err := testsuite.StartDevServer(ctx, opts)
+	// A download gets its own bound, apart from the test's.
+	startCtx, cancelStart := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancelStart()
+	server, err := testsuite.StartDevServer(startCtx, opts)
 	require.NoError(t, err)
 	defer server.Stop()
 	c := server.Client()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 
 	// Process is held until teardown: the slow branch.
 	release := make(chan struct{})
