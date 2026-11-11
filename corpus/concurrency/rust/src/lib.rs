@@ -1,3 +1,4 @@
+pub mod await_all;
 pub mod batch;
 pub mod fixtures;
 

@@ -5,9 +5,12 @@ use temporalio_macros::{activities, workflow, workflow_methods};
 use temporalio_sdk::{
     ActivityOptions, CancellableFuture, ChildWorkflowCancellationType, ChildWorkflowOptions,
     ParentClosePolicy, SyncWorkflowContext, WorkflowContext, WorkflowContextView, WorkflowResult,
+    WorkflowTermination,
     activities::{ActivityContext, ActivityError},
     workflows::{join, select},
 };
+
+use crate::await_all::AwaitAll;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Report {
@@ -73,17 +76,25 @@ impl Batch {
         let items = ctx.state(|s| s.items.clone());
         let ctx = &*ctx;
 
-        // await all
-        let (count, audited) = join!(
-            ctx.execute_activity(BatchActivities::count, items.clone(), activity_options()),
-            async {
-                let audit = ctx
-                    .start_child_workflow(Audit::run, items.clone(), child_options(ctx))
-                    .await?;
-                Ok::<_, temporalio_sdk::WorkflowTermination>(audit.result().await?)
-            },
-        );
-        let (count, audited) = (count?, audited?);
+        // await all: fails at the first branch failure, leaving the other branch running.
+        let all = AwaitAll::default();
+        let (count, audited) = all
+            .wait(async {
+                join!(
+                    all.branch(ctx.execute_activity(
+                        BatchActivities::count,
+                        items.clone(),
+                        activity_options()
+                    )),
+                    all.branch(async {
+                        let audit = ctx
+                            .start_child_workflow(Audit::run, items.clone(), child_options(ctx))
+                            .await?;
+                        Ok::<_, WorkflowTermination>(audit.result().await?)
+                    }),
+                )
+            })
+            .await?;
 
         // detach: abandon the child on parent close and never request its cancellation; wait
         // only for its start.
