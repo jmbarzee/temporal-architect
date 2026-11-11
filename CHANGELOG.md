@@ -38,8 +38,8 @@ it. The SDKs are `go`, `typescript`, `python`, `java`, `dotnet`, `ruby`, `php`,
   worker, inside a body, or detached from its definition by a blank line),
   `UNKNOWN_SDK`, `DUPLICATE_SDK`, `INVALID_IMPL_PATH`. Warnings:
   `IMPL_NOT_FOUND` (checked only for a file on disk) and `WORKER_MULTI_SDK`.
-- **Wire (additive):** `sdks: [{sdk, impl?}]` on the worker AST, its graph
-  nodes, and every node it hosts.
+- Wire: `sdks: [{sdk, impl?}]` on the worker AST, its graph nodes, and every
+  node it hosts.
 - **LSP:** hover, completion after `@` and in `@sdk(`, Go to Definition on the
   path, and the `decorator` semantic token.
 
@@ -59,11 +59,9 @@ detach workflow Notify(order)                # write this
 A detached call is guaranteed to start, outlives its caller, and its result is
 never observed (#379, #409). `detach` after `await`, in a `promise`, or as an
 `await one` case is `DETACH_AWAITED`; under `await all:` it is done once
-started. A detached child outlives its parent by definition, so
-`parent_close_policy:` under `detach workflow` is `OPTION_MISPLACED`.
+started. `parent_close_policy:` under `detach workflow` is `OPTION_MISPLACED`.
 
-**Wire:** workflow async targets drop `mode` and Nexus async targets drop
-`detach`; wire types follow.
+Wire: workflow async targets drop `mode` and Nexus async targets drop `detach`.
 
 ### ⚠️ Breaking: a sync Nexus body holds only client forms
 
@@ -77,9 +75,9 @@ nexus service OrderService:
 A sync operation's handler runs as a Temporal client, with no workflow context
 (#405). Its body holds a `workflow` start (`detach` included), a `signal` send,
 `close complete` or `close fail`, control flow and raw lines. `activity`,
-`nexus` (`detach nexus` included), `await`, `timer`, `promise`, `condition`,
-`state`, `set` and `unset` are each a `parse/SYNTAX` error, `<keyword> is not
-allowed in a sync nexus operation body`.
+`nexus`, `detach nexus`, `await`, `timer`, `promise`, `condition`, `state`,
+`set` and `unset` are each a `parse/SYNTAX` error, `<form> is not allowed in a
+sync nexus operation body`.
 
 ### ⚠️ Breaking: Nexus call options are the API's three timeouts
 
@@ -93,9 +91,9 @@ nexus PaymentsEndpoint Payments.Charge(req) -> receipt
 ```
 
 A nexus call takes `schedule_to_close_timeout`, `schedule_to_start_timeout`
-and `start_to_close_timeout`. `retry_policy` and `priority` are
-`OPTION_MISPLACED`: the API carries neither, and the server retries the
-operation until its `schedule_to_close_timeout` (#404).
+and `start_to_close_timeout`. The API carries neither `retry_policy` nor
+`priority` (each now `OPTION_MISPLACED`); the server retries the operation
+until its `schedule_to_close_timeout` (#404).
 
 ### ⚠️ Breaking: worker options are the cross-SDK set
 
@@ -107,26 +105,24 @@ namespace shop:
 			max_heartbeat_throttle_interval: 30s   # was heartbeat_throttle_interval
 ```
 
-Each worker option names a behaviour every Tier-1 SDK has (#380).
-`heartbeat_throttle_interval` is renamed `max_heartbeat_throttle_interval`.
-The Go-only `worker_local_activity_rate_limit`, `enable_sessions` and
-`max_concurrent_session_executions` are gone and are now unknown option keys.
+Each worker option names a behaviour the SDKs share (#380). The Go-only
+`worker_local_activity_rate_limit`, `enable_sessions` and
+`max_concurrent_session_executions` are now unknown option keys.
 
 ### Semantics the spec now states
 
-No new checks; these define what a design means, so each author maps it the
-same way.
+No new checks.
 
 - **Names are wire names.** A workflow, handler, activity, Nexus service or
   operation name is its registered name, byte for byte (#377).
 - **Types.** `int`, `float`, `decimal`, `duration`, `time`, `bytes`, `any`,
   `list[T]` and `map[string, V]`; any other name is a user-defined PascalCase
-  type (#386). LSP signature help no longer splits `map[string, V]` at its
+  type (#376). LSP signature help no longer splits `map[string, V]` at its
   comma.
 - **Signal and update arrival.** Every arrival runs its handler, then stays
   pending; a waiter takes the oldest pending arrival, else the next. In
   `await one`, a case ready on entry wins, and the first listed wins among
-  several ready (#384). Arrivals still pending at `close continue_as_new` are
+  several ready (#378). Arrivals still pending at `close continue_as_new` are
   dropped (#423).
 - **Losing `await one` cases.** A losing inline timer case is cancelled
   (it used to keep running); inline activity, child and Nexus cases keep
@@ -144,19 +140,19 @@ same way.
 - **Packaging:** the graph engine moved out of this repository to
   [`jmbarzee/force-graph`](https://github.com/jmbarzee/force-graph).
   `@temporal-architect/visualizer` no longer bundles it: it depends on
-  `@jmbarzee/force-graph` (pinned exactly) and on
-  `@temporal-architect/wire-types` (pinned to the visualizer's own version),
-  which npm installs beside it. Its `lib.js` imports the engine's stylesheet,
-  so a host's bundler collects it alongside `styles.css` (#695, #697).
+  `@jmbarzee/force-graph` (pinned exactly, `0.1.1`) and on
+  `@temporal-architect/wire-types` (pinned to the visualizer's own version).
+  Its `lib.js` imports the engine's stylesheet, so a host's bundler collects
+  it alongside `styles.css` (#695, #697).
 
 ### Skills
 
-- An author skill for every SDK `@sdk` names: TypeScript, Python, Java, .NET,
-  Ruby, PHP, Rust, Swift, Haskell, Clojure, Perl, Erlang and Elixir join Go.
-- The front door routes each definition to the author for each `@sdk` of the
-  workers that register it, and sends SDK idioms to `temporal-developer`
-  (#391). The design skill, discovery and reverse engineering read and write
-  `@sdk` in place of the `# impl:` header.
+- An author skill for every SDK `@sdk` names; Go's was the only one (#444,
+  #473, #481, #491, #536, #545, #552, #559, #570, #588, #603, #616, #707).
+- The `temporal-architect` skill routes each definition to the author for each
+  `@sdk` of the workers that register it, and sends SDK idioms to
+  `temporal-developer` (#375). The design skill, discovery and reverse
+  engineering read and write `@sdk` in place of the `# impl:` header.
 - A cross-SDK reference covers how each primitive crosses SDKs, and
   `CROSS_SDK_CALL` points at it (#424).
 
