@@ -96,11 +96,18 @@ class JobTest {
 
   /** Process was scheduled, and neither completed nor was asked to cancel. */
   private void assertProcessStillRunning(String id) {
-    List<EventType> types =
-        env.getWorkflowClient().fetchHistory(id).getEvents().stream()
-            .map(HistoryEvent::getEventType)
-            .toList();
-    assertTrue(types.contains(EventType.EVENT_TYPE_ACTIVITY_TASK_SCHEDULED));
+    List<HistoryEvent> events = env.getWorkflowClient().fetchHistory(id).getEvents();
+    assertTrue(
+        events.stream()
+            .filter(ev -> ev.getEventType() == EventType.EVENT_TYPE_ACTIVITY_TASK_SCHEDULED)
+            .anyMatch(
+                ev ->
+                    ev.getActivityTaskScheduledEventAttributes()
+                        .getActivityType()
+                        .getName()
+                        .equals("Process")),
+        "Process was not scheduled");
+    List<EventType> types = events.stream().map(HistoryEvent::getEventType).toList();
     assertFalse(types.contains(EventType.EVENT_TYPE_ACTIVITY_TASK_COMPLETED), "Process completed");
     assertFalse(
         types.contains(EventType.EVENT_TYPE_ACTIVITY_TASK_CANCEL_REQUESTED),
