@@ -51,6 +51,7 @@
           <testSourceDirectories>
             <testSourceDirectory>concurrency/clojure</testSourceDirectory>
             <testSourceDirectory>continue-as-new/clojure</testSourceDirectory>
+            <testSourceDirectory>failure/clojure</testSourceDirectory>
             <testSourceDirectory>messages/clojure</testSourceDirectory>
           </testSourceDirectories>
         </configuration>
