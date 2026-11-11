@@ -31,7 +31,7 @@ A `.twf` name is the registered name, byte for byte; never rename the `.twf` to 
 | Nexus service | unsupported: no Nexus API | — |
 | Nexus operation | unsupported: no Nexus API | — |
 
-A kebab-case var registers its kebab-case name silently.
+A kebab-case var registers its kebab-case name silently. A name that is a `java.lang` class, such as `Process`, is mapped to that class in every namespace (Clojure 1.12.6 `RT.java:42,73`), so its `defworkflow` or `defactivity` fails to compile (`Compiler.java:8082`) until `(ns-unmap *ns* 'Process)` precedes it.
 
 Types map by Clojure's own conventions. Read [cross-sdk.md, only where `twf check` reports `CROSS_SDK_CALL`](../temporal-architect/reference/cross-sdk.md).
 

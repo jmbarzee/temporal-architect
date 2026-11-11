@@ -46,7 +46,7 @@ if paymentsReceived.ready(payment) { // listed first, so it wins a tie
 | signal, update | `t := xs.wait()` | `xs.ready(t)` | `xs.claim()`; every losing message case calls `xs.leave(t)` |
 | activity, child workflow, nexus, timer, promise | the future (`workflow.NewTimer` for a timer) | `f.IsReady()` | `f.Get(ctx, &result)` |
 | condition | — | the condition's `bool` | — |
-| nested `await all:` | a goroutine runs its `WaitGroup`, then sets `done` | `done` | — |
+| nested `await all:` | a goroutine runs its `awaitAll` ([await-all.md](./await-all.md)) into `err`, then sets `done` | `done` | return `err` if set |
 
 A message case waits without taking: `ready` checks its queue ([await-signal.md](./await-signal.md)), and only the winner claims the arrival. A losing case must `leave`, or it holds its place in the queue and blocks later waiters.
 

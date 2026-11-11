@@ -8,7 +8,7 @@ Small `.twf` designs, each authored into every supported SDK and built and teste
 | [`messages`](./messages/messages.twf) | signal, query and update handlers, `await signal`, `promise <- signal`, `await update` |
 | [`concurrency`](./concurrency/concurrency.twf) | `await all`, `await one`, `detach workflow`, child workflows, timers |
 | [`continue-as-new`](./continue-as-new/continue-as-new.twf) | `close continue_as_new`, `await timer` |
-| [`failure`](./failure/failure.twf) | a branch failure in `await all`, in the main body and in an update handler; no copy yet in go, python, dotnet, ruby, php, rust, clojure, perl, erlang, swift |
+| [`failure`](./failure/failure.twf) | a branch failure in `await all`, in the main body and in an update handler; no copy yet in swift |
 
 ## Layout
 
@@ -58,7 +58,7 @@ corpus/
 
 Each SDK's copy of the design names only its own implementation, so no worker carries two SDKs. `check-corpus` checks every `.twf` file on its own (a directory check would load the copies together) and fails when a copy, its `@sdk` lines stripped, differs from the design.
 
-Each output registers the `.twf` names, implements every workflow and activity, and tests each workflow with the SDK's time-skipping test environment, so no Temporal server is needed. Perl's tests need a dev server: sdk-perl has no time-skipping environment, so each test file starts `temporal server start-dev` on a free port and waits in real time. Elixir's need one too, started with the server's time skipping enabled, since its SDK has no test environment; it skips `nexus`, `messages`' `update Review` and `failure`'s update case, which the SDK lacks. Erlang's run the same way on the same SDK pin.
+Each output registers the `.twf` names, implements every workflow and activity, and tests each workflow with the SDK's time-skipping test environment, so no Temporal server is needed. Perl's tests need a dev server: sdk-perl has no time-skipping environment, so each test file starts `temporal server start-dev` on a free port and waits in real time. Elixir's need one too, started with the server's time skipping enabled, since its SDK has no test environment; it skips `nexus`, `messages`' `update Review` and `failure`'s update case, which the SDK lacks. Erlang's run the same way on the same SDK pin, and skip the same cases.
 
 ## Run
 

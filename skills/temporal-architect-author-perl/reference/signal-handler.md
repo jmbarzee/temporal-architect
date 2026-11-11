@@ -28,6 +28,26 @@ class OrderWorkflow :isa(Temporalio::Workflow::Definition) {
 - The handler runs every arrival's body, whether or not anything waits, then adds the arrival to the signal's `Arrivals` ([await-signal.md](./await-signal.md)): one param as is, several as an arrayref, none as `1`. An `async method` handler adds after its last `await`, so the arrival is pending only once the handler returns. A signal nothing waits on needs no `Arrivals`.
 - A signal that arrives before `run` starts runs its handler first (`Workflow/Runner.pm:2120-2125`), so its `Arrivals` is a `field` initializer, never set in `run`.
 
+## Failure
+
+Spec 06 fails the run on a failure the handler leaves unrouted, but sdk-perl drops it: the handler's future is tracked only until it is ready (`Workflow/Runner.pm:3164-3203`). So a handler whose body makes a call runs that body as an `async method` and hands its failure to `run`:
+
+```perl
+field $handler_failure = Future->new;    # a signal handler's unrouted failure
+
+method payment_received :Signal('PaymentReceived') ($transaction_id, $amount) {
+    return $self->on_payment($transaction_id, $amount)->on_fail(sub {
+        $handler_failure->fail(@_) unless $handler_failure->is_ready;
+    });
+}
+
+async method run :Run ($order_id) {
+    return await Future->wait_any(also => $self->body($order_id), also => $handler_failure);
+}
+```
+
+- `run` races the workflow's body, an `async method`, against the failure; `also` keeps either from being cancelled ([await-all.md](./await-all.md)). A Temporal failure then fails the run (`Workflow/Runner.pm:4073-4077`), and Future::AsyncAwait's "lost its returning future" warning for the still-suspended body is harmless.
+
 ## Handler options
 
 ```twf

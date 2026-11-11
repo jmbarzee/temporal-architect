@@ -10,5 +10,5 @@ execute(_Context, [Items]) ->
         #{state := completed} ->
             complete_workflow_execution([]);
         #{state := State} ->
-            fail_workflow_execution(#{message => <<"Store ", (atom_to_binary(State))/binary>>})
+            fail_workflow_execution(#{message => "Store " ++ atom_to_list(State)})
     end.

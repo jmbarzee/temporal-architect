@@ -1,0 +1,26 @@
+-module(failure_replay_SUITE).
+-moduledoc "Replays every recorded history in histories/.".
+
+-include_lib("stdlib/include/assert.hrl").
+
+-export([all/0, init_per_suite/1, end_per_suite/1, replays/1]).
+
+all() -> [replays].
+
+init_per_suite(Config) ->
+    ok = corpus_temporal:start(),
+    Config.
+
+end_per_suite(_Config) -> ok.
+
+replays(_Config) ->
+    Source = proplists:get_value(source, ?MODULE:module_info(compile)),
+    Files = filelib:wildcard(filename:join(filename:dirname(Source), "histories/*.json")),
+    ?assertNotEqual([], Files),
+    Failed = [
+        {filename:basename(F), R}
+     || F <- Files,
+        R <- [corpus_temporal:replay(F, failure_workers:job_types_workflows())],
+        element(1, R) =/= ok
+    ],
+    ?assertEqual([], Failed).
