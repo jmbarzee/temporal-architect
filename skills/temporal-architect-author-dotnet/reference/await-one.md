@@ -37,7 +37,7 @@ One `WaitConditionAsync` over every case blocks until any is ready; then the fir
 | timer | `var timer = Workflow.DelayAsync(d, cts.Token)` | `timer.IsCompleted` | — |
 | activity, child workflow, nexus, promise | its `Task` `p` | `p.IsCompleted` | `await p` |
 | condition | — | the condition | — |
-| nested `await all:` | `var all = Workflow.WhenAllAsync(…)` | `all.IsCompleted` | `await all` |
+| nested `await all:` | `var all = Workflow.RunTaskAsync(async () => { /* the await-all loop */ })` | `all.IsCompleted` | `await all` |
 
 A message case waits without taking: `Ready` checks its `Arrivals` ([await-signal.md](./await-signal.md)), and only the winner claims the arrival; a losing case leaves it pending. An earlier waiter is served first, so a case waits behind it. `IsCompleted` is also true for a faulted `Task`; the winner's `await p` rethrows.
 

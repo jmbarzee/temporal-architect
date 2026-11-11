@@ -113,7 +113,7 @@ Load only what the current layer needs.
 | `await signal\|update Name -> (...)` | `await arrivals.TakeAsync()` | [await-signal.md](./reference/await-signal.md) |
 | `promise p <- ...` | the call's un-awaited `Task`; for a signal or update, `arrivals.TakeAsync()` | [promise.md](./reference/promise.md) |
 | `state:` / `condition` / `set` / `unset` | `bool` field + `Workflow.WaitConditionAsync` | [condition.md](./reference/condition.md) |
-| `await all:` | `Workflow.WhenAllAsync` | [await-all.md](./reference/await-all.md) |
+| `await all:` | a `Workflow.WhenAnyAsync` loop | [await-all.md](./reference/await-all.md) |
 | `await one:` | one `WaitConditionAsync` over every case; first listed ready wins | [await-one.md](./reference/await-one.md) |
 | handler + condition + `await one` | worked compositions | [composite-patterns.md](./reference/composite-patterns.md) |
 | `signal handle.Name(args)` / `signal Type.Name(args)` + `id:` | `ChildWorkflowHandle.SignalAsync` / `Workflow.GetExternalWorkflowHandle<T>(...).SignalAsync` | [signal-send.md](./reference/signal-send.md) |

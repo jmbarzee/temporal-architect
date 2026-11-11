@@ -14,7 +14,7 @@ defmodule ContinueAsNew.Counter do
         continue_as_new_workflow(context.worker_opts.task_queue, "Counter", input: [next, limit])
 
       %{state: state} ->
-        fail_workflow_execution(%{message: "Increment #{state}"})
+        fail_workflow_execution(%{message: ~c"Increment #{state}"})
     end
   end
 end

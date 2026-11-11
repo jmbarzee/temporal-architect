@@ -17,7 +17,8 @@
         "psr-4": {
             "Corpus\\Messages\\": "messages/php/",
             "Corpus\\Concurrency\\": "concurrency/php/",
-            "Corpus\\ContinueAsNew\\": "continue-as-new/php/"
+            "Corpus\\ContinueAsNew\\": "continue-as-new/php/",
+            "Corpus\\Failure\\": "failure/php/"
         }
     },
     "config": {

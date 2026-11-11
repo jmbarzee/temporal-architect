@@ -15,7 +15,7 @@ case start_child_workflow(context.worker_opts.task_queue, "Archive",
        wait: true
      ) do
   %{state: :initiate_failed} ->
-    fail_workflow_execution(%{message: "Archive did not start"})
+    fail_workflow_execution(%{message: ~c"Archive did not start"})
 
   %{} ->
     # Never wait for the result; let the caller close while the child runs.
