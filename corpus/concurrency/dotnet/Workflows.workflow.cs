@@ -24,7 +24,13 @@ public class Batch
     {
         var count = Workflow.ExecuteActivityAsync(() => Activities.Count(items), Options);
         var audited = Workflow.ExecuteChildWorkflowAsync((Audit wf) => wf.RunAsync(items));
-        await Workflow.WhenAllAsync(count, audited);
+        var pending = new List<Task> { count, audited };
+        while (pending.Count > 0)
+        {
+            var done = await Workflow.WhenAnyAsync(pending);
+            pending.Remove(done);
+            await done;
+        }
 
         // detach: abandon the child, never request its cancellation, and wait only for its start.
         await Workflow.StartChildWorkflowAsync(
