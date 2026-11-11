@@ -56,7 +56,7 @@ failure(#{state := State}) ->
     #{message => atom_to_list(State)}.
 ```
 
-`lists:keysort/2` is stable, so among branches that failed in one task the first listed surfaces. `failure/1` passes the message on as the charlist `fail_workflow_execution/1` needs ([close.md](./close.md)).
+`lists:keysort/2` is stable, so among branches that failed in one task the first listed surfaces, and the charlist message follows [close.md](./close.md).
 
 - A timer branch is its handle, `start_timer(D)`. A signal branch is `P = corpus_arrivals:promise(~"X")`, bound before `wait_branches` and taken after it with `corpus_arrivals:await(P)` ([await-signal.md](./await-signal.md)).
 - A `detach` branch stays out of `wait_branches`: start it before the call, with `wait`, and close on `initiate_failed`, as [detach.md](./detach.md) does. Why: [author-elixir await-all.md](../../temporal-architect-author-elixir/reference/await-all.md).
