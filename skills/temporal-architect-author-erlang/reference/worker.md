@@ -112,7 +112,7 @@ case start_activity(~"RunTool", [Call], [
 ]) of
     #{state := completed, result := [Output]} -> complete_workflow_execution([Output]);
     %% timedout here may be the instance gone: reroute, or rerun the sequence.
-    #{state := State} -> fail_workflow_execution(#{message => <<"RunTool ", (atom_to_binary(State))/binary>>})
+    #{state := State} -> fail_workflow_execution(#{message => "RunTool " ++ atom_to_list(State)})
 end
 ```
 

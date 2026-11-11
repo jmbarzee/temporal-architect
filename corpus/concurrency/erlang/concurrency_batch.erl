@@ -18,8 +18,11 @@ execute(Context, [Items]) ->
     Audit = start_child_workflow(TaskQueue, ~"Audit", [
         {input, [Items]}, {workflow_id, <<Wid/binary, "/Audit">>}
     ]),
-    case wait_all([Count, Audit]) of
-        [#{state := completed, result := [N]}, #{state := completed, result := [Audited]}] ->
+    case wait_branches([Count, Audit]) of
+        {failed, Branch} ->
+            await_open_before_close(false),
+            fail_workflow_execution(failure(Branch));
+        {ok, [#{result := [N]}, #{result := [Audited]}]} ->
             %% detach workflow Archive(items)
             Archive = start_child_workflow(TaskQueue, ~"Archive", [
                 {input, [Items]},
@@ -30,7 +33,7 @@ execute(Context, [Items]) ->
             ]),
             case Archive of
                 #{state := initiate_failed} ->
-                    fail_workflow_execution(#{message => ~"Archive did not start"});
+                    fail_workflow_execution(#{message => "Archive did not start"});
                 #{} ->
                     %% Never wait for the result; let the caller close while the child runs.
                     await_open_before_close(false),
@@ -39,14 +42,39 @@ execute(Context, [Items]) ->
                     complete_workflow_execution([
                         #{~"count" => N, ~"audited" => Audited, ~"status" => get(status)}
                     ])
-            end;
-        [#{state := CountState}, #{state := AuditState}] ->
-            fail_workflow_execution(#{
-                message => iolist_to_binary(
-                    io_lib:format("Count ~p, Audit ~p", [CountState, AuditState])
-                )
-            })
+            end
     end.
+
+-define(FAILED, [failed, timedout, canceled, terminated, initiate_failed]).
+
+%% await all (skills/temporal-architect-author-erlang/reference/await-all.md): the branches' data
+%% maps in listed order, or the first branch to fail, by workflow task then listed order.
+wait_branches(Handles) ->
+    Matches = [is_awaited(H) || H <- Handles],
+    Failed = [
+        {corpus_arrivals:task_of(Eid), M}
+     || {true, #{state := S, event_id := Eid} = M} <- Matches, lists:member(S, ?FAILED)
+    ],
+    case Failed of
+        [_ | _] ->
+            {failed, element(2, hd(lists:keysort(1, Failed)))};
+        [] ->
+            case [H || {H, {false, _}} <- lists:zip(Handles, Matches)] of
+                [] -> {ok, [M || {true, M} <- Matches]};
+                Open -> wait_any(Open), wait_branches(Handles)
+            end
+    end.
+
+%% The branch's message, application type and details, the message as a charlist.
+failure(#{failure := F}) ->
+    Info =
+        case F of
+            #{failure_info := {application_failure_info, I}} -> maps:with([type, details], I);
+            #{} -> #{}
+        end,
+    Info#{message => unicode:characters_to_list(maps:get(message, F, ~""))};
+failure(#{state := State}) ->
+    #{message => atom_to_list(State)}.
 
 %% Listed order: signal Ack, then the timer.
 race(T) ->

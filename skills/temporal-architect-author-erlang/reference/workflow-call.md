@@ -14,7 +14,7 @@ case start_child_workflow(TaskQueue, ~"ShipOrder", [
         %% ... the rest of the workflow, using ShipResult
         ok;
     #{state := State} ->
-        fail_workflow_execution(#{message => <<"ShipOrder ", (atom_to_binary(State))/binary>>})
+        fail_workflow_execution(#{message => "ShipOrder " ++ atom_to_list(State)})
 end
 ```
 
