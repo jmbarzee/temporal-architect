@@ -5,7 +5,7 @@ requires 'perl', '5.038000';
 
 # Temporalio-SDK 0.2.0 (sdk-perl's sdk/cpanfile) and Protobuf
 requires 'FFI::Platypus', '2.00';
-requires 'Future';
+requires 'Future', '0.51';    # needs_all's also
 requires 'Future::AsyncAwait', '0.66';
 requires 'IO::Async';
 requires 'Syntax::Keyword::Dynamically';
