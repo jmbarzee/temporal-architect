@@ -291,6 +291,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "corpus-failure"
+version = "0.0.0"
+dependencies = [
+ "corpus-testkit",
+ "futures",
+ "temporalio-client",
+ "temporalio-common",
+ "temporalio-macros",
+ "temporalio-sdk",
+ "temporalio-workflow",
+ "tokio",
+]
+
+[[package]]
 name = "corpus-messages"
 version = "0.0.0"
 dependencies = [
