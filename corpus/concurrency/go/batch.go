@@ -29,22 +29,18 @@ func Batch(ctx workflow.Context, items []string) (Report, error) {
 		}
 	})
 
+	countF := workflow.ExecuteActivity(ctx, Count, items)
+	auditF := workflow.ExecuteChildWorkflow(ctx, Audit, items)
+	if err := awaitAll(ctx, countF, auditF); err != nil {
+		return Report{}, err
+	}
 	var count int
 	var audited bool
-	var countErr, auditErr error
-	wg := workflow.NewWaitGroup(ctx)
-	wg.Go(ctx, func(gCtx workflow.Context) {
-		countErr = workflow.ExecuteActivity(gCtx, Count, items).Get(gCtx, &count)
-	})
-	wg.Go(ctx, func(gCtx workflow.Context) {
-		auditErr = workflow.ExecuteChildWorkflow(gCtx, Audit, items).Get(gCtx, &audited)
-	})
-	wg.Wait(ctx)
-	if countErr != nil {
-		return Report{}, countErr
+	if err := countF.Get(ctx, &count); err != nil {
+		return Report{}, err
 	}
-	if auditErr != nil {
-		return Report{}, auditErr
+	if err := auditF.Get(ctx, &audited); err != nil {
+		return Report{}, err
 	}
 
 	// detach: abandon the child, cut it off from this workflow's cancellation, and wait only for its start.
