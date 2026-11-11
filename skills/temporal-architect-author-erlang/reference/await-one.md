@@ -19,7 +19,7 @@ case race(T) of
     timer ->
         %% activity CancelOrder(orderId), as an inline call, then:
         fail_workflow_execution(#{
-            message => ~"order cancelled",
+            message => "order cancelled",
             type => ~"OrderCancelled",
             details => [#{~"status" => ~"cancelled"}]
         })
@@ -56,7 +56,7 @@ race(T) ->
 | activity, child workflow, promise | `task_at(P)`, below | `P` | `wait(P)`, matched on `completed` |
 | timer promise | `corpus_arrivals:timer_ready_at(P)` | `P` | — |
 | condition | `get(c)`, the task recorded by its `set`, after syncing the signals whose bodies set or unset it; set in the workflow body, unmapped ([condition.md](./condition.md#as-an-await-one-case)) | `{signal_request, Name}` of each of those signals | — |
-| nested `await all:` | the latest of its branches' tasks, `undefined` while any is | each branch | each `wait` |
+| nested `await all:` | the task its first branch failed in; with none failed, the latest of its branches' tasks, `undefined` while any is open ([await-all.md](./await-all.md)) | each open branch | each `wait`; a failed branch fails it |
 | update, nexus | unsupported ([author-elixir update-handler.md](../../temporal-architect-author-elixir/reference/update-handler.md), [nexus.md](../../temporal-architect-author-elixir/reference/nexus.md)) | — | — |
 
 ```erlang

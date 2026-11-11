@@ -1,0 +1,295 @@
+{
+  "events": [
+    {
+      "eventId": "1",
+      "eventTime": "2026-11-11T03:23:25.022755Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_EXECUTION_STARTED",
+      "taskId": "1049223",
+      "workflowExecutionStartedEventAttributes": {
+        "workflowType": {
+          "name": "Job"
+        },
+        "taskQueue": {
+          "name": "jobs-test-erlang",
+          "kind": "TASK_QUEUE_KIND_NORMAL"
+        },
+        "input": {
+          "payloads": [
+            {
+              "metadata": {
+                "encoding": "YmluYXJ5L3BsYWlu"
+              },
+              "data": "aXRlbS0x"
+            }
+          ]
+        },
+        "workflowTaskTimeout": "10s",
+        "originalExecutionRunId": "01a1c8a1-bbde-7b81-a51f-6154e30901ca",
+        "identity": "8b7a5ee6dbbb/nonode@nohost/cluster_1/<0.988.0>",
+        "firstExecutionRunId": "01a1c8a1-bbde-7b81-a51f-6154e30901ca",
+        "attempt": 1,
+        "firstWorkflowTaskBackoff": "0s",
+        "workflowId": "Job-reject-fails-716-1794367404819"
+      }
+    },
+    {
+      "eventId": "2",
+      "eventTime": "2026-11-11T03:23:25.022891Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_SCHEDULED",
+      "taskId": "1049224",
+      "workflowTaskScheduledEventAttributes": {
+        "taskQueue": {
+          "name": "jobs-test-erlang",
+          "kind": "TASK_QUEUE_KIND_NORMAL"
+        },
+        "startToCloseTimeout": "10s",
+        "attempt": 1
+      }
+    },
+    {
+      "eventId": "3",
+      "eventTime": "2026-11-11T03:23:25.027021Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_STARTED",
+      "taskId": "1049229",
+      "workflowTaskStartedEventAttributes": {
+        "scheduledEventId": "2",
+        "identity": "8b7a5ee6dbbb/nonode@nohost/cluster_1/default/jobs-test-erlang/workflow/2",
+        "requestId": "5fc10a0d-99b9-4712-8854-07da7490b95c",
+        "historySizeBytes": "319"
+      }
+    },
+    {
+      "eventId": "4",
+      "eventTime": "2026-11-11T03:23:25.064840Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_COMPLETED",
+      "taskId": "1049233",
+      "workflowTaskCompletedEventAttributes": {
+        "scheduledEventId": "2",
+        "startedEventId": "3",
+        "identity": "8b7a5ee6dbbb/nonode@nohost/cluster_1/default/jobs-test-erlang/workflow/2",
+        "workerVersion": {}
+      }
+    },
+    {
+      "eventId": "5",
+      "eventTime": "2026-11-11T03:23:25.064890Z",
+      "eventType": "EVENT_TYPE_TIMER_STARTED",
+      "taskId": "1049234",
+      "timerStartedEventAttributes": {
+        "timerId": "arrivals-keep-open",
+        "startToFireTimeout": "315360000s",
+        "workflowTaskCompletedEventId": "4"
+      }
+    },
+    {
+      "eventId": "6",
+      "eventTime": "2026-11-11T03:23:25.141996Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_EXECUTION_SIGNALED",
+      "taskId": "1049238",
+      "workflowExecutionSignaledEventAttributes": {
+        "signalName": "Proceed",
+        "input": {},
+        "identity": "8b7a5ee6dbbb/nonode@nohost/cluster_1/<0.988.0>",
+        "requestId": "cluster_1-0876fdb2-f90e-4ab5-83cd-b475f3e1824b"
+      }
+    },
+    {
+      "eventId": "7",
+      "eventTime": "2026-11-11T03:23:25.142003Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_SCHEDULED",
+      "taskId": "1049239",
+      "workflowTaskScheduledEventAttributes": {
+        "taskQueue": {
+          "name": "nonode@nohost/<0.834.0>/8a38f6d6-46ec-4c41-87ab-1e04987f8891/3",
+          "kind": "TASK_QUEUE_KIND_STICKY",
+          "normalName": "jobs-test-erlang"
+        },
+        "startToCloseTimeout": "10s",
+        "attempt": 1
+      }
+    },
+    {
+      "eventId": "8",
+      "eventTime": "2026-11-11T03:23:25.143758Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_STARTED",
+      "taskId": "1049243",
+      "workflowTaskStartedEventAttributes": {
+        "scheduledEventId": "7",
+        "identity": "8b7a5ee6dbbb/nonode@nohost/cluster_1/default/jobs-test-erlang/sticky_queue/3",
+        "requestId": "e220ddad-d9f3-4c92-852c-99b0cf6d9db4",
+        "historySizeBytes": "874"
+      }
+    },
+    {
+      "eventId": "9",
+      "eventTime": "2026-11-11T03:23:25.150577Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_COMPLETED",
+      "taskId": "1049247",
+      "workflowTaskCompletedEventAttributes": {
+        "scheduledEventId": "7",
+        "startedEventId": "8",
+        "identity": "8b7a5ee6dbbb/nonode@nohost/cluster_1/default/jobs-test-erlang/workflow/2",
+        "workerVersion": {}
+      }
+    },
+    {
+      "eventId": "10",
+      "eventTime": "2026-11-11T03:23:25.150637Z",
+      "eventType": "EVENT_TYPE_ACTIVITY_TASK_SCHEDULED",
+      "taskId": "1049248",
+      "activityTaskScheduledEventAttributes": {
+        "activityId": "main/2/<<\"Reject\">>/0",
+        "activityType": {
+          "name": "Reject"
+        },
+        "taskQueue": {
+          "name": "jobs-test-erlang",
+          "kind": "TASK_QUEUE_KIND_NORMAL"
+        },
+        "input": {
+          "payloads": [
+            {
+              "metadata": {
+                "encoding": "YmluYXJ5L3BsYWlu"
+              },
+              "data": "aXRlbS0x"
+            }
+          ]
+        },
+        "scheduleToCloseTimeout": "0s",
+        "scheduleToStartTimeout": "0s",
+        "startToCloseTimeout": "600s",
+        "heartbeatTimeout": "0s",
+        "workflowTaskCompletedEventId": "9",
+        "retryPolicy": {
+          "initialInterval": "1s",
+          "backoffCoefficient": 2,
+          "maximumInterval": "100s",
+          "maximumAttempts": 1
+        }
+      }
+    },
+    {
+      "eventId": "11",
+      "eventTime": "2026-11-11T03:23:25.150666Z",
+      "eventType": "EVENT_TYPE_ACTIVITY_TASK_SCHEDULED",
+      "taskId": "1049249",
+      "activityTaskScheduledEventAttributes": {
+        "activityId": "main/2/<<\"Process\">>/0",
+        "activityType": {
+          "name": "Process"
+        },
+        "taskQueue": {
+          "name": "jobs-test-erlang",
+          "kind": "TASK_QUEUE_KIND_NORMAL"
+        },
+        "input": {
+          "payloads": [
+            {
+              "metadata": {
+                "encoding": "YmluYXJ5L3BsYWlu"
+              },
+              "data": "aXRlbS0x"
+            }
+          ]
+        },
+        "scheduleToCloseTimeout": "0s",
+        "scheduleToStartTimeout": "0s",
+        "startToCloseTimeout": "600s",
+        "heartbeatTimeout": "0s",
+        "workflowTaskCompletedEventId": "9",
+        "retryPolicy": {
+          "initialInterval": "1s",
+          "backoffCoefficient": 2,
+          "maximumInterval": "100s"
+        }
+      }
+    },
+    {
+      "eventId": "12",
+      "eventTime": "2026-11-11T03:23:25.152609Z",
+      "eventType": "EVENT_TYPE_ACTIVITY_TASK_STARTED",
+      "taskId": "1049259",
+      "activityTaskStartedEventAttributes": {
+        "scheduledEventId": "10",
+        "identity": "8b7a5ee6dbbb/nonode@nohost/cluster_1/default/jobs-test-erlang/activity/3",
+        "requestId": "f4539ab1-3fdb-4a4e-b28f-6cf65eb382fb",
+        "attempt": 1,
+        "workerVersion": {}
+      }
+    },
+    {
+      "eventId": "13",
+      "eventTime": "2026-11-11T03:23:25.167899Z",
+      "eventType": "EVENT_TYPE_ACTIVITY_TASK_FAILED",
+      "taskId": "1049260",
+      "activityTaskFailedEventAttributes": {
+        "failure": {
+          "message": "rejected item-1",
+          "applicationFailureInfo": {
+            "type": "Rejected"
+          }
+        },
+        "scheduledEventId": "10",
+        "startedEventId": "12",
+        "identity": "8b7a5ee6dbbb/nonode@nohost/cluster_1/default/jobs-test-erlang/activity/3",
+        "retryState": "RETRY_STATE_MAXIMUM_ATTEMPTS_REACHED"
+      }
+    },
+    {
+      "eventId": "14",
+      "eventTime": "2026-11-11T03:23:25.167915Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_SCHEDULED",
+      "taskId": "1049261",
+      "workflowTaskScheduledEventAttributes": {
+        "taskQueue": {
+          "name": "nonode@nohost/<0.834.0>/8a38f6d6-46ec-4c41-87ab-1e04987f8891/3",
+          "kind": "TASK_QUEUE_KIND_STICKY",
+          "normalName": "jobs-test-erlang"
+        },
+        "startToCloseTimeout": "10s",
+        "attempt": 1
+      }
+    },
+    {
+      "eventId": "15",
+      "eventTime": "2026-11-11T03:23:25.169789Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_STARTED",
+      "taskId": "1049266",
+      "workflowTaskStartedEventAttributes": {
+        "scheduledEventId": "14",
+        "identity": "8b7a5ee6dbbb/nonode@nohost/cluster_1/default/jobs-test-erlang/sticky_queue/3",
+        "requestId": "caaec9f5-3650-48a3-89b1-62110336e1ba",
+        "historySizeBytes": "1832"
+      }
+    },
+    {
+      "eventId": "16",
+      "eventTime": "2026-11-11T03:23:25.172302Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_COMPLETED",
+      "taskId": "1049270",
+      "workflowTaskCompletedEventAttributes": {
+        "scheduledEventId": "14",
+        "startedEventId": "15",
+        "identity": "8b7a5ee6dbbb/nonode@nohost/cluster_1/default/jobs-test-erlang/workflow/2",
+        "workerVersion": {}
+      }
+    },
+    {
+      "eventId": "17",
+      "eventTime": "2026-11-11T03:23:25.172333Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_EXECUTION_FAILED",
+      "taskId": "1049271",
+      "workflowExecutionFailedEventAttributes": {
+        "failure": {
+          "message": "rejected item-1",
+          "applicationFailureInfo": {
+            "type": "Rejected"
+          }
+        },
+        "retryState": "RETRY_STATE_RETRY_POLICY_NOT_SET",
+        "workflowTaskCompletedEventId": "16"
+      }
+    }
+  ]
+}

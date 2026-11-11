@@ -15,7 +15,7 @@ case start_child_workflow(TaskQueue, ~"Archive", [
     wait
 ]) of
     #{state := initiate_failed} ->
-        fail_workflow_execution(#{message => ~"Archive did not start"});
+        fail_workflow_execution(#{message => "Archive did not start"});
     #{} ->
         %% Never wait for the result; let the caller close while the child runs.
         await_open_before_close(false)
