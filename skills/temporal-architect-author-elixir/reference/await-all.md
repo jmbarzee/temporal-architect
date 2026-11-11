@@ -22,7 +22,7 @@ end
 
 - Every branch is a [promise](./promise.md) handle, and `wait_branches/1`, below, returns their data maps in listed order once all complete, or the first branch to fail. Its `failure/1` keeps that branch's failure as the run's ([§ Branch failure](#branch-failure)).
 - A timer branch is its handle, `start_timer(d)`, done once `:fired`. A signal branch is `p = Arrivals.promise("X")`, bound before `wait_branches` and taken after it with `Arrivals.await(p)` ([await-signal.md](./await-signal.md)); a signal cannot fail.
-- A `detach` branch is its child started with `awaitable_event: :start` and `ABANDON`, which is ready at its start; `:initiate_failed` is its failure ([detach.md](./detach.md)).
+- A `detach` branch is complete once started, so it stays out of `wait_branches`: start it before the call, as [detach.md](./detach.md) does (`awaitable_event: :start`, `ABANDON`, `wait: true`), and close on `:initiate_failed`. In the list, its handle would read the child's later `:failed` or `:timedout` (`api/awaitable/temporal_sdk_api_awaitable_index.erl:343-352`), and a child that failed after starting would fail the `await all`.
 - Nexus branches are unsupported ([nexus.md](./nexus.md)), and so is the update-handler form ([update-handler.md](./update-handler.md)). In a signal body, which runs in the main execution ([signal-handler.md](./signal-handler.md)), the failure fails the run, as spec 06 says.
 
 ## Branch failure
