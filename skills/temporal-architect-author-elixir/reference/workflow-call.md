@@ -13,7 +13,7 @@ with %{state: :completed, result: [ship_result]} <-
        ) do
   # ... the rest of the workflow, using ship_result
 else
-  %{state: state} -> fail_workflow_execution(%{message: "ShipOrder #{state}"})
+  %{state: state} -> fail_workflow_execution(%{message: ~c"ShipOrder #{state}"})
 end
 ```
 

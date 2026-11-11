@@ -104,7 +104,7 @@ case start_activity("RunTool", [task["call"]],
      ) do
   %{state: :completed, result: [output]} -> complete_workflow_execution([output])
   # :timedout here may be the instance gone: reroute, or rerun the sequence.
-  %{state: state} -> fail_workflow_execution(%{message: "RunTool #{state}"})
+  %{state: state} -> fail_workflow_execution(%{message: ~c"RunTool #{state}"})
 end
 ```
 
