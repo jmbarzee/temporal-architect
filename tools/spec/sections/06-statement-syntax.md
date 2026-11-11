@@ -334,7 +334,7 @@ await_all_block ::= 'await' 'all' ':' NEWLINE
                     DEDENT
 ```
 
-Executes all contained statements concurrently and waits for ALL to complete before continuing. A [detached](#workflow-call) call is complete once started.
+Executes all contained statements concurrently and waits for ALL to complete before continuing, unless a branch fails first (below). A [detached](#workflow-call) call is complete once started.
 
 A call fails once its retry policy is spent. The first branch to fail fails the `await all` at once, with that failure. The branches still running are not cancelled: like a [losing `await one` case](#await-one-block), they end with the run (a child per `parent_close_policy`).
 

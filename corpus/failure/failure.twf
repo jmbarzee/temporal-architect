@@ -13,7 +13,7 @@ workflow Job(item: string):
 		condition proceeding
 	signal Proceed():
 		set proceeding
-	update Attempt(item: string):
+	update Attempt():
 		await all:
 			activity Reject(item)
 			activity Process(item)
