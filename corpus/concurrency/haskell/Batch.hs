@@ -21,6 +21,7 @@ import Control.Monad.Reader.Class (ask)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Foldable (traverse_)
 import Data.Text (Text)
+import FailFast (failFast)
 import GHC.Generics (Generic)
 import RequireCallStack (provideCallStack)
 import Temporal.Activity (Activity, ProvidedActivity, provideActivity)
@@ -55,10 +56,10 @@ batch = provideCallStack $ provideWorkflow JSON "Batch" \items -> do
     writeStateVar status "acknowledged"
     A.add acks ()
 
-  (counted, audited) <-
+  (counted, audited) <- failFast \guarded ->
     concurrently
-      (executeActivity count activityOptions items)
-      (executeChildWorkflow audit defaultChildWorkflowOptions items)
+      (guarded (executeActivity count activityOptions items))
+      (guarded (executeChildWorkflow audit defaultChildWorkflowOptions items))
 
   -- detach: abandon the child, never request its cancellation, and wait only for its start.
   archived <-

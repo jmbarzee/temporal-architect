@@ -14,5 +14,5 @@ execute(Context, [Count, Limit]) ->
         #{state := completed, result := [Next]} ->
             continue_as_new_workflow(TaskQueue, ~"Counter", [{input, [Next, Limit]}]);
         #{state := State} ->
-            fail_workflow_execution(#{message => <<"Increment ", (atom_to_binary(State))/binary>>})
+            fail_workflow_execution(#{message => "Increment " ++ atom_to_list(State)})
     end.

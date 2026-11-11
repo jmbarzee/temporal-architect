@@ -30,6 +30,7 @@ public class OrderWorkflow
 
 - A `[WorkflowSignal]` method returning `Task` on the workflow class; senders call it through a handle ([signal-send.md](./signal-send.md)). Params map positionally, one payload each.
 - The handler runs every arrival's body, whether or not anything waits, then adds the arrival to the signal's `Arrivals` ([await-signal.md](./await-signal.md)). An `async` body adds after its last `await`: the arrival is pending only once the handler returns. A signal nothing waits on needs no `Arrivals`.
+- A `FailureException` the handler leaves uncaught, such as an `await all` branch's, fails the run: the handler runs as a top-level task (`Worker/WorkflowInstance.cs:1768,1177-1184`).
 
 ## Handler options
 

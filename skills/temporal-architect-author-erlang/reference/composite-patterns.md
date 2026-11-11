@@ -42,7 +42,7 @@ execute(_Context, [DocId, RetentionDays]) ->
         #{state := completed} ->
             complete_workflow_execution([]);
         #{state := State} ->
-            fail_workflow_execution(#{message => <<"DeleteDocument ", (atom_to_binary(State))/binary>>})
+            fail_workflow_execution(#{message => "DeleteDocument " ++ atom_to_list(State)})
     end.
 
 %% Listed order: the condition, then the timer.

@@ -16,9 +16,10 @@ class Batch :isa(Temporalio::Workflow::Definition) {
     }
 
     async method run :Run ($items) {
+        # await all: the first failure fails it, and `also` leaves the other branch running.
         my ($count, $audited) = await Future->needs_all(
-            Temporalio::Workflow::start_activity('Count', args => [$items], start_to_close_timeout => 60),
-            Temporalio::Workflow::execute_child_workflow('Audit', args => [$items]),
+            also => Temporalio::Workflow::start_activity('Count', args => [$items], start_to_close_timeout => 60),
+            also => Temporalio::Workflow::execute_child_workflow('Audit', args => [$items]),
         );
 
         # detach: abandon the child, never request its cancellation, and wait only for its start.

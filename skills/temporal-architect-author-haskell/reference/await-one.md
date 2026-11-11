@@ -36,7 +36,7 @@ case r of
 | promise | its binding ([promise.md](./promise.md)) | `wait p`; a timer promise `traverse_ wait p` | its result |
 | signal or update promise | `p <- A.begin xs`, earlier | `waitCondition (A.ready xs p)` | winner `A.claim xs p`; a losing promise keeps its place |
 | condition | — | `waitCondition (readStateVar c)` ([condition.md](./condition.md)) | — |
-| nested `await all:` | — | `concurrently a b` ([await-all.md](./await-all.md)) | its results |
+| nested `await all:` | — | `failFast` over `concurrently a b` ([await-all.md](./await-all.md)) | its results |
 
 A message case waits without taking: `ready` checks its `Arrivals` ([await-signal.md](./await-signal.md)), and only the winning branch claims. A losing case must `leave`, or it holds its place and blocks later waiters. An earlier waiter is served first, so a case waits behind it. A branch that throws ends the race with that exception.
 

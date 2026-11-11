@@ -26,6 +26,7 @@ orderWorkflow = provideCallStack $ provideWorkflow JSON "OrderWorkflow" \orderId
 - A `KnownSignal` value per signal, beside the workflow, with the `.twf` name as its string ([SKILL.md](../SKILL.md#wire-names)); senders import it ([signal-send.md](./signal-send.md)). Its type lists the params: they map positionally, one payload each, and the handler takes them as curried arguments (`Workflow/Signal.hs:10-15`, `Workflow.hs:1359-1368`). A signal with none is `KnownSignal '[]`, its handler a bare `Workflow ()`.
 - `setSignalHandler` registers the handler inside the workflow body, at the top, beside the `StateVar`s it writes. A signal that arrives before registration is buffered and run at registration (`WorkflowInstance.hs:572-577`, `Workflow.hs:1378-1382`).
 - The handler runs every arrival's body, whether or not anything waits, then calls `A.add` last ([await-signal.md](./await-signal.md)): the arrival is pending only once the handler returns. A signal nothing waits on needs no `Arrivals`.
+- A failure the handler leaves uncaught, such as an `await all` branch's, fails the run (spec 06), but the SDK stores the handler's throw where nothing reads it, and the run goes on (`Workflow/Eval.hs:177,281-287`). Map it with [`failFast`](./await-all.md#a-branch-fails): wrap the workflow body in it, and the handler's body in its guard, `failFast \guarded -> do … setSignalHandler cancelSignal (guarded do …)`. A handler that cannot fail needs neither.
 
 ## Handler options
 
