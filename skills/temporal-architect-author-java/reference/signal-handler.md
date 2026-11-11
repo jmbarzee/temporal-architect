@@ -37,6 +37,7 @@ public class OrderWorkflowImpl implements OrderWorkflow {
 - A `@SignalMethod` on the `@WorkflowInterface`, returning `void` (`common/metadata/POJOWorkflowMethod.java:37`), always with `name =` (the SKILL's Wire names); senders call it through the interface ([signal-send.md](./signal-send.md)). Params map positionally, one payload each, decoded into the method's param types (`internal/sync/SignalDispatcher.java:87`); no params → `void open()`.
 - State and `Arrivals` are fields initialized at their declaration: a handler can run before the workflow method starts (`workflow/SignalMethod.java:11-21`, `internal/sync/SyncWorkflow.java:111-114`).
 - The handler runs every arrival's body, whether or not anything waits, then adds the arrival to the signal's `Arrivals` ([await-signal.md](./await-signal.md)). A body that blocks (a timer, an activity) adds after its last blocking call: the arrival is pending only once the handler returns. A signal nothing waits on needs no `Arrivals`.
+- A `TemporalFailure` the handler leaves uncaught, such as an `await all` branch's, fails the run (`internal/sync/WorkflowExecutionHandler.java:89-90,136`, `internal/replay/ReplayWorkflowExecutor.java:80-83`).
 
 ## Handler options
 

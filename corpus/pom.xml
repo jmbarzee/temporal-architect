@@ -70,6 +70,7 @@
               <sources>
                 <source>concurrency/java</source>
                 <source>continue-as-new/java</source>
+                <source>failure/java</source>
                 <source>messages/java</source>
                 <source>nexus/java</source>
               </sources>
