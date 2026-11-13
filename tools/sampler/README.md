@@ -428,6 +428,7 @@ go test ./tools/sampler/...
 
 Open work is tracked as GitHub issues:
 
+- `asyncBacking` from a Nexus handler's history — [#820](https://github.com/jmbarzee/temporal-architect/issues/820)
 - Templated nexus endpoint families — [#816](https://github.com/jmbarzee/temporal-architect/issues/816)
 - Concurrency and rate limiting, plus parallel sharded sampling with post-hoc `observe.Merge` — [#60](https://github.com/jmbarzee/temporal-architect/issues/60)
 - Temporal Cloud env-var auth — [#62](https://github.com/jmbarzee/temporal-architect/issues/62)

@@ -62,19 +62,18 @@ func nsHistory(namespace, workflowID, runID string, events ...*historypb.History
 }
 
 // world is the runs a fake namespace holds, keyed "namespace/workflowID/runID".
-// A key in denied answers PermissionDenied; any other missing run is past
-// retention.
+// A key in errs answers its error; any other missing run is past retention.
 type world struct {
-	runs   map[string][]*historypb.HistoryEvent
-	denied map[string]bool
-	calls  []string
+	runs  map[string][]*historypb.HistoryEvent
+	errs  map[string]error
+	calls []string
 }
 
 func (w *world) fetch(namespace, workflowID, runID string) ([]*historypb.HistoryEvent, error) {
 	key := fmt.Sprintf("%s/%s/%s", namespace, workflowID, runID)
 	w.calls = append(w.calls, key)
-	if w.denied[key] {
-		return nil, serviceerror.NewPermissionDenied("no access", "")
+	if err := w.errs[key]; err != nil {
+		return nil, err
 	}
 	if events, ok := w.runs[key]; ok {
 		return events, nil
@@ -174,6 +173,14 @@ func TestFetchTransitive_Cap(t *testing.T) {
 		t.Errorf("a run left to the cap is not unreached, got %v", unreached)
 	}
 
+	// A reference to a run already fetched does not consume the cap.
+	repeat := nsHistory("ns", "parent", "p1",
+		childStarted("ns", "kid-k1", "k1", "Kid"), childStarted("ns", "kid-k1", "k1", "Kid"), childStarted("ns", "kid-k2", "k2", "Kid"))
+	found, _ = walk(t, w, []history.History{repeat}, map[typeKey]int{}, 2)
+	if !slices.Equal(found, []string{"kid-k1/k1", "kid-k2/k2"}) {
+		t.Errorf("found %v under a cap of 2 with k1 named twice, want k1 and k2", found)
+	}
+
 	// An execution already held, sampled or fetched, counts against the cap.
 	found, _ = walk(t, w, []history.History{parent}, map[typeKey]int{kid: 1}, 2)
 	if got := len(found); got != 1 {
@@ -191,17 +198,22 @@ func TestFetchTransitive_Unreadable(t *testing.T) {
 		}
 	})
 
-	t.Run("a child in a namespace the caller is denied", func(t *testing.T) {
-		parent := nsHistory("ns", "parent", "p1", childStarted("other", "kid", "k1", "Kid"))
-		w := &world{
-			runs:   map[string][]*historypb.HistoryEvent{"other/kid/k1": {started("")}},
-			denied: map[string]bool{"other/kid/k1": true},
-		}
-		found, unreached := walk(t, w, []history.History{parent}, map[typeKey]int{}, 5)
-		if len(found) != 0 || len(unreached) != 1 {
-			t.Errorf("found %v, unreached %v; want none and one", found, unreached)
-		}
-	})
+	for name, err := range map[string]error{
+		"denied":            serviceerror.NewPermissionDenied("no access", ""),
+		"no such namespace": serviceerror.NewNamespaceNotFound("other"),
+	} {
+		t.Run("a child in another namespace that is "+name, func(t *testing.T) {
+			parent := nsHistory("ns", "parent", "p1", childStarted("other", "kid", "k1", "Kid"))
+			w := &world{
+				runs: map[string][]*historypb.HistoryEvent{"other/kid/k1": {started("")}},
+				errs: map[string]error{"other/kid/k1": err},
+			}
+			found, unreached := walk(t, w, []history.History{parent}, map[typeKey]int{}, 5)
+			if len(found) != 0 || len(unreached) != 1 {
+				t.Errorf("found %v, unreached %v; want none and one", found, unreached)
+			}
+		})
+	}
 
 	t.Run("a child in another namespace is fetched there", func(t *testing.T) {
 		parent := nsHistory("ns", "parent", "p1", childStarted("other", "kid", "k1", "Kid"))
@@ -247,10 +259,11 @@ func TestFetchTransitive_Nexus(t *testing.T) {
 	})
 
 	t.Run("a started operation with no link is unlinked", func(t *testing.T) {
-		found, unreached := walk(t, &world{}, []history.History{op(nil)}, map[typeKey]int{}, 5)
+		w := &world{}
+		found, unreached := walk(t, w, []history.History{op(nil)}, map[typeKey]int{}, 5)
 		want := history.Unreached{WorkflowID: "caller", RunID: "c1", Subject: history.SubjectNexus, Name: "Invoices.Create", Target: "billing", Unlinked: true}
-		if len(found) != 0 || !slices.Equal(unreached, []history.Unreached{want}) {
-			t.Errorf("found %v, unreached %v; want none and %v", found, unreached, want)
+		if len(found) != 0 || len(w.calls) != 0 || !slices.Equal(unreached, []history.Unreached{want}) {
+			t.Errorf("found %v, fetched %v, unreached %v; want none, none and %v", found, w.calls, unreached, want)
 		}
 	})
 
