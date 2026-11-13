@@ -36,8 +36,8 @@ One invocation targets one namespace and runs three phases:
    `SIGNAL_EXTERNAL_WORKFLOW_EXECUTION_INITIATED`) become edges, each occurrence
    bucketed by its event time. The result is written as one JSON file.
 
-Problems and notes found during the fold reuse the envelope's `graph` diagnostic kind —
-there is no separate `history` kind; the `code` disambiguates:
+Problems and notes found during the fold reuse the envelope's `graph`
+diagnostic kind — there is no separate `history` kind; the `code` disambiguates:
 
 | Code | When |
 |---|---|
@@ -82,9 +82,8 @@ system was designed in, loaded as `twf check` loads it, and joins each sampled
 definition to its package: a name one package declares takes that package, and
 a name several declare takes the one a worker hosts on the sampled namespace
 and task queue (one the family join attributes to a design family counts as the
-family's). The package
-qualifies the name element of the ID as `graph.Extract` does, so a packaged
-definition's observed ID equals its design node's (a worker's ID still carries
+family's). The package qualifies the name element of the ID as `graph.Extract`
+does, so a packaged definition's observed ID equals its design node's (a worker's ID still carries
 its queue, so the worker must be named for it). A name the design lacks, or one
 it cannot tell apart, keeps its bare ID and is listed in `unresolved`. The
 design's `packages` table, which maps a package ID to its declared name, rides
@@ -104,41 +103,48 @@ as `SIGNAL_TARGET_AMBIGUOUS` with the candidates; one that fits none stays
 unresolved as `SIGNAL_TARGET_NOT_SAMPLED`. A workflow hosted only under a
 templated namespace or queue never matches.
 
-With `--design`, an observed namespace or task queue is likewise joined to its design family. A concrete
-name (`fabric-shard-acme`, `sandbox-8f3a`) is matched against the design's family templates with the
-parser's own matchers (the `deploy_name` template for a namespace, `ast.ParseDeployQueue` for a worker's
-queue, among the workers of the namespace it resolved to), and a single match lands the observation on the
-family's node: all instances fold into it, it carries the design's `templateParams`, and a worker family takes
-the design worker's name, so the observed and design graphs agree and
-[the diff](#diffing-against-a-design-graph) shows no drift for them. A name the design declares literally is
-its own. One that fits several families resolves to none, stays a concrete node and is reported as
-`FAMILY_AMBIGUOUS` with the candidates, once per name; one that fits none stays a concrete node. Each family
-with observed members also carries a `FAMILY_MEMBERS` hint counting and listing them, so the node needs no
-field for it.
+With `--design`, an observed namespace or task queue is likewise joined to its
+design family. A concrete name (`fabric-shard-acme`, `sandbox-8f3a`) is matched
+against the design's family templates with the parser's own matchers (the
+`deploy_name` template for a namespace, `ast.ParseDeployQueue` for a worker's
+queue, among the workers of the namespace it resolved to), and a single match
+lands the observation on the family's node: all instances fold into it, it
+carries the design's `templateParams`, and a worker family takes the design
+worker's name, so the observed and design graphs agree and the
+[diff](#diffing-against-a-design-graph) shows no drift for them. A name the
+design declares literally is its own. One that fits several families resolves to
+none, stays a concrete node and is reported as `FAMILY_AMBIGUOUS` with the
+candidates, once per name; one that fits none stays a concrete node. Each family
+with observed members also carries a `FAMILY_MEMBERS` hint counting and listing
+them, so the node needs no field for it. After `observe.Merge`, each shard keeps
+its own hint, not a combined count. A worker instantiated under two queue
+families in one namespace is one design node that keeps its first queue, so only
+that queue attributes.
 
 ### `templateParams` is always empty on observed nodes
 
 `graph.Node` carries a `templateParams` field for parameterized design families:
-a namespace `fabric-shard-{org}` or a worker on queue `sandbox-{sandboxId}` is one
-design node whose name has template parameters. The sampler **never populates
-it**, and this is deliberate — not an unimplemented feature. Observed node names
-come entirely from resolved runtime history attributes (`h.Namespace`,
-`attr.GetNamespace()`, task-queue and type names), so a sampled name is always a
-concrete instance (`fabric-shard-acme`, `sandbox-8f3a`) with no template
-parameters. There is nothing to extract, so `templateParams` is always
-absent/empty (the field is `omitempty`), keeping an observed node
-**byte-identical** to a statically extracted `twf graph` node.
+a namespace `fabric-shard-{org}` or a worker on queue `sandbox-{sandboxId}` is
+one design node whose name has template parameters. From history alone the
+sampler **never populates it**, and this is deliberate, not an unimplemented
+feature. Observed node names come entirely from resolved runtime history
+attributes (`h.Namespace`, `attr.GetNamespace()`, task-queue and type names), so
+a sampled name is always a concrete instance (`fabric-shard-acme`,
+`sandbox-8f3a`) with no template parameters. There is nothing to extract, so
+`templateParams` is absent/empty (the field is `omitempty`), keeping such an
+observed node **byte-identical** to a statically extracted `twf graph` node.
+Only the `--design` [join](#packages-and-the-design-input) sets it, by landing
+an instance on its family's design node.
 
 The consequence is a representation gap: a design family is one node with
 `templateParams`, while its observed counterpart is *one node per instance*
 (`fabric-shard-acme`, `fabric-shard-globex`, …; `sandbox-8f3a`, `sandbox-c71d`,
-…), each with no `templateParams`. Without `--design` a family never ID-matches an
-observed instance, and [the diff](#diffing-against-a-design-graph) flags every
-instance as drift. With it, the sampler
-[joins](#packages-and-the-design-input) each instance to its family node
-([#265](https://github.com/jmbarzee/temporal-architect/issues/265)), which carries the design's
-`templateParams`; a name that fits no family stays concrete. The observed-vs-designed overlay
-that reads the result is [#66](https://github.com/jmbarzee/temporal-architect/issues/66).
+…), each with no `templateParams`. Without `--design` a family never ID-matches
+an observed instance, and [the diff](#diffing-against-a-design-graph) flags
+every instance as drift. With it, the sampler joins each instance to its family
+node ([#265](https://github.com/jmbarzee/temporal-architect/issues/265)); a name
+that fits no family stays concrete. The observed-vs-designed overlay that reads
+the result is [#66](https://github.com/jmbarzee/temporal-architect/issues/66).
 
 ### Event mapping
 
@@ -346,8 +352,8 @@ concrete instances of a design family when the sample ran without `--design`
 ([above](#templateparams-is-always-empty-on-observed-nodes));
 nodes only in the design are unsampled or dead paths.
 
-A sample joined to a `--design` folds each family's instances into the family's node; read how
-many there were from its hint:
+A sample joined to a `--design` folds each family's instances into the
+family's node; read how many there were from its hint:
 
 ```bash
 jq -r '.observedGraph.diagnostics[] | select(.code == "FAMILY_MEMBERS") | .message' observed-graph.json
