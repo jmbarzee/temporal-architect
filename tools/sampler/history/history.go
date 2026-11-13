@@ -8,8 +8,12 @@
 package history
 
 import (
+	"cmp"
+	"fmt"
 	"os"
+	"slices"
 	"sort"
+	"strings"
 	"time"
 
 	enumspb "go.temporal.io/api/enums/v1"
@@ -21,6 +25,10 @@ import (
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/observe"
 	"github.com/jmbarzee/temporal-architect/tools/sampler/design"
 )
+
+// diagSignalTargetAmbiguous is the code for a signal whose target workflow ID
+// fits the id_schemes of several workflows, so it has no one type.
+const diagSignalTargetAmbiguous = "SIGNAL_TARGET_AMBIGUOUS"
 
 // History is one workflow run's event log. (WorkflowID, RunID) identifies the
 // run: continue-as-new chains several runs under one WorkflowID, and each is its
@@ -334,6 +342,9 @@ func (b *builder) handleSignalInitiated(e *historypb.HistoryEvent, callerID stri
 	}
 	info, ok := b.index.resolve(targetWFID, target.GetRunId())
 	if !ok {
+		info, ok = b.schemeTarget(callerID, targetWFID, cmp.Or(attr.GetNamespace(), caller.namespace))
+	}
+	if !ok {
 		b.og.Unresolved = append(b.og.Unresolved, graph.Unresolved{
 			From: callerID,
 			Name: targetWFID,
@@ -344,6 +355,39 @@ func (b *builder) handleSignalInitiated(e *historypb.HistoryEvent, callerID stri
 	b.ensureWorkerAndNamespace(info.namespace, info.taskQueue)
 	calleeID := b.ensureHosted(graph.KindWorkflow, info.workflowType, info.namespace, info.taskQueue)
 	b.addDispatch(callerID, calleeID, graph.EdgeSignalSend, eventTime(e))
+}
+
+// schemeTarget recovers the workflow an unsampled signal target is from the
+// design's id_schemes: the one workflow whose scheme the ID fits. An ID that fits
+// several resolves to none and is reported with them; one that fits none, or no
+// design, resolves to none silently.
+func (b *builder) schemeTarget(callerID, workflowID, namespace string) (startInfo, bool) {
+	if b.design == nil {
+		return startInfo{}, false
+	}
+	matches := b.design.MatchWorkflowID(workflowID, namespace)
+	switch len(matches) {
+	case 0:
+		return startInfo{}, false
+	case 1:
+		m := matches[0]
+		return startInfo{workflowType: m.Name, taskQueue: m.Queue, namespace: namespace}, true
+	}
+	labels := make([]string, len(matches))
+	for i, m := range matches {
+		labels[i] = ast.Label(b.design.Graph.Packages, m.Package, m.Name) + " on queue " + m.Queue
+	}
+	sort.Strings(labels)
+	d := graph.Diagnostic{
+		Severity: "warning",
+		Code:     diagSignalTargetAmbiguous,
+		Message:  fmt.Sprintf("workflow ID %q fits the id_schemes of %s", workflowID, strings.Join(labels, ", ")),
+		From:     callerID,
+	}
+	if !slices.Contains(b.og.Diagnostics, d) { // one per sender and target ID, however many signals
+		b.og.Diagnostics = append(b.og.Diagnostics, d)
+	}
+	return startInfo{}, false
 }
 
 func eventTime(e *historypb.HistoryEvent) time.Time {

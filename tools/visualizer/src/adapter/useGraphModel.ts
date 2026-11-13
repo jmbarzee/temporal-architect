@@ -50,6 +50,16 @@ export function graphFindingsToDiagnostics(pg: ParserGraph): Diagnostic[] {
       })
       continue
     }
+    // An ID that fits several id_schemes already has its finding, which names
+    // the ID the way this one would; the not-sampled one would only repeat it.
+    if (
+      u.kind === 'signalSend' &&
+      pg.diagnostics.some(
+        d => d.code === 'SIGNAL_TARGET_AMBIGUOUS' && d.from === u.from && d.message.startsWith(`workflow ID ${JSON.stringify(u.name)} `),
+      )
+    ) {
+      continue
+    }
     const code = u.kind === 'signalSend' ? 'SIGNAL_TARGET_NOT_SAMPLED' : 'UNRESOLVED_REFERENCE'
     out.push({
       severity: 'warning',

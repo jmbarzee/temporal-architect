@@ -104,12 +104,14 @@ export type ParserTier = CoarsenTier;
 export type ParserGraphDiagnosticSeverity = GraphDiagnosticSeverity;
 /**
  * Diagnostic codes surfaced on the graph payload. DISPATCH_NO_REACHABLE_DEPLOYMENT
- * is graph.go's only emitted code today; SIGNAL_TARGET_NOT_SAMPLED is produced by
- * the history-import path that shares this payload shape.
+ * is graph.go's only emitted code today; SIGNAL_TARGET_NOT_SAMPLED and
+ * SIGNAL_TARGET_AMBIGUOUS are produced by the history-import path that shares
+ * this payload shape.
  */
 export type ParserGraphDiagnosticCode =
   | "DISPATCH_NO_REACHABLE_DEPLOYMENT"
-  | "SIGNAL_TARGET_NOT_SAMPLED";
+  | "SIGNAL_TARGET_NOT_SAMPLED"
+  | "SIGNAL_TARGET_AMBIGUOUS";
 
 /** A graph node; `name` is optional because saved graphs from an older twf lack it. */
 export type ParserNode = Omit<GraphNodeJSON, "name"> & { name?: string };

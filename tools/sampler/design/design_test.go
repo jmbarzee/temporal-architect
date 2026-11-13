@@ -1,6 +1,7 @@
 package design
 
 import (
+	"slices"
 	"strings"
 	"testing"
 
@@ -68,5 +69,35 @@ func TestLoad_Errors(t *testing.T) {
 		if _, err := Load(path); err == nil {
 			t.Errorf("Load(%s) succeeded", path)
 		}
+	}
+}
+
+// The schemes design hosts ShipItem ("ship-{order.id}-{item.id}") and ShipOrder
+// ("ship-{order.id}"), which overlap, and Refund ("refund-{order.id}"), in
+// namespace prod.
+func TestMatchWorkflowID(t *testing.T) {
+	d, err := Load("testdata/schemes")
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	tests := []struct {
+		name      string
+		id        string
+		namespace string
+		want      []Target
+	}{
+		{"one scheme fits", "refund-7", "prod", []Target{{"", "Refund", "refunds"}}},
+		{"two schemes fit", "ship-42-sku", "prod", []Target{{"", "ShipItem", "shipping"}, {"", "ShipOrder", "shipping"}}},
+		{"only the shorter scheme fits", "ship-42", "prod", []Target{{"", "ShipOrder", "shipping"}}},
+		{"no scheme fits", "audit-1", "prod", nil},
+		{"a workflow with no scheme is not a match", "checkout-1", "prod", nil},
+		{"namespace no worker hosts it in", "refund-7", "staging", nil},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := d.MatchWorkflowID(tt.id, tt.namespace); !slices.Equal(got, tt.want) {
+				t.Errorf("MatchWorkflowID(%q, %q) = %v, want %v", tt.id, tt.namespace, got, tt.want)
+			}
+		})
 	}
 }

@@ -90,7 +90,7 @@ func (v *validationCtx) checkIDSchemeOverlap() {
 		for i, a := range hosted {
 			for _, b := range hosted[i+1:] {
 				pair := [2]*ast.WorkflowDef{a, b}
-				if reported[pair] || reported[[2]*ast.WorkflowDef{b, a}] || !templatesOverlap(a.IDScheme.Template, b.IDScheme.Template) {
+				if reported[pair] || reported[[2]*ast.WorkflowDef{b, a}] || !ast.IDTemplatesOverlap(a.IDScheme.Template, b.IDScheme.Template) {
 					continue
 				}
 				reported[pair] = true
@@ -106,58 +106,6 @@ func (v *validationCtx) checkIDSchemeOverlap() {
 			}
 		}
 	}
-}
-
-// templatesOverlap reports whether some string matches both ID templates, each
-// hole standing for one or more arbitrary characters.
-func templatesOverlap(a, b string) bool {
-	pa, pb := globOf(a), globOf(b)
-	memo := map[[2]int]bool{}
-	var match func(i, j int) bool
-	match = func(i, j int) bool {
-		key := [2]int{i, j}
-		if r, ok := memo[key]; ok {
-			return r
-		}
-		var r bool
-		switch {
-		case i == len(pa) && j == len(pb):
-			r = true
-		case i < len(pa) && pa[i] == globStar:
-			r = match(i+1, j) || (j < len(pb) && match(i, j+1))
-		case j < len(pb) && pb[j] == globStar:
-			r = match(i, j+1) || (i < len(pa) && match(i+1, j))
-		case i < len(pa) && j < len(pb):
-			r = (pa[i] == globAny || pb[j] == globAny || pa[i] == pb[j]) && match(i+1, j+1)
-		}
-		memo[key] = r
-		return r
-	}
-	return match(0, 0)
-}
-
-const (
-	globAny  = -1 // exactly one character
-	globStar = -2 // zero or more characters
-)
-
-// globOf turns an ID template into glob tokens: fixed bytes, and each hole as
-// globAny followed by globStar.
-func globOf(template string) []int {
-	fixed, holes, msg := ast.ParseIDTemplate(template)
-	if msg != "" {
-		return nil
-	}
-	var out []int
-	for i, f := range fixed {
-		for _, c := range []byte(f) {
-			out = append(out, int(c))
-		}
-		if i < len(holes) {
-			out = append(out, globAny, globStar)
-		}
-	}
-	return out
 }
 
 // keptWorkflows returns the workflows of defs the resolver keeps: the first

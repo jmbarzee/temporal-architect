@@ -1,0 +1,45 @@
+workflow Checkout(order: Order):
+	activity Reserve(order)
+	close complete()
+
+workflow ShipItem(order: Order, item: Item):
+	id_scheme: "ship-{order.id}-{item.id}"
+	activity Reserve(order)
+	close complete()
+
+workflow ShipOrder(order: Order):
+	id_scheme: "ship-{order.id}"
+	activity Reserve(order)
+	close complete()
+
+workflow Refund(order: Order):
+	id_scheme: "refund-{order.id}"
+	activity Reserve(order)
+	close complete()
+
+activity Reserve(order: Order):
+	pass()
+
+worker checkout:
+	workflow Checkout
+	activity Reserve
+
+worker shipping:
+	workflow ShipItem
+	workflow ShipOrder
+	activity Reserve
+
+worker refunds:
+	workflow Refund
+	activity Reserve
+
+namespace prod:
+	worker checkout
+		options:
+			task_queue: "checkout"
+	worker shipping
+		options:
+			task_queue: "shipping"
+	worker refunds
+		options:
+			task_queue: "refunds"
