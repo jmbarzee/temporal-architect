@@ -1,10 +1,12 @@
 package graph
 
 import (
+	"encoding/json"
 	"os"
 	"strings"
 	"testing"
 
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/parser"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/resolver"
 )
@@ -632,5 +634,75 @@ namespace ns:
 	g := Extract(file)
 	if len(g.Unresolved) != 1 || g.Unresolved[0].Name != "shipping.ShipItem" || g.Unresolved[0].Reason != UnresolvedExternal {
 		t.Fatalf("expected one external Unresolved for shipping.ShipItem, got %+v", g.Unresolved)
+	}
+}
+
+// TestSitesNameTheirFile: calls on the same line of two files reach the graph
+// apart, by their sites' files, in both edges and unresolved entries.
+func TestSitesNameTheirFile(t *testing.T) {
+	var inputs []ast.StampInput
+	for _, in := range []struct{ name, src string }{
+		{"a.twf", "workflow W1():\n\tactivity A()\n\tactivity Missing()\n\tclose complete()\n"},
+		{"b.twf", `workflow W2():
+	activity A()
+	activity Missing()
+	close complete()
+
+activity A():
+	return
+
+worker w:
+	workflow W1
+	workflow W2
+	activity A
+
+namespace n:
+	worker w
+		options:
+			task_queue: "q"
+`},
+	} {
+		file, errs := parser.ParseFileAll(in.src)
+		if len(errs) > 0 {
+			t.Fatalf("parse %s: %v", in.name, errs[0])
+		}
+		inputs = append(inputs, ast.StampInput{File: file, SourceFile: in.name})
+	}
+	file := ast.Stamp(inputs)
+	resolver.Resolve(file)
+	g := Extract(file)
+
+	fileOf := map[string]string{
+		"workflow:W1/worker:w/namespace:n": "a.twf",
+		"workflow:W2/worker:w/namespace:n": "b.twf",
+	}
+	calls := 0
+	for _, e := range g.Edges {
+		if e.Kind == EdgeActivityCall {
+			calls++
+			if want := (ast.Site{File: fileOf[e.From], Line: 2, Column: 2}); e.Site != want {
+				t.Errorf("edge from %s at %+v, want %+v", e.From, e.Site, want)
+			}
+		}
+	}
+	for _, u := range g.Unresolved {
+		if want := (ast.Site{File: fileOf[u.From], Line: 3, Column: 2}); u.Site != want {
+			t.Errorf("unresolved from %s at %+v, want %+v", u.From, u.Site, want)
+		}
+	}
+	if calls != 2 || len(g.Unresolved) != 2 {
+		t.Errorf("edges %+v, unresolved %+v; want one call and one unresolved per file", g.Edges, g.Unresolved)
+	}
+}
+
+// TestObservedEdgeOmitsSite: an edge with no source, as history observes it,
+// carries no site on the wire.
+func TestObservedEdgeOmitsSite(t *testing.T) {
+	data, err := json.Marshal(Edge{From: "a", To: "b", Kind: EdgeWorkflowCall})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(data), "site") {
+		t.Errorf("observed edge = %s, want no site", data)
 	}
 }

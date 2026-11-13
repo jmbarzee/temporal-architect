@@ -294,9 +294,7 @@ Every JSON-emitting subcommand (`parse`, `symbols --json`, `graph --json`,
       "severity": "error",
       "kind":     "resolve",
       "code":     "UNDEFINED_ACTIVITY",
-      "file":     "workflow.twf",
-      "start":    { "line": 2, "column": 3 },
-      "end":      { "line": 2, "column": 3 },
+      "site":     { "file": "workflow.twf", "line": 2, "column": 3 },
       "message":  "undefined activity: NotAnActivity",
       "name":     "NotAnActivity"
     }
@@ -316,16 +314,15 @@ Per command, exactly one of `definitions` / `symbols` / `graph` is present.
 | `severity` | string   | `"error"` or `"warning"`. Exit code is driven by errors only.                                    |
 | `kind`     | string   | `"parse"`, `"resolve"`, `"validate"`, or `"graph"`. Identifies the producing pipeline stage.       |
 | `code`     | string   | Symbolic, stable identifier within a kind. Adding new codes is non-breaking; renaming is breaking. |
-| `file`     | string   | The file holding the diagnostic's position, spelled as the input named it (see [File spelling](#file-spelling)). For a graph diagnostic, the file of the definition whose body holds the call. |
-| `start`    | Position | 1-based line/column. Always present.                                                              |
-| `end`      | Position | 1-based line/column. Currently `end == start` for resolve/validate diagnostics; precision will improve over time without changing the wire shape. |
+| `site`     | Site     | Where the diagnostic is: `file`, spelled as the input named it (see [File spelling](#file-spelling)), and 1-based `line` and `column`. Always present. |
 | `message`  | string   | Human-readable text. Subject to change; pin to `code` for programmatic dispatch.                  |
 | `name`     | string   | Primary entity the diagnostic refers to (the undefined name, the duplicate name, …). Optional.    |
 
 ### File spelling
 
-Diagnostics' `file` and definitions' `sourceFile` name a file the way its
-input did: a file argument as given, a file found by walking a directory
+A site is the one position type on the wire: diagnostics, definitions,
+statements, symbols, graph edges and unresolved references each carry one, as
+`site`. Its `file` names a file the way its input did: a file argument as given, a file found by walking a directory
 argument as that argument, `/`, and its path below it. Paths are
 slash-separated, with a leading `./`, doubled `/` and `.` elements removed;
 `..` is kept, and a path is absolute only if its argument was. So `twf check .`

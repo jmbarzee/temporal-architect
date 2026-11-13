@@ -39,8 +39,8 @@ type Window struct {
 // an all-zero series — they are topology, not an observed dispatch.
 //
 // The embedded graph.Edge is the "wrap": an observed edge IS a graph edge plus
-// a time series. graph.Edge.Line has no meaning here (history has no source
-// line) and is left 0.
+// a time series. History has no source, so graph.Edge.Site is zero and
+// omitted.
 type ObservedEdge struct {
 	graph.Edge
 	Buckets []int `json:"buckets"`
@@ -207,7 +207,7 @@ func lessEdge(a, b graph.Edge) bool {
 	if a.Kind != b.Kind {
 		return a.Kind < b.Kind
 	}
-	return a.Line < b.Line
+	return a.Site.Compare(b.Site) < 0
 }
 
 func lessUnresolved(a, b graph.Unresolved) bool {
@@ -217,5 +217,5 @@ func lessUnresolved(a, b graph.Unresolved) bool {
 	if a.Name != b.Name {
 		return a.Name < b.Name
 	}
-	return a.Line < b.Line
+	return a.Site.Compare(b.Site) < 0
 }

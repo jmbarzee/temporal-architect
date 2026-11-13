@@ -28,8 +28,8 @@ export interface Window {
  * the dispatches observed in time bucket i. Structural (containment) edges carry
  * an all-zero series — they are topology, not an observed dispatch.
  * The embedded graph.Edge is the "wrap": an observed edge IS a graph edge plus
- * a time series. graph.Edge.Line has no meaning here (history has no source
- * line) and is left 0.
+ * a time series. History has no source, so graph.Edge.Site is zero and
+ * omitted.
  */
 export interface ObservedEdge {
   Edge: Edge;

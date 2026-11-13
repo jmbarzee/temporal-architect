@@ -1,4 +1,5 @@
 import type { Statement } from '../../types/ast'
+import { siteKey } from '../../types/ast'
 import { ActivityCallBlock, WorkflowCallBlock, NexusCallBlock } from './CallBlocks'
 import { AwaitStmtBlock, AwaitAllBlockComponent, AwaitOneBlockComponent } from './AwaitBlocks'
 import { SwitchBlockComponent, IfBlock, ForBlock } from './ControlFlowBlocks'
@@ -17,7 +18,7 @@ export function StatementBody({ statements }: { statements: Statement[] }) {
   return (
     <div className="block-statement-body">
       {statements.map((stmt) => (
-        <StatementBlock key={`${stmt.line}:${stmt.column}`} statement={stmt} />
+        <StatementBlock key={siteKey(stmt.site)} statement={stmt} />
       ))}
     </div>
   )

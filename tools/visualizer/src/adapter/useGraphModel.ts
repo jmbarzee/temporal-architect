@@ -7,7 +7,7 @@
 // graph.
 
 import React from 'react'
-import type { TWFFile, FileError, Diagnostic } from '../types/ast'
+import type { TWFFile, FileError, Diagnostic, Site } from '../types/ast'
 import type { ParserGraph } from '../types/parser-graph'
 import { buildAstLookup, buildGraph, nodeLabel, type AstLookup } from './build'
 import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION } from './dimensions'
@@ -18,10 +18,12 @@ import type { Graph } from '@jmbarzee/force-graph'
 // history-derived warnings (e.g. a signal target not present in the sampled
 // histories) become visible — the AST carries no such diagnostics in history mode.
 //
-// A graph diagnostic names the calling definition's file; an unresolved target
-// has none and no column, so it rides through the file-filter partition in the
-// "shown" group (file-less diagnostics are never hidden).
-function graphFindingsToDiagnostics(pg: ParserGraph): Diagnostic[] {
+// A finding carries its call's site; one observed in history has none, so it
+// rides through the file-filter partition in the "shown" group (file-less
+// diagnostics are never hidden).
+const noSite: Site = { line: 0, column: 0 }
+
+export function graphFindingsToDiagnostics(pg: ParserGraph): Diagnostic[] {
   const out: Diagnostic[] = []
   for (const d of pg.diagnostics) {
     out.push({
@@ -29,10 +31,8 @@ function graphFindingsToDiagnostics(pg: ParserGraph): Diagnostic[] {
       kind: 'graph',
       code: d.code,
       message: d.message,
-      file: d.file,
+      site: d.site ?? noSite,
       name: d.from === undefined ? undefined : nodeLabel(pg, d.from),
-      start: { line: d.line, column: 0 },
-      end: { line: d.line, column: 0 },
     })
   }
   for (const u of pg.unresolved) {
@@ -45,8 +45,7 @@ function graphFindingsToDiagnostics(pg: ParserGraph): Diagnostic[] {
         code: 'EXTERNAL_REFERENCE',
         message: `${u.kind} target ${JSON.stringify(u.name)} is in a package outside this tree (unchecked)`,
         name: nodeLabel(pg, u.from),
-        start: { line: u.line, column: 0 },
-        end: { line: u.line, column: 0 },
+        site: u.site ?? noSite,
       })
       continue
     }
@@ -57,8 +56,7 @@ function graphFindingsToDiagnostics(pg: ParserGraph): Diagnostic[] {
       code,
       message: `unresolved ${u.kind} target ${JSON.stringify(u.name)} (not present in the sampled input)`,
       name: nodeLabel(pg, u.from),
-      start: { line: u.line, column: 0 },
-      end: { line: u.line, column: 0 },
+      site: u.site ?? noSite,
     })
   }
   return out
@@ -77,7 +75,7 @@ export interface GraphModel {
 
 export function useGraphModel(ast: TWFFile, parserGraph: ParserGraph): GraphModel {
   // Build the view-side graph from the parser's deployment graph. AST is
-  // consulted for sourceFile (file-filter chips) and future hover enrichments.
+  // consulted for each definition's file (file-filter chips) and future hover enrichments.
   const ownerOf = React.useMemo(() => buildAstLookup(ast), [ast])
   const graph = React.useMemo(
     () => buildGraph(parserGraph, ownerOf),
@@ -98,7 +96,7 @@ export function useGraphModel(ast: TWFFile, parserGraph: ParserGraph): GraphMode
 export function sourceFilesOf(ast: TWFFile): Set<string> {
   const files = new Set<string>()
   for (const def of ast.definitions) {
-    if (def.sourceFile) files.add(def.sourceFile)
+    if (def.site.file) files.add(def.site.file)
   }
   return files
 }
@@ -112,8 +110,9 @@ export function definitionCounts(ast: TWFFile, selectedFiles: ReadonlySet<string
   const typeCounts = new Map<string, number>()
   const fileCounts = new Map<string, number>()
   for (const def of ast.definitions) {
-    if (def.sourceFile) fileCounts.set(def.sourceFile, (fileCounts.get(def.sourceFile) ?? 0) + 1)
-    const passesFile = selectedFiles.size === 0 || !def.sourceFile || selectedFiles.has(def.sourceFile)
+    const file = def.site.file
+    if (file) fileCounts.set(file, (fileCounts.get(file) ?? 0) + 1)
+    const passesFile = selectedFiles.size === 0 || !file || selectedFiles.has(file)
     if (passesFile) typeCounts.set(def.type, (typeCounts.get(def.type) ?? 0) + 1)
   }
   return new Map([[SOURCE_FILE_DIMENSION, fileCounts], [DEF_TYPE_DIMENSION, typeCounts]])

@@ -1,5 +1,6 @@
 import React from 'react'
 import type { ActivityCall, WorkflowCall, NexusCall } from '../../types/ast'
+import { siteKey } from '../../types/ast'
 import { DefinitionContext, HandlerContext } from '../WorkflowCanvas'
 import { handlersOf } from '../definitionMaps'
 import { WorkflowContent, InlineWorkflowBlock, SyncBodyBlock } from './WorkflowContent'
@@ -39,7 +40,7 @@ export function ActivityCallBlock({ stmt }: { stmt: ActivityCall }) {
           <OptionsSection options={stmt.options} />
           {isDefined && ((activityDef.body || []).length > 0 ? (
             (activityDef.body || []).map((s) => (
-              <StatementBlock key={`${s.line}:${s.column}`} statement={s} />
+              <StatementBlock key={siteKey(s.site)} statement={s} />
             ))
           ) : (
             <div className="block-empty-body">No implementation defined</div>

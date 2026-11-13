@@ -138,7 +138,7 @@ namespace ns:
 	checkRouted(t, routed(g, EdgeActivityCall), []string{edge, edge})
 	for _, e := range g.Edges {
 		if e.Kind == EdgeActivityCall && e.Routing.Explicit != "payments" {
-			t.Errorf("line %d: routing.explicit %q, want %q", e.Line, e.Routing.Explicit, "payments")
+			t.Errorf("line %d: routing.explicit %q, want %q", e.Site.Line, e.Routing.Explicit, "payments")
 		}
 	}
 }
@@ -324,14 +324,14 @@ func dispatched(g *Graph) []string {
 		if e.Kind == EdgeContainment {
 			continue
 		}
-		s := fmt.Sprintf("%s %s -> %s @%d", e.Kind, e.From, e.To, e.Line)
+		s := fmt.Sprintf("%s %s -> %s @%d", e.Kind, e.From, e.To, e.Site.Line)
 		if e.Routing != nil {
 			s += fmt.Sprintf(" %+v", *e.Routing)
 		}
 		out = append(out, s)
 	}
 	for _, u := range g.Unresolved {
-		out = append(out, fmt.Sprintf("unresolved %s %s %s @%d", u.Kind, u.From, u.Name, u.Line))
+		out = append(out, fmt.Sprintf("unresolved %s %s %s @%d", u.Kind, u.From, u.Name, u.Site.Line))
 	}
 	for _, c := range g.CoarsenedEdges {
 		out = append(out, fmt.Sprintf("coarsened %s %s -> %s x%d", c.Tier, c.From, c.To, c.Weight))
@@ -782,7 +782,7 @@ namespace n:
 	got := routed(g, EdgeActivityCall, EdgeWorkflowCall, EdgeAsyncBacking)
 	for _, e := range g.Edges {
 		if e.Kind == EdgeContainment && strings.HasPrefix(e.From, KindNexusOperation+":") {
-			got = append(got, fmt.Sprintf("containment %s line %d", e.From, e.Line))
+			got = append(got, fmt.Sprintf("containment %s line %d", e.From, e.Site.Line))
 		}
 	}
 	for _, n := range g.Nodes {

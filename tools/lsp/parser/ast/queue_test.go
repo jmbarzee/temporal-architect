@@ -1,6 +1,7 @@
 package ast
 
 import (
+	"encoding/json"
 	"reflect"
 	"strings"
 	"testing"
@@ -179,14 +180,14 @@ func TestNamespaceWorkerTemplateParamsJSON(t *testing.T) {
 		{Worker: Ref[*WorkerDef]{Name: "sidecar"}, TemplateParams: []string{"sandboxId"}},
 		{Worker: Ref[*WorkerDef]{Name: "control"}},
 	}}
-	out, err := ns.MarshalJSON()
+	out, err := json.Marshal(&File{Definitions: []Definition{ns}})
 	if err != nil {
 		t.Fatal(err)
 	}
 	got := string(out)
 	for _, want := range []string{
-		`{"workerName":"sidecar","line":0,"column":0,"templateParams":["sandboxId"]}`,
-		`{"workerName":"control","line":0,"column":0}`,
+		`{"workerName":"sidecar","site":{"line":0,"column":0},"templateParams":["sandboxId"]}`,
+		`{"workerName":"control","site":{"line":0,"column":0}}`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("namespace JSON lacks %s:\n%s", want, got)

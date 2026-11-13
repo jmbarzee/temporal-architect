@@ -33,14 +33,14 @@ func writeFile(t *testing.T, path, content string) {
 func codes(res pipeline.Result) []string {
 	var out []string
 	for _, d := range res.Diagnostics {
-		out = append(out, d.File+":"+d.Code)
+		out = append(out, d.Site.File+":"+d.Code)
 	}
 	return out
 }
 
 func hasCode(res pipeline.Result, file, code string) bool {
 	for _, d := range res.Diagnostics {
-		if d.File == file && d.Code == code {
+		if d.Site.File == file && d.Code == code {
 			return true
 		}
 	}
@@ -196,8 +196,8 @@ namespace bad:
 	want := filepath.ToSlash(filepath.Join(dir, "a_flow.twf"))
 	for _, d := range payload.Diagnostics {
 		if d.Kind == "graph" && d.Code == "DISPATCH_NO_REACHABLE_DEPLOYMENT" {
-			if d.File != want {
-				t.Errorf("graph diagnostic file = %q, want %s", d.File, want)
+			if d.Site.File != want {
+				t.Errorf("graph diagnostic file = %q, want %s", d.Site.File, want)
 			}
 			return
 		}

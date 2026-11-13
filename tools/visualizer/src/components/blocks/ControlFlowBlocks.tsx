@@ -1,4 +1,5 @@
 import type { SwitchBlock, IfStmt, ForStmt, Statement } from '../../types/ast'
+import { siteKey } from '../../types/ast'
 import { useToggle } from './useToggle'
 import { StatementBlock } from './StatementBlock'
 
@@ -17,7 +18,7 @@ export function SwitchBlockComponent({ stmt }: { stmt: SwitchBlock }) {
       {expanded && (
         <div className="block-body">
           {stmt.cases.map((c) => (
-            <SwitchCaseBlock key={`${c.line}:${c.column}`} switchCase={c} />
+            <SwitchCaseBlock key={siteKey(c.site)} switchCase={c} />
           ))}
           {stmt.default && stmt.default.length > 0 && (
             <div className="block block-switch-default">
@@ -27,7 +28,7 @@ export function SwitchBlockComponent({ stmt }: { stmt: SwitchBlock }) {
               </div>
               <div className="block-body">
                 {stmt.default.map((s) => (
-                  <StatementBlock key={`${s.line}:${s.column}`} statement={s} />
+                  <StatementBlock key={siteKey(s.site)} statement={s} />
                 ))}
               </div>
             </div>
@@ -52,7 +53,7 @@ function SwitchCaseBlock({ switchCase }: { switchCase: SwitchBlock['cases'][0] }
       {expanded && switchCase.body && switchCase.body.length > 0 && (
         <div className="block-body">
           {switchCase.body.map((s) => (
-            <StatementBlock key={`${s.line}:${s.column}`} statement={s} />
+            <StatementBlock key={siteKey(s.site)} statement={s} />
           ))}
         </div>
       )}
@@ -119,7 +120,7 @@ export function IfBlock({ stmt }: { stmt: IfStmt }) {
           {expanded && branch.body.length > 0 && (
             <div className="block-body">
               {branch.body.map((s) => (
-                <StatementBlock key={`${s.line}:${s.column}`} statement={s} />
+                <StatementBlock key={siteKey(s.site)} statement={s} />
               ))}
             </div>
           )}
@@ -153,7 +154,7 @@ export function ForBlock({ stmt }: { stmt: ForStmt }) {
       {expanded && (
         <div className="block-body">
           {(stmt.body || []).map((s) => (
-            <StatementBlock key={`${s.line}:${s.column}`} statement={s} />
+            <StatementBlock key={siteKey(s.site)} statement={s} />
           ))}
         </div>
       )}

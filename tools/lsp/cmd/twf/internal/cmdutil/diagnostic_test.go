@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf/internal/cmdutil"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/pipeline"
 )
 
@@ -15,9 +16,7 @@ func TestFormatDiagnostic(t *testing.T) {
 		Severity: "error",
 		Kind:     "resolve",
 		Code:     "UNDEFINED_ACTIVITY",
-		File:     "foo.twf",
-		Start:    pipeline.Position{Line: 12, Column: 3},
-		End:      pipeline.Position{Line: 12, Column: 3},
+		Site:     ast.Site{File: "foo.twf", Line: 12, Column: 3},
 		Message:  "undefined activity: Foo",
 		Name:     "Foo",
 	}

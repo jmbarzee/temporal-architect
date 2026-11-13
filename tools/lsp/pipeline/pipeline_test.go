@@ -100,16 +100,10 @@ func TestParseFilesProducesStructuredDiagnostics(t *testing.T) {
 			if tt.wantName != "" && found.Name != tt.wantName {
 				t.Errorf("name = %q, want %q", found.Name, tt.wantName)
 			}
-			if found.Start.Line == 0 {
-				t.Errorf("start.line = 0, want >0 for diagnostic %+v", found)
+			if found.Site.Line == 0 {
+				t.Errorf("site.line = 0, want >0 for diagnostic %+v", found)
 			}
-			if found.End != found.Start {
-				// The contract is end == start: diagnostics carry a point, not a
-				// span. Log rather than fail, so that widening it to a real span
-				// surfaces here instead of silently breaking the assertion.
-				t.Logf("end != start (span tracking has been added): %+v", found)
-			}
-			if found.File == "" {
+			if found.Site.File == "" {
 				t.Errorf("file is empty, want the input file basename")
 			}
 			if found.Message == "" {
@@ -166,11 +160,11 @@ func TestParseFilesAttributesReferenceErrorToReferencingFile(t *testing.T) {
 	if undef == nil {
 		t.Fatalf("no UNDEFINED_WORKFLOW diagnostic; got %d diagnostics: %+v", len(diags), diags)
 	}
-	if want := spelled("ambiguous_cross_package_ref", "gamma", "gamma.twf"); undef.File != want {
-		t.Errorf("UNDEFINED_WORKFLOW file = %q, want %s (the referencing file)", undef.File, want)
+	if want := spelled("ambiguous_cross_package_ref", "gamma", "gamma.twf"); undef.Site.File != want {
+		t.Errorf("UNDEFINED_WORKFLOW file = %q, want %s (the referencing file)", undef.Site.File, want)
 	}
-	if undef.Start.Line != 12 || undef.Start.Column != 11 {
-		t.Errorf("UNDEFINED_WORKFLOW at %d:%d, want 12:11 (the reference site)", undef.Start.Line, undef.Start.Column)
+	if undef.Site.Line != 12 || undef.Site.Column != 11 {
+		t.Errorf("UNDEFINED_WORKFLOW at %d:%d, want 12:11 (the reference site)", undef.Site.Line, undef.Site.Column)
 	}
 	if undef.Name != "Process" {
 		t.Errorf("UNDEFINED_WORKFLOW name = %q, want Process", undef.Name)
@@ -183,10 +177,10 @@ func TestParseFilesAttributesReferenceErrorToReferencingFile(t *testing.T) {
 		if d.Kind != "resolve" {
 			continue
 		}
-		if d.File == spelled("ambiguous_cross_package_ref", "alpha", "alpha.twf") || d.File == spelled("ambiguous_cross_package_ref", "beta", "beta.twf") {
+		if d.Site.File == spelled("ambiguous_cross_package_ref", "alpha", "alpha.twf") || d.Site.File == spelled("ambiguous_cross_package_ref", "beta", "beta.twf") {
 			t.Errorf("resolve diagnostic mis-attributed to a defining file: %+v", d)
 		}
-		if d.File == "" {
+		if d.Site.File == "" {
 			t.Errorf("resolve diagnostic carries no file (issue #136 sibling symptom): %+v", d)
 		}
 	}
@@ -212,11 +206,11 @@ func TestParseFilesAttributesValidateErrorToCallSiteFile(t *testing.T) {
 	if mismatch == nil {
 		t.Fatalf("no IMPLICIT_ROUTING_MISMATCH diagnostic; got %d diagnostics: %+v", len(diags), diags)
 	}
-	if want := spelled("packaged_multi_file_routing_mismatch", "agent", "v1", "agent.twf"); mismatch.File != want {
-		t.Errorf("IMPLICIT_ROUTING_MISMATCH file = %q, want %s (the calling file)", mismatch.File, want)
+	if want := spelled("packaged_multi_file_routing_mismatch", "agent", "v1", "agent.twf"); mismatch.Site.File != want {
+		t.Errorf("IMPLICIT_ROUTING_MISMATCH file = %q, want %s (the calling file)", mismatch.Site.File, want)
 	}
-	if mismatch.Start.Line != 10 || mismatch.Start.Column != 2 {
-		t.Errorf("IMPLICIT_ROUTING_MISMATCH at %d:%d, want 10:2 (the call site)", mismatch.Start.Line, mismatch.Start.Column)
+	if mismatch.Site.Line != 10 || mismatch.Site.Column != 2 {
+		t.Errorf("IMPLICIT_ROUTING_MISMATCH at %d:%d, want 10:2 (the call site)", mismatch.Site.Line, mismatch.Site.Column)
 	}
 	if mismatch.Name != "ApplyManifest" {
 		t.Errorf("IMPLICIT_ROUTING_MISMATCH name = %q, want ApplyManifest", mismatch.Name)
@@ -224,7 +218,7 @@ func TestParseFilesAttributesValidateErrorToCallSiteFile(t *testing.T) {
 
 	// The bug pointed the call-site error at kube.twf, the callee's file.
 	for _, d := range diags {
-		if d.Kind == "validate" && strings.HasSuffix(d.File, "/kube.twf") {
+		if d.Kind == "validate" && strings.HasSuffix(d.Site.File, "/kube.twf") {
 			t.Errorf("validate diagnostic mis-attributed to the callee's file: %+v", d)
 		}
 	}
@@ -263,8 +257,8 @@ func TestStructuralLexErrorSurfacesAndBlocksLenient(t *testing.T) {
 	if lex.Message != "unterminated string literal" {
 		t.Errorf("message = %q, want 'unterminated string literal'", lex.Message)
 	}
-	if lex.Start.Line == 0 || lex.Start.Column == 0 {
-		t.Errorf("expected a positioned diagnostic, got %+v", lex.Start)
+	if lex.Site.Line == 0 || lex.Site.Column == 0 {
+		t.Errorf("expected a positioned diagnostic, got %+v", lex.Site)
 	}
 
 	if !pipeline.HasBlockingError(diags) {
@@ -498,15 +492,17 @@ func TestPackagedGraphNodesJoinASTDefinitions(t *testing.T) {
 	var wire struct {
 		AST struct {
 			Definitions []struct {
-				Type          string  `json:"type"`
-				Name          string  `json:"name"`
-				QualifiedName *string `json:"qualifiedName"`
-				SourceFile    string  `json:"sourceFile"`
+				Type          string   `json:"type"`
+				Name          string   `json:"name"`
+				QualifiedName *string  `json:"qualifiedName"`
+				Site          ast.Site `json:"site"`
 				Endpoints     []struct {
-					EndpointName string `json:"endpointName"`
+					EndpointName string   `json:"endpointName"`
+					Site         ast.Site `json:"site"`
 				} `json:"endpoints"`
 				Operations []struct {
-					Name string `json:"name"`
+					Name string   `json:"name"`
+					Site ast.Site `json:"site"`
 				} `json:"operations"`
 			} `json:"definitions"`
 		} `json:"ast"`
@@ -540,14 +536,14 @@ func TestPackagedGraphNodesJoinASTDefinitions(t *testing.T) {
 		}
 		key := kind + ":" + name
 		if prev, dup := sourceFileByKey[key]; dup {
-			t.Errorf("definitions in %s and %s share key %q", prev, d.SourceFile, key)
+			t.Errorf("definitions in %s and %s share key %q", prev, d.Site.File, key)
 		}
-		sourceFileByKey[key] = d.SourceFile
+		sourceFileByKey[key] = d.Site.File
 		for _, ep := range d.Endpoints {
-			sourceFileByKey["nexusEndpoint:"+ep.EndpointName] = d.SourceFile
+			sourceFileByKey["nexusEndpoint:"+ep.EndpointName] = ep.Site.File
 		}
 		for _, op := range d.Operations {
-			sourceFileByKey["nexusOperation:"+name+"."+op.Name] = d.SourceFile
+			sourceFileByKey["nexusOperation:"+name+"."+op.Name] = op.Site.File
 		}
 	}
 
