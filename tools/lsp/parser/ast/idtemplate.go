@@ -51,21 +51,13 @@ func IDTemplateMatches(template, id string) bool {
 	return globsOverlap(globOf(template), bytesOf(id, []int{}))
 }
 
-// globOf turns an ID template into glob tokens: fixed bytes, and each hole as
-// globAny followed by globStar.
+// globOf turns an ID template into glob tokens; a malformed one yields nil.
 func globOf(template string) []int {
 	fixed, holes, msg := ParseIDTemplate(template)
 	if msg != "" {
 		return nil
 	}
-	var out []int
-	for i, f := range fixed {
-		out = bytesOf(f, out)
-		if i < len(holes) {
-			out = append(out, globAny, globStar)
-		}
-	}
-	return out
+	return fixedGlob(fixed, len(holes))
 }
 
 // IDPathRoot returns the first segment of a dotted path ("order" for "order.id").

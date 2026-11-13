@@ -190,10 +190,16 @@ func (q Queue) glob() []int {
 	case QueueOpaque:
 		return bytesOf(q.Spelling, []int{})
 	}
+	return fixedGlob(q.Fixed, len(q.Params))
+}
+
+// fixedGlob turns a template's fixed texts into glob tokens, each of its holes
+// between them as globAny then globStar.
+func fixedGlob(fixed []string, holes int) []int {
 	out := []int{}
-	for i, f := range q.Fixed {
+	for i, f := range fixed {
 		out = bytesOf(f, out)
-		if i < len(q.Params) {
+		if i < holes {
 			out = append(out, globAny, globStar)
 		}
 	}

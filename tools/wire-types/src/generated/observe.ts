@@ -41,8 +41,9 @@ export interface ObservedEdge {
  * mirrors graph.Graph — reusing graph.Node / graph.CoarsenedEdge /
  * graph.Unresolved / graph.Diagnostic unchanged — but its Edges carry the
  * occurrence time series and it adds the Window. Summary / CoarsenedEdges /
- * Diagnostics are derived (populated by Finalize) so the payload is a lossless
- * superset of a graph.Graph envelope and consumers need no extra computation.
+ * Diagnostics are derived (populated by Finalize) and carry what the sampler
+ * added before it finalized, so the payload is a lossless superset of a
+ * graph.Graph envelope and consumers need no extra computation.
  */
 export interface ObservedGraph {
   window: Window;

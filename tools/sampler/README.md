@@ -336,8 +336,9 @@ or drop `--status` before treating a missing node as drift.
 The sampling math and query construction (`sampling/select_test.go`), the
 history→observed-graph fold and bucketing (`history/history_test.go`), the
 per-run event decode and its table above (`history/events_test.go`), the
-package join (`design/design_test.go`, `history/packages_test.go`), the signal-target join
-by `id_scheme:` (`history/id_schemes_test.go`), and the output-path / time-flag parsing (`main_test.go`) are covered by pure-function
+package join (`design/design_test.go`, `history/packages_test.go`), the
+signal-target join by `id_scheme:` (`history/id_schemes_test.go`), and the
+output-path / time-flag parsing (`main_test.go`) are covered by pure-function
 tests:
 
 ```bash

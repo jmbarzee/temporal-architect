@@ -68,22 +68,29 @@ func TestBuild_SignalTargetFromOneScheme(t *testing.T) {
 }
 
 // An ID that fits several schemes resolves to none, and the diagnostic names the
-// candidates.
+// candidates once, however many signals reach it.
 func TestBuild_SignalTargetFromManySchemes(t *testing.T) {
 	opts := schemesOpts(t)
-	og := Build([]History{checkout("ship-42-sku")}, opts)
+	h := checkout("ship-42-sku")
+	h.Events = append(h.Events, signalEvent("ship-42-sku", ""), signalEvent("ship-42-sku", ""))
+	og := Build([]History{h}, opts)
 
 	for _, e := range og.Edges {
 		if e.Kind == graph.EdgeSignalSend {
 			t.Errorf("unexpected signalSend edge: %+v", e)
 		}
 	}
-	if len(og.Unresolved) != 1 || og.Unresolved[0].Kind != graph.EdgeSignalSend || og.Unresolved[0].Name != "ship-42-sku" {
-		t.Errorf("Unresolved = %+v, want the signalSend to ship-42-sku", og.Unresolved)
+	for _, u := range og.Unresolved {
+		if u.Kind != graph.EdgeSignalSend || u.Name != "ship-42-sku" {
+			t.Errorf("Unresolved = %+v, want only the signalSend to ship-42-sku", og.Unresolved)
+		}
+	}
+	if len(og.Unresolved) == 0 {
+		t.Error("the ambiguous signal is not in Unresolved")
 	}
 	want := graph.Diagnostic{
 		Severity: "warning",
-		Code:     DiagSignalTargetAmbiguous,
+		Code:     diagSignalTargetAmbiguous,
 		Message:  `workflow ID "ship-42-sku" fits the id_schemes of ShipItem on queue shipping, ShipOrder on queue shipping`,
 		From:     checkoutID(),
 	}

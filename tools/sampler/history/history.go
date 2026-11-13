@@ -11,6 +11,7 @@ import (
 	"cmp"
 	"fmt"
 	"os"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -25,9 +26,9 @@ import (
 	"github.com/jmbarzee/temporal-architect/tools/sampler/design"
 )
 
-// DiagSignalTargetAmbiguous is the diagnostic code for a signal whose target
-// workflow ID fits the id_schemes of several workflows, so it has no one type.
-const DiagSignalTargetAmbiguous = "SIGNAL_TARGET_AMBIGUOUS"
+// diagSignalTargetAmbiguous is the code for a signal whose target workflow ID
+// fits the id_schemes of several workflows, so it has no one type.
+const diagSignalTargetAmbiguous = "SIGNAL_TARGET_AMBIGUOUS"
 
 // History is one workflow run's event log. (WorkflowID, RunID) identifies the
 // run: continue-as-new chains several runs under one WorkflowID, and each is its
@@ -377,12 +378,15 @@ func (b *builder) schemeTarget(callerID, workflowID, namespace string) (startInf
 		labels[i] = ast.Label(b.design.Graph.Packages, m.Package, m.Name) + " on queue " + m.Queue
 	}
 	sort.Strings(labels)
-	b.og.Diagnostics = append(b.og.Diagnostics, graph.Diagnostic{
+	d := graph.Diagnostic{
 		Severity: "warning",
-		Code:     DiagSignalTargetAmbiguous,
+		Code:     diagSignalTargetAmbiguous,
 		Message:  fmt.Sprintf("workflow ID %q fits the id_schemes of %s", workflowID, strings.Join(labels, ", ")),
 		From:     callerID,
-	})
+	}
+	if !slices.Contains(b.og.Diagnostics, d) { // one per sender and target ID, however many signals
+		b.og.Diagnostics = append(b.og.Diagnostics, d)
+	}
 	return startInfo{}, false
 }
 

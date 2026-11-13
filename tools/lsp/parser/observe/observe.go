@@ -13,6 +13,7 @@ package observe
 
 import (
 	"maps"
+	"slices"
 	"sort"
 
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
@@ -52,8 +53,9 @@ type ObservedEdge struct {
 // mirrors graph.Graph — reusing graph.Node / graph.CoarsenedEdge /
 // graph.Unresolved / graph.Diagnostic unchanged — but its Edges carry the
 // occurrence time series and it adds the Window. Summary / CoarsenedEdges /
-// Diagnostics are derived (populated by Finalize) so the payload is a lossless
-// superset of a graph.Graph envelope and consumers need no extra computation.
+// Diagnostics are derived (populated by Finalize) and carry what the sampler
+// added before it finalized, so the payload is a lossless superset of a
+// graph.Graph envelope and consumers need no extra computation.
 type ObservedGraph struct {
 	Window         Window                `json:"window"`
 	Summary        graph.Summary         `json:"summary"`
@@ -125,7 +127,7 @@ func Finalize(o *ObservedGraph) {
 
 // Merge folds two observed graphs sampled over the same Window into one: nodes
 // and edges are unioned by identity and their occurrence buckets summed
-// element-wise; unresolved entries are unioned. This is the associative fold
+// element-wise; unresolved entries and diagnostics are unioned. This is the associative fold
 // that lets sampling be sharded (per namespace, per worker, in parallel) and
 // the shards combined afterward. Package tables are unioned. The Window is
 // taken from a; callers are responsible for using a consistent Window across
@@ -181,6 +183,15 @@ func Merge(a, b *ObservedGraph) *ObservedGraph {
 	}
 	addUnres(a.Unresolved)
 	addUnres(b.Unresolved)
+
+	seenDiag := map[graph.Diagnostic]struct{}{}
+	for _, d := range slices.Concat(a.Diagnostics, b.Diagnostics) {
+		if _, ok := seenDiag[d]; ok {
+			continue
+		}
+		seenDiag[d] = struct{}{}
+		out.Diagnostics = append(out.Diagnostics, d)
+	}
 
 	Finalize(out)
 	return out
