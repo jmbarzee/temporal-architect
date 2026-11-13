@@ -45,6 +45,15 @@ const (
 	// diagEndpointNotInDesign is the code for a Nexus endpoint the design does
 	// not declare, so there is nowhere to place the operations called through it.
 	diagEndpointNotInDesign = "NEXUS_ENDPOINT_NOT_IN_DESIGN"
+	// diagNexusTargetUnreachable is the code for a started Nexus operation whose
+	// linked handler run the sampler could not read.
+	diagNexusTargetUnreachable = "NEXUS_TARGET_UNREACHABLE"
+	// diagNexusTargetUnlinked is the code, a hint, for a started Nexus operation
+	// that links no handler run (the handler is not a workflow).
+	diagNexusTargetUnlinked = "NEXUS_TARGET_UNLINKED"
+	// diagChildHistoryUnavailable is the code for a started child workflow whose
+	// run the sampler could not read.
+	diagChildHistoryUnavailable = "CHILD_HISTORY_UNAVAILABLE"
 )
 
 // History is one workflow run's event log. (WorkflowID, RunID) identifies the
@@ -66,10 +75,25 @@ type History struct {
 // when set, joins each sampled definition to its package and each sampled
 // namespace and task queue to the design's family it fits, so their node IDs are
 // the design graph's; without one every name stays concrete and bare.
+// Unreached lists the runs the sampled histories name but the sampler did not
+// read; each is reported on its caller's node.
 type Options struct {
 	Namespace string
 	Window    observe.Window
 	Design    *design.Design
+	Unreached []Unreached
+}
+
+// Unreached is a run a sampled history names but the sampler did not read: a
+// child workflow or Nexus handler whose history was unavailable, or a started
+// Nexus operation that names no run (Unlinked). WorkflowID and RunID identify
+// the calling run. Name is the child's workflow type, or the operation as
+// "service.operation"; Target is the operation's endpoint.
+type Unreached struct {
+	WorkflowID, RunID string
+	Subject           Subject // SubjectChild or SubjectNexus
+	Name, Target      string
+	Unlinked          bool
 }
 
 // LoadFile reads and parses a single Temporal history JSON file (the format
@@ -125,12 +149,17 @@ func Build(histories []History, opts Options) *observe.ObservedGraph {
 		nsNodes:   map[string]graph.Node{},
 		places:    map[[2]string]placement{},
 		families:  map[string]*family{},
+		unreached: map[runKey][]Unreached{},
 	}
 	b.og.Window = observe.Window{Since: opts.Window.Since, Until: opts.Window.Until, Buckets: win.n}
 	if opts.Design != nil {
 		b.og.Packages = opts.Design.Graph.Packages
 	}
 
+	for _, u := range opts.Unreached {
+		k := runKey{u.WorkflowID, u.RunID}
+		b.unreached[k] = append(b.unreached[k], u)
+	}
 	b.index = buildIndex(sorted, opts.Namespace)
 	for _, h := range sorted {
 		b.processHistory(h)
@@ -190,6 +219,8 @@ type builder struct {
 	nsNodes  map[string]graph.Node   // observed namespace → the node it lands on
 	places   map[[2]string]placement // observed (namespace, queue) → its nodes
 	families map[string]*family      // design family node ID → its observed members
+
+	unreached map[runKey][]Unreached // calling run → the runs it names that were not read
 }
 
 // family is a design family's label and the observed names that fit it.
@@ -325,6 +356,9 @@ func (b *builder) processHistory(h History) {
 		case enumspb.EVENT_TYPE_NEXUS_OPERATION_SCHEDULED:
 			b.handleNexusScheduled(e, rootNodeID)
 		}
+	}
+	for _, u := range b.unreached[runKey{h.WorkflowID, h.RunID}] {
+		b.reportUnreached(u, rootNodeID)
 	}
 }
 
@@ -582,6 +616,26 @@ func (b *builder) ensureOrphanNexus(endpoint, service, operation string) (opID, 
 	b.addEdge(opID, svcID, graph.EdgeContainment)
 	b.addEdge(opID, endpointID, graph.EdgeNexusRoute)
 	return opID, endpointID
+}
+
+// reportUnreached notes, on the calling node, a run it names that the sampler
+// did not read, once per caller and target however many runs name it.
+func (b *builder) reportUnreached(u Unreached, callerID string) {
+	d := graph.Diagnostic{From: callerID}
+	switch {
+	case u.Subject == SubjectChild:
+		d.Severity, d.Code = "warning", diagChildHistoryUnavailable
+		d.Message = fmt.Sprintf("the history of child workflow %q could not be read, so its own calls are not drawn", u.Name)
+	case u.Unlinked:
+		d.Severity, d.Code = "hint", diagNexusTargetUnlinked
+		d.Message = fmt.Sprintf("Nexus operation %s through endpoint %q links no workflow run, so its handler is not sampled", u.Name, u.Target)
+	default:
+		d.Severity, d.Code = "warning", diagNexusTargetUnreachable
+		d.Message = fmt.Sprintf("the handler run of Nexus operation %s through endpoint %q could not be read, so its own calls are not drawn", u.Name, u.Target)
+	}
+	if !slices.Contains(b.og.Diagnostics, d) {
+		b.og.Diagnostics = append(b.og.Diagnostics, d)
+	}
 }
 
 func eventTime(e *historypb.HistoryEvent) time.Time {
