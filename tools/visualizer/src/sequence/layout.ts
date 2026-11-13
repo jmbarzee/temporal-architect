@@ -11,6 +11,7 @@ const STEP_W = 264
 const GLYPH_W = 7.2
 const LANE_W: Record<Lane['kind'], number> = { workflow: 288, external: 264, host: 80 }
 const COLUMN_GAP = 48
+// MARGIN, OUTBOARD, RUN_SHIFT and TOP are fitted to the two hand drawings, not derived.
 const MARGIN = 24
 const OUTBOARD = 144
 const RUN_SHIFT = 56

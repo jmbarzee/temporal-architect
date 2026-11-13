@@ -29,7 +29,8 @@ mountNodeTypeStyles()
 
 // `?execution=agent-sandbox` adds the Sequence view, drawing a hand-written
 // execution; without `?ast=` the design behind it is empty.
-const execution = fixtures[new URLSearchParams(window.location.search).get('execution') ?? '']
+const name = new URLSearchParams(window.location.search).get('execution') ?? ''
+const execution = Object.prototype.hasOwnProperty.call(fixtures, name) ? fixtures[name] : undefined
 const SequenceCore = (props: RenderCoreProps) => <WorkflowCanvas {...props} execution={execution} />
 
 interface StandaloneSource extends PayloadSource {
