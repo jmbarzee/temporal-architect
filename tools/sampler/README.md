@@ -28,7 +28,8 @@ One invocation targets one namespace and runs three phases:
 2. **Phase B — sample.** For each type it selects
    `max(min-per-type, ceil(sample-percent% × count))` executions (capped at the
    count), preferring **running** workflows and topping up with closed ones,
-   and downloads each selected execution's full history.
+   and downloads each selected execution's full history, plus that of every run
+   chained to it by continue-as-new.
 3. **Phase C — build.** The histories are folded in memory into an
    observed graph: meaningful dispatch events (`ACTIVITY_TASK_SCHEDULED`,
    `START_CHILD_WORKFLOW_EXECUTION_INITIATED`,
@@ -37,7 +38,7 @@ One invocation targets one namespace and runs three phases:
 
 Problems found during the fold reuse the envelope's `graph` diagnostic kind —
 there is no separate `history` kind; the `code` disambiguates (e.g.
-`SIGNAL_TARGET_NOT_SAMPLED` when a signal's target run was not in the sample).
+`SIGNAL_TARGET_NOT_SAMPLED` when none of a signal's target workflow's runs was in the sample).
 
 ## Node identity
 
@@ -100,6 +101,7 @@ history is an edge out of the root.
 | `ACTIVITY_TASK_SCHEDULED` | activity type, task queue | `activityCall` | supported |
 | `START_CHILD_WORKFLOW_EXECUTION_INITIATED` | child workflow type, queue, namespace | `workflowCall` | supported |
 | `SIGNAL_EXTERNAL_WORKFLOW_EXECUTION_INITIATED` | target workflow ID (no type) | `signalSend` | supported; target resolution [#58](https://github.com/jmbarzee/temporal-architect/issues/58) |
+| `WORKFLOW_EXECUTION_CONTINUED_AS_NEW` | next run of the chain; each run is its own history, folded into the aggregate graph | (none) | supported; the decode keeps per-run identity `(WorkflowID, RunID)`, not yet on the wire ([#775](https://github.com/jmbarzee/temporal-architect/issues/775)) |
 | `MARKER_RECORDED` ("LocalActivity") | activity type | `activityCall` | deferred — [#58](https://github.com/jmbarzee/temporal-architect/issues/58) |
 | `NEXUS_OPERATION_SCHEDULED` | endpoint, service, operation | `nexusCall` | deferred — [#57](https://github.com/jmbarzee/temporal-architect/issues/57) |
 
@@ -117,15 +119,15 @@ Inherent to history as an input:
 - **No worker identity.** History exposes task queues, not a logical worker
   name, so one worker is synthesized per `(namespace, taskQueue)`. Two distinct
   type-sets polling one queue (rare) collapse into one synthesized worker.
-- **Signal targets are IDs, not types.** Resolvable only if the target run is
-  in the sample.
+- **Signal targets are IDs, not types.** A target resolves to its named
+  run, else to the latest-started sampled run of that workflow ID (an
+  approximation of the current run); unsampled, it stays unresolved.
 - **Local activities are markers**, not scheduled-activity events, and are not
   decoded ([#58](https://github.com/jmbarzee/temporal-architect/issues/58)).
 - **No control flow or ordering.** An edge means "this called that at least
   once" — not sequence, parallelism, or conditionality.
-- **Continue-as-new collapses.** Chained CAN runs share a WorkflowID, and the
-  fold's WorkflowID-keyed index keeps only the first run — expect gaps for
-  CAN-heavy workflows ([#61](https://github.com/jmbarzee/temporal-architect/issues/61)).
+- **Continue-as-new chains are fetched whole.** A sampled workflow brings every
+  run of its chain, so a long chain costs one history fetch per run.
 
 ## Usage
 
@@ -252,7 +254,6 @@ Open work is tracked as GitHub issues:
 - Nexus decoding from history — [#57](https://github.com/jmbarzee/temporal-architect/issues/57)
 - Transitive child-workflow / nexus-target sampling — [#59](https://github.com/jmbarzee/temporal-architect/issues/59)
 - Concurrency and rate limiting, plus parallel sharded sampling with post-hoc `observe.Merge` — [#60](https://github.com/jmbarzee/temporal-architect/issues/60)
-- Continue-as-new run chaining — [#61](https://github.com/jmbarzee/temporal-architect/issues/61)
 - Temporal Cloud env-var auth — [#62](https://github.com/jmbarzee/temporal-architect/issues/62)
 - Per-node occurrence series — [#63](https://github.com/jmbarzee/temporal-architect/issues/63)
 - Visualizer use of the per-edge time series (edge-weight, time-animation) — [#55](https://github.com/jmbarzee/temporal-architect/issues/55)
