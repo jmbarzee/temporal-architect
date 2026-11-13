@@ -20,3 +20,11 @@ func TestMerge_UnionsPackages(t *testing.T) {
 		t.Errorf("Packages = %v, want none", got)
 	}
 }
+
+func TestToGraph_CarriesPackages(t *testing.T) {
+	o := New()
+	o.Packages = map[string]ast.PackageRef{"acme/orders": {Name: "orders"}}
+	if got := ToGraph(o).Packages; !reflect.DeepEqual(got, o.Packages) {
+		t.Errorf("Packages = %v, want %v", got, o.Packages)
+	}
+}

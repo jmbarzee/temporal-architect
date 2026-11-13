@@ -83,9 +83,8 @@ it cannot tell apart, keeps its bare ID and is listed in `unresolved`. The
 design's `packages` table, which maps a package ID to its declared name, rides
 on the observed graph so a reader labels a packaged node as the design graph
 does. Without `--design` every name stays bare, `packages` is absent, and the
-output is unchanged. The join's index
-(definition → package → hosting namespace and queue), with the design graph, is
-`design.Design`.
+output is unchanged. The join's index (definition → package → hosting namespace
+and queue), with the design graph, is `design.Design`.
 
 ### `templateParams` is always empty on observed nodes
 

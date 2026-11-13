@@ -127,8 +127,9 @@ func Finalize(o *ObservedGraph) {
 // and edges are unioned by identity and their occurrence buckets summed
 // element-wise; unresolved entries are unioned. This is the associative fold
 // that lets sampling be sharded (per namespace, per worker, in parallel) and
-// the shards combined afterward. Package tables are unioned. The Window is taken from a; callers are
-// responsible for using a consistent Window across shards.
+// the shards combined afterward. Package tables are unioned. The Window is
+// taken from a; callers are responsible for using a consistent Window across
+// shards.
 func Merge(a, b *ObservedGraph) *ObservedGraph {
 	out := New()
 	out.Window = a.Window
