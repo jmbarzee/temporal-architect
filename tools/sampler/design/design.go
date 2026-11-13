@@ -1,8 +1,9 @@
 // Package design loads a .twf design for the sampler's join: it indexes which
 // package each definition belongs to, so an observed definition, which history
-// names only by its bare runtime type, gets the node ID graph.Extract gives it.
-// The index is read from the design's own graph; a package is never guessed
-// from a name.
+// names only by its bare runtime type, gets the node ID graph.Extract gives it,
+// and which workflows' id_schemes a workflow ID fits, so a signal's target gets
+// a type. The package index is read from the design's own graph; a package is
+// never guessed from a name.
 package design
 
 import (
@@ -10,6 +11,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/graph"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/pipeline"
 )
@@ -23,6 +25,21 @@ type Design struct {
 	// declares it, and to the deployments that host it there; an unhosted
 	// definition has none.
 	defs map[string]map[string][]deployment
+
+	// schemes lists each workflow that declares an id_scheme, in declaration order.
+	schemes []scheme
+}
+
+// scheme is a workflow's id_scheme template, with the package and bare name
+// that identify the workflow.
+type scheme struct {
+	pkg, name, template string
+}
+
+// Target is a workflow a design hosts: its package ID and bare name, and the
+// task queue of the worker that hosts it.
+type Target struct {
+	Package, Name, Queue string
 }
 
 // deployment is where a worker hosts a definition: a namespace and a task queue.
@@ -46,11 +63,12 @@ func Load(path string) (*Design, error) {
 	if len(errs) > 0 {
 		return nil, fmt.Errorf("design %s has errors:\n%s", path, strings.Join(errs, "\n"))
 	}
-	return index(graph.Extract(file)), nil
+	return index(graph.Extract(file), file), nil
 }
 
-// index builds a Design from the hosted definitions of a design graph.
-func index(g *graph.Graph) *Design {
+// index builds a Design from the hosted definitions of a design graph and the
+// id_schemes of the file it came from.
+func index(g *graph.Graph, file *ast.File) *Design {
 	d := &Design{Graph: g, defs: map[string]map[string][]deployment{}}
 	byID := make(map[string]graph.Node, len(g.Nodes))
 	for _, n := range g.Nodes {
@@ -71,6 +89,18 @@ func index(g *graph.Graph) *Design {
 			hosts = append(hosts, deployment{byID[namespaceOf[n.ID]].Name, byID[workerOf[n.ID]].Queue})
 		}
 		d.defs[key][n.PackageID] = hosts
+	}
+	seen := map[[2]string]bool{}
+	for _, def := range file.Definitions {
+		wf, ok := def.(*ast.WorkflowDef)
+		if !ok || wf.IDScheme == nil {
+			continue
+		}
+		pkg := ast.PackageIDOf(wf, file)
+		if k := [2]string{pkg, wf.Name}; !seen[k] { // the first declaration is the kept one
+			seen[k] = true
+			d.schemes = append(d.schemes, scheme{pkg, wf.Name, wf.IDScheme.Template})
+		}
 	}
 	return d
 }
@@ -97,4 +127,23 @@ func (d *Design) Package(kind, name, namespace, queue string) (pkg string, ok bo
 		return hosting[0], true
 	}
 	return "", false
+}
+
+// MatchWorkflowID returns the workflows whose id_scheme the workflow ID fits and
+// that a worker hosts in the namespace, one Target per hosting task queue, in
+// declaration order. A workflow hosted only under a templated namespace or
+// queue never matches, as in Package.
+func (d *Design) MatchWorkflowID(workflowID, namespace string) []Target {
+	var out []Target
+	for _, s := range d.schemes {
+		if !ast.IDTemplateMatches(s.template, workflowID) {
+			continue
+		}
+		for _, host := range d.defs[graph.DefKey(graph.KindWorkflow, s.name)][s.pkg] {
+			if t := (Target{s.pkg, s.name, host.queue}); host.namespace == namespace && !slices.Contains(out, t) {
+				out = append(out, t)
+			}
+		}
+	}
+	return out
 }

@@ -40,6 +40,34 @@ func ParseIDTemplate(s string) (fixed, holes []string, msg string) {
 	return fixed, holes, ""
 }
 
+// IDTemplatesOverlap reports whether some string matches both ID templates, each
+// hole standing for one or more arbitrary characters.
+func IDTemplatesOverlap(a, b string) bool {
+	return globsOverlap(globOf(a), globOf(b))
+}
+
+// IDTemplateMatches reports whether a concrete workflow ID fits an ID template.
+func IDTemplateMatches(template, id string) bool {
+	return globsOverlap(globOf(template), bytesOf(id, []int{}))
+}
+
+// globOf turns an ID template into glob tokens: fixed bytes, and each hole as
+// globAny followed by globStar.
+func globOf(template string) []int {
+	fixed, holes, msg := ParseIDTemplate(template)
+	if msg != "" {
+		return nil
+	}
+	var out []int
+	for i, f := range fixed {
+		out = bytesOf(f, out)
+		if i < len(holes) {
+			out = append(out, globAny, globStar)
+		}
+	}
+	return out
+}
+
 // IDPathRoot returns the first segment of a dotted path ("order" for "order.id").
 func IDPathRoot(path string) string {
 	root, _, _ := strings.Cut(path, ".")

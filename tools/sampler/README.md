@@ -37,8 +37,12 @@ One invocation targets one namespace and runs three phases:
    bucketed by its event time. The result is written as one JSON file.
 
 Problems found during the fold reuse the envelope's `graph` diagnostic kind —
-there is no separate `history` kind; the `code` disambiguates (e.g.
-`SIGNAL_TARGET_NOT_SAMPLED` when none of a signal's target workflow's runs was in the sample).
+there is no separate `history` kind; the `code` disambiguates:
+
+| Code | When |
+|---|---|
+| `SIGNAL_TARGET_NOT_SAMPLED` | none of a signal's target workflow's runs was in the sample, and its ID fits no `id_scheme:` of the `--design` (or there is none) |
+| `SIGNAL_TARGET_AMBIGUOUS` | a signal's target ID fits the `id_scheme:` of several workflows the design hosts in its namespace; the message names them, and the signal stays unresolved |
 
 ## Node identity
 
@@ -84,7 +88,18 @@ design's `packages` table, which maps a package ID to its declared name, rides
 on the observed graph so a reader labels a packaged node as the design graph
 does. Without `--design` every name stays bare, `packages` is absent, and the
 output is unchanged. The join's index (definition → package → hosting namespace
-and queue), with the design graph, is `design.Design`.
+and queue, and each workflow's `id_scheme`), with the design graph, is
+`design.Design`.
+
+With `--design`, a signal's target is also recovered by ID. A sampled run of
+the target's workflow ID resolves it first. Failing that, the ID is matched with
+the parser's own `id_scheme:` matcher against the workflows the design hosts in
+the signal's target namespace, and a single match lands the `signalSend` edge on
+that workflow's node, on the queue its worker listens on. An ID that fits several
+schemes (the parser's `ID_SCHEME_OVERLAP` case) resolves to none and is reported
+as `SIGNAL_TARGET_AMBIGUOUS` with the candidates; one that fits none stays
+unresolved as `SIGNAL_TARGET_NOT_SAMPLED`. A workflow hosted only under a
+templated namespace or queue never matches, as in the package join.
 
 ### `templateParams` is always empty on observed nodes
 
@@ -158,7 +173,7 @@ it has no row.
 | `CHILD_WORKFLOW_EXECUTION_CANCELED` | — | `child.canceled` |
 | `CHILD_WORKFLOW_EXECUTION_TIMED_OUT` | — | `child.timedOut` |
 | `CHILD_WORKFLOW_EXECUTION_TERMINATED` | — | `child.terminated` |
-| `SIGNAL_EXTERNAL_WORKFLOW_EXECUTION_INITIATED` | `signalSend` to the target workflow ID (no type); target resolution [#58](https://github.com/jmbarzee/temporal-architect/issues/58) | `externalSignal.initiated` |
+| `SIGNAL_EXTERNAL_WORKFLOW_EXECUTION_INITIATED` | `signalSend` to the target's workflow type: its sampled run, else the `--design` `id_scheme:` it fits, else unresolved by ID; local-activity decoding [#58](https://github.com/jmbarzee/temporal-architect/issues/58) | `externalSignal.initiated` |
 | `SIGNAL_EXTERNAL_WORKFLOW_EXECUTION_FAILED` | — | `externalSignal.failed` |
 | `EXTERNAL_WORKFLOW_EXECUTION_SIGNALED` | — | `externalSignal.completed` |
 | `UPSERT_WORKFLOW_SEARCH_ATTRIBUTES` | — | ignored, because it changes visibility metadata, not a step of the design |
@@ -199,7 +214,8 @@ Inherent to history as an input:
   type-sets polling one queue (rare) collapse into one synthesized worker.
 - **Signal targets are IDs, not types.** A target resolves to its named
   run, else to the latest-started sampled run of that workflow ID (an
-  approximation of the current run); unsampled, it stays unresolved.
+  approximation of the current run), else, given a design, to the one workflow
+  whose `id_scheme:` the ID fits; otherwise it stays unresolved.
 - **Local activities are markers**, not scheduled-activity events, and are not
   decoded ([#58](https://github.com/jmbarzee/temporal-architect/issues/58)).
 - **No control flow or ordering.** An edge means "this called that at least
@@ -320,8 +336,8 @@ or drop `--status` before treating a missing node as drift.
 The sampling math and query construction (`sampling/select_test.go`), the
 history→observed-graph fold and bucketing (`history/history_test.go`), the
 per-run event decode and its table above (`history/events_test.go`), the
-package join (`design/design_test.go`, `history/packages_test.go`), and the
-output-path / time-flag parsing (`main_test.go`) are covered by pure-function
+package join (`design/design_test.go`, `history/packages_test.go`), the signal-target join
+by `id_scheme:` (`history/id_schemes_test.go`), and the output-path / time-flag parsing (`main_test.go`) are covered by pure-function
 tests:
 
 ```bash

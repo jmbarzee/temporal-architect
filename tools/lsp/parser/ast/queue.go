@@ -147,6 +147,11 @@ func (q Queue) Overlaps(other Queue) bool {
 	if pa == nil || pb == nil {
 		return false
 	}
+	return globsOverlap(pa, pb)
+}
+
+// globsOverlap reports whether some string fits both glob token lists.
+func globsOverlap(pa, pb []int) bool {
 	memo := map[[2]int]bool{}
 	var match func(i, j int) bool
 	match = func(i, j int) bool {
