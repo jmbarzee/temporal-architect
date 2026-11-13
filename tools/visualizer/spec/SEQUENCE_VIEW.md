@@ -9,51 +9,69 @@ A rule is fixed when it holds in every diagram with no setting, per diagram or p
 
 ### Rows (`rule-rows`)
 
-Time runs down in rows. A step sits one row below the step before it in its lane (or the step that started the lane) and below each step it names in `after`; `pause` adds rows of quiet. Nothing else moves a step.
+Time runs down in rows. A step sits one row below the step before it in its lane (or the step that started the lane) and below each step it names in `after`; `pause` adds rows of quiet. Only a link end (below) moves a step further.
 
-*Why:* vertical order is happens-before and nothing more, so a step is never above what it waited for, and a gap always means waiting.
+*Why:* a step is never above what it waited for.
 
 ### Link ends (`rule-link-ends`)
 
 A message's send and receive sit on one row, the later of the two; ends joined through a shared step share it too. The arrow runs level between the facing edges of the two boxes. A message from outside the design enters from the left, its source named. An order that cannot be drawn so, a cycle, is refused.
 
-*Why:* a level arrow cannot misstate order, and the gap above the earlier end is the wait.
+*Why:* a level arrow cannot misstate order.
 
 ### Lane set and grouping (`rule-queue-tag`, `rule-queue-lane`, `rule-grouping`)
 
 Lanes are columns in order of first appearance. Lanes sharing a `title` share a column, as hosts coming and going on one queue do, and their lifetimes may not overlap. A lane is a column only when something lives on it: a step it owns, or a start. A queue nothing else lives on is no lane; its name is a tag beside the steps offset toward it.
 
-*Why:* a column holds a participant's own history. A queue that only runs borrowed work has none, and the tag already says where the work ran.
+*Why:* a column holds a participant's own history, which borrowed work lacks.
 
-### Lifetimes (`rule-lifetimes`)
+### Workflow lifetime (`rule-lifetimes`)
 
-A lane exists from its start to its end. A workflow is a box from its start step's row (the top when it has none) to its last step. A host is a bar from its start step to its end step, struck with a mark when that step failed, and lasting to the bottom when it has none. An external participant's line runs the full height. A span is a bar along its lane's right edge from its `from` step to its `to` step: a state held across steps.
+A workflow is a box from its start step's row (the top when it has none) to its last step.
 
-*Why:* the extent says when a participant existed, and the end of its bar says how it ended.
+*Why:* its extent says when it ran.
+
+### Host lifetime (`rule-lifetimes`)
+
+A host is a bar from its start step to its end step, lasting to the bottom when it has none, and struck with a mark when its end step failed.
+
+*Why:* the end of the bar says how the host ended.
+
+### External lifetime (`rule-lifetimes`)
+
+An external participant's line runs the full height.
+
+*Why:* the design says nothing of when it exists.
+
+### Spans (`rule-lifetimes`)
+
+A span is a bar along its lane's right edge from its `from` step to its `to` step.
+
+*Why:* a state held across steps reads as an extent beside them.
 
 ### Offset (`rule-offset`, `rule-queue-tag`)
 
-A step owned by one lane and run on another queue is drawn in its owner's lane, shifted one fixed distance toward its executor: toward the column that carries the queue, else left, toward the queue's tag. A step on its own lane's queue is not shifted. The step's `queue` is the only input; no step carries a switch.
+A step owned by one lane and run on another queue is drawn in its owner's lane, shifted one fixed distance toward its executor: toward the column that carries the queue, else left. A step on its own lane's queue is not shifted. The step's `queue` is the only input; no step carries a switch.
 
-*Why:* the lane says whose history holds the step, the shift says it ran elsewhere, and its direction says where. With no per-step choice the same sight always means the same thing.
+*Why:* the shift says the step ran elsewhere while its lane still says whose it is.
 
 ### Attempts (`rule-attempts`)
 
 The first attempt of a call is a box with its verb. Each retry is a box of its own, marked ↺ in the verb's place.
 
-*Why:* each attempt waits and runs separately, so each takes a row, and the mark says a retry without repeating the verb.
+*Why:* each attempt waits and runs separately, so each takes a row.
 
 ### Winners and hidden losers (`rule-winners`)
 
 An `await one` is drawn as the branch that won. A branch that lost is hidden by being absent, not by a flag: the view draws the steps it is given. A timer armed and then cancelled is such a step, in its lane before the winner, dashed and marked cancelled, with nothing linked to it.
 
-*Why:* a loser that started nothing has nothing to place, and a cancelled timer shows what bounded the wait.
+*Why:* a loser that started nothing has nothing to place.
 
 ### One box per call (`rule-one-box`)
 
 A call is one box, in the lane of whoever made it. An activity run on another queue is not repeated in its executor's column; a child start is one box in the parent with an arrow to the child's header. A signal is a box at each end, because each end is an event of its own lane.
 
-*Why:* a call's history spans scheduling, running and completion; the diagram counts what a lane did, once.
+*Why:* the diagram counts what a lane did, once.
 
 
 ## Derived, fitted and authored

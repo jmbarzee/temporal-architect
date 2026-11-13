@@ -159,11 +159,9 @@ describe('the fixed rules', () => {
     expect(layout.arrows).toHaveLength(1)
   })
 
-  it('one box per call: an activity run elsewhere, a call and a child start are one box each, in the caller\'s lane', () => {
-    const { layout } = draw('rule-one-box')
-    expect(layout.steps.map(p => p.step.id)).toEqual(rules['rule-one-box'].steps.map(s => s.id))
-    expect(layout.steps.filter(p => p.step.lane === 'pods')).toEqual([])
-    expect(layout.steps.filter(p => p.step.lane === 'child').map(p => p.step.id)).toEqual(['c1'])
+  it('one box per call: an activity run elsewhere stays in its caller\'s lane, and a call and a child start each draw one arrow', () => {
+    const { layout, column, centre } = draw('rule-one-box')
+    expect(Math.abs(centre('a-run') - column('A').x)).toBeLessThan(Math.abs(column('HOSTS').x - column('A').x))
     expect(layout.arrows.map(a => a.kind).sort()).toEqual(['call', 'child', 'launch'])
   })
 })

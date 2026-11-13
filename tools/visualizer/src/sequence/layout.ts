@@ -1,5 +1,6 @@
 // Execution → positions, by the rules in spec/SEQUENCE_VIEW.md. Rows and the
-// column spacing derive; the constants below are fitted to the two hand drawings.
+// column spacing derive. PITCH, the sizes, MARGIN, RUN_SHIFT and TOP are fitted to
+// the two hand drawings; the other constants are clearances and measures.
 
 import type { Execution, Lane, Step, StepKind } from './execution'
 
