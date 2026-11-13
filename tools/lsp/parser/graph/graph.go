@@ -260,7 +260,12 @@ func WorkerID(name, namespace string) string {
 }
 
 // EndpointID returns the canonical node ID for a nexus endpoint deployment.
+// An empty namespace produces an orphan ID: the endpoint of a graph observed
+// from history, which names an endpoint but not where it points.
 func EndpointID(name, namespace string) string {
+	if namespace == "" {
+		return DefKey(KindNexusEndpoint, name) + orphanSuffix
+	}
 	return DefKey(KindNexusEndpoint, name) + "/" + NamespaceID(namespace)
 }
 

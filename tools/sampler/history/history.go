@@ -42,6 +42,9 @@ const (
 	// diagFamilyMembers is the code, a hint, for a design family with observed
 	// members: it counts them.
 	diagFamilyMembers = "FAMILY_MEMBERS"
+	// diagEndpointNotInDesign is the code for a Nexus endpoint the design does
+	// not declare, so there is nowhere to place the operations called through it.
+	diagEndpointNotInDesign = "NEXUS_ENDPOINT_NOT_IN_DESIGN"
 )
 
 // History is one workflow run's event log. (WorkflowID, RunID) identifies the
@@ -99,7 +102,7 @@ func LoadFile(path, workflowID, runID string) (History, error) {
 //     pair, worker name = queue name.
 //  3. Hosted nodes: emit workflow/activity nodes + containment edges.
 //  4. Dispatch edges: activityCall (scheduled or local), workflowCall,
-//     signalSend, bucketed by event time.
+//     signalSend, nexusCall, bucketed by event time.
 //  5. Finalize: coarsen + sort for byte-identical output.
 func Build(histories []History, opts Options) *observe.ObservedGraph {
 	sorted := make([]History, len(histories))
@@ -319,6 +322,8 @@ func (b *builder) processHistory(h History) {
 			b.handleChildInitiated(e, rootNodeID, root)
 		case enumspb.EVENT_TYPE_SIGNAL_EXTERNAL_WORKFLOW_EXECUTION_INITIATED:
 			b.handleSignalInitiated(e, rootNodeID, root)
+		case enumspb.EVENT_TYPE_NEXUS_OPERATION_SCHEDULED:
+			b.handleNexusScheduled(e, rootNodeID)
 		}
 	}
 }
@@ -339,7 +344,7 @@ func (b *builder) handleActivityScheduled(e *historypb.HistoryEvent, callerID st
 	}
 	b.ensureWorkerAndNamespace(caller.namespace, queue)
 	calleeID := b.ensureHosted(graph.KindActivity, actType, caller.namespace, queue)
-	b.addDispatch(callerID, calleeID, graph.EdgeActivityCall, eventTime(e))
+	b.addDispatch(callerID, calleeID, graph.EdgeActivityCall, graph.Routing{}, eventTime(e))
 }
 
 // localActivityMarker is the marker name every SDK records a local activity under.
@@ -367,7 +372,7 @@ func (b *builder) handleMarkerRecorded(e *historypb.HistoryEvent, callerID strin
 		return
 	}
 	calleeID := b.ensureHosted(graph.KindActivity, actType, caller.namespace, caller.taskQueue)
-	b.addDispatch(callerID, calleeID, graph.EdgeActivityCall, eventTime(e))
+	b.addDispatch(callerID, calleeID, graph.EdgeActivityCall, graph.Routing{}, eventTime(e))
 }
 
 // localActivityType reads the activity type from a LocalActivity marker's
@@ -414,7 +419,7 @@ func (b *builder) handleChildInitiated(e *historypb.HistoryEvent, callerID strin
 	}
 	b.ensureWorkerAndNamespace(childNS, queue)
 	calleeID := b.ensureHosted(graph.KindWorkflow, childType, childNS, queue)
-	b.addDispatch(callerID, calleeID, graph.EdgeWorkflowCall, eventTime(e))
+	b.addDispatch(callerID, calleeID, graph.EdgeWorkflowCall, graph.Routing{}, eventTime(e))
 }
 
 func (b *builder) handleSignalInitiated(e *historypb.HistoryEvent, callerID string, caller startInfo) {
@@ -441,7 +446,7 @@ func (b *builder) handleSignalInitiated(e *historypb.HistoryEvent, callerID stri
 	}
 	b.ensureWorkerAndNamespace(info.namespace, info.taskQueue)
 	calleeID := b.ensureHosted(graph.KindWorkflow, info.workflowType, info.namespace, info.taskQueue)
-	b.addDispatch(callerID, calleeID, graph.EdgeSignalSend, eventTime(e))
+	b.addDispatch(callerID, calleeID, graph.EdgeSignalSend, graph.Routing{}, eventTime(e))
 }
 
 // schemeTarget recovers the workflow an unsampled signal target is from the
@@ -475,6 +480,108 @@ func (b *builder) schemeTarget(callerID, workflowID, namespace string) (startInf
 		b.og.Diagnostics = append(b.og.Diagnostics, d)
 	}
 	return startInfo{}, false
+}
+
+// handleNexusScheduled folds a scheduled Nexus operation into a nexusCall.
+func (b *builder) handleNexusScheduled(e *historypb.HistoryEvent, callerID string) {
+	attr := e.GetNexusOperationScheduledEventAttributes()
+	endpoint, service, operation := attr.GetEndpoint(), attr.GetService(), attr.GetOperation()
+	if endpoint == "" || service == "" || operation == "" {
+		return
+	}
+	var opID, endpointID string
+	if ns, queue, ok := b.endpointTarget(endpoint); ok {
+		opID, endpointID = b.ensurePlacedNexus(endpoint, service, operation, ns, queue)
+	} else {
+		opID, endpointID = b.ensureOrphanNexus(endpoint, service, operation)
+	}
+	b.addDispatch(callerID, opID, graph.EdgeNexusCall, graph.Routing{NexusEndpoint: endpointID}, eventTime(e))
+}
+
+// endpointTarget is where the design's endpoint of that name points; history
+// names an endpoint but not where it points. A design without the endpoint is
+// reported, once per name.
+func (b *builder) endpointTarget(endpoint string) (namespace, queue string, ok bool) {
+	if b.design == nil {
+		return "", "", false
+	}
+	if namespace, queue, ok = b.design.Endpoint(endpoint); !ok {
+		d := graph.Diagnostic{
+			Severity: "warning",
+			Code:     diagEndpointNotInDesign,
+			Message:  fmt.Sprintf("the design declares no static endpoint %q, so its nodes stay orphans", endpoint),
+			From:     graph.EndpointID(endpoint, ""),
+		}
+		if !slices.Contains(b.og.Diagnostics, d) {
+			b.og.Diagnostics = append(b.og.Diagnostics, d)
+		}
+	}
+	return namespace, queue, ok
+}
+
+// ensurePlacedNexus adds the nodes of an operation called through an endpoint
+// the design places, as the design graph has them: the endpoint in its
+// namespace, the service and operation on the worker of the endpoint's queue.
+// It returns the operation's and the endpoint's IDs.
+func (b *builder) ensurePlacedNexus(endpoint, service, operation, namespace, queue string) (opID, endpointID string) {
+	b.ensureWorkerAndNamespace(namespace, queue)
+	p := b.place(namespace, queue)
+	endpointID = graph.EndpointID(endpoint, p.ns.Name)
+	b.addNode(graph.Node{
+		ID:         endpointID,
+		Definition: graph.DefKey(graph.KindNexusEndpoint, endpoint),
+		Name:       endpoint,
+		Queue:      queue,
+	})
+	b.addEdge(endpointID, p.ns.ID, graph.EdgeContainment)
+
+	pkg, known := b.qualify(graph.KindNexusService, service, p)
+	svcName := ast.QualifiedName(pkg, service)
+	opName := graph.NexusOpQualifiedName(svcName, operation)
+	svcID := graph.HostedID(graph.KindNexusService, svcName, p.worker.Name, p.ns.Name, false)
+	opID = graph.HostedID(graph.KindNexusOperation, opName, p.worker.Name, p.ns.Name, false)
+	nodes := []graph.Node{{
+		ID:         svcID,
+		Definition: graph.DefKey(graph.KindNexusService, svcName),
+		Name:       service,
+		PackageID:  pkg,
+		Worker:     p.worker.Definition,
+		Namespace:  p.ns.ID,
+		Queue:      p.worker.Queue,
+	}, {
+		ID:         opID,
+		Definition: graph.DefKey(graph.KindNexusOperation, opName),
+		Name:       graph.NexusOpQualifiedName(service, operation),
+		PackageID:  pkg,
+		Worker:     p.worker.Definition,
+		Queue:      p.worker.Queue,
+	}}
+	for _, n := range nodes {
+		if b.addNode(n) && !known {
+			kind, _, _ := strings.Cut(n.Definition, ":")
+			b.og.Unresolved = append(b.og.Unresolved, graph.Unresolved{From: n.ID, Name: n.Name, Kind: kind})
+		}
+	}
+	b.addEdge(svcID, p.worker.ID, graph.EdgeContainment)
+	b.addEdge(opID, svcID, graph.EdgeContainment)
+	b.addEdge(opID, endpointID, graph.EdgeNexusRoute)
+	return opID, endpointID
+}
+
+// ensureOrphanNexus adds the nodes of an operation called through an endpoint
+// the sample cannot place: the endpoint, service and operation as orphans, with
+// no namespace or worker guessed. The operation still belongs to its service.
+func (b *builder) ensureOrphanNexus(endpoint, service, operation string) (opID, endpointID string) {
+	endpointID = graph.EndpointID(endpoint, "")
+	svcID := graph.HostedID(graph.KindNexusService, service, "", "", true)
+	opName := graph.NexusOpQualifiedName(service, operation)
+	opID = graph.HostedID(graph.KindNexusOperation, opName, "", "", true)
+	b.addNode(graph.Node{ID: endpointID, Definition: graph.DefKey(graph.KindNexusEndpoint, endpoint), Name: endpoint, Orphan: true})
+	b.addNode(graph.Node{ID: svcID, Definition: graph.DefKey(graph.KindNexusService, service), Name: service, Orphan: true})
+	b.addNode(graph.Node{ID: opID, Definition: graph.DefKey(graph.KindNexusOperation, opName), Name: opName, Orphan: true})
+	b.addEdge(opID, svcID, graph.EdgeContainment)
+	b.addEdge(opID, endpointID, graph.EdgeNexusRoute)
+	return opID, endpointID
 }
 
 func eventTime(e *historypb.HistoryEvent) time.Time {
@@ -598,15 +705,20 @@ func (b *builder) reportFamilyMembers() {
 
 func (b *builder) ensureWorkerAndNamespace(namespace, queue string) {
 	p := b.place(namespace, queue)
-	if _, seen := b.nodesSeen[p.ns.ID]; !seen {
-		b.og.Nodes = append(b.og.Nodes, p.ns)
-		b.nodesSeen[p.ns.ID] = struct{}{}
+	b.addNode(p.ns)
+	if b.addNode(p.worker) {
+		b.addEdge(p.worker.ID, p.ns.ID, graph.EdgeContainment)
 	}
-	if _, seen := b.nodesSeen[p.worker.ID]; !seen {
-		b.og.Nodes = append(b.og.Nodes, p.worker)
-		b.nodesSeen[p.worker.ID] = struct{}{}
-		b.addContainment(p.worker.ID, p.ns.ID)
+}
+
+// qualify is the package of a sampled definition as it ran on a placement. With
+// a design that has none (or several it cannot tell apart) it is "", and known
+// is false.
+func (b *builder) qualify(kind, name string, p placement) (pkg string, known bool) {
+	if b.design == nil {
+		return "", true
 	}
+	return b.design.Package(kind, name, p.ns.Name, p.worker.Queue)
 }
 
 // ensureHosted adds the node for a sampled definition. Its name is qualified by
@@ -614,21 +726,16 @@ func (b *builder) ensureWorkerAndNamespace(namespace, queue string) {
 // tell apart) the name stays bare, and the node is reported as unresolved.
 func (b *builder) ensureHosted(kind, name, namespace, queue string) string {
 	p := b.place(namespace, queue)
-	pkg, known := "", true
-	if b.design != nil {
-		pkg, known = b.design.Package(kind, name, p.ns.Name, p.worker.Queue)
-	}
+	pkg, known := b.qualify(kind, name, p)
 	qname := ast.QualifiedName(pkg, name)
 	nodeID := graph.HostedID(kind, qname, p.worker.Name, p.ns.Name, false)
-	if _, seen := b.nodesSeen[nodeID]; !seen {
-		b.og.Nodes = append(b.og.Nodes, graph.Node{
-			ID:         nodeID,
-			Definition: graph.DefKey(kind, qname),
-			Name:       name,
-			PackageID:  pkg,
-		})
-		b.nodesSeen[nodeID] = struct{}{}
-		b.addContainment(nodeID, p.worker.ID)
+	if b.addNode(graph.Node{
+		ID:         nodeID,
+		Definition: graph.DefKey(kind, qname),
+		Name:       name,
+		PackageID:  pkg,
+	}) {
+		b.addEdge(nodeID, p.worker.ID, graph.EdgeContainment)
 		if !known {
 			b.og.Unresolved = append(b.og.Unresolved, graph.Unresolved{From: nodeID, Name: name, Kind: kind})
 		}
@@ -636,31 +743,41 @@ func (b *builder) ensureHosted(kind, name, namespace, queue string) string {
 	return nodeID
 }
 
-// addContainment records a structural child→parent edge with an all-zero
-// occurrence series (containment is topology, not an observed dispatch).
-func (b *builder) addContainment(from, to string) {
-	k := edgeKey{from: from, to: to, kind: graph.EdgeContainment}
+// addNode adds a node unless one of its ID is there, reporting whether it did.
+func (b *builder) addNode(n graph.Node) bool {
+	if _, seen := b.nodesSeen[n.ID]; seen {
+		return false
+	}
+	b.og.Nodes = append(b.og.Nodes, n)
+	b.nodesSeen[n.ID] = struct{}{}
+	return true
+}
+
+// addEdge records a structural edge, containment or a nexusRoute, with an
+// all-zero occurrence series (topology, not an observed dispatch).
+func (b *builder) addEdge(from, to, kind string) {
+	k := edgeKey{from: from, to: to, kind: kind}
 	if _, ok := b.edgeIdx[k]; ok {
 		return
 	}
 	b.edgeIdx[k] = len(b.og.Edges)
 	b.og.Edges = append(b.og.Edges, observe.ObservedEdge{
-		Edge:    graph.Edge{From: from, To: to, Kind: graph.EdgeContainment},
+		Edge:    graph.Edge{From: from, To: to, Kind: kind},
 		Buckets: make([]int, b.win.n),
 	})
 }
 
 // addDispatch records a dispatch occurrence: it creates the edge on first sight
-// (with an empty routing block and a zeroed series) and increments the bucket
-// the event time falls in.
-func (b *builder) addDispatch(from, to, kind string, t time.Time) {
+// (with its routing and a zeroed series, a later occurrence's routing dropped)
+// and increments the bucket the event time falls in.
+func (b *builder) addDispatch(from, to, kind string, routing graph.Routing, t time.Time) {
 	k := edgeKey{from: from, to: to, kind: kind}
 	i, ok := b.edgeIdx[k]
 	if !ok {
 		i = len(b.og.Edges)
 		b.edgeIdx[k] = i
 		b.og.Edges = append(b.og.Edges, observe.ObservedEdge{
-			Edge:    graph.Edge{From: from, To: to, Kind: kind, Routing: &graph.Routing{}},
+			Edge:    graph.Edge{From: from, To: to, Kind: kind, Routing: &routing},
 			Buckets: make([]int, b.win.n),
 		})
 	}

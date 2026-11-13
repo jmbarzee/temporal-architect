@@ -81,6 +81,7 @@ an error message or a persisted reference without the surrounding `Node`.
 | NexusOperation (deployed) | `nexusOperation:<service>.<op>/worker:<worker>/namespace:<ns>` |
 | NexusOperation (orphan) | `nexusOperation:<service>.<op>/orphan` |
 | NexusEndpoint | `nexusEndpoint:<name>/namespace:<ns>` |
+| NexusEndpoint (orphan) | `nexusEndpoint:<name>/orphan` |
 
 `/orphan` is a *tag* (no value), distinguishing it from deployment-context
 segments, which use `key:value` form. The `orphan: true` field is redundant with
@@ -93,9 +94,10 @@ produce byte-identical IDs without duplicating the string shapes.
 **Endpoints** have no top-level definition in the AST — they exist only as
 `NamespaceDef.Endpoints[]` entries. The synthetic definition key
 `nexusEndpoint:<name>` is used for consistency; consumers needing endpoint detail
-(queue, source position) look the name up in the namespace's `Endpoints[]`. There
-is no orphan endpoint — an endpoint without a containing namespace can't be
-parsed.
+(queue, source position) look the name up in the namespace's `Endpoints[]`.
+`twf graph` emits no orphan endpoint — an endpoint without a containing namespace
+can't be parsed. The orphan form is the sampler's: a history names an endpoint but
+not where it points (see the [sampler](../../../sampler/README.md#nexus-operations)).
 
 ### Node field semantics
 
@@ -196,7 +198,8 @@ One edge per (child, parent) deployment pair:
 | NexusService deployment | Worker deployment |
 | NexusOperation deployment | NexusService deployment (same worker, same namespace) |
 
-Orphan nodes have no containment edges.
+Orphan nodes have no containment edges. (The sampler's orphan nexus operation
+has one, to its orphan service: a history names that pairing, and no worker.)
 
 A nexus operation's parent is the **service**, not the endpoint. The endpoint's
 role is routing, captured separately (see [Nexus routes](#nexus-routes)).
@@ -301,7 +304,7 @@ For each AST definition:
   deployment), inheriting the service's worker and queue. Orphan when the service
   is orphan.
 - **NexusEndpoint** — one node per `NamespaceDef.Endpoints[i]`. Always
-  namespace-deployed by construction; no orphan case.
+  namespace-deployed by construction; no orphan case in `Extract`.
 
 Nodes are deduplicated by ID. The same definition under two namespace
 instantiations legitimately produces two distinct IDs and is not a duplicate.

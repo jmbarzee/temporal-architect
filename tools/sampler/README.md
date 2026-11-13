@@ -33,8 +33,9 @@ One invocation targets one namespace and runs three phases:
 3. **Phase C — build.** The histories are folded in memory into an
    observed graph: meaningful dispatch events (`ACTIVITY_TASK_SCHEDULED`,
    `MARKER_RECORDED` of a local activity, `START_CHILD_WORKFLOW_EXECUTION_INITIATED`,
-   `SIGNAL_EXTERNAL_WORKFLOW_EXECUTION_INITIATED`) become edges, each occurrence
-   bucketed by its event time. The result is written as one JSON file.
+   `SIGNAL_EXTERNAL_WORKFLOW_EXECUTION_INITIATED`, `NEXUS_OPERATION_SCHEDULED`)
+   become edges, each occurrence bucketed by its event time. The result is
+   written as one JSON file.
 
 Problems and notes found during the fold reuse the envelope's `graph`
 diagnostic kind — there is no separate `history` kind; the `code` disambiguates:
@@ -44,6 +45,7 @@ diagnostic kind — there is no separate `history` kind; the `code` disambiguate
 | `SIGNAL_TARGET_NOT_SAMPLED` | none of a signal's target workflow's runs was in the sample, and its ID fits no `id_scheme:` of the `--design` (or there is none) |
 | `SIGNAL_TARGET_AMBIGUOUS` | a signal's target ID fits the `id_scheme:` of several workflows the design hosts in its namespace; the message names them, and the signal stays unresolved |
 | `LOCAL_ACTIVITY_TYPE_MISSING` | a `LocalActivity` marker records no activity type; the call is not drawn, and the code is reported once per calling workflow |
+| `NEXUS_ENDPOINT_NOT_IN_DESIGN` | the `--design` declares no static endpoint of a scheduled operation's endpoint name; the message names it, `from` is its orphan endpoint node, and it is reported once per name |
 | `FAMILY_AMBIGUOUS` | an observed namespace or task queue fits the template of several of the `--design`'s families; the message names them, and the node stays concrete |
 | `FAMILY_MEMBERS` (hint) | a design family has observed members; the message counts and lists them, `from` is the family's node |
 
@@ -121,6 +123,29 @@ them, so the node needs no field for it. After `observe.Merge`, each shard keeps
 its own hint, not a combined count. A worker instantiated under two queue
 families in one namespace is one design node that keeps its first queue, so only
 that queue attributes.
+
+### Nexus operations
+
+History names a scheduled operation's endpoint, service and operation, never where
+the endpoint points. With `--design`, the endpoint is joined by name to the
+design's static endpoint, whose namespace and queue place the callee as any
+other: the endpoint, service and operation take the design graph's IDs and
+fields (the service's package from the [package join](#packages-and-the-design-input)),
+with containment (endpoint to namespace, service to worker, operation to
+service), a `nexusCall` edge from the caller to the operation carrying
+`routing.nexusEndpoint`, and a `nexusRoute` edge from the operation to the
+endpoint.
+
+Without a design, or when it lacks the endpoint
+(`NEXUS_ENDPOINT_NOT_IN_DESIGN`), the three are orphans
+(`nexusEndpoint:<e>/orphan`, `nexusService:<s>/orphan`,
+`nexusOperation:<s>.<op>/orphan`) with the same call and route edges, and no
+namespace or worker guessed. Their operation is contained in its service, which
+history names; `twf graph` gives an orphan no containment. An edge is identified
+by `(from, to, kind)`, so one orphan operation serves every endpoint, and two
+endpoints reaching one operation keep the first in `routing`.
+
+An endpoint's `endpointId` is a registry key, not a join key, and is not read.
 
 ### `templateParams` is always empty on observed nodes
 
@@ -208,7 +233,7 @@ it has no row.
 | `ACTIVITY_PROPERTIES_MODIFIED_EXTERNALLY` | — | ignored, because an operator edited an activity's options |
 | `WORKFLOW_PROPERTIES_MODIFIED` | — | ignored, because it changes the run's memo, not a step of the design |
 | `WORKFLOW_EXECUTION_UPDATE_ADMITTED` | — | ignored, because the server queues an update before the worker decides on it; acceptance or rejection records the decision |
-| `NEXUS_OPERATION_SCHEDULED` | `nexusCall` to the endpoint, service, operation; deferred, [#57](https://github.com/jmbarzee/temporal-architect/issues/57) | `nexus.scheduled` |
+| `NEXUS_OPERATION_SCHEDULED` | `nexusCall` to the operation, placed by the `--design`'s endpoint or an [orphan](#nexus-operations) | `nexus.scheduled` |
 | `NEXUS_OPERATION_STARTED` | — | `nexus.started` |
 | `NEXUS_OPERATION_COMPLETED` | — | `nexus.completed` |
 | `NEXUS_OPERATION_FAILED` | — | `nexus.failed` |
@@ -366,7 +391,8 @@ or drop `--status` before treating a missing node as drift.
 The sampling math and query construction (`sampling/select_test.go`), the
 history→observed-graph fold and bucketing (`history/history_test.go`), the
 per-run event decode and its table above (`history/events_test.go`), the
-package join (`design/design_test.go`, `history/packages_test.go`), the
+nexus fold and endpoint join (`design/design_test.go`, `history/nexus_test.go`),
+the package join (`design/design_test.go`, `history/packages_test.go`), the
 signal-target join by `id_scheme:` (`history/id_schemes_test.go`), the
 family join (`design/design_test.go`, `history/families_test.go`), and the
 output-path / time-flag parsing (`main_test.go`) are covered by pure-function
@@ -380,8 +406,8 @@ go test ./tools/sampler/...
 
 Open work is tracked as GitHub issues:
 
-- Nexus decoding from history — [#57](https://github.com/jmbarzee/temporal-architect/issues/57)
-- Transitive child-workflow / nexus-target sampling — [#59](https://github.com/jmbarzee/temporal-architect/issues/59)
+- Transitive child-workflow / nexus-target sampling, and `asyncBacking` from handler histories — [#59](https://github.com/jmbarzee/temporal-architect/issues/59)
+- Templated nexus endpoint families — [#816](https://github.com/jmbarzee/temporal-architect/issues/816)
 - Concurrency and rate limiting, plus parallel sharded sampling with post-hoc `observe.Merge` — [#60](https://github.com/jmbarzee/temporal-architect/issues/60)
 - Temporal Cloud env-var auth — [#62](https://github.com/jmbarzee/temporal-architect/issues/62)
 - Per-node occurrence series — [#63](https://github.com/jmbarzee/temporal-architect/issues/63)
