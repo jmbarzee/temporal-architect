@@ -32,7 +32,7 @@ One invocation targets one namespace and runs three phases:
    chained to it by continue-as-new.
 3. **Phase C — build.** The histories are folded in memory into an
    observed graph: meaningful dispatch events (`ACTIVITY_TASK_SCHEDULED`,
-   `START_CHILD_WORKFLOW_EXECUTION_INITIATED`,
+   `MARKER_RECORDED` of a local activity, `START_CHILD_WORKFLOW_EXECUTION_INITIATED`,
    `SIGNAL_EXTERNAL_WORKFLOW_EXECUTION_INITIATED`) become edges, each occurrence
    bucketed by its event time. The result is written as one JSON file.
 
@@ -43,6 +43,7 @@ diagnostic kind — there is no separate `history` kind; the `code` disambiguate
 |---|---|
 | `SIGNAL_TARGET_NOT_SAMPLED` | none of a signal's target workflow's runs was in the sample, and its ID fits no `id_scheme:` of the `--design` (or there is none) |
 | `SIGNAL_TARGET_AMBIGUOUS` | a signal's target ID fits the `id_scheme:` of several workflows the design hosts in its namespace; the message names them, and the signal stays unresolved |
+| `LOCAL_ACTIVITY_TYPE_MISSING` | a `LocalActivity` marker records no activity type; the call is not drawn, and the code is reported once per calling workflow |
 | `FAMILY_AMBIGUOUS` | an observed namespace or task queue fits the template of several of the `--design`'s families; the message names them, and the node stays concrete |
 | `FAMILY_MEMBERS` (hint) | a design family has observed members; the message counts and lists them, `from` is the family's node |
 
@@ -184,7 +185,7 @@ it has no row.
 | `REQUEST_CANCEL_EXTERNAL_WORKFLOW_EXECUTION_INITIATED` | — | `externalCancel.initiated` |
 | `REQUEST_CANCEL_EXTERNAL_WORKFLOW_EXECUTION_FAILED` | — | `externalCancel.failed` |
 | `EXTERNAL_WORKFLOW_EXECUTION_CANCEL_REQUESTED` | — | `externalCancel.completed` |
-| `MARKER_RECORDED` | `activityCall` for a `LocalActivity` marker (activity type); deferred, [#58](https://github.com/jmbarzee/temporal-architect/issues/58) | `marker.recorded` |
+| `MARKER_RECORDED` | `activityCall` for a `LocalActivity` marker to the activity type in its details, hosted on the calling workflow's own task queue (a local activity has none); read from the Go, Core (Python, TypeScript, .NET, Ruby, Rust) and Java SDKs' marker formats; a marker naming no type is `LOCAL_ACTIVITY_TYPE_MISSING`; a retry that backs off on a timer records a marker per attempt, each counted | `marker.recorded` |
 | `WORKFLOW_EXECUTION_SIGNALED` | — | `signal.received` |
 | `WORKFLOW_EXECUTION_TERMINATED` | — | `workflow.terminated` |
 | `WORKFLOW_EXECUTION_CONTINUED_AS_NEW` | next run of the chain; each run is its own history, folded into the aggregate graph; the decode keeps per-run identity `(WorkflowID, RunID)`, not yet on the wire ([#775](https://github.com/jmbarzee/temporal-architect/issues/775)) | `workflow.continuedAsNew`, targeting the next run |
@@ -196,7 +197,7 @@ it has no row.
 | `CHILD_WORKFLOW_EXECUTION_CANCELED` | — | `child.canceled` |
 | `CHILD_WORKFLOW_EXECUTION_TIMED_OUT` | — | `child.timedOut` |
 | `CHILD_WORKFLOW_EXECUTION_TERMINATED` | — | `child.terminated` |
-| `SIGNAL_EXTERNAL_WORKFLOW_EXECUTION_INITIATED` | `signalSend` to the target's workflow type: its sampled run, else the `--design` `id_scheme:` it fits, else unresolved by ID; local-activity decoding [#58](https://github.com/jmbarzee/temporal-architect/issues/58) | `externalSignal.initiated` |
+| `SIGNAL_EXTERNAL_WORKFLOW_EXECUTION_INITIATED` | `signalSend` to the target's workflow type: its sampled run, else the `--design` `id_scheme:` it fits, else unresolved by ID | `externalSignal.initiated` |
 | `SIGNAL_EXTERNAL_WORKFLOW_EXECUTION_FAILED` | — | `externalSignal.failed` |
 | `EXTERNAL_WORKFLOW_EXECUTION_SIGNALED` | — | `externalSignal.completed` |
 | `UPSERT_WORKFLOW_SEARCH_ATTRIBUTES` | — | ignored, because it changes visibility metadata, not a step of the design |
@@ -239,8 +240,6 @@ Inherent to history as an input:
   run, else to the latest-started sampled run of that workflow ID (an
   approximation of the current run), else, given a design, to the one workflow
   whose `id_scheme:` the ID fits; otherwise it stays unresolved.
-- **Local activities are markers**, not scheduled-activity events, and are not
-  decoded ([#58](https://github.com/jmbarzee/temporal-architect/issues/58)).
 - **No control flow or ordering.** An edge means "this called that at least
   once" — not sequence, parallelism, or conditionality.
 - **Continue-as-new chains are fetched whole.** A sampled workflow brings every
@@ -381,7 +380,6 @@ go test ./tools/sampler/...
 
 Open work is tracked as GitHub issues:
 
-- Local-activity decoding and signal-target resolution — [#58](https://github.com/jmbarzee/temporal-architect/issues/58)
 - Nexus decoding from history — [#57](https://github.com/jmbarzee/temporal-architect/issues/57)
 - Transitive child-workflow / nexus-target sampling — [#59](https://github.com/jmbarzee/temporal-architect/issues/59)
 - Concurrency and rate limiting, plus parallel sharded sampling with post-hoc `observe.Merge` — [#60](https://github.com/jmbarzee/temporal-architect/issues/60)

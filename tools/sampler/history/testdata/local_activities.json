@@ -1,0 +1,57 @@
+{
+  "events": [
+    {
+      "eventId": "1",
+      "eventType": "EVENT_TYPE_WORKFLOW_EXECUTION_STARTED",
+      "workflowExecutionStartedEventAttributes": {
+        "workflowType": {
+          "name": "ReportWorkflow"
+        },
+        "taskQueue": {
+          "name": "reports",
+          "kind": "TASK_QUEUE_KIND_NORMAL"
+        }
+      }
+    },
+    {
+      "eventId": "5",
+      "eventType": "EVENT_TYPE_MARKER_RECORDED",
+      "eventTime": "2026-01-01T00:02:00Z",
+      "markerRecordedEventAttributes": {
+        "markerName": "LocalActivity",
+        "details": {
+          "data": {
+            "payloads": [
+              {
+                "metadata": {
+                  "encoding": "anNvbi9wbGFpbg=="
+                },
+                "data": "eyJBY3Rpdml0eUlEIjoiMSIsIkFjdGl2aXR5VHlwZSI6IkZvcm1hdFJlcG9ydCIsIlJlcGxheVRpbWUiOiIyMDI2LTAxLTAxVDAwOjA1OjAwWiIsIkF0dGVtcHQiOjEsIkJhY2tvZmYiOjB9"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "eventId": "8",
+      "eventType": "EVENT_TYPE_MARKER_RECORDED",
+      "eventTime": "2026-01-01T00:08:00Z",
+      "markerRecordedEventAttributes": {
+        "markerName": "LocalActivity",
+        "details": {
+          "data": {
+            "payloads": [
+              {
+                "metadata": {
+                  "encoding": "anNvbi9wbGFpbg=="
+                },
+                "data": "eyJzZXEiOjIsImF0dGVtcHQiOjEsImFjdGl2aXR5X2lkIjoiMiIsImFjdGl2aXR5X3R5cGUiOiJBdWRpdFJlcG9ydCJ9"
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

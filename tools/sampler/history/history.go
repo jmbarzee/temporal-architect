@@ -9,6 +9,7 @@ package history
 
 import (
 	"cmp"
+	"encoding/json"
 	"fmt"
 	"maps"
 	"os"
@@ -17,6 +18,7 @@ import (
 	"strings"
 	"time"
 
+	commonpb "go.temporal.io/api/common/v1"
 	enumspb "go.temporal.io/api/enums/v1"
 	historypb "go.temporal.io/api/history/v1"
 	"go.temporal.io/api/temporalproto"
@@ -31,6 +33,9 @@ const (
 	// diagSignalTargetAmbiguous is the code for a signal whose target workflow ID
 	// fits the id_schemes of several workflows, so it has no one type.
 	diagSignalTargetAmbiguous = "SIGNAL_TARGET_AMBIGUOUS"
+	// diagLocalActivityTypeMissing is the code for a local activity marker that
+	// records no activity type, so it names no activity to draw.
+	diagLocalActivityTypeMissing = "LOCAL_ACTIVITY_TYPE_MISSING"
 	// diagFamilyAmbiguous is the code for an observed namespace or task queue
 	// that fits several of the design's families, so it has no one family.
 	diagFamilyAmbiguous = "FAMILY_AMBIGUOUS"
@@ -93,8 +98,8 @@ func LoadFile(path, workflowID, runID string) (History, error) {
 //  2. Synthesize workers: one worker node per distinct (namespace, taskQueue)
 //     pair, worker name = queue name.
 //  3. Hosted nodes: emit workflow/activity nodes + containment edges.
-//  4. Dispatch edges: activityCall, workflowCall, signalSend, bucketed by event
-//     time.
+//  4. Dispatch edges: activityCall (scheduled or local), workflowCall,
+//     signalSend, bucketed by event time.
 //  5. Finalize: coarsen + sort for byte-identical output.
 func Build(histories []History, opts Options) *observe.ObservedGraph {
 	sorted := make([]History, len(histories))
@@ -308,6 +313,8 @@ func (b *builder) processHistory(h History) {
 		switch e.EventType {
 		case enumspb.EVENT_TYPE_ACTIVITY_TASK_SCHEDULED:
 			b.handleActivityScheduled(e, rootNodeID, root)
+		case enumspb.EVENT_TYPE_MARKER_RECORDED:
+			b.handleMarkerRecorded(e, rootNodeID, root)
 		case enumspb.EVENT_TYPE_START_CHILD_WORKFLOW_EXECUTION_INITIATED:
 			b.handleChildInitiated(e, rootNodeID, root)
 		case enumspb.EVENT_TYPE_SIGNAL_EXTERNAL_WORKFLOW_EXECUTION_INITIATED:
@@ -333,6 +340,61 @@ func (b *builder) handleActivityScheduled(e *historypb.HistoryEvent, callerID st
 	b.ensureWorkerAndNamespace(caller.namespace, queue)
 	calleeID := b.ensureHosted(graph.KindActivity, actType, caller.namespace, queue)
 	b.addDispatch(callerID, calleeID, graph.EdgeActivityCall, eventTime(e))
+}
+
+// localActivityMarker is the marker name every SDK records a local activity under.
+const localActivityMarker = "LocalActivity"
+
+// handleMarkerRecorded folds a local activity marker into an activityCall. A
+// local activity has no task queue: it runs on its workflow's worker, so the
+// activity lands on the caller's queue.
+func (b *builder) handleMarkerRecorded(e *historypb.HistoryEvent, callerID string, caller startInfo) {
+	attr := e.GetMarkerRecordedEventAttributes()
+	if attr.GetMarkerName() != localActivityMarker {
+		return
+	}
+	actType := localActivityType(attr.GetDetails())
+	if actType == "" {
+		d := graph.Diagnostic{
+			Severity: "warning",
+			Code:     diagLocalActivityTypeMissing,
+			Message:  "a LocalActivity marker records no activity type, so the call is not drawn",
+			From:     callerID,
+		}
+		if !slices.Contains(b.og.Diagnostics, d) { // one per caller, however many markers
+			b.og.Diagnostics = append(b.og.Diagnostics, d)
+		}
+		return
+	}
+	b.ensureWorkerAndNamespace(caller.namespace, caller.taskQueue)
+	calleeID := b.ensureHosted(graph.KindActivity, actType, caller.namespace, caller.taskQueue)
+	b.addDispatch(callerID, calleeID, graph.EdgeActivityCall, eventTime(e))
+}
+
+// localActivityType reads the activity type from a LocalActivity marker's
+// details, "" if it names none. The Go SDK and Core (hence the Python,
+// TypeScript, .NET, Ruby and Rust SDKs) keep it in the JSON object under
+// "data", as ActivityType and activity_type; the Java SDK keeps it as a JSON
+// string under "type".
+func localActivityType(details map[string]*commonpb.Payloads) string {
+	var data struct {
+		Go   string `json:"ActivityType"`
+		Core string `json:"activity_type"`
+	}
+	if jsonDetail(details["data"], &data) {
+		if t := cmp.Or(data.Go, data.Core); t != "" {
+			return t
+		}
+	}
+	var java string
+	jsonDetail(details["type"], &java)
+	return java
+}
+
+// jsonDetail decodes a details entry's first payload as JSON into v.
+func jsonDetail(p *commonpb.Payloads, v any) bool {
+	ps := p.GetPayloads()
+	return len(ps) > 0 && json.Unmarshal(ps[0].GetData(), v) == nil
 }
 
 func (b *builder) handleChildInitiated(e *historypb.HistoryEvent, callerID string, caller startInfo) {
