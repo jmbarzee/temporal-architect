@@ -28,7 +28,7 @@ func buildGraph(hs []History, opts Options) *graph.Graph {
 // ---------------------------------------------------------------------------
 
 func TestBuild_SingleWorkflowActivities(t *testing.T) {
-	h, err := LoadFile("testdata/single_wf_activities.json", "order-001")
+	h, err := LoadFile("testdata/single_wf_activities.json", "order-001", "run-1")
 	if err != nil {
 		t.Fatalf("LoadFile: %v", err)
 	}
@@ -83,11 +83,11 @@ func TestBuild_SingleWorkflowActivities(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestBuild_ParentChildCrossQueue(t *testing.T) {
-	parent, err := LoadFile("testdata/parent_child_cross_queue_parent.json", "parent-001")
+	parent, err := LoadFile("testdata/parent_child_cross_queue_parent.json", "parent-001", "run-1")
 	if err != nil {
 		t.Fatalf("LoadFile parent: %v", err)
 	}
-	child, err := LoadFile("testdata/parent_child_cross_queue_child.json", "child-001")
+	child, err := LoadFile("testdata/parent_child_cross_queue_child.json", "child-001", "run-1")
 	if err != nil {
 		t.Fatalf("LoadFile child: %v", err)
 	}
@@ -124,11 +124,11 @@ func TestBuild_ParentChildCrossQueue(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestBuild_SignalSend(t *testing.T) {
-	saga, err := LoadFile("testdata/signal_send_saga.json", "saga-001")
+	saga, err := LoadFile("testdata/signal_send_saga.json", "saga-001", "run-1")
 	if err != nil {
 		t.Fatalf("LoadFile saga: %v", err)
 	}
-	target, err := LoadFile("testdata/signal_send_target.json", "process-payment-001")
+	target, err := LoadFile("testdata/signal_send_target.json", "process-payment-001", "run-1")
 	if err != nil {
 		t.Fatalf("LoadFile target: %v", err)
 	}
@@ -160,7 +160,7 @@ func TestBuild_SignalSend(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestBuild_SignalSend_Unresolved(t *testing.T) {
-	saga, err := LoadFile("testdata/signal_send_saga.json", "saga-001")
+	saga, err := LoadFile("testdata/signal_send_saga.json", "saga-001", "run-1")
 	if err != nil {
 		t.Fatalf("LoadFile: %v", err)
 	}
@@ -181,6 +181,61 @@ func TestBuild_SignalSend_Unresolved(t *testing.T) {
 	}
 	if !found {
 		t.Errorf("expected Unresolved signalSend from %s; got %+v", sagaWF, og.Unresolved)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Fixture 4: continue-as-new chain; the second run calls an activity the first
+// lacks
+// ---------------------------------------------------------------------------
+
+func TestBuild_ContinueAsNewFoldsEveryRun(t *testing.T) {
+	run1, err := LoadFile("testdata/continue_as_new_run1.json", "inventory-001", "run-1")
+	if err != nil {
+		t.Fatalf("LoadFile run1: %v", err)
+	}
+	run2, err := LoadFile("testdata/continue_as_new_run2.json", "inventory-001", "run-2")
+	if err != nil {
+		t.Fatalf("LoadFile run2: %v", err)
+	}
+
+	wf := graph.HostedID(graph.KindWorkflow, "InventoryWorkflow", "inventory", "default", false)
+	reserve := graph.HostedID(graph.KindActivity, "ReserveStock", "inventory", "default", false)
+	release := graph.HostedID(graph.KindActivity, "ReleaseStock", "inventory", "default", false)
+
+	g := buildGraph([]History{run2, run1}, defaultOpts)
+	for _, callee := range []string{reserve, release} {
+		if !hasEdge(g, wf, callee, graph.EdgeActivityCall) {
+			t.Errorf("missing activityCall %s → %s", wf, callee)
+		}
+	}
+}
+
+// TestRunIndex_Resolve asserts a signal target resolves to its exact run when
+// the sender named one, and otherwise to the latest run to have started.
+func TestRunIndex_Resolve(t *testing.T) {
+	at := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	ix := buildIndex([]History{
+		{WorkflowID: "wf", RunID: "run-1", Events: []*historypb.HistoryEvent{startedEvent("Old", "q", at)}},
+		{WorkflowID: "wf", RunID: "run-2", Events: []*historypb.HistoryEvent{startedEvent("New", "q", at.Add(time.Hour))}},
+	}, "default")
+
+	for _, tc := range []struct {
+		name, run, want string
+	}{
+		{"exact run", "run-1", "Old"},
+		{"no run", "", "New"},
+		{"unsampled run", "run-9", "New"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			info, ok := ix.resolve("wf", tc.run)
+			if !ok || info.workflowType != tc.want {
+				t.Errorf("resolve(wf, %q) = %q, %v; want %q", tc.run, info.workflowType, ok, tc.want)
+			}
+		})
+	}
+	if _, ok := ix.resolve("other", ""); ok {
+		t.Error("resolve of an unsampled workflow ID succeeded")
 	}
 }
 

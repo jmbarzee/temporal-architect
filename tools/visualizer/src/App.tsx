@@ -1,7 +1,9 @@
 import React from 'react'
 import './App.css'
 import { VisualizerHost } from './components/VisualizerHost'
-import type { PayloadSource } from './components/VisualizerHost'
+import type { PayloadSource, RenderCoreProps } from './components/VisualizerHost'
+import { WorkflowCanvas } from './components/WorkflowCanvas'
+import { fixtures } from './sequence/fixtures'
 import type { HostMessage } from './components/protocol'
 import { mountNodeTypeStyles } from './adapter/node-type-styles'
 
@@ -24,6 +26,12 @@ mountNodeTypeStyles()
 // Transport-level failures (fetch reject, JSON.parse throw) are mapped to
 // `error` messages here; normalize failures ("Unrecognized payload shape") are
 // the shell's concern.
+
+// `?execution=agent-sandbox` adds the Sequence view, drawing a hand-written
+// execution; without `?ast=` the design behind it is empty.
+const name = new URLSearchParams(window.location.search).get('execution') ?? ''
+const execution = Object.prototype.hasOwnProperty.call(fixtures, name) ? fixtures[name] : undefined
+const SequenceCore = (props: RenderCoreProps) => <WorkflowCanvas {...props} execution={execution} />
 
 interface StandaloneSource extends PayloadSource {
   /** Push a message from a transport that isn't a passive subscription
@@ -49,6 +57,7 @@ function createStandaloneSource(setLoading: (loading: boolean) => void): Standal
       // Check for ?ast= query param.
       const params = new URLSearchParams(window.location.search)
       const astPath = params.get('ast')
+      if (!astPath && execution) onMessage({ type: 'ast', data: { definitions: [] } })
       if (astPath) {
         setLoading(true)
         fetch(astPath)
@@ -126,7 +135,7 @@ function App() {
   )
 
   // Standalone has no editor, so no HostActions are wired.
-  return <VisualizerHost source={source} emptyState={emptyState} />
+  return <VisualizerHost source={source} emptyState={emptyState} renderCore={execution ? SequenceCore : undefined} />
 }
 
 export default App
