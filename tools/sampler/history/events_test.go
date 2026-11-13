@@ -140,20 +140,34 @@ func TestDecode(t *testing.T) {
 }
 
 func TestDecode_ContinuedAsNew(t *testing.T) {
-	h, err := LoadFile("testdata/continue_as_new_run1.json", "inventory-001", "run-1")
-	if err != nil {
-		t.Fatalf("LoadFile: %v", err)
+	run := func(file, runID string) []Event {
+		h, err := LoadFile(file, "inventory-001", runID)
+		if err != nil {
+			t.Fatalf("LoadFile: %v", err)
+		}
+		return Decode(h)
 	}
-	events := Decode(h)
-	last := events[len(events)-1]
+	run1 := run("testdata/continue_as_new_run1.json", "run-1")
+	run2 := run("testdata/continue_as_new_run2.json", "run-2")
+
+	last := run1[len(run1)-1]
 	if last.Subject != SubjectWorkflow || last.Phase != PhaseContinuedAsNew || last.Name != "InventoryWorkflow" || last.Target != "run-2" {
-		t.Errorf("last event = %+v, want workflow continuedAsNew into InventoryWorkflow run-2", last)
+		t.Errorf("run 1 ends with %+v, want workflow continuedAsNew into InventoryWorkflow run-2", last)
+	}
+	if run2[0].ID != 1 || run2[0].Phase != PhaseStarted {
+		t.Errorf("run 2 begins with %+v, want its own event 1, workflow started", run2[0])
+	}
+	for _, e := range run2 {
+		if e.Phase == PhaseContinuedAsNew {
+			t.Errorf("run 2 holds run 1's %+v", e)
+		}
 	}
 }
 
 // TestEventTable pins the README's event table to the decoder: every Temporal
 // event type has exactly one row, a row says "ignored" exactly when Decode
-// yields nothing for the type, and a decoded type appears in a fixture.
+// yields nothing for the type, a decoded row names the decoder's subject.phase,
+// and a decoded type appears in a fixture.
 func TestEventTable(t *testing.T) {
 	readme, err := os.ReadFile("../README.md")
 	if err != nil {
@@ -194,9 +208,12 @@ func TestEventTable(t *testing.T) {
 			if len(cells) != 1 {
 				t.Fatalf("README has %d rows for %s, want 1", len(cells), short)
 			}
-			_, decoded := decode(&historypb.HistoryEvent{EventType: typ})
+			ev, decoded := decode(&historypb.HistoryEvent{EventType: typ})
 			if ignored := strings.HasPrefix(cells[0], "ignored, because "); ignored == decoded {
 				t.Errorf("README execution event %q, but decoded = %v", cells[0], decoded)
+			}
+			if want := "`" + string(ev.Subject) + "." + string(ev.Phase) + "`"; decoded && !strings.HasPrefix(cells[0], want) {
+				t.Errorf("README execution event %q, want it to start with %s", cells[0], want)
 			}
 			if decoded && !inFixture[typ] {
 				t.Errorf("no fixture holds a %s event", short)
