@@ -408,7 +408,7 @@ await one:
 		close fail("timeout")
 ```
 
-The case that completes first "wins" the race, its body executes (if present), and then execution continues after the `await one` block. A case already ready on entry, a pending arrival included, wins. Whenever more than one case is ready as the workflow resumes, on entry or later, the first listed wins. A case that fails before another wins fails the block, with that failure.
+The case that completes first "wins" the race, its body executes (if present), and then execution continues after the `await one` block. A case already ready on entry, a pending arrival included, wins. Whenever more than one case is ready as the workflow resumes, on entry or later, the first listed wins. Readiness is judged then, never by event order: a timer that fires in the workflow task where an arrival is pending ties with it, whichever came first in history. A case that fails before another wins fails the block, with that failure.
 
 **Lifecycle of non-winning cases:** When one case wins, execution continues after the `await one` block, and what a losing case started depends on how it was written:
 
