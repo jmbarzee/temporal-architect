@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/effective"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/graph"
 )
 
@@ -802,12 +803,14 @@ func (v *validationCtx) walkStatements(stmts []ast.Statement, from caller) {
 		case *ast.ActivityCall:
 			// An unresolved target is external or already reported as
 			// undefined, as for a nexus service below; it has no workers to find.
-			if a := n.Activity.Resolved; a != nil {
-				v.checkCallRouting("activity", refKey(v, n.Activity), n.Options, a.DefaultOptions, from, n.Line, n.Column)
+			if n.Activity.Resolved != nil {
+				opts, _ := effective.Of(n)
+				v.checkCallRouting("activity", refKey(v, n.Activity), opts, from, n.Line, n.Column)
 			}
 		case *ast.WorkflowCall:
-			if w := n.Workflow.Resolved; w != nil {
-				v.checkCallRouting("workflow", refKey(v, n.Workflow), n.Options, w.DefaultOptions, from, n.Line, n.Column)
+			if n.Workflow.Resolved != nil {
+				opts, _ := effective.Of(n)
+				v.checkCallRouting("workflow", refKey(v, n.Workflow), opts, from, n.Line, n.Column)
 			}
 		case *ast.NexusCall:
 			// Only a service that resolved to a local definition can be checked
@@ -831,26 +834,24 @@ func (v *validationCtx) walkStatements(stmts []ast.Statement, from caller) {
 			// awaited) is still used, and a fire-and-forget send is valid even
 			// if the handle is never awaited. See TestSignalSendHandleCountsAsUse.
 		default:
-			if target := ast.AsyncTargetOf(s); target != nil {
-				v.walkAsyncTarget(target, from, s.NodeLine(), s.NodeColumn())
-			}
+			v.walkAsyncTarget(s, from)
 		}
 		return true
 	})
 }
 
-// walkAsyncTarget checks the call a promise, await, or await-one case makes.
-// An async target carries no call-site options, so it names a queue only
-// through its target's default_options.
-func (v *validationCtx) walkAsyncTarget(target ast.AsyncTarget, from caller, line, column int) {
-	switch t := target.(type) {
+// walkAsyncTarget checks the call a promise, await, or await-one case s makes.
+func (v *validationCtx) walkAsyncTarget(s ast.Statement, from caller) {
+	line, column := s.NodeLine(), s.NodeColumn()
+	opts, _ := effective.Of(s)
+	switch t := ast.AsyncTargetOf(s).(type) {
 	case *ast.ActivityTarget:
-		if a := t.Activity.Resolved; a != nil {
-			v.checkCallRouting("activity", refKey(v, t.Activity), nil, a.DefaultOptions, from, line, column)
+		if t.Activity.Resolved != nil {
+			v.checkCallRouting("activity", refKey(v, t.Activity), opts, from, line, column)
 		}
 	case *ast.WorkflowTarget:
-		if w := t.Workflow.Resolved; w != nil {
-			v.checkCallRouting("workflow", refKey(v, t.Workflow), nil, w.DefaultOptions, from, line, column)
+		if t.Workflow.Resolved != nil {
+			v.checkCallRouting("workflow", refKey(v, t.Workflow), opts, from, line, column)
 		}
 	case *ast.NexusTarget:
 		// See the NexusCall case in walkStatements: skip the linkage check for
@@ -874,13 +875,12 @@ func (v *validationCtx) walkAsyncTarget(target ast.AsyncTarget, from caller, lin
 // checked (#241), nor from a placement missing its task_queue or whose queue is
 // malformed, which have none to inherit. An unhosted caller is not checked — it
 // has no namespace to route from and is already reported as uncovered.
-// defaults is the target's default_options.
-func (v *validationCtx) checkCallRouting(kind string, target pkgKey, opts, defaults *ast.OptionsBlock, from caller, line, column int) {
-	explicitTQ, source := extractTaskQueue(opts), ""
-	if explicitTQ == "" {
-		explicitTQ, source = extractTaskQueue(defaults), " (from its default_options)"
-	}
-	if explicitTQ != "" {
+func (v *validationCtx) checkCallRouting(kind string, target pkgKey, opts effective.Options, from caller, line, column int) {
+	if tq, ok := opts["task_queue"]; ok {
+		explicitTQ, source := tq.Value, ""
+		if tq.From == effective.Definition {
+			source = " (from its default_options)"
+		}
 		call := ast.ParseCallQueue(explicitTQ)
 		var family ast.Queue // the first family placement the call reaches
 		var familyNS string
@@ -909,7 +909,7 @@ func (v *validationCtx) checkCallRouting(kind string, target pkgKey, opts, defau
 		}
 		// A task on a queue nobody polls waits until something bounds it, and
 		// a family's instance may be gone for good.
-		if kind == "activity" && familyNS != "" && !boundsWait(opts) && !boundsWait(defaults) {
+		if kind == "activity" && familyNS != "" && !boundsWait(opts) {
 			v.errs = append(v.errs, &Error{
 				Msg:      fmt.Sprintf("activity %s routes to the per-instance queue family %q in namespace %s with neither schedule_to_start_timeout nor schedule_to_close_timeout: if instances are short-lived, a task for a vanished instance waits until the calling workflow's own timeout or cancellation", target.name, family.Spelling, familyNS),
 				Line:     line,
@@ -1033,10 +1033,10 @@ func callee(s ast.Statement) (kind, name string) {
 // family, or a call's interpolated queue.
 func isFamily(q ast.Queue) bool { return q.Form == ast.QueueParsed }
 
-// boundsWait reports whether opts bounds how long a scheduled activity task may
-// wait for a poller.
-func boundsWait(opts *ast.OptionsBlock) bool {
-	return optionEntry(opts, "schedule_to_start_timeout") != nil || optionEntry(opts, "schedule_to_close_timeout") != nil
+// boundsWait reports whether an activity's opts bound how long its scheduled
+// task may wait for a poller.
+func boundsWait(opts effective.Options) bool {
+	return opts["schedule_to_start_timeout"].From != effective.Temporal || opts["schedule_to_close_timeout"].From != effective.Temporal
 }
 
 // placementsOf returns the distinct (namespace, task queue) pairs on which a
