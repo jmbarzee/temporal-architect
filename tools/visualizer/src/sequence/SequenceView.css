@@ -1,0 +1,147 @@
+/* The sequence view: an execution drawn as lanes, time running down. Colours are the blocks' tokens, so it follows the theme. */
+.sequence-view {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-bg-gradient);
+}
+
+.sequence-canvas {
+  flex: 1;
+  overflow: auto;
+  padding: 24px;
+}
+
+.sequence-title {
+  margin-bottom: 12px;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.sequence-svg {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.sequence-svg text {
+  fill: var(--color-text);
+  dominant-baseline: central;
+}
+
+.sequence-svg .seq-muted,
+.seq-column-title {
+  fill: var(--color-text-muted);
+}
+
+.seq-column-title {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  letter-spacing: 1.5px;
+}
+
+.seq-tone-signal { --tone: var(--block-signal-border); --ink: var(--block-signal-text); }
+.seq-tone-activity { --tone: var(--block-activity-border); --ink: var(--block-activity-text); }
+.seq-tone-timer { --tone: var(--block-timer-border); --ink: var(--block-timer-text); }
+.seq-tone-workflow { --tone: var(--block-workflow-border); --ink: var(--block-workflow-text); }
+.seq-tone-workflow-call { --tone: var(--block-workflow-call-border); --ink: var(--block-workflow-call-text); }
+.seq-tone-control { --tone: var(--block-control-border); --ink: var(--block-control-text); }
+.seq-failed { --tone: var(--color-error); --ink: var(--color-error-text); }
+
+.seq-step rect,
+.seq-tag rect {
+  fill: color-mix(in srgb, var(--tone, var(--color-border)) 22%, var(--color-surface));
+  stroke: var(--tone, var(--color-border));
+}
+
+.seq-step text {
+  fill: var(--ink);
+}
+
+.seq-awaiting rect,
+.seq-queued rect,
+.seq-cancelled rect {
+  stroke-dasharray: 4 3;
+}
+
+.seq-queued rect,
+.seq-cancelled rect {
+  fill: none;
+}
+
+.seq-note text {
+  fill: var(--color-text-muted);
+  stroke: var(--color-surface);
+  stroke-width: 6px;
+  paint-order: stroke;
+}
+
+.seq-tag rect {
+  fill: var(--color-surface);
+}
+
+.seq-lifeline {
+  fill: none;
+  stroke: var(--color-border);
+  stroke-dasharray: 3 4;
+}
+
+.seq-lane > rect {
+  fill: var(--color-surface);
+  stroke: var(--tone);
+  stroke-width: 1.25;
+}
+
+.seq-lane-header {
+  fill: color-mix(in srgb, var(--tone) 30%, var(--color-surface));
+}
+
+.seq-lane text {
+  fill: var(--ink);
+}
+
+.seq-host rect {
+  fill: var(--tone);
+}
+
+.seq-lost {
+  stroke: var(--color-error);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.seq-span {
+  fill: var(--block-return-border);
+}
+
+.seq-arrow path {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1.25;
+}
+
+.seq-arrow.seq-child path,
+.seq-arrow.seq-launch path {
+  stroke-dasharray: 5 4;
+}
+
+.seq-arrow circle {
+  fill: var(--color-surface);
+  stroke: var(--ink);
+}
+
+.seq-arrow text {
+  fill: var(--ink);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.seq-head {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}

@@ -9,6 +9,8 @@ For the product vision, user goals, UX principles, and visual identity, see [PRO
 
 The views use a **tab switching** model. One view is active at a time. Each view maintains its own scroll/zoom and expand/collapse state independently. Each declared filter axis — the host declares two, File and Kind — is per-view and reconciled on every switch (§ View Transitions); the search query is globally shared (§ Unified Filter Bar).
 
+A third, the **Sequence** view, draws one execution as lanes with time running down (`src/sequence/`). Its tab exists only when the host hands the canvas an execution; its bar shows the shared search and no axes, and a switch through it carries the other views' selections unchanged. Its input is provisional until [#752](https://github.com/jmbarzee/temporal-architect/issues/752) settles the wire contract.
+
 **Default view:** Tree View is the default on first load. It's the more familiar interaction model (collapsible list) and works immediately with any AST. Graph View is a "power view" the user discovers via the tab bar.
 
 
