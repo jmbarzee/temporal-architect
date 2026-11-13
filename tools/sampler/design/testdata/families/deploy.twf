@@ -1,0 +1,51 @@
+workflow Provision(org: Org):
+	close complete()
+
+workflow Agent(call: Call):
+	activity RunTool(call)
+		options:
+			task_queue: "sandbox-{call.sandboxId}"
+			schedule_to_start_timeout: 30s
+			start_to_close_timeout: 5m
+	close complete()
+
+activity RunTool(call: Call):
+	pass()
+
+worker bootstrap:
+	workflow Provision
+
+worker agent:
+	workflow Agent
+
+worker sidecar:
+	activity RunTool
+
+worker poolSidecar:
+	activity RunTool
+
+namespace tenant-{org}:
+	worker bootstrap
+		options:
+			task_queue: "bootstrap"
+
+namespace tenant-{org}-east:
+	worker bootstrap
+		options:
+			task_queue: "bootstrap"
+
+namespace platform:
+	worker bootstrap
+		options:
+			task_queue: "bootstrap"
+
+namespace aivearium:
+	worker agent
+		options:
+			task_queue: "agent"
+	worker sidecar
+		options:
+			task_queue: "sandbox-{sandboxId}"
+	worker poolSidecar
+		options:
+			task_queue: "sandbox-pool-{poolId}"
