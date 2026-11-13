@@ -19,9 +19,7 @@ sync_operation  ::= 'sync' IDENT params '->' return_type ':' NEWLINE
 - **Async operations** delegate to a named workflow (one-liner, no body). The backing-workflow name
   is a [`qualified_ref`](./14-packages-and-imports.md) — it may carry an optional `pkg.` package
   qualifier when the workflow lives in another package.
-- **Sync operations** have a body of client forms: a `workflow` start (`detach` included), a
-  `signal` send, `close complete` or `close fail`, control flow and raw lines. The handler runs as a Temporal client with no
-  workflow context, so any other workflow statement is an error naming the sync body
+- **Sync operations** have a body of [client statements](./05-statements.md#client-statements)
 - **An operation takes one input.** A sync operation declares one parameter; an async operation's
   backing workflow takes one. Several values are wrapped in a declared type. Every SDK carries one
   input payload per operation.
