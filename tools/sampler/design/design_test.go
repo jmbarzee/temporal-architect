@@ -201,7 +201,7 @@ func TestPackage_NexusService(t *testing.T) {
 		want    bool
 	}{{"Invoices", true}, {"Refunds", false}} {
 		if pkg, ok := d.Package(graph.KindNexusService, tt.service, "shop", "billing"); pkg != "" || ok != tt.want {
-			t.Errorf("Package(nexusService, %s) = %q, %v; want the default package: %v", tt.service, pkg, ok, tt.want)
+			t.Errorf("Package(nexusService, %s) = %q, %v; want %q, %v", tt.service, pkg, ok, "", tt.want)
 		}
 	}
 }

@@ -33,8 +33,9 @@ One invocation targets one namespace and runs three phases:
 3. **Phase C — build.** The histories are folded in memory into an
    observed graph: meaningful dispatch events (`ACTIVITY_TASK_SCHEDULED`,
    `MARKER_RECORDED` of a local activity, `START_CHILD_WORKFLOW_EXECUTION_INITIATED`,
-   `SIGNAL_EXTERNAL_WORKFLOW_EXECUTION_INITIATED`, `NEXUS_OPERATION_SCHEDULED`) become edges, each occurrence
-   bucketed by its event time. The result is written as one JSON file.
+   `SIGNAL_EXTERNAL_WORKFLOW_EXECUTION_INITIATED`, `NEXUS_OPERATION_SCHEDULED`)
+   become edges, each occurrence bucketed by its event time. The result is
+   written as one JSON file.
 
 Problems and notes found during the fold reuse the envelope's `graph`
 diagnostic kind — there is no separate `history` kind; the `code` disambiguates:
