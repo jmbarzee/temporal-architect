@@ -2,6 +2,7 @@ package history
 
 import (
 	"encoding/json"
+	"slices"
 	"testing"
 	"time"
 
@@ -182,6 +183,94 @@ func TestBuild_SignalSend_Unresolved(t *testing.T) {
 	if !found {
 		t.Errorf("expected Unresolved signalSend from %s; got %+v", sagaWF, og.Unresolved)
 	}
+}
+
+// ---------------------------------------------------------------------------
+// Fixture 3c: local activities are markers on the workflow's own queue
+// ---------------------------------------------------------------------------
+
+func TestBuild_LocalActivities(t *testing.T) {
+	h, err := LoadFile("testdata/local_activities.json", "report-001", "run-1")
+	if err != nil {
+		t.Fatalf("LoadFile: %v", err)
+	}
+	// Two markers in two SDKs' formats, in time-series buckets over ten minutes.
+	opts := Options{Namespace: "default", Window: observe.Window{Since: "2026-01-01T00:00:00Z", Until: "2026-01-01T00:10:00Z", Buckets: 2}}
+	og := Build([]History{h}, opts)
+
+	wf := graph.HostedID(graph.KindWorkflow, "ReportWorkflow", "reports", "default", false)
+	for name, want := range map[string][]int{"FormatReport": {1, 0}, "AuditReport": {0, 1}} {
+		act := graph.HostedID(graph.KindActivity, name, "reports", "default", false)
+		if e := findEdge(t, og, wf, act, graph.EdgeActivityCall); !slices.Equal(e.Buckets, want) {
+			t.Errorf("%s activityCall buckets = %v, want %v", name, e.Buckets, want)
+		}
+		findEdge(t, og, act, graph.WorkerID("reports", "default"), graph.EdgeContainment)
+	}
+	if len(og.Diagnostics) != 0 || len(og.Unresolved) != 0 {
+		t.Errorf("unexpected diagnostics %+v or unresolved %+v", og.Diagnostics, og.Unresolved)
+	}
+}
+
+func TestBuild_LocalActivityMarkerWithoutType(t *testing.T) {
+	epoch := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	marker := func(name string, details map[string]*commonpb.Payloads) *historypb.HistoryEvent {
+		return &historypb.HistoryEvent{
+			EventType: enumspb.EVENT_TYPE_MARKER_RECORDED,
+			EventTime: timestamppb.New(epoch),
+			Attributes: &historypb.HistoryEvent_MarkerRecordedEventAttributes{
+				MarkerRecordedEventAttributes: &historypb.MarkerRecordedEventAttributes{MarkerName: name, Details: details},
+			},
+		}
+	}
+	h := History{WorkflowID: "wf-1", Events: []*historypb.HistoryEvent{
+		startedEvent("ReportWorkflow", "reports", epoch),
+		marker("LocalActivity", nil),
+		marker("LocalActivity", map[string]*commonpb.Payloads{"data": jsonPayloads(`{"ActivityID":"1"}`)}),
+		marker("Version", nil), // not a local activity
+	}}
+	og := Build([]History{h}, defaultOpts)
+
+	wf := graph.HostedID(graph.KindWorkflow, "ReportWorkflow", "reports", "default", false)
+	for _, e := range og.Edges {
+		if e.Kind == graph.EdgeActivityCall {
+			t.Errorf("unexpected activityCall edge: %+v", e)
+		}
+	}
+	want := []graph.Diagnostic{{
+		Severity: "warning",
+		Code:     diagLocalActivityTypeMissing,
+		Message:  "a LocalActivity marker records no activity type, so the call is not drawn",
+		From:     wf,
+	}}
+	if !slices.Equal(og.Diagnostics, want) { // one per caller, however many markers
+		t.Errorf("diagnostics = %+v, want %+v", og.Diagnostics, want)
+	}
+}
+
+func TestLocalActivityType(t *testing.T) {
+	tests := []struct {
+		name    string
+		details map[string]*commonpb.Payloads
+		want    string
+	}{
+		{"Go SDK", map[string]*commonpb.Payloads{"data": jsonPayloads(`{"ActivityID":"1","ActivityType":"Fmt"}`)}, "Fmt"},
+		{"Core SDKs", map[string]*commonpb.Payloads{"data": jsonPayloads(`{"seq":1,"activity_type":"Fmt"}`)}, "Fmt"},
+		{"Java SDK", map[string]*commonpb.Payloads{"type": jsonPayloads(`"Fmt"`), "activityId": jsonPayloads(`"1"`)}, "Fmt"},
+		{"data without a type", map[string]*commonpb.Payloads{"data": jsonPayloads(`{"ActivityID":"1"}`)}, ""},
+		{"data that is not an object", map[string]*commonpb.Payloads{"data": jsonPayloads(`"result"`)}, ""},
+		{"no details", nil, ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := localActivityType(tt.details); got != tt.want {
+				t.Errorf("localActivityType = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func jsonPayloads(s string) *commonpb.Payloads {
+	return &commonpb.Payloads{Payloads: []*commonpb.Payload{{Data: []byte(s)}}}
 }
 
 // ---------------------------------------------------------------------------

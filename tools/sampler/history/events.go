@@ -70,7 +70,7 @@ type Event struct {
 
 // Decode lists a run's execution events in history order. History events the
 // README table marks "ignored" yield nothing. Decode does not feed Build: the
-// aggregate graph folds its own four event types.
+// aggregate graph folds its own dispatch events.
 func Decode(h History) []Event {
 	var out []Event
 	for _, e := range h.Events {
