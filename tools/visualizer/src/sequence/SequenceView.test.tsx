@@ -29,6 +29,17 @@ describe('SequenceView', () => {
     expect(container.querySelectorAll('.seq-span')).toHaveLength(2)
   })
 
+  it.each(Object.keys(fixtures))('draws %s', name => {
+    const { container } = render(<Host name={name} />)
+    expect(container.querySelectorAll('.seq-step')).toHaveLength(fixtures[name].steps.length)
+  })
+
+  it('marks a retry in place of its verb, and a lost timer as cancelled', () => {
+    expect(render(<Host name="rule-attempts" />).container.querySelectorAll('.seq-step')[2].textContent).toBe('↺ Charge')
+    cleanup()
+    expect(render(<Host name="rule-winners" />).container.querySelectorAll('.seq-cancelled')).toHaveLength(1)
+  })
+
   it('dims the steps a search does not match, and none without one', () => {
     expect(render(<Host name="spot-training" />).container.querySelectorAll('.search-dimmed')).toHaveLength(0)
     cleanup()

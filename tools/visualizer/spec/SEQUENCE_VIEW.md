@@ -1,0 +1,63 @@
+# Sequence View
+
+The sequence view draws one execution: lanes side by side, time running down, messages between them. The tree and the graph show every path of a design; this shows one path, so it reads the execution contract ([#752](https://github.com/jmbarzee/temporal-architect/issues/752)) and nothing of the design. Its code is `src/sequence/`, and its input type there is provisional until #752 settles.
+
+
+## Fixed rules
+
+A rule is fixed when it holds in every diagram with no setting, per diagram or per step, so a reader who learns it once reads every diagram by it. Each rule gives its reason and the fixture (`src/sequence/fixtures/rules.ts`) that its test (`layout.test.ts`, "the fixed rules") draws. The two samples, hand drawings of [temporal-agent-sandbox](https://github.com/jmbarzee/temporal-agent-sandbox) and [temporal-spot-training](https://github.com/jmbarzee/temporal-spot-training), reproduce on their drawn rows.
+
+### Rows (`rule-rows`)
+
+Time runs down in rows. A step sits one row below the step before it in its lane (or the step that started the lane) and below each step it names in `after`; `pause` adds rows of quiet. Nothing else moves a step.
+
+*Why:* vertical order is happens-before and nothing more, so a step is never above what it waited for, and a gap always means waiting.
+
+### Link ends (`rule-link-ends`)
+
+A message's send and receive sit on one row, the later of the two; ends joined through a shared step share it too. The arrow runs level between the facing edges of the two boxes. A message from outside the design enters from the left, its source named. An order that cannot be drawn so, a cycle, is refused.
+
+*Why:* a level arrow cannot misstate order, and the gap above the earlier end is the wait.
+
+### Lane set and grouping (`rule-queue-tag`, `rule-queue-lane`, `rule-grouping`)
+
+Lanes are columns in order of first appearance. Lanes sharing a `title` share a column, as hosts coming and going on one queue do, and their lifetimes may not overlap. A lane is a column only when something lives on it: a step it owns, or a start. A queue nothing else lives on is no lane; its name is a tag beside the steps offset toward it.
+
+*Why:* a column holds a participant's own history. A queue that only runs borrowed work has none, and the tag already says where the work ran.
+
+### Lifetimes (`rule-lifetimes`)
+
+A lane exists from its start to its end. A workflow is a box from its start step's row (the top when it has none) to its last step. A host is a bar from its start step to its end step, struck with a mark when that step failed, and lasting to the bottom when it has none. An external participant's line runs the full height. A span is a bar along its lane's right edge from its `from` step to its `to` step: a state held across steps.
+
+*Why:* the extent says when a participant existed, and the end of its bar says how it ended.
+
+### Offset (`rule-offset`, `rule-queue-tag`)
+
+A step owned by one lane and run on another queue is drawn in its owner's lane, shifted one fixed distance toward its executor: toward the column that carries the queue, else left, toward the queue's tag. A step on its own lane's queue is not shifted. The step's `queue` is the only input; no step carries a switch.
+
+*Why:* the lane says whose history holds the step, the shift says it ran elsewhere, and its direction says where. With no per-step choice the same sight always means the same thing.
+
+### Attempts (`rule-attempts`)
+
+The first attempt of a call is a box with its verb. Each retry is a box of its own, marked ↺ in the verb's place.
+
+*Why:* each attempt waits and runs separately, so each takes a row, and the mark says a retry without repeating the verb.
+
+### Winners and hidden losers (`rule-winners`)
+
+An `await one` is drawn as the branch that won. A branch that lost is hidden by being absent, not by a flag: the view draws the steps it is given. A timer armed and then cancelled is such a step, in its lane before the winner, dashed and marked cancelled, with nothing linked to it.
+
+*Why:* a loser that started nothing has nothing to place, and a cancelled timer shows what bounded the wait.
+
+### One box per call (`rule-one-box`)
+
+A call is one box, in the lane of whoever made it. An activity run on another queue is not repeated in its executor's column; a child start is one box in the parent with an arrow to the child's header. A signal is a box at each end, because each end is an event of its own lane.
+
+*Why:* a call's history spans scheduling, running and completion; the diagram counts what a lane did, once.
+
+
+## Derived, fitted and authored
+
+- **Derived:** rows, column positions, and the space an offset tag or outside source needs. Columns are spaced so that what is drawn for one clears the next by a fixed gap.
+- **Fitted to the two hand drawings, not derived:** the margin, the offset distance, the top of the first row, and the sizes and pitch in `layout.ts`.
+- **Authored in the payload, not fixed here:** pauses, outside sources, spans, and which cancelled timers appear. [#761](https://github.com/jmbarzee/temporal-architect/issues/761) decides which stay authored.
