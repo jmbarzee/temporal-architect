@@ -196,7 +196,7 @@ func (g *Graph) emitQueuedCall(
 	edgeKind, calleeKind, calleeName string, opts effective.Options, line int,
 ) {
 	var explicit string
-	if tq, ok := opts["task_queue"]; ok {
+	if tq := opts["task_queue"]; tq.Written() {
 		explicit = tq.Value
 	}
 	queue, polls := explicit, ast.ParseCallQueue(explicit).Matches

@@ -1,6 +1,7 @@
 // Package effective computes the options a call runs with. Each key comes from
-// the call site, else the target's default_options, else Temporal's default; a
-// nested block is one value. The start kind decides what applies: a child start
+// the call site, else the target's default_options, else Temporal's default. A
+// written nested block replaces the layers below it whole, and Temporal fills
+// the fields it leaves out. The start kind decides what applies: a child start
 // carries no conflict policy, and a detached one abandons its child. A key is
 // absent when Temporal takes it from the caller or has no default.
 //
@@ -15,16 +16,21 @@ import "github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
 type Source int
 
 const (
-	CallSite   Source = iota // the call's options:, or its statement kind
-	Definition               // the target's default_options:
-	Temporal                 // Temporal's default
+	CallSite   Source = iota + 1 // the call's options:, or its statement kind
+	Definition                   // the target's default_options:
+	Temporal                     // Temporal's default
 )
 
-// Option is one effective option.
+// Option is one effective option; an absent key's is the zero Option. The
+// fields Temporal fills in a written block take the block's Source.
 type Option struct {
 	*ast.OptionEntry // zero Pos when From is Temporal
 	From             Source
 }
+
+// Written reports whether the design writes o, at the call site or in the
+// definition.
+func (o Option) Written() bool { return o.From == CallSite || o.From == Definition }
 
 // Options are a call's effective options by key.
 type Options map[string]Option
@@ -87,9 +93,20 @@ func resolve(k start, site, def *ast.OptionsBlock) Options {
 	o := Options{}
 	o.set(def, Definition)
 	o.set(site, CallSite)
+	written := func(key string) *ast.OptionEntry {
+		if w := o[key]; w.Written() {
+			return w.OptionEntry
+		}
+		return nil
+	}
 	for _, r := range temporalDefaults[k] {
-		if _, ok := o[r.key]; !ok {
-			o[r.key] = Option{r.entry(o), Temporal}
+		switch w := o[r.key]; {
+		case w.Written() && r.fields != nil:
+			o[r.key] = Option{fill(w.OptionEntry, r.fields), w.From}
+		case !w.Written():
+			if e := r.entry(written); e != nil {
+				o[r.key] = Option{e, Temporal}
+			}
 		}
 	}
 	return o

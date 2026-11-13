@@ -111,7 +111,7 @@ The block contents **reuse `option_entry` verbatim** — the same value grammar 
 - `activity_def`: the `default_options:` block leads the body, before any statements.
 - `workflow_def`: the `default_options:` block leads the body — after only the `id_scheme:` line, if any, and before the `state:` block — a definition's defaults are its external invocation contract, which reads above its internal `state:`.
 
-**Precedence — per key, the call site's `options:` over the definition's `default_options:` over Temporal's default.** A nested block (`retry_policy`, `priority`) is atomic: a call-site `retry_policy:` replaces the definition's whole. `twf check` judges a call by its effective options, and each block's keys on their own.
+**Precedence — per key, the call site's `options:` over the definition's `default_options:` over Temporal's default.** A nested block (`retry_policy`, `priority`) is atomic: a call-site `retry_policy:` replaces the definition's whole, and Temporal fills the fields it leaves out. `twf check` judges a call by its effective options, and each block's keys on their own.
 
 **Valid keys at definition level.** A key that describes *the operation* is defaultable; a key that describes *a particular invocation* is call-site-only.
 

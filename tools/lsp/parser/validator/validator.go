@@ -867,7 +867,7 @@ func (v *validationCtx) walkAsyncTarget(s ast.Statement, from caller) {
 // target (identified by its resolved (package, name) key) from every
 // namespace the caller is hosted in. A task queue is scoped to its namespace,
 // so the target must be on a worker polling the routed queue in that same
-// namespace. An explicit task_queue — on the call, else in the target's
+// namespace. A non-empty task_queue — on the call, else in the target's
 // default_options — names a queue in each of the caller's namespaces and must
 // match a placement (spec 03 § Queue matching); an implicit call inherits each
 // (namespace, queue) placement of its calling workflow and needs a placement
@@ -876,7 +876,7 @@ func (v *validationCtx) walkAsyncTarget(s ast.Statement, from caller) {
 // malformed, which have none to inherit. An unhosted caller is not checked — it
 // has no namespace to route from and is already reported as uncovered.
 func (v *validationCtx) checkCallRouting(kind string, target pkgKey, opts effective.Options, from caller, line, column int) {
-	if tq, ok := opts["task_queue"]; ok {
+	if tq := opts["task_queue"]; tq.Written() && tq.Value != "" {
 		explicitTQ, source := tq.Value, ""
 		if tq.From == effective.Definition {
 			source = " (from its default_options)"
@@ -1036,7 +1036,7 @@ func isFamily(q ast.Queue) bool { return q.Form == ast.QueueParsed }
 // boundsWait reports whether an activity's opts bound how long its scheduled
 // task may wait for a poller.
 func boundsWait(opts effective.Options) bool {
-	return opts["schedule_to_start_timeout"].From != effective.Temporal || opts["schedule_to_close_timeout"].From != effective.Temporal
+	return opts["schedule_to_start_timeout"].Written() || opts["schedule_to_close_timeout"].Written()
 }
 
 // placementsOf returns the distinct (namespace, task queue) pairs on which a
