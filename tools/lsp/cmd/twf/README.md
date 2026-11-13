@@ -322,11 +322,12 @@ Per command, exactly one of `definitions` / `symbols` / `graph` is present.
 
 A site is the one position type on the wire: diagnostics, definitions,
 statements, symbols, graph edges and unresolved references each carry one, as
-`site`. Its `file` names a file the way its input did: a file argument as given, a file found by walking a directory
-argument as that argument, `/`, and its path below it. Paths are
-slash-separated, with a leading `./`, doubled `/` and `.` elements removed;
-`..` is kept, and a path is absolute only if its argument was. So `twf check .`
-reports `top/top.twf`, and `twf check ../x` reports `../x/a.twf`.
+`site`. Its `file` names a file the way its input did: a file argument as given,
+a file found by walking a directory argument as that argument, `/`, and its path
+below it. Paths are slash-separated, with a leading `./`, doubled `/` and `.`
+elements removed; `..` is kept, and a path is absolute only if its argument was.
+So `twf check .` reports `top/top.twf`, and `twf check ../x` reports
+`../x/a.twf`.
 
 A file named twice — relative and absolute, through a symlink, or by a file
 argument and a directory holding it — is read once, under its first spelling.

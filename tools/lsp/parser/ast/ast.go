@@ -171,12 +171,11 @@ type ImportDecl struct {
 // inside a node's name element via QualifiedName. The raw stamp is NEVER
 // serialized; the workflow / activity / nexus-service DTOs carry only its
 // derived qualifiedName, and only when the stamp is set, so unpackaged output
-// stays byte-identical. The empty string is the implicit
-// default package. When a definition is resolved without going through the
-// merge (e.g. a single-file parse), the stamp is empty: the resolver and graph
-// fall back to File.Package, but the wire emits no qualifiedName, so a consumer
-// joining the AST to the graph must take both from the merge (as every pipeline
-// path does).
+// stays byte-identical. The empty string is the implicit default package. When
+// a definition is resolved without going through the merge (e.g. a single-file
+// parse), the stamp is empty: the resolver and graph fall back to File.Package,
+// but the wire emits no qualifiedName, so a consumer joining the AST to the
+// graph must take both from the merge (as every pipeline path does).
 //
 // Packaged exposes that runtime package stamp so generic helpers can read it
 // off a Ref's resolved target without a per-type switch.

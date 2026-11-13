@@ -3,9 +3,9 @@
 // twf spells a site's `file` the way its input named the file (D9):
 // `designs/agent/v1/agent.twf`, or an absolute path. A host names files its own
 // way — the focused editor file, its own loader errors — and older twf versions
-// sent base names. A host file therefore
-// matches a source file exactly, else by a suffix on `/` boundaries in either
-// direction, after mapping `\` to `/` and dropping leading `./` and `../`.
+// sent base names. A host file therefore matches a source file exactly, else by
+// a suffix on `/` boundaries in either direction, after mapping `\` to `/` and
+// dropping leading `./` and `../`.
 
 import type { Diagnostic, FileError } from '../types/ast'
 

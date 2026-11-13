@@ -12,6 +12,9 @@ import type { ParserGraph } from '../types/parser-graph'
 import { buildAstLookup, buildGraph, nodeLabel, type AstLookup } from './build'
 import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION } from './dimensions'
 import type { Graph } from '@jmbarzee/force-graph'
+
+const noSite: Site = { line: 0, column: 0 }
+
 // graphFindingsToDiagnostics lifts graph-stage findings (parserGraph.diagnostics
 // and parserGraph.unresolved) into the AST Diagnostic shape so the existing
 // findings bars render them with no new UI. These are the primary way
@@ -21,8 +24,6 @@ import type { Graph } from '@jmbarzee/force-graph'
 // A finding carries its call's site; one observed in history has none, so it
 // rides through the file-filter partition in the "shown" group (file-less
 // diagnostics are never hidden).
-const noSite: Site = { line: 0, column: 0 }
-
 export function graphFindingsToDiagnostics(pg: ParserGraph): Diagnostic[] {
   const out: Diagnostic[] = []
   for (const d of pg.diagnostics) {

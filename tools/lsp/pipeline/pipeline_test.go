@@ -28,7 +28,7 @@ func testdata(elem ...string) string {
 	return filepath.Join(append([]string{root}, elem...)...)
 }
 
-// spelled is how a diagnostic or sourceFile names a fixture file passed as
+// spelled is how a site names a fixture file passed as
 // (or walked under) testdata's absolute path: slash-separated (D9).
 func spelled(elem ...string) string {
 	return filepath.ToSlash(testdata(elem...))
