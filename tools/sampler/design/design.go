@@ -37,20 +37,20 @@ func Load(path string) (*Design, error) {
 	if err != nil {
 		return nil, err
 	}
-	if pipeline.Summarize(file, diags).Errors > 0 {
-		var msgs []string
-		for _, d := range diags {
-			if d.Severity == "" || d.Severity == graph.SeverityError {
-				msgs = append(msgs, fmt.Sprintf("%s:%d: %s %s", d.Site.File, d.Site.Line, d.Code, d.Message))
-			}
+	var errs []string
+	for _, d := range diags {
+		if d.Severity != "warning" && d.Severity != "hint" { // as pipeline.Summarize counts errors
+			errs = append(errs, fmt.Sprintf("%s:%d: %s %s", d.Site.File, d.Site.Line, d.Code, d.Message))
 		}
-		return nil, fmt.Errorf("design %s has errors:\n%s", path, strings.Join(msgs, "\n"))
 	}
-	return FromGraph(graph.Extract(file)), nil
+	if len(errs) > 0 {
+		return nil, fmt.Errorf("design %s has errors:\n%s", path, strings.Join(errs, "\n"))
+	}
+	return index(graph.Extract(file)), nil
 }
 
-// FromGraph indexes the hosted definitions of a design graph.
-func FromGraph(g *graph.Graph) *Design {
+// index builds a Design from the hosted definitions of a design graph.
+func index(g *graph.Graph) *Design {
 	d := &Design{Graph: g, defs: map[string]map[string][]deployment{}}
 	byID := make(map[string]graph.Node, len(g.Nodes))
 	for _, n := range g.Nodes {
