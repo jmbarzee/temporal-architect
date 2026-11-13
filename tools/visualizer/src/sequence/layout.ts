@@ -1,6 +1,6 @@
-// Execution → positions. Time runs down in rows; a row is a level of the
-// happens-before order. A step sits one row below what precedes it, a message
-// puts its send and its receive on one row, and the rest is placement.
+// Execution → positions, by the rules in spec/SEQUENCE_VIEW.md. Rows and the
+// column spacing derive. PITCH, the sizes, MARGIN, RUN_SHIFT and TOP are fitted to
+// the two hand drawings; the other constants are clearances and measures.
 
 import type { Execution, Lane, Step, StepKind } from './execution'
 
@@ -11,12 +11,13 @@ const STEP_W = 264
 const GLYPH_W = 7.2
 const LANE_W: Record<Lane['kind'], number> = { workflow: 288, external: 264, host: 80 }
 const COLUMN_GAP = 48
-// MARGIN, OUTBOARD, RUN_SHIFT and TOP are fitted to the two hand drawings, not derived.
 const MARGIN = 24
-const OUTBOARD = 144
 const RUN_SHIFT = 56
 const TOP = 123
 const BADGE_OFFSET = 36
+const TAG_GLYPH_W = 6.7
+const TAG_PAD = 16
+const TAG_GAP = 8
 
 const VERB: Record<StepKind, string> = {
   send: 'signal', await: 'await signal', handler: 'on signal', activity: 'activity',
@@ -25,9 +26,9 @@ const VERB: Record<StepKind, string> = {
 const STATE_SUFFIX = { queued: ' queued', cancelled: ' cancelled', failed: '' }
 
 export interface Rect { x: number; y: number; width: number; height: number }
-export interface PlacedStep { step: Step; box: Rect; verb: string; text: string; queueTag?: { key: string; value: string; box: Rect } }
+export interface PlacedStep { step: Step; box: Rect; verb: string; text: string; queueTag?: Tag & { box: Rect } }
 export interface PlacedLane { lane: Lane; x: number; box?: Rect; lifeline: [number, number]; bar?: { y1: number; y2: number; lost: boolean } }
-export interface PlacedColumn { title: string; x: number; tag?: { key: string; value: string }; tagBox: Rect }
+export interface PlacedColumn { title: string; x: number; tag?: Tag; tagBox: Rect }
 export interface PlacedArrow { kind: 'signal' | 'call' | 'child' | 'launch'; x1: number; x2: number; y: number; n?: number; badgeX: number }
 export interface PlacedInput { outside: string; note?: string; x: number; y: number }
 export interface PlacedSpan { label: string; box: Rect }
@@ -43,8 +44,11 @@ export interface Layout {
   spans: PlacedSpan[]
 }
 
+type Tag = { key: string; value: string }
 const rowTop = (row: number) => TOP + row * PITCH
 const center = (r: Rect) => r.x + r.width / 2
+const tagWidth = ({ key, value }: Tag) => Math.max(key.length, value.length) * TAG_GLYPH_W + TAG_PAD
+const queueOf = (tag?: Tag) => tag?.key === 'task_queue' ? tag.value : undefined
 
 /** Each step's row: the longest path to it, with a message's two ends one row. */
 function solveRows({ lanes, steps, messages }: Execution): Map<string, number> {
@@ -96,47 +100,84 @@ function solveRows({ lanes, steps, messages }: Execution): Map<string, number> {
 }
 
 export function layoutExecution(execution: Execution): Layout {
-  const { lanes, steps, messages, spans } = execution
+  const { steps, messages, spans } = execution
   const rows = solveRows(execution)
-  const laneById = new Map(lanes.map(l => [l.id, l]))
   const stepById = new Map(steps.map(s => [s.id, s]))
   const lastRow = (laneId: string) => Math.max(-1, ...steps.filter(s => s.lane === laneId).map(s => rows.get(s.id)!))
   const beginRow = (lane: Lane) => lane.startedBy === undefined ? -1 : rows.get(lane.startedBy)!
+  const endRow = (lane: Lane) => lane.kind === 'workflow' ? lastRow(lane.id) : lane.endedAt === undefined ? Infinity : rows.get(lane.endedAt)!
+
+  // A lane is a column only when something lives on it: a step it owns, or a start.
+  const owners = new Set(steps.map(s => s.lane))
+  const lanes = execution.lanes.filter(l => owners.has(l.id) || l.startedBy !== undefined)
+  const laneById = new Map(lanes.map(l => [l.id, l]))
 
   // Columns in order of first lane; each is as wide as its first lane's kind.
   const titles = [...new Set(lanes.map(l => l.title))]
   const members = (title: string) => lanes.filter(l => l.title === title)
   const tagOf = (title: string) => members(title).find(l => l.tag)?.tag
-  // The column whose queue runs a step; a queue no column carries is tagged at its step.
-  const runnerOf = (queue: string) => titles.find(t => tagOf(t)?.key === 'task_queue' && tagOf(t)?.value === queue)
-  const outboard = steps.some(s => s.queue !== undefined && runnerOf(s.queue) === undefined) || messages.some(m => typeof m.from !== 'string')
-  const columnX = new Map<string, number>()
-  let edge = MARGIN + (outboard ? OUTBOARD : 0)
+  const half = (title: string) => LANE_W[members(title)[0].kind] / 2
   for (const title of titles) {
-    const half = LANE_W[members(title)[0].kind] / 2
-    columnX.set(title, edge + half)
-    edge += half * 2 + COLUMN_GAP
+    const lives = members(title).map(l => ({ id: l.id, from: beginRow(l), to: endRow(l) })).sort((a, b) => a.from - b.from)
+    lives.slice(1).forEach((l, i) => {
+      if (l.from <= lives[i].to) throw new Error(`lanes ${lives[i].id} and ${l.id} share column ${title} and overlap`)
+    })
   }
+
+  // A step run on a queue other than its lane's shifts toward the column that carries that queue,
+  // and otherwise toward the left, where the queue is tagged beside it.
+  const shapes = steps.map(step => {
+    const lane = laneById.get(step.lane)!
+    const retry = step.attempt !== undefined && step.attempt > 1
+    const verb = retry ? '' : VERB[step.kind]
+    const text = `${retry ? '↺ ' : ''}${step.label}${step.state ? STATE_SUFFIX[step.state] : ''}`
+    const width = Math.max(STEP_W, (verb.length + 1 + text.length) * GLYPH_W + 24)
+    const offset = step.queue !== undefined && step.queue !== queueOf(tagOf(lane.title))
+    const runner = !offset ? undefined : titles.find(t => queueOf(tagOf(t)) === step.queue)
+    const dx = !offset ? 0 : RUN_SHIFT * (runner === undefined || titles.indexOf(runner) < titles.indexOf(lane.title) ? -1 : 1)
+    const tag = offset && runner === undefined ? { key: 'task_queue', value: step.queue! } : undefined
+    return { step, lane, verb, text, width, dx, tag }
+  })
+
+  // How far what is drawn for a column reaches past its lane box, so columns clear one another.
+  // `to` is a distance from the column's centre.
+  const reach = new Map(titles.map(t => [t, { left: 0, right: 0 }]))
+  const widen = (title: string, side: 'left' | 'right', to: number) => {
+    const r = reach.get(title)!
+    r[side] = Math.max(r[side], to - half(title))
+  }
+  for (const { lane, width, dx, tag } of shapes) {
+    widen(lane.title, 'left', width / 2 - dx + (tag ? TAG_GAP + tagWidth(tag) : 0))
+    widen(lane.title, 'right', width / 2 + dx)
+  }
+  for (const m of messages) {
+    if (typeof m.from === 'string') continue
+    const label = Math.max(m.from.outside.length, m.from.note?.length ?? 0) * GLYPH_W
+    const { title } = laneById.get(stepById.get(m.to)!.lane)!
+    widen(title, 'left', half(title) + BADGE_OFFSET + TAG_GAP + label)
+  }
+
+  const columnX = new Map<string, number>()
+  let edge = MARGIN
+  titles.forEach((title, i) => {
+    edge += (i === 0 ? 0 : reach.get(titles[i - 1])!.right + COLUMN_GAP) + reach.get(title)!.left
+    columnX.set(title, edge + half(title))
+    edge += half(title) * 2
+  })
   const laneX = (lane: Lane) => columnX.get(lane.title)!
 
   const columns = titles.map(title => {
     const tag = tagOf(title)
-    const w = tag ? Math.max(tag.key.length, tag.value.length) * 6.7 + 16 : 0
+    const w = tag ? tagWidth(tag) : 0
     return { title, x: columnX.get(title)!, tag, tagBox: { x: columnX.get(title)! - w / 2, y: 36, width: w, height: 32 } }
   })
 
-  const placedSteps = steps.map<PlacedStep>(step => {
-    const lane = laneById.get(step.lane)!
-    const verb = step.attempt && step.attempt > 1 ? '' : VERB[step.kind]
-    const text = `${step.attempt && step.attempt > 1 ? '↺ ' : ''}${step.label}${step.state ? STATE_SUFFIX[step.state] : ''}`
-    const w = Math.max(STEP_W, (verb.length + 1 + text.length) * GLYPH_W + 24)
-    const runner = step.queue === undefined ? undefined : runnerOf(step.queue)
-    const dx = step.queue === undefined ? 0 : RUN_SHIFT * (runner === undefined || columnX.get(runner)! < laneX(lane) ? -1 : 1)
-    const box = { x: laneX(lane) + dx - w / 2, y: rowTop(rows.get(step.id)!), width: w, height: STEP_H }
+  const placedSteps = shapes.map<PlacedStep>(({ step, lane, verb, text, width, dx, tag }) => {
+    const box = { x: laneX(lane) + dx - width / 2, y: rowTop(rows.get(step.id)!), width, height: STEP_H }
     const placed: PlacedStep = { step, box, verb, text }
-    if (step.queue !== undefined && runner === undefined) {
-      const tagW = Math.max('task_queue'.length, step.queue.length) * 6.7 + 12
-      placed.queueTag = { key: 'task_queue', value: step.queue, box: { x: box.x - 8 - tagW, y: box.y - 3, width: tagW, height: 32 } }
+    if (tag) {
+      const w = tagWidth(tag)
+      placed.queueTag = { ...tag, box: { x: box.x - TAG_GAP - w, y: box.y - 3, width: w, height: 32 } }
     }
     return placed
   })
@@ -153,9 +194,9 @@ export function layoutExecution(execution: Execution): Layout {
     }
     const mid = (id: string) => rowTop(rows.get(id)!) + STEP_H / 2
     const bar = lane.kind === 'host' ? {
-      y1: mid(lane.startedBy!),
-      y2: mid(lane.endedAt!),
-      lost: stepById.get(lane.endedAt!)!.state === 'failed',
+      y1: lane.startedBy === undefined ? rowTop(-1) - 4 : mid(lane.startedBy),
+      y2: lane.endedAt === undefined ? bottom : mid(lane.endedAt),
+      lost: lane.endedAt !== undefined && stepById.get(lane.endedAt)!.state === 'failed',
     } : undefined
     return { lane, x, lifeline: [rowTop(-1) - 4, bottom], bar }
   })
@@ -177,10 +218,10 @@ export function layoutExecution(execution: Execution): Layout {
       continue
     }
     const lane = laneById.get(stepById.get(m.to)!.lane)!
-    const x1 = laneX(lane) - LANE_W[lane.kind] / 2 - BADGE_OFFSET
+    const x1 = laneX(lane) - half(lane.title) - BADGE_OFFSET
     const y = rowTop(row) + STEP_H / 2
     arrows.push({ kind: 'signal', x1, x2: to.x - 2, y, badgeX: (x1 + to.x) / 2 })
-    inputs.push({ outside: m.from.outside, note: m.from.note, x: x1 - 8, y })
+    inputs.push({ outside: m.from.outside, note: m.from.note, x: x1 - TAG_GAP, y })
   }
   for (const lane of lanes) {
     if (lane.startedBy === undefined) continue
@@ -198,6 +239,6 @@ export function layoutExecution(execution: Execution): Layout {
     return { label: s.label, box: { x: lane.box!.x + lane.box!.width + 4, y, width: 4, height: rowTop(rows.get(s.to)!) + STEP_H - y } }
   })
 
-  const right = Math.max(edge - COLUMN_GAP, ...placedSteps.map(p => p.box.x + p.box.width)) + MARGIN
+  const right = edge + reach.get(titles[titles.length - 1])!.right + MARGIN
   return { width: right, height: bottom + MARGIN, rows, columns, lanes: placedLanes, steps: placedSteps, arrows, inputs, spans: placedSpans }
 }

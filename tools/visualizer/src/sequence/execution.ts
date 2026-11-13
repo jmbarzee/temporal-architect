@@ -1,5 +1,6 @@
 // PROVISIONAL. The sequence view's input as two hand-drawn samples need it;
 // the wire contract is #752's, and this type is what that Task reads from.
+// The rules that read it are spec/SEQUENCE_VIEW.md.
 
 export type StepKind =
   | 'send'     // signal sent
@@ -26,7 +27,7 @@ export interface Step {
   after?: string[]
   /** Rows of quiet before this step: time passing. */
   pause?: number
-  /** The task queue that runs this activity, when not its lane's. */
+  /** The task queue that runs this step; drawn offset when it is not its lane's own. */
   queue?: string
 }
 
@@ -39,7 +40,7 @@ export interface Lane {
   tag?: { key: string; value: string }
   /** The step that starts this lane; absent when it is there from the top. */
   startedBy?: string
-  /** A host's last step; a failed one means the host was lost. */
+  /** A host's last step, a failed one meaning it was lost; absent, it lasts to the end. */
   endedAt?: string
 }
 
