@@ -38,7 +38,7 @@ One invocation targets one namespace and runs three phases:
 
 Problems found during the fold reuse the envelope's `graph` diagnostic kind —
 there is no separate `history` kind; the `code` disambiguates (e.g.
-`SIGNAL_TARGET_NOT_SAMPLED` when a signal's target run was not in the sample).
+`SIGNAL_TARGET_NOT_SAMPLED` when none of a signal's target workflow's runs was in the sample).
 
 ## Node identity
 
@@ -101,7 +101,7 @@ history is an edge out of the root.
 | `ACTIVITY_TASK_SCHEDULED` | activity type, task queue | `activityCall` | supported |
 | `START_CHILD_WORKFLOW_EXECUTION_INITIATED` | child workflow type, queue, namespace | `workflowCall` | supported |
 | `SIGNAL_EXTERNAL_WORKFLOW_EXECUTION_INITIATED` | target workflow ID (no type) | `signalSend` | supported; target resolution [#58](https://github.com/jmbarzee/temporal-architect/issues/58) |
-| `WORKFLOW_EXECUTION_CONTINUED_AS_NEW` | next run of the chain; each run is its own history, folded into the aggregate graph | (none) | supported; per-run identity `(WorkflowID, RunID)` is kept in the decode and reaches the wire with [#775](https://github.com/jmbarzee/temporal-architect/issues/775) |
+| `WORKFLOW_EXECUTION_CONTINUED_AS_NEW` | next run of the chain; each run is its own history, folded into the aggregate graph | (none) | supported; the decode keeps per-run identity `(WorkflowID, RunID)`, not yet on the wire ([#775](https://github.com/jmbarzee/temporal-architect/issues/775)) |
 | `MARKER_RECORDED` ("LocalActivity") | activity type | `activityCall` | deferred — [#58](https://github.com/jmbarzee/temporal-architect/issues/58) |
 | `NEXUS_OPERATION_SCHEDULED` | endpoint, service, operation | `nexusCall` | deferred — [#57](https://github.com/jmbarzee/temporal-architect/issues/57) |
 
@@ -119,8 +119,9 @@ Inherent to history as an input:
 - **No worker identity.** History exposes task queues, not a logical worker
   name, so one worker is synthesized per `(namespace, taskQueue)`. Two distinct
   type-sets polling one queue (rare) collapse into one synthesized worker.
-- **Signal targets are IDs, not types.** Resolvable only if the target run is
-  in the sample.
+- **Signal targets are IDs, not types.** A target resolves to its named
+  run, else to the latest-started sampled run of that workflow ID (an
+  approximation of the current run); unsampled, it stays unresolved.
 - **Local activities are markers**, not scheduled-activity events, and are not
   decoded ([#58](https://github.com/jmbarzee/temporal-architect/issues/58)).
 - **No control flow or ordering.** An edge means "this called that at least
