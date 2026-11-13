@@ -20,7 +20,6 @@ Certain keywords are only valid in workflow context and produce errors in activi
 These keywords are **blocked in:**
 - Activity definitions
 - Query handler bodies
-- Sync nexus operation bodies, all but the [client statements](./05-statements.md#client-statements)
 
 ## Handler Body Contexts
 
@@ -34,7 +33,7 @@ Each body context takes one [statement set](./05-statements.md):
 | Activity body | Activity |
 | Sync nexus operation body | Client |
 
-A workflow keyword outside the client set is `<keyword> is not allowed in a sync nexus operation body` (`detach nexus` included).
+A sync nexus operation body rejects `activity`, `nexus` (`detach nexus` included), `await`, `timer`, `promise`, `condition`, `set`, `unset` and `state`, each as `<keyword> is not allowed in a sync nexus operation body`.
 
 ## Address Contexts
 
