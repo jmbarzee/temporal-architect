@@ -12,8 +12,10 @@
 package observe
 
 import (
+	"maps"
 	"sort"
 
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/graph"
 )
 
@@ -60,6 +62,10 @@ type ObservedGraph struct {
 	CoarsenedEdges []graph.CoarsenedEdge `json:"coarsenedEdges"`
 	Unresolved     []graph.Unresolved    `json:"unresolved"`
 	Diagnostics    []graph.Diagnostic    `json:"diagnostics"`
+	// Packages maps each package identity a node's PackageID names to its
+	// declared name, as graph.Graph.Packages does; the sampler fills it from the
+	// design it joins to, and it is absent without one.
+	Packages map[string]ast.PackageRef `json:"packages,omitempty"`
 }
 
 // New returns an ObservedGraph with non-nil slices so the wire shape is `[]`
@@ -86,6 +92,7 @@ func ToGraph(o *ObservedGraph) *graph.Graph {
 		CoarsenedEdges: []graph.CoarsenedEdge{},
 		Unresolved:     append([]graph.Unresolved(nil), o.Unresolved...),
 		Diagnostics:    append([]graph.Diagnostic(nil), o.Diagnostics...),
+		Packages:       o.Packages,
 	}
 	for _, e := range o.Edges {
 		g.Edges = append(g.Edges, e.Edge)
@@ -120,11 +127,16 @@ func Finalize(o *ObservedGraph) {
 // and edges are unioned by identity and their occurrence buckets summed
 // element-wise; unresolved entries are unioned. This is the associative fold
 // that lets sampling be sharded (per namespace, per worker, in parallel) and
-// the shards combined afterward. The Window is taken from a; callers are
+// the shards combined afterward. Package tables are unioned. The Window is taken from a; callers are
 // responsible for using a consistent Window across shards.
 func Merge(a, b *ObservedGraph) *ObservedGraph {
 	out := New()
 	out.Window = a.Window
+	if len(a.Packages)+len(b.Packages) > 0 {
+		out.Packages = map[string]ast.PackageRef{}
+		maps.Copy(out.Packages, b.Packages)
+		maps.Copy(out.Packages, a.Packages)
+	}
 
 	seenNode := map[string]struct{}{}
 	addNodes := func(ns []graph.Node) {

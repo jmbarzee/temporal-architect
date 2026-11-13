@@ -37,6 +37,7 @@ packages:
     include_files:
       - "observe.go"
     type_mappings:
+      ast.PackageRef: "PackageRef"
       graph.Summary: "Summary"
       graph.Node: "Node"
       graph.Edge: "Edge"
@@ -46,6 +47,7 @@ packages:
     frontmatter: |
       // Source of truth: the Go DTO structs in tools/lsp. Regenerate: `make gen-types`.
       // String-literal enums and discriminated unions live in ../residue.ts.
+      import type { PackageRef } from "./ast";
       import type { Summary, Node, Edge, CoarsenedEdge, Unresolved, Diagnostic } from "./graph";
 
   - path: "github.com/jmbarzee/temporal-architect/tools/lsp/parser/decompose"

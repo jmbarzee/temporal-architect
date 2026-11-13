@@ -98,6 +98,9 @@ func Build(histories []History, opts Options) *observe.ObservedGraph {
 		edgeIdx:   map[edgeKey]int{},
 	}
 	b.og.Window = observe.Window{Since: opts.Window.Since, Until: opts.Window.Until, Buckets: win.n}
+	if opts.Design != nil {
+		b.og.Packages = opts.Design.Graph.Packages
+	}
 
 	b.index = buildIndex(sorted, opts.Namespace)
 	for _, h := range sorted {
