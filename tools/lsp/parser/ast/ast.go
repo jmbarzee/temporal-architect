@@ -277,6 +277,7 @@ type WorkflowDef struct {
 	Queries        []*QueryDecl
 	Updates        []*UpdateDecl
 	Body           []Statement
+	Context        BodyContext // runtime-only: what Body runs in
 	SourceFile     string
 	Package        string // runtime-only; see Packaged note above
 	PkgID          string // runtime-only; see Packaged note above
@@ -294,6 +295,7 @@ type ActivityDef struct {
 	ReturnType     string
 	DefaultOptions *OptionsBlock // optional definition-level call-option defaults (head of body)
 	Body           []Statement
+	Context        BodyContext // runtime-only: what Body runs in
 	SourceFile     string
 	Package        string // runtime-only; see Packaged note above
 	PkgID          string // runtime-only; see Packaged note above
@@ -403,6 +405,7 @@ type SignalDecl struct {
 	Params  string
 	Options *OptionsBlock // optional handler options block (leads the body)
 	Body    []Statement   // handler body
+	Context BodyContext   // runtime-only: what Body runs in
 }
 
 func (*SignalDecl) stmtNode() {}
@@ -415,6 +418,7 @@ type QueryDecl struct {
 	ReturnType string
 	Options    *OptionsBlock // optional handler options block (leads the body)
 	Body       []Statement   // handler body (restricted: no temporal primitives)
+	Context    BodyContext   // runtime-only: what Body runs in
 }
 
 func (*QueryDecl) stmtNode() {}
@@ -427,6 +431,7 @@ type UpdateDecl struct {
 	ReturnType string
 	Options    *OptionsBlock // optional handler options block (leads the body)
 	Body       []Statement   // handler body
+	Context    BodyContext   // runtime-only: what Body runs in
 }
 
 func (*UpdateDecl) stmtNode() {}
@@ -451,6 +456,20 @@ type WorkflowCallMode int
 const (
 	CallAttached WorkflowCallMode = iota // bare workflow start: the caller holds it
 	CallDetach                           // detach workflow (fire-and-forget)
+)
+
+// BodyContext is what a statement list runs in. The parser sets it on every
+// definition that owns a body, and decides StartKind from it.
+type BodyContext int
+
+const (
+	BodyNone          BodyContext = iota // no body: an async nexus operation
+	BodyWorkflow                         // a workflow's body
+	BodySignalHandler                    // a signal handler's body
+	BodyUpdateHandler                    // an update handler's body
+	BodyQueryHandler                     // a query handler's body
+	BodyActivity                         // an activity's body
+	BodyNexusSync                        // a sync nexus operation's body
 )
 
 // StartKind is the Temporal operation a workflow start becomes, decided by its
@@ -868,6 +887,7 @@ type NexusOperation struct {
 	Params     string            // sync only
 	ReturnType string            // sync only
 	Body       []Statement       // sync only
+	Context    BodyContext       // runtime-only: what Body runs in; BodyNone for async
 }
 
 // NexusServiceDef is a top-level nexus service definition.
