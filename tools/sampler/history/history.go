@@ -10,6 +10,7 @@ package history
 import (
 	"cmp"
 	"fmt"
+	"maps"
 	"os"
 	"slices"
 	"sort"
@@ -26,9 +27,17 @@ import (
 	"github.com/jmbarzee/temporal-architect/tools/sampler/design"
 )
 
-// diagSignalTargetAmbiguous is the code for a signal whose target workflow ID
-// fits the id_schemes of several workflows, so it has no one type.
-const diagSignalTargetAmbiguous = "SIGNAL_TARGET_AMBIGUOUS"
+const (
+	// diagSignalTargetAmbiguous is the code for a signal whose target workflow ID
+	// fits the id_schemes of several workflows, so it has no one type.
+	diagSignalTargetAmbiguous = "SIGNAL_TARGET_AMBIGUOUS"
+	// diagFamilyAmbiguous is the code for an observed namespace or task queue
+	// that fits several of the design's families, so it has no one family.
+	diagFamilyAmbiguous = "FAMILY_AMBIGUOUS"
+	// diagFamilyMembers is the code, a hint, for a design family with observed
+	// members: it counts them.
+	diagFamilyMembers = "FAMILY_MEMBERS"
+)
 
 // History is one workflow run's event log. (WorkflowID, RunID) identifies the
 // run: continue-as-new chains several runs under one WorkflowID, and each is its
@@ -46,8 +55,9 @@ type History struct {
 // the fallback used when a History's own Namespace is empty (the
 // WORKFLOW_EXECUTION_STARTED event does not carry it). Window lays out the
 // per-edge occurrence time series; a zero Window means a single bucket. Design,
-// when set, joins each sampled definition to its package, so its node ID is the
-// design graph's; without one every name stays bare.
+// when set, joins each sampled definition to its package and each sampled
+// namespace and task queue to the design's family it fits, so their node IDs are
+// the design graph's; without one every name stays concrete and bare.
 type Options struct {
 	Namespace string
 	Window    observe.Window
@@ -104,6 +114,9 @@ func Build(histories []History, opts Options) *observe.ObservedGraph {
 		og:        observe.New(),
 		nodesSeen: map[string]struct{}{},
 		edgeIdx:   map[edgeKey]int{},
+		nsNodes:   map[string]graph.Node{},
+		places:    map[[2]string]placement{},
+		families:  map[string]*family{},
 	}
 	b.og.Window = observe.Window{Since: opts.Window.Since, Until: opts.Window.Until, Buckets: win.n}
 	if opts.Design != nil {
@@ -114,6 +127,7 @@ func Build(histories []History, opts Options) *observe.ObservedGraph {
 	for _, h := range sorted {
 		b.processHistory(h)
 	}
+	b.reportFamilyMembers()
 
 	observe.Finalize(b.og)
 	return b.og
@@ -164,6 +178,16 @@ type builder struct {
 	index     runIndex
 	nodesSeen map[string]struct{}
 	edgeIdx   map[edgeKey]int // edgeKey → index into og.Edges
+
+	nsNodes  map[string]graph.Node   // observed namespace → the node it lands on
+	places   map[[2]string]placement // observed (namespace, queue) → its nodes
+	families map[string]*family      // design family node ID → its observed members
+}
+
+// family is a design family's label and the observed names that fit it.
+type family struct {
+	label   string
+	members map[string]struct{}
 }
 
 // ---------------------------------------------------------------------------
@@ -398,31 +422,127 @@ func eventTime(e *historypb.HistoryEvent) time.Time {
 // Node / edge helpers
 // ---------------------------------------------------------------------------
 
-func (b *builder) ensureWorkerAndNamespace(namespace, queue string) {
-	// Neither node sets TemplateParams: observed names are resolved runtime
-	// values (namespace fabric-shard-acme, queue sandbox-8f3a), never families
-	// with template parameters, so there is nothing to extract. See README.md
-	// "templateParams is always empty on observed nodes".
-	nsID := graph.NamespaceID(namespace)
-	if _, seen := b.nodesSeen[nsID]; !seen {
-		b.og.Nodes = append(b.og.Nodes, graph.Node{
-			ID:         nsID,
-			Definition: graph.DefKey(graph.KindNamespace, namespace),
-			Name:       namespace,
-		})
-		b.nodesSeen[nsID] = struct{}{}
-	}
+// placement is the namespace and worker nodes an observed namespace and task
+// queue land on.
+type placement struct {
+	ns, worker graph.Node
+}
 
-	wID := graph.WorkerID(queue, namespace)
-	if _, seen := b.nodesSeen[wID]; !seen {
-		b.og.Nodes = append(b.og.Nodes, graph.Node{
-			ID:         wID,
-			Definition: graph.DefKey(graph.KindWorker, queue),
-			Name:       queue,
-			Queue:      queue,
+// place returns the nodes an observed namespace and task queue land on. With a
+// design, a name that fits one of its families lands on that family's node
+// instead of a concrete one; a name that fits none stays concrete, and one that
+// fits several stays concrete and is reported. A family's worker node is the
+// design worker's, whose name cannot be its queue's.
+func (b *builder) place(namespace, queue string) placement {
+	key := [2]string{namespace, queue}
+	if p, ok := b.places[key]; ok {
+		return p
+	}
+	ns := b.namespaceNode(namespace)
+	worker := graph.Node{ // worker name = queue name (1-worker-per-queue assumption)
+		ID:         graph.WorkerID(queue, ns.Name),
+		Definition: graph.DefKey(graph.KindWorker, queue),
+		Name:       queue,
+		Queue:      queue,
+	}
+	if b.design != nil {
+		subject := fmt.Sprintf("task queue %q in namespace %q", queue, namespace)
+		if f, ok := b.fit(worker, subject, b.design.MatchWorker(ns.Name, queue)); ok {
+			member := queue
+			if ns.Name != namespace { // the same queue name recurs across a namespace family
+				member = namespace + "/" + queue
+			}
+			b.addMember(f, member)
+			worker = f
+		}
+	}
+	p := placement{ns, worker}
+	b.places[key] = p
+	return p
+}
+
+func (b *builder) namespaceNode(name string) graph.Node {
+	if n, ok := b.nsNodes[name]; ok {
+		return n
+	}
+	n := graph.Node{ID: graph.NamespaceID(name), Definition: graph.DefKey(graph.KindNamespace, name), Name: name}
+	if b.design != nil {
+		if f, ok := b.fit(n, fmt.Sprintf("namespace %q", name), b.design.MatchNamespace(name)); ok {
+			b.addMember(f, name)
+			n = f
+		}
+	}
+	b.nsNodes[name] = n
+	return n
+}
+
+// fit picks the one design family node an observed node fits, as the observed
+// graph carries it (the design's SDKs are not observed). Several resolve to none
+// and are reported with their labels, once per observed node.
+func (b *builder) fit(observed graph.Node, subject string, fits []graph.Node) (graph.Node, bool) {
+	switch len(fits) {
+	case 0:
+		return graph.Node{}, false
+	case 1:
+		f := fits[0]
+		f.SDKs = nil
+		return f, true
+	}
+	labels := make([]string, len(fits))
+	for i, f := range fits {
+		labels[i] = familyLabel(f)
+	}
+	sort.Strings(labels)
+	b.og.Diagnostics = append(b.og.Diagnostics, graph.Diagnostic{
+		Severity: "warning",
+		Code:     diagFamilyAmbiguous,
+		Message:  fmt.Sprintf("%s fits the families %s", subject, strings.Join(labels, ", ")),
+		From:     observed.ID,
+	})
+	return graph.Node{}, false
+}
+
+func familyLabel(f graph.Node) string {
+	if strings.HasPrefix(f.Definition, graph.KindWorker+":") {
+		return fmt.Sprintf("worker %s on queue %s", f.Name, f.Queue)
+	}
+	return "namespace " + f.Name
+}
+
+func (b *builder) addMember(f graph.Node, member string) {
+	fam := b.families[f.ID]
+	if fam == nil {
+		fam = &family{label: familyLabel(f), members: map[string]struct{}{}}
+		b.families[f.ID] = fam
+	}
+	fam.members[member] = struct{}{}
+}
+
+// reportFamilyMembers counts each design family's observed members, as a hint
+// on the family's node.
+func (b *builder) reportFamilyMembers() {
+	for _, id := range slices.Sorted(maps.Keys(b.families)) {
+		fam := b.families[id]
+		members := slices.Sorted(maps.Keys(fam.members))
+		b.og.Diagnostics = append(b.og.Diagnostics, graph.Diagnostic{
+			Severity: "hint",
+			Code:     diagFamilyMembers,
+			Message:  fmt.Sprintf("%s has %d observed members: %s", fam.label, len(members), strings.Join(members, ", ")),
+			From:     id,
 		})
-		b.nodesSeen[wID] = struct{}{}
-		b.addContainment(wID, nsID)
+	}
+}
+
+func (b *builder) ensureWorkerAndNamespace(namespace, queue string) {
+	p := b.place(namespace, queue)
+	if _, seen := b.nodesSeen[p.ns.ID]; !seen {
+		b.og.Nodes = append(b.og.Nodes, p.ns)
+		b.nodesSeen[p.ns.ID] = struct{}{}
+	}
+	if _, seen := b.nodesSeen[p.worker.ID]; !seen {
+		b.og.Nodes = append(b.og.Nodes, p.worker)
+		b.nodesSeen[p.worker.ID] = struct{}{}
+		b.addContainment(p.worker.ID, p.ns.ID)
 	}
 }
 
@@ -430,14 +550,13 @@ func (b *builder) ensureWorkerAndNamespace(namespace, queue string) {
 // the design's package for it. With a design that has none (or several it cannot
 // tell apart) the name stays bare, and the node is reported as unresolved.
 func (b *builder) ensureHosted(kind, name, namespace, queue string) string {
+	p := b.place(namespace, queue)
 	pkg, known := "", true
 	if b.design != nil {
-		pkg, known = b.design.Package(kind, name, namespace, queue)
+		pkg, known = b.design.Package(kind, name, p.ns.Name, p.worker.Queue)
 	}
-	// Worker name = queue name (1-worker-per-queue assumption).
-	workerName := queue
 	qname := ast.QualifiedName(pkg, name)
-	nodeID := graph.HostedID(kind, qname, workerName, namespace, false)
+	nodeID := graph.HostedID(kind, qname, p.worker.Name, p.ns.Name, false)
 	if _, seen := b.nodesSeen[nodeID]; !seen {
 		b.og.Nodes = append(b.og.Nodes, graph.Node{
 			ID:         nodeID,
@@ -446,7 +565,7 @@ func (b *builder) ensureHosted(kind, name, namespace, queue string) string {
 			PackageID:  pkg,
 		})
 		b.nodesSeen[nodeID] = struct{}{}
-		b.addContainment(nodeID, graph.WorkerID(workerName, namespace))
+		b.addContainment(nodeID, p.worker.ID)
 		if !known {
 			b.og.Unresolved = append(b.og.Unresolved, graph.Unresolved{From: nodeID, Name: name, Kind: kind})
 		}

@@ -101,3 +101,63 @@ func TestMatchWorkflowID(t *testing.T) {
 		})
 	}
 }
+
+// The families design has the namespace families tenant-{org} and
+// tenant-{org}-east, which overlap, and the static namespace platform; in
+// aivearium it has the worker families sandbox-{sandboxId} and
+// sandbox-pool-{poolId}, which overlap, and the static queue agent.
+func TestMatchNamespace(t *testing.T) {
+	d, err := Load("testdata/families")
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	tests := []struct {
+		name, namespace string
+		want            []string
+	}{
+		{"one family fits", "tenant-acme", []string{"tenant-{org}"}},
+		{"two families fit", "tenant-acme-east", []string{"tenant-{org}", "tenant-{org}-east"}},
+		{"no family fits", "default", nil},
+		{"a static namespace is its own", "platform", nil},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var got []string
+			for _, n := range d.MatchNamespace(tt.namespace) {
+				got = append(got, n.Name)
+			}
+			if !slices.Equal(got, tt.want) {
+				t.Errorf("MatchNamespace(%q) = %v, want %v", tt.namespace, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestMatchWorker(t *testing.T) {
+	d, err := Load("testdata/families")
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	tests := []struct {
+		name, namespace, queue string
+		want                   []string
+	}{
+		{"one family fits", "aivearium", "sandbox-8f3a", []string{"sidecar"}},
+		{"two families fit", "aivearium", "sandbox-pool-3", []string{"poolSidecar", "sidecar"}},
+		{"no family fits", "aivearium", "adhoc", nil},
+		{"a static queue is its own", "aivearium", "agent", nil},
+		{"namespace the family is not in", "platform", "sandbox-8f3a", nil},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var got []string
+			for _, n := range d.MatchWorker(tt.namespace, tt.queue) {
+				got = append(got, n.Name)
+			}
+			slices.Sort(got)
+			if !slices.Equal(got, tt.want) {
+				t.Errorf("MatchWorker(%q, %q) = %v, want %v", tt.namespace, tt.queue, got, tt.want)
+			}
+		})
+	}
+}

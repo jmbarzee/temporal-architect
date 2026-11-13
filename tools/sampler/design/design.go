@@ -2,7 +2,8 @@
 // package each definition belongs to, so an observed definition, which history
 // names only by its bare runtime type, gets the node ID graph.Extract gives it,
 // and which workflows' id_schemes a workflow ID fits, so a signal's target gets
-// a type. The package index is read from the design's own graph; a package is
+// a type, and which parameterized namespace or worker family a concrete name
+// fits. The package index is read from the design's own graph; a package is
 // never guessed from a name.
 package design
 
@@ -28,6 +29,12 @@ type Design struct {
 
 	// schemes lists each workflow that declares an id_scheme, in declaration order.
 	schemes []scheme
+
+	// namespaces and workers are the design graph's namespace nodes and its
+	// non-orphan worker nodes by namespace name, whose names or queues the
+	// family matches read.
+	namespaces []graph.Node
+	workers    map[string][]graph.Node
 }
 
 // scheme is a workflow's id_scheme template, with the package and bare name
@@ -69,7 +76,7 @@ func Load(path string) (*Design, error) {
 // index builds a Design from the hosted definitions of a design graph and the
 // id_schemes of the file it came from.
 func index(g *graph.Graph, file *ast.File) *Design {
-	d := &Design{Graph: g, defs: map[string]map[string][]deployment{}}
+	d := &Design{Graph: g, defs: map[string]map[string][]deployment{}, workers: map[string][]graph.Node{}}
 	byID := make(map[string]graph.Node, len(g.Nodes))
 	for _, n := range g.Nodes {
 		byID[n.ID] = n
@@ -77,6 +84,13 @@ func index(g *graph.Graph, file *ast.File) *Design {
 	workerOf, namespaceOf := g.Ancestors()
 	for _, n := range g.Nodes {
 		kind, _, _ := strings.Cut(n.Definition, ":")
+		switch {
+		case kind == graph.KindNamespace:
+			d.namespaces = append(d.namespaces, n)
+		case kind == graph.KindWorker && !n.Orphan:
+			ns := byID[namespaceOf[n.ID]].Name
+			d.workers[ns] = append(d.workers[ns], n)
+		}
 		if kind != graph.KindWorkflow && kind != graph.KindActivity {
 			continue
 		}
@@ -132,7 +146,7 @@ func (d *Design) Package(kind, name, namespace, queue string) (pkg string, ok bo
 // MatchWorkflowID returns the workflows whose id_scheme the workflow ID fits and
 // that a worker hosts in the namespace, one Target per hosting task queue, in
 // declaration order. A workflow hosted only under a templated namespace or
-// queue never matches, as in Package.
+// queue never matches.
 func (d *Design) MatchWorkflowID(workflowID, namespace string) []Target {
 	var out []Target
 	for _, s := range d.schemes {
@@ -143,6 +157,41 @@ func (d *Design) MatchWorkflowID(workflowID, namespace string) []Target {
 			if t := (Target{s.pkg, s.name, host.queue}); host.namespace == namespace && !slices.Contains(out, t) {
 				out = append(out, t)
 			}
+		}
+	}
+	return out
+}
+
+// MatchNamespace returns the design's namespace families, as graph nodes, that
+// the concrete namespace name fits, in node order. A name the design declares
+// literally is its own and fits none.
+func (d *Design) MatchNamespace(name string) []graph.Node {
+	var out []graph.Node
+	for _, n := range d.namespaces {
+		switch {
+		case n.Name == name:
+			return nil
+		case len(n.TemplateParams) > 0 && ast.IDTemplateMatches(n.Name, name):
+			out = append(out, n)
+		}
+	}
+	return out
+}
+
+// MatchWorker returns the design's worker families, as graph nodes, that the
+// concrete task queue fits among the workers of the design's namespace of that
+// name, in node order. A queue some worker there declares literally is its own
+// and fits none.
+func (d *Design) MatchWorker(namespace, queue string) []graph.Node {
+	concrete := ast.Queue{Spelling: queue}
+	var out []graph.Node
+	for _, n := range d.workers[namespace] {
+		deployed := ast.ParseDeployQueue(n.Queue)
+		switch {
+		case deployed.Form == ast.QueueOpaque && n.Queue == queue:
+			return nil
+		case deployed.Form == ast.QueueParsed && concrete.Overlaps(deployed):
+			out = append(out, n)
 		}
 	}
 	return out
