@@ -35,7 +35,9 @@ async def test_counter_successor_is_a_linked_run_of_the_same_workflow(env: Workf
         await h.result()
         first = env.client.get_workflow_handle(h.id, run_id=h.first_execution_run_id)
         second = env.client.get_workflow_handle(h.id)  # no run ID: the current run
-        successor = (await second.describe()).run_id
+        described = await second.describe()
+        successor = described.run_id
+    assert described.id == h.id
     assert successor != h.first_execution_run_id
     started = (await second.fetch_history()).events[0].workflow_execution_started_event_attributes
     assert started.continued_execution_run_id == h.first_execution_run_id

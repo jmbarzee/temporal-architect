@@ -83,7 +83,7 @@ Senders address a schemed workflow as described in
 
 ## Runs
 
-A **run** is one execution of a workflow: its workflow ID and a run ID the runtime assigns. `close continue_as_new(args)` ends the run and starts its successor, a new run with the same workflow ID, a new run ID, a link to its predecessor, and a fresh history that begins at the top of the body with `args`. The runs so linked are one **chain**, and its latest is the **current run**, which an address without `run_id:` reaches ([Cross-Workflow Signals](./13-cross-workflow-signals.md)). What a run holds, its history and its pending arrivals, ends with it.
+A **run** is one execution of a workflow: its workflow ID and a run ID the runtime assigns. `close continue_as_new(args)` ends the run and starts its successor, a new run with the same workflow ID, a new run ID, a link to its predecessor, and a fresh history that begins at the top of the body with `args`. A workflow's latest run is its **current run**, which an address without `run_id:` reaches ([Cross-Workflow Signals](./13-cross-workflow-signals.md)). What a run holds, its history, ends with it.
 
 ## State Block
 
