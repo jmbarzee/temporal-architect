@@ -481,7 +481,7 @@ Terminates workflow execution with an explicit exit state. Only valid in workflo
 - `close complete(Result{...})` - Completion with a return value
 - `close fail` - Terminates workflow in failed state
 - `close fail(Error{...})` - Failure with error data
-- `close continue_as_new(args)` - Resets workflow history and continues with new arguments (for long-running workflows)
+- `close continue_as_new(args)` - Ends the run and starts its successor with `args`, for long-running workflows ([Runs](./01-workflows.md#runs))
 
 **Important:** Signals and updates cannot call `close` - they can only mutate state. Only the main workflow body can terminate execution using `close`.
 

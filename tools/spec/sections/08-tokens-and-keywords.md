@@ -40,7 +40,7 @@
 - `close` - Terminate workflow execution
 - `complete` - Successful completion (used with `close`)
 - `fail` - Failed completion (used with `close`)
-- `continue_as_new` - Reset history and continue (used with `close`)
+- `continue_as_new` - End the run and start its successor (used with `close`; see [Runs](./01-workflows.md#runs))
 
 **Flow control:**
 - `return` - Return from definition
