@@ -79,8 +79,11 @@ and task queue (a templated queue never matches a sampled one). The package
 qualifies the name element of the ID as `graph.Extract` does, so a packaged
 definition's observed ID equals its design node's (a worker's ID still carries
 its queue, so the worker must be named for it). A name the design lacks, or one
-it cannot tell apart, keeps its bare ID and is listed in `unresolved`. Without
-`--design` every name stays bare and the output is unchanged. The join's index
+it cannot tell apart, keeps its bare ID and is listed in `unresolved`. The
+design's `packages` table, which maps a package ID to its declared name, rides
+on the observed graph so a reader labels a packaged node as the design graph
+does. Without `--design` every name stays bare, `packages` is absent, and the
+output is unchanged. The join's index
 (definition → package → hosting namespace and queue), with the design graph, is
 `design.Design`.
 
