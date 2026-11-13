@@ -47,16 +47,33 @@ func TestBuild_PackagedDesignMatchesDesignGraph(t *testing.T) {
 	d := loadShop(t)
 	og := Build(shopHistories(t), Options{Namespace: "shop", Design: d})
 
+	requireDesignGraph(t, og, d)
+	if len(og.Unresolved) != 0 {
+		t.Errorf("unexpected unresolved entries: %+v", og.Unresolved)
+	}
+}
+
+// requireDesignGraph fails the test unless the observed graph has the design
+// graph's nodes and edges, with the nexus endpoint each dispatch routes through.
+func requireDesignGraph(t *testing.T, og *observe.ObservedGraph, d *design.Design) {
+	t.Helper()
 	if !reflect.DeepEqual(og.Nodes, d.Graph.Nodes) {
 		t.Errorf("observed nodes differ from the design's:\n observed: %+v\n design:   %+v", og.Nodes, d.Graph.Nodes)
 	}
-	type edge struct{ from, to, kind string }
+	type edge struct{ from, to, kind, endpoint string }
+	of := func(e graph.Edge) edge {
+		endpoint := ""
+		if e.Routing != nil {
+			endpoint = e.Routing.NexusEndpoint
+		}
+		return edge{e.From, e.To, e.Kind, endpoint}
+	}
 	var observed, designed []edge
 	for _, e := range og.Edges {
-		observed = append(observed, edge{e.From, e.To, e.Kind})
+		observed = append(observed, of(e.Edge))
 	}
 	for _, e := range d.Graph.Edges {
-		designed = append(designed, edge{e.From, e.To, e.Kind})
+		designed = append(designed, of(e))
 	}
 	less := func(a, b edge) int {
 		return cmp.Or(strings.Compare(a.from, b.from), strings.Compare(a.to, b.to), strings.Compare(a.kind, b.kind))
@@ -65,9 +82,6 @@ func TestBuild_PackagedDesignMatchesDesignGraph(t *testing.T) {
 	slices.SortFunc(designed, less)
 	if !slices.Equal(observed, designed) {
 		t.Errorf("observed edges differ from the design's:\n observed: %v\n design:   %v", observed, designed)
-	}
-	if len(og.Unresolved) != 0 {
-		t.Errorf("unexpected unresolved entries: %+v", og.Unresolved)
 	}
 }
 

@@ -1,10 +1,10 @@
 // Package design loads a .twf design for the sampler's join: it indexes which
 // package each definition belongs to, so an observed definition, which history
 // names only by its bare runtime type, gets the node ID graph.Extract gives it,
-// and which workflows' id_schemes a workflow ID fits, so a signal's target gets
-// a type, and which parameterized namespace or worker family a concrete name
-// fits. The package index is read from the design's own graph; a package is
-// never guessed from a name.
+// which workflows' id_schemes a workflow ID fits, so a signal's target gets a
+// type, which parameterized namespace or worker family a concrete name fits, and
+// where a Nexus endpoint points. The package index is read from the design's own
+// graph; a package is never guessed from a name.
 package design
 
 import (
@@ -30,6 +30,9 @@ type Design struct {
 	// schemes lists each workflow that declares an id_scheme, in declaration order.
 	schemes []scheme
 
+	// endpoints maps the name of each static endpoint to where it points.
+	endpoints map[string]deployment
+
 	// namespaces and workers are the design graph's namespace nodes and its
 	// non-orphan worker nodes by namespace name, whose names or queues the
 	// family matches read.
@@ -49,7 +52,8 @@ type Target struct {
 	Package, Name, Queue string
 }
 
-// deployment is where a worker hosts a definition: a namespace and a task queue.
+// deployment is where a worker hosts a definition, or an endpoint points: a
+// namespace and a task queue.
 type deployment struct {
 	namespace, queue string
 }
@@ -76,7 +80,12 @@ func Load(path string) (*Design, error) {
 // index builds a Design from the hosted definitions of a design graph and the
 // id_schemes of the file it came from.
 func index(g *graph.Graph, file *ast.File) *Design {
-	d := &Design{Graph: g, defs: map[string]map[string][]deployment{}, workers: map[string][]graph.Node{}}
+	d := &Design{
+		Graph:     g,
+		defs:      map[string]map[string][]deployment{},
+		endpoints: map[string]deployment{},
+		workers:   map[string][]graph.Node{},
+	}
 	byID := make(map[string]graph.Node, len(g.Nodes))
 	for _, n := range g.Nodes {
 		byID[n.ID] = n
@@ -90,8 +99,12 @@ func index(g *graph.Graph, file *ast.File) *Design {
 		case kind == graph.KindWorker && !n.Orphan:
 			ns := byID[namespaceOf[n.ID]].Name
 			d.workers[ns] = append(d.workers[ns], n)
+		case kind == graph.KindNexusEndpoint:
+			if len(n.TemplateParams) == 0 { // an endpoint in a templated namespace is templated
+				d.endpoints[n.Name] = deployment{byID[namespaceOf[n.ID]].Name, n.Queue}
+			}
 		}
-		if kind != graph.KindWorkflow && kind != graph.KindActivity {
+		if kind != graph.KindWorkflow && kind != graph.KindActivity && kind != graph.KindNexusService {
 			continue
 		}
 		key := graph.DefKey(kind, n.Name)
@@ -141,6 +154,14 @@ func (d *Design) Package(kind, name, namespace, queue string) (pkg string, ok bo
 		return hosting[0], true
 	}
 	return "", false
+}
+
+// Endpoint returns the namespace and task queue the design's endpoint of that
+// name points to. An endpoint the design lacks, and a templated one, which no
+// history names literally, is not found.
+func (d *Design) Endpoint(name string) (namespace, queue string, ok bool) {
+	e, ok := d.endpoints[name]
+	return e.namespace, e.queue, ok
 }
 
 // MatchWorkflowID returns the workflows whose id_scheme the workflow ID fits and

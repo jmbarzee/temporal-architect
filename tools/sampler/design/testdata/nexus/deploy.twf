@@ -1,0 +1,24 @@
+workflow OrderWorkflow(order: Order):
+	nexus billing Invoices.Create(order)
+	close complete()
+
+nexus service Invoices:
+	sync Create(order: Order) -> (Invoice):
+		close complete(order)
+
+worker orders:
+	workflow OrderWorkflow
+
+worker billing:
+	nexus service Invoices
+
+namespace shop:
+	worker orders
+		options:
+			task_queue: "orders"
+	worker billing
+		options:
+			task_queue: "billing"
+	nexus endpoint billing
+		options:
+			task_queue: "billing"

@@ -161,3 +161,47 @@ func TestMatchWorker(t *testing.T) {
 		})
 	}
 }
+
+// The nexus design points its endpoint billing at queue billing in namespace
+// shop, and the families design has only a templated endpoint.
+func TestEndpoint(t *testing.T) {
+	tests := []struct {
+		name, design, endpoint string
+		namespace, queue       string
+		ok                     bool
+	}{
+		{"static endpoint", "testdata/nexus", "billing", "shop", "billing", true},
+		{"endpoint the design lacks", "testdata/nexus", "refunds", "", "", false},
+		{"templated endpoint", "testdata/families", "tenant-{org}-api", "", "", false},
+		{"instance of a templated endpoint", "testdata/families", "tenant-acme-api", "", "", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			d, err := Load(tt.design)
+			if err != nil {
+				t.Fatalf("Load: %v", err)
+			}
+			namespace, queue, ok := d.Endpoint(tt.endpoint)
+			if namespace != tt.namespace || queue != tt.queue || ok != tt.ok {
+				t.Errorf("Endpoint(%q) = %q, %q, %v; want %q, %q, %v",
+					tt.endpoint, namespace, queue, ok, tt.namespace, tt.queue, tt.ok)
+			}
+		})
+	}
+}
+
+// A nexus service is joined to its package like a workflow or activity.
+func TestPackage_NexusService(t *testing.T) {
+	d, err := Load("testdata/nexus")
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	for _, tt := range []struct {
+		service string
+		want    bool
+	}{{"Invoices", true}, {"Refunds", false}} {
+		if pkg, ok := d.Package(graph.KindNexusService, tt.service, "shop", "billing"); pkg != "" || ok != tt.want {
+			t.Errorf("Package(nexusService, %s) = %q, %v; want the default package: %v", tt.service, pkg, ok, tt.want)
+		}
+	}
+}

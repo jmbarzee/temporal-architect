@@ -28,6 +28,9 @@ namespace tenant-{org}:
 	worker bootstrap
 		options:
 			task_queue: "bootstrap"
+	nexus endpoint tenant-{org}-api
+		options:
+			task_queue: "bootstrap"
 
 namespace tenant-{org}-east:
 	worker bootstrap

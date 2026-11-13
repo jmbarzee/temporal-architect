@@ -706,3 +706,15 @@ func TestObservedEdgeOmitsSite(t *testing.T) {
 		t.Errorf("observed edge = %s, want no site", data)
 	}
 }
+
+func TestEndpointID(t *testing.T) {
+	tests := []struct{ name, namespace, want string }{
+		{"billing", "shop", "nexusEndpoint:billing/namespace:shop"},
+		{"billing", "", "nexusEndpoint:billing/orphan"},
+	}
+	for _, tt := range tests {
+		if got := EndpointID(tt.name, tt.namespace); got != tt.want {
+			t.Errorf("EndpointID(%q, %q) = %q, want %q", tt.name, tt.namespace, got, tt.want)
+		}
+	}
+}
