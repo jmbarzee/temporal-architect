@@ -21,10 +21,11 @@ packages:
     type_mappings:
       ast.PackageRef: "PackageRef"
       ast.SDKJSON: "SDKJSON"
+      ast.Site: "Site"
     frontmatter: |
       // Source of truth: the Go DTO structs in tools/lsp. Regenerate: `make gen-types`.
       // String-literal enums and discriminated unions live in ../residue.ts.
-      import type { PackageRef, SDKJSON } from "./ast";
+      import type { PackageRef, SDKJSON, Site } from "./ast";
 
   - path: "github.com/jmbarzee/temporal-architect/tools/lsp/parser/observe"
     output_path: "tools/wire-types/src/generated/observe.ts"
@@ -71,19 +72,23 @@ packages:
     type_mappings:
       ast.FileSummary: "FileSummary"
       ast.PackageRef: "PackageRef"
+      ast.Site: "Site"
     frontmatter: |
       // Source of truth: the Go DTO structs in tools/lsp. Regenerate: `make gen-types`.
       // String-literal enums and discriminated unions live in ../residue.ts.
-      import type { FileSummary, PackageRef } from "./ast";
+      import type { FileSummary, PackageRef, Site } from "./ast";
 
   - path: "github.com/jmbarzee/temporal-architect/tools/lsp/cmd/twf/internal/command/symbols"
     output_path: "tools/wire-types/src/generated/symbols.ts"
     preserve_comments: "types"
     include_files:
       - "symbols.go"
+    type_mappings:
+      ast.Site: "Site"
     frontmatter: |
       // Source of truth: the Go DTO structs in tools/lsp. Regenerate: `make gen-types`.
       // String-literal enums and discriminated unions live in ../residue.ts.
+      import type { Site } from "./ast";
 
   - path: "github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
     output_path: "tools/wire-types/src/generated/ast.ts"

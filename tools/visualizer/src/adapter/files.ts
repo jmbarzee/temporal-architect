@@ -1,11 +1,11 @@
 // Matching a host's file names to the AST's.
 //
-// twf spells a definition's `sourceFile` and a diagnostic's `file` the way its
-// input named the file (D9): `designs/agent/v1/agent.twf`, or an absolute path.
-// A host names files its own way — the focused editor file, its own loader
-// errors — and older twf versions sent base names. A host file therefore
-// matches a source file exactly, else by a suffix on `/` boundaries in either
-// direction, after mapping `\` to `/` and dropping leading `./` and `../`.
+// twf spells a site's `file` the way its input named the file (D9):
+// `designs/agent/v1/agent.twf`, or an absolute path. A host names files its own
+// way — the focused editor file, its own loader errors — and older twf versions
+// sent base names. A host file therefore matches a source file exactly, else by
+// a suffix on `/` boundaries in either direction, after mapping `\` to `/` and
+// dropping leading `./` and `../`.
 
 import type { Diagnostic, FileError } from '../types/ast'
 
@@ -83,7 +83,7 @@ export function partitionByFile(errors: FileError[], diagnostics: Diagnostic[], 
   const shownDiagnostics: Diagnostic[] = []
   const hiddenDiagnostics: Diagnostic[] = []
   for (const d of diagnostics) {
-    if (!d.file || shown(d.file)) shownDiagnostics.push(d)
+    if (!d.site.file || shown(d.site.file)) shownDiagnostics.push(d)
     else hiddenDiagnostics.push(d)
   }
   return { shownFileErrors, hiddenFileErrors, shownDiagnostics, hiddenDiagnostics }

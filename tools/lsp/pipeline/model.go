@@ -26,8 +26,8 @@ import (
 //   - kind groups diagnostics by producing stage: "parse", "resolve",
 //     "validate", or "graph"
 //   - code is a symbolic, stable identifier within a kind (e.g. UNDEFINED_ACTIVITY)
-//   - start and end are 1-based line/column positions; end == start where the
-//     producing stage has not computed a span (always present, never null)
+//   - site is the file and the 1-based line and column it is about; a column
+//     of 0 is unknown (always present, never null)
 //   - name carries the primary entity the diagnostic is about, when one exists
 //     (the referenced workflow, the duplicate definition's name, …)
 //
@@ -37,18 +37,9 @@ type Diagnostic struct {
 	Severity string   `json:"severity"`
 	Kind     string   `json:"kind"`
 	Code     string   `json:"code"`
-	File     string   `json:"file,omitempty"`
-	Start    Position `json:"start"`
-	End      Position `json:"end"`
+	Site     ast.Site `json:"site"`
 	Message  string   `json:"message"`
 	Name     string   `json:"name,omitempty"`
-}
-
-// Position is a 1-based line/column source position. Column 0 means "unknown
-// column" and is preserved verbatim from the producing stage.
-type Position struct {
-	Line   int `json:"line"`
-	Column int `json:"column"`
 }
 
 // Envelope is the top-level shape of every `--json` output — the stable wire

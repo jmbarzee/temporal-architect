@@ -55,9 +55,9 @@ This maps to the two views a renderer wants:
    key shape works for parent lookup, persistence, and edge endpoints.
 5. **Edge kinds discriminate semantics.** Coarsened edges live in a separate
    top-level array because their shape differs (`tier` + `weight` instead of
-   `line` + `routing`).
+   `site` + `routing`).
 6. **Multi-graph at the producer.** Two call sites dispatching to the same target
-   produce two edges (distinct `line`). Consumers dedup for display if they want
+   produce two edges (distinct `site`). Consumers dedup for display if they want
    to.
 
 ## Node identity
@@ -162,9 +162,10 @@ edges.
 
 - `from`, `to` (string, required) — node IDs.
 - `kind` (enum, required) — one of the table above.
-- `line` (int, required) — source line of the syntactic element that produced the
-  edge. For dispatch, the call site. For containment, the child's registration /
-  declaration line. For `nexusRoute`, the endpoint's declaration line.
+- `site` (object, optional) — `file`, `line` and `column` of the syntactic
+  element that produced the edge. For dispatch, the call. For containment, the
+  child's registration / declaration. For `nexusRoute`, the endpoint's
+  declaration. Absent on an edge observed in history, which has no source.
 - `routing` (object, optional) — present **only** on dispatch edges; the
   diagnostic *cause* of the edge:
   - `explicit` (string, optional) — the `task_queue:` literal the user wrote on
@@ -200,11 +201,11 @@ Orphan nodes have no containment edges.
 A nexus operation's parent is the **service**, not the endpoint. The endpoint's
 role is routing, captured separately (see [Nexus routes](#nexus-routes)).
 
-The `line` is the child's own source line: the `NamespaceWorker` /
-`NamespaceEndpoint` line for the first two rows, the operation's declaration line
-for the last, and — for hosted definitions — the *worker's registration line for
-that definition*, which is more precise than the definition's declaration line
-and reflects where the containment relationship was authored.
+The `site` is the child's own: the `NamespaceWorker` / `NamespaceEndpoint` for
+the first two rows, the operation's declaration for the last, and — for hosted
+definitions — the *worker's registration of that definition*, which is more
+precise than the definition's declaration and reflects where the containment
+relationship was authored.
 
 ## Resolution rules
 
@@ -249,7 +250,7 @@ counts once toward coarsened weight.
 
 When no callee deployment matches, no edge is emitted and a
 `DISPATCH_NO_REACHABLE_DEPLOYMENT` warning is added (deduplicated by
-`(code, from, line)`, so one call site walked once per caller-deployment copy
+`(code, from, site)`, so one call site walked once per caller-deployment copy
 reports once). When the caller deployment has no queue at all, or a malformed
 one (`QUEUE_TEMPLATE_MALFORMED`), the call it would inherit is dropped silently —
 the missing or malformed `task_queue` is already reported, and double-reporting

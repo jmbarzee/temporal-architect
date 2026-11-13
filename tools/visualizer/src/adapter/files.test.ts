@@ -7,8 +7,7 @@ import type { Diagnostic } from '../types/ast'
 const SOURCES = ['designs/agent/v1/agent.twf', 'designs/deploy.twf', 'lib/kube/v1/kube.twf', 'other/agent.twf']
 
 const diag = (file?: string): Diagnostic => ({
-  severity: 'error', kind: 'resolve', code: 'X', message: file ?? '', file,
-  start: { line: 1, column: 1 }, end: { line: 1, column: 1 },
+  severity: 'error', kind: 'resolve', code: 'X', message: file ?? '', site: { file, line: 1, column: 1 },
 })
 
 describe('hostFileMatches', () => {
@@ -56,8 +55,8 @@ describe('partitionByFile', () => {
       new Set(['designs/deploy.twf']),
       SOURCES,
     )
-    expect(p.shownDiagnostics.map(d => d.file ?? '')).toEqual(['deploy.twf', ''])
-    expect(p.hiddenDiagnostics.map(d => d.file)).toEqual(['kube.twf'])
+    expect(p.shownDiagnostics.map(d => d.site.file ?? '')).toEqual(['deploy.twf', ''])
+    expect(p.hiddenDiagnostics.map(d => d.site.file)).toEqual(['kube.twf'])
     expect(p.hiddenFileErrors).toHaveLength(1)
   })
   it('a file that names no source file is never hidden', () => {

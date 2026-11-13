@@ -9,21 +9,17 @@ import (
 
 // FromParseError lifts a parser error into the wire Diagnostic shape.
 func FromParseError(e *parser.ParseError, file string) Diagnostic {
-	pos := Position{Line: e.Line, Column: e.Column}
 	return Diagnostic{
 		Severity: "error",
 		Kind:     "parse",
 		Code:     e.Code(),
-		File:     file,
-		Start:    pos,
-		End:      pos,
+		Site:     ast.Site{File: file, Line: e.Line, Column: e.Column},
 		Message:  e.Msg,
 	}
 }
 
 // FromResolveError lifts a resolver error into the wire Diagnostic shape.
 func FromResolveError(e *resolver.ResolveError, file string) Diagnostic {
-	pos := Position{Line: e.Line, Column: e.Column}
 	sev := e.Severity
 	if sev == "" {
 		sev = "error"
@@ -32,9 +28,7 @@ func FromResolveError(e *resolver.ResolveError, file string) Diagnostic {
 		Severity: sev,
 		Kind:     "resolve",
 		Code:     e.Code(),
-		File:     file,
-		Start:    pos,
-		End:      pos,
+		Site:     ast.Site{File: file, Line: e.Line, Column: e.Column},
 		Message:  e.Msg,
 		Name:     e.Name,
 	}
@@ -42,7 +36,6 @@ func FromResolveError(e *resolver.ResolveError, file string) Diagnostic {
 
 // FromValidateError lifts a validator error into the wire Diagnostic shape.
 func FromValidateError(e *validator.Error, file string) Diagnostic {
-	pos := Position{Line: e.Line, Column: e.Column}
 	sev := e.Severity
 	if sev == "" {
 		sev = "error"
@@ -51,9 +44,7 @@ func FromValidateError(e *validator.Error, file string) Diagnostic {
 		Severity: sev,
 		Kind:     "validate",
 		Code:     e.Code(),
-		File:     file,
-		Start:    pos,
-		End:      pos,
+		Site:     ast.Site{File: file, Line: e.Line, Column: e.Column},
 		Message:  e.Msg,
 		Name:     e.Name,
 	}

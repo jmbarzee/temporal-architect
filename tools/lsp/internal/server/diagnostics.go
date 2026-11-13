@@ -124,11 +124,11 @@ func (s *DocumentStore) publications() []protocol.PublishDiagnosticsParams {
 			}
 		}
 		for _, x := range d.elsewhere {
-			uris := open[x.File]
+			uris := open[x.Site.File]
 			if uris == nil {
-				uris = []string{closedURI(s.folders, x.File)}
+				uris = []string{closedURI(s.folders, x.Site.File)}
 			}
-			add(uris, appendDiag(nil, linesOf(x.File), x.Start.Line, x.Start.Column, x.Severity, x.Code, x.Message)[0])
+			add(uris, appendDiag(nil, linesOf(x.Site.File), x.Site.Line, x.Site.Column, x.Severity, x.Code, x.Message)[0])
 		}
 	}
 

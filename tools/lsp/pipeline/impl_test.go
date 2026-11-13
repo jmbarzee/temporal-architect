@@ -19,7 +19,7 @@ func implNotFound(res pipeline.Result) []string {
 	var out []string
 	for _, d := range res.Diagnostics {
 		if d.Code == "IMPL_NOT_FOUND" {
-			out = append(out, filepath.Base(d.File)+" "+d.Severity)
+			out = append(out, filepath.Base(d.Site.File)+" "+d.Severity)
 		}
 	}
 	return out

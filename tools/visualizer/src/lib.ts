@@ -115,7 +115,7 @@ export type {
 // own walkers / custom statement renderers without re-defining the discriminated
 // union. Listed explicitly rather than star-exported.
 export type {
-  Position,
+  Site,
   Statement,
   ActivityCall,
   WorkflowCall,

@@ -122,7 +122,7 @@ type Edge struct {
 	From    string   `json:"from"`
 	To      string   `json:"to"`
 	Kind    string   `json:"kind"`
-	Line    int      `json:"line"`
+	Site    ast.Site `json:"site,omitzero"`
 	Routing *Routing `json:"routing,omitempty"`
 }
 
@@ -148,11 +148,11 @@ type CoarsenedEdge struct {
 // empty for a broken reference and UnresolvedExternal for one carried
 // unchecked through an import of a package absent from the tree.
 type Unresolved struct {
-	From   string `json:"from"`
-	Name   string `json:"name"`
-	Kind   string `json:"kind"`
-	Line   int    `json:"line"`
-	Reason string `json:"reason,omitempty"`
+	From   string   `json:"from"`
+	Name   string   `json:"name"`
+	Kind   string   `json:"kind"`
+	Site   ast.Site `json:"site,omitzero"`
+	Reason string   `json:"reason,omitempty"`
 }
 
 // Unresolved reasons.
@@ -177,13 +177,11 @@ const (
 // mapping these into its unified diagnostic shape if it wants to merge
 // them with parser/resolver/validator diagnostics.
 type Diagnostic struct {
-	Severity string `json:"severity"`
-	Code     string `json:"code"`
-	Message  string `json:"message"`
-	From     string `json:"from,omitempty"`
-	// File is the source file of the definition whose body holds the call.
-	File string `json:"file,omitempty"`
-	Line int    `json:"line"`
+	Severity string   `json:"severity"`
+	Code     string   `json:"code"`
+	Message  string   `json:"message"`
+	From     string   `json:"from,omitempty"`
+	Site     ast.Site `json:"site,omitzero"`
 }
 
 // Graph is the full extracted output. JSON arrays are always non-nil so
@@ -199,9 +197,6 @@ type Graph struct {
 	// for an unpackaged design.
 	Packages map[string]ast.PackageRef `json:"packages,omitempty"`
 
-	// walkFile is the source file of the body emitDispatchEdges is walking,
-	// which addDiagnostic stamps on a diagnostic with none.
-	walkFile string
 	// addedEdges and addedUnres are what addEdge and addUnresolved have added.
 	addedEdges map[edgeKey]bool
 	addedUnres map[Unresolved]bool
@@ -210,7 +205,7 @@ type Graph struct {
 // edgeKey is an Edge by value, its Routing dereferenced.
 type edgeKey struct {
 	From, To, Kind string
-	Line           int
+	Site           ast.Site
 	Routing        Routing
 }
 
@@ -319,7 +314,7 @@ func Extract(file *ast.File) *Graph {
 }
 
 // sortDiagnostics orders diagnostics by their file's position in the merged
-// definitions, then line, code and message, so the order does not follow map
+// definitions, then site, code and message, so the order does not follow map
 // iteration.
 func sortDiagnostics(diags []Diagnostic, file *ast.File) {
 	pos := map[string]int{}
@@ -332,11 +327,11 @@ func sortDiagnostics(diags []Diagnostic, file *ast.File) {
 	}
 	sort.SliceStable(diags, func(i, j int) bool {
 		a, b := diags[i], diags[j]
-		if pa, pb := pos[a.File], pos[b.File]; pa != pb {
+		if pa, pb := pos[a.Site.File], pos[b.Site.File]; pa != pb {
 			return pa < pb
 		}
-		if a.Line != b.Line {
-			return a.Line < b.Line
+		if c := a.Site.Compare(b.Site); c != 0 {
+			return c < 0
 		}
 		if a.Code != b.Code {
 			return a.Code < b.Code
@@ -380,7 +375,7 @@ func (g *Graph) finalize() {
 		if g.Edges[i].Kind != g.Edges[j].Kind {
 			return g.Edges[i].Kind < g.Edges[j].Kind
 		}
-		return g.Edges[i].Line < g.Edges[j].Line
+		return g.Edges[i].Site.Compare(g.Edges[j].Site) < 0
 	})
 	sort.SliceStable(g.CoarsenedEdges, func(i, j int) bool {
 		if g.CoarsenedEdges[i].Tier != g.CoarsenedEdges[j].Tier {
@@ -398,7 +393,7 @@ func (g *Graph) finalize() {
 		if g.Unresolved[i].Name != g.Unresolved[j].Name {
 			return g.Unresolved[i].Name < g.Unresolved[j].Name
 		}
-		return g.Unresolved[i].Line < g.Unresolved[j].Line
+		return g.Unresolved[i].Site.Compare(g.Unresolved[j].Site) < 0
 	})
 	sort.SliceStable(g.Diagnostics, func(i, j int) bool {
 		if g.Diagnostics[i].From != g.Diagnostics[j].From {
@@ -407,7 +402,7 @@ func (g *Graph) finalize() {
 		if g.Diagnostics[i].Code != g.Diagnostics[j].Code {
 			return g.Diagnostics[i].Code < g.Diagnostics[j].Code
 		}
-		return g.Diagnostics[i].Line < g.Diagnostics[j].Line
+		return g.Diagnostics[i].Site.Compare(g.Diagnostics[j].Site) < 0
 	})
 
 	g.Summary = Summary{
@@ -445,7 +440,7 @@ func (g *Graph) node(id string) *Node {
 // worker deployment, and a worker instantiated twice in one namespace is one
 // node, so both instantiations reaching one callee by one call is one edge.
 func (g *Graph) addEdge(e Edge) {
-	k := edgeKey{From: e.From, To: e.To, Kind: e.Kind, Line: e.Line}
+	k := edgeKey{From: e.From, To: e.To, Kind: e.Kind, Site: e.Site}
 	if e.Routing != nil {
 		k.Routing = *e.Routing
 	}
@@ -465,15 +460,12 @@ func (g *Graph) addUnresolved(u Unresolved) {
 	g.Unresolved = append(g.Unresolved, u)
 }
 
-// addDiagnostic deduplicates by (code, from, line) — the same
+// addDiagnostic deduplicates by (code, from, site) — the same
 // implicit-routing problem at one call site walked twice (once per
 // caller-deployment copy) shouldn't surface twice.
 func (g *Graph) addDiagnostic(d Diagnostic) {
-	if d.File == "" {
-		d.File = g.walkFile
-	}
 	for _, existing := range g.Diagnostics {
-		if existing.Code == d.Code && existing.From == d.From && existing.Line == d.Line {
+		if existing.Code == d.Code && existing.From == d.From && existing.Site == d.Site {
 			return
 		}
 	}
@@ -509,12 +501,12 @@ func (g *Graph) calleeLabel(idx *astIndex, kind, qname string) string {
 	return qname
 }
 
-func warningDispatchNoReachable(from, calleeKind, calleeName, namespace, queue string, line int) Diagnostic {
+func warningDispatchNoReachable(from, calleeKind, calleeName, namespace, queue string, site ast.Site) Diagnostic {
 	return Diagnostic{
 		Severity: SeverityWarning,
 		Code:     DiagDispatchNoReachableDeployment,
 		Message:  fmt.Sprintf("%s call to %q routes to task_queue %q in namespace %s but no deployment polls it there", calleeKind, calleeName, queue, namespace),
 		From:     from,
-		Line:     line,
+		Site:     site,
 	}
 }

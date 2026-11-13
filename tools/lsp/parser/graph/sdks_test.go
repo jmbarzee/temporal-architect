@@ -100,7 +100,7 @@ func TestSDKCrossings(t *testing.T) {
 	var got []string
 	var pairs [][3]string
 	for _, c := range g.SDKCrossings() {
-		got = append(got, fmt.Sprintf("%s %s:%d %v→%v", c.Edge.Kind, c.Caller, c.Edge.Line, c.From, c.To))
+		got = append(got, fmt.Sprintf("%s %s:%d %v→%v", c.Edge.Kind, c.Caller, c.Edge.Site.Line, c.From, c.To))
 		pair := [3]string{c.Edge.From, c.Edge.To, c.Edge.Kind}
 		if !slices.Contains(pairs, pair) {
 			pairs = append(pairs, pair)

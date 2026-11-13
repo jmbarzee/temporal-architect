@@ -39,7 +39,7 @@ type workerDeployment struct {
 	NamespaceName string
 	Queue         string    // the raw spelling, the worker node's display queue
 	queue         ast.Queue // Queue as the deploy side parses it, for routing
-	Line          int
+	Site          ast.Site
 	// TemplateParams is the instantiation's instance parameters.
 	TemplateParams []string
 
@@ -65,7 +65,7 @@ type endpointDeployment struct {
 	Name           string
 	Namespace      string
 	Queue          string
-	Line           int
+	Site           ast.Site
 	TemplateParams []string
 	// templated marks a queue with a parameter, an ENDPOINT_TASK_QUEUE_TEMPLATED
 	// resolve error: the endpoint routes nowhere, so nothing is drawn through it.
@@ -111,7 +111,7 @@ func indexAST(file *ast.File) *astIndex {
 				NamespaceName:  ns.Name,
 				Queue:          queue,
 				queue:          ast.ParseDeployQueue(queue),
-				Line:           nw.Line,
+				Site:           ast.SiteOf(ns.SourceFile, nw),
 				TemplateParams: nw.TemplateParams,
 				worker:         idx.workers[nw.Worker.Name],
 			})
@@ -136,7 +136,7 @@ func indexAST(file *ast.File) *astIndex {
 				Name:           ep.EndpointName,
 				Namespace:      ns.Name,
 				Queue:          queue,
-				Line:           ep.Line,
+				Site:           ast.SiteOf(ns.SourceFile, ep),
 				TemplateParams: ep.TemplateParams,
 				templated:      len(ast.ExtractTemplateParams(queue)) > 0,
 			}

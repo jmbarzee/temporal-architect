@@ -1,18 +1,36 @@
 package ast
 
 import (
+	"cmp"
 	"encoding/json"
 	"fmt"
 )
 
 // JSON serialization with type discriminators for interface types.
 
-// ResolvedRefJSON is a lightweight JSON reference to a resolved AST definition.
-// Instead of embedding the entire target node, we emit its name and source position.
-type ResolvedRefJSON struct {
-	Name   string `json:"name"`
+// Site is where a node sits in source: its file and its 1-based line and
+// column. It is the one position type on the wire.
+type Site struct {
+	File   string `json:"file,omitempty"` // absent only for a single unnamed source
 	Line   int    `json:"line"`
 	Column int    `json:"column"`
+}
+
+// SiteOf is n's site in file.
+func SiteOf(file string, n Node) Site {
+	return Site{File: file, Line: n.NodeLine(), Column: n.NodeColumn()}
+}
+
+// Compare orders sites by file, line, then column.
+func (s Site) Compare(o Site) int {
+	return cmp.Or(cmp.Compare(s.File, o.File), cmp.Compare(s.Line, o.Line), cmp.Compare(s.Column, o.Column))
+}
+
+// ResolvedRefJSON is a lightweight JSON reference to a resolved AST definition.
+// Instead of embedding the entire target node, we emit its name and site.
+type ResolvedRefJSON struct {
+	Name string `json:"name"`
+	Site Site   `json:"site"`
 }
 
 // FileSummary provides a count of each definition type in the file plus
@@ -45,24 +63,24 @@ type FileJSON struct {
 
 // ImportDeclJSON is the JSON representation of an import declaration.
 type ImportDeclJSON struct {
-	Line   int    `json:"line"`
-	Column int    `json:"column"`
-	Path   string `json:"path"`
-	Alias  string `json:"alias,omitempty"`
+	Site  Site   `json:"site"`
+	Path  string `json:"path"`
+	Alias string `json:"alias,omitempty"`
 }
 
-// MarshalJSON implements json.Marshaler for File.
+// MarshalJSON implements json.Marshaler for File, the one entry point of the
+// AST wire.
 func (f *File) MarshalJSON() ([]byte, error) {
+	files := targetFiles(f)
 	fj := FileJSON{
 		Package:     f.Package,
 		Definitions: make([]RawDefinition, 0, len(f.Definitions)),
 	}
 	for _, imp := range f.Imports {
 		fj.Imports = append(fj.Imports, ImportDeclJSON{
-			Line:   imp.Line,
-			Column: imp.Column,
-			Path:   imp.Path,
-			Alias:  imp.Alias,
+			Site:  SiteOf(imp.SourceFile, imp),
+			Path:  imp.Path,
+			Alias: imp.Alias,
 		})
 	}
 	for _, def := range f.Definitions {
@@ -78,7 +96,7 @@ func (f *File) MarshalJSON() ([]byte, error) {
 		case *NexusServiceDef:
 			fj.Summary.NexusServices++
 		}
-		data, err := marshalDefinition(def)
+		data, err := marshaller{file: SourceFileOf(def), files: files}.definition(def)
 		if err != nil {
 			return nil, err
 		}
@@ -87,14 +105,47 @@ func (f *File) MarshalJSON() ([]byte, error) {
 	return json.Marshal(fj)
 }
 
-// marshalStatements marshals a slice of statements into JSON.
-func marshalStatements(stmts []Statement) ([]RawStatement, error) {
+// marshaller emits one definition: file is its source file, and files maps
+// every resolvable target to its own.
+type marshaller struct {
+	file  string
+	files map[Node]string
+}
+
+// targetFiles maps each definition in f, and each endpoint and operation
+// nested in one, to its definition's source file.
+func targetFiles(f *File) map[Node]string {
+	files := map[Node]string{}
+	for _, def := range f.Definitions {
+		file := SourceFileOf(def)
+		files[def] = file
+		switch d := def.(type) {
+		case *NamespaceDef:
+			for i := range d.Endpoints {
+				files[&d.Endpoints[i]] = file
+			}
+		case *NexusServiceDef:
+			for _, op := range d.Operations {
+				files[op] = file
+			}
+		}
+	}
+	return files
+}
+
+func (m marshaller) site(n Node) Site { return SiteOf(m.file, n) }
+
+func (m marshaller) ref(name string, target Node) *ResolvedRefJSON {
+	return &ResolvedRefJSON{Name: name, Site: SiteOf(m.files[target], target)}
+}
+
+func (m marshaller) statements(stmts []Statement) ([]RawStatement, error) {
 	if len(stmts) == 0 {
 		return nil, nil
 	}
 	out := make([]RawStatement, 0, len(stmts))
 	for _, stmt := range stmts {
-		data, err := marshalStatement(stmt)
+		data, err := m.statement(stmt)
 		if err != nil {
 			return nil, err
 		}
@@ -116,70 +167,67 @@ func marshalDeclList[D any, J any](decls []D, fn func(D) (*J, error)) ([]*J, err
 	return out, nil
 }
 
-func marshalSignalDecl(s *SignalDecl) (*SignalDeclJSON, error) {
+func (m marshaller) signalDecl(s *SignalDecl) (*SignalDeclJSON, error) {
 	sj := &SignalDeclJSON{
 		Type:    "signalDecl",
-		Line:    s.Line,
-		Column:  s.Column,
+		Site:    m.site(s),
 		Name:    s.Name,
 		Params:  s.Params,
 		Options: marshalOptionsBlock(s.Options),
 	}
 	var err error
-	if sj.Body, err = marshalStatements(s.Body); err != nil {
+	if sj.Body, err = m.statements(s.Body); err != nil {
 		return nil, err
 	}
 	return sj, nil
 }
 
-func marshalQueryDecl(q *QueryDecl) (*QueryDeclJSON, error) {
+func (m marshaller) queryDecl(q *QueryDecl) (*QueryDeclJSON, error) {
 	qj := &QueryDeclJSON{
 		Type:       "queryDecl",
-		Line:       q.Line,
-		Column:     q.Column,
+		Site:       m.site(q),
 		Name:       q.Name,
 		Params:     q.Params,
 		ReturnType: q.ReturnType,
 		Options:    marshalOptionsBlock(q.Options),
 	}
 	var err error
-	if qj.Body, err = marshalStatements(q.Body); err != nil {
+	if qj.Body, err = m.statements(q.Body); err != nil {
 		return nil, err
 	}
 	return qj, nil
 }
 
-func marshalUpdateDecl(u *UpdateDecl) (*UpdateDeclJSON, error) {
+func (m marshaller) updateDecl(u *UpdateDecl) (*UpdateDeclJSON, error) {
 	uj := &UpdateDeclJSON{
 		Type:       "updateDecl",
-		Line:       u.Line,
-		Column:     u.Column,
+		Site:       m.site(u),
 		Name:       u.Name,
 		Params:     u.Params,
 		ReturnType: u.ReturnType,
 		Options:    marshalOptionsBlock(u.Options),
 	}
 	var err error
-	if uj.Body, err = marshalStatements(u.Body); err != nil {
+	if uj.Body, err = m.statements(u.Body); err != nil {
 		return nil, err
 	}
 	return uj, nil
 }
 
-func marshalDefinition(def Definition) (json.RawMessage, error) {
+func (m marshaller) definition(def Definition) (json.RawMessage, error) {
 	switch d := def.(type) {
 	case *WorkflowDef:
-		return json.Marshal(d)
+		return m.workflowDef(d)
 	case *ActivityDef:
-		return json.Marshal(d)
+		return m.activityDef(d)
 	case *WorkerDef:
-		return json.Marshal(d)
+		return m.workerDef(d)
 	case *NamespaceDef:
-		return json.Marshal(d)
+		return m.namespaceDef(d)
 	case *NexusServiceDef:
-		return json.Marshal(d)
+		return m.nexusServiceDef(d)
 	default:
-		return nil, fmt.Errorf("marshalDefinition: unhandled definition type %T", def)
+		return nil, fmt.Errorf("marshal: unhandled definition type %T", def)
 	}
 }
 
@@ -285,11 +333,9 @@ func qualifiedNameJSON(pkg, name string) string {
 
 // WorkflowDefJSON is the JSON representation of WorkflowDef.
 type WorkflowDefJSON struct {
-	Type       string `json:"type"`
-	Line       int    `json:"line"`
-	Column     int    `json:"column"`
-	SourceFile string `json:"sourceFile,omitempty"`
-	Name       string `json:"name"`
+	Type string `json:"type"`
+	Site Site   `json:"site"`
+	Name string `json:"name"`
 	// QualifiedName is the name element of this definition's graph node ID
 	// (`pkg.Name`); absent for a default-package definition, whose graph name
 	// is the bare Name. Join graph nodes to definitions on it (issue #184).
@@ -316,17 +362,14 @@ type StateBlockJSON struct {
 
 // ConditionDeclJSON is the JSON representation of a condition declaration.
 type ConditionDeclJSON struct {
-	Line   int    `json:"line"`
-	Column int    `json:"column"`
-	Name   string `json:"name"`
+	Site Site   `json:"site"`
+	Name string `json:"name"`
 }
 
-func (w *WorkflowDef) MarshalJSON() ([]byte, error) {
+func (m marshaller) workflowDef(w *WorkflowDef) (json.RawMessage, error) {
 	wj := WorkflowDefJSON{
 		Type:           "workflowDef",
-		Line:           w.Line,
-		Column:         w.Column,
-		SourceFile:     w.SourceFile,
+		Site:           m.site(w),
 		Name:           w.Name,
 		QualifiedName:  qualifiedNameJSON(PackageIDOf(w, nil), w.Name),
 		PackageID:      PackageIDOf(w, nil),
@@ -336,8 +379,7 @@ func (w *WorkflowDef) MarshalJSON() ([]byte, error) {
 	}
 	if w.IDScheme != nil {
 		wj.IDScheme = &IDSchemeJSON{
-			Line:     w.IDScheme.Line,
-			Column:   w.IDScheme.Column,
+			Site:     m.site(w.IDScheme),
 			Template: w.IDScheme.Template,
 			Holes:    w.IDScheme.Holes,
 		}
@@ -345,29 +387,28 @@ func (w *WorkflowDef) MarshalJSON() ([]byte, error) {
 	if w.State != nil {
 		sj := &StateBlockJSON{}
 		for _, c := range w.State.Conditions {
-			sj.Conditions = append(sj.Conditions, &ConditionDeclJSON{Line: c.Line, Column: c.Column, Name: c.Name})
+			sj.Conditions = append(sj.Conditions, &ConditionDeclJSON{Site: m.site(c), Name: c.Name})
 		}
 		for _, r := range w.State.RawStmts {
 			sj.RawStmts = append(sj.RawStmts, RawStmtJSON{
-				Type:   "raw",
-				Line:   r.Line,
-				Column: r.Column,
-				Text:   r.Text,
+				Type: "raw",
+				Site: m.site(r),
+				Text: r.Text,
 			})
 		}
 		wj.State = sj
 	}
 	var err error
-	if wj.Signals, err = marshalDeclList(w.Signals, marshalSignalDecl); err != nil {
+	if wj.Signals, err = marshalDeclList(w.Signals, m.signalDecl); err != nil {
 		return nil, err
 	}
-	if wj.Queries, err = marshalDeclList(w.Queries, marshalQueryDecl); err != nil {
+	if wj.Queries, err = marshalDeclList(w.Queries, m.queryDecl); err != nil {
 		return nil, err
 	}
-	if wj.Updates, err = marshalDeclList(w.Updates, marshalUpdateDecl); err != nil {
+	if wj.Updates, err = marshalDeclList(w.Updates, m.updateDecl); err != nil {
 		return nil, err
 	}
-	if wj.Body, err = marshalStatements(w.Body); err != nil {
+	if wj.Body, err = m.statements(w.Body); err != nil {
 		return nil, err
 	}
 	return json.Marshal(wj)
@@ -375,11 +416,9 @@ func (w *WorkflowDef) MarshalJSON() ([]byte, error) {
 
 // ActivityDefJSON is the JSON representation of ActivityDef.
 type ActivityDefJSON struct {
-	Type       string `json:"type"`
-	Line       int    `json:"line"`
-	Column     int    `json:"column"`
-	SourceFile string `json:"sourceFile,omitempty"`
-	Name       string `json:"name"`
+	Type string `json:"type"`
+	Site Site   `json:"site"`
+	Name string `json:"name"`
 	// QualifiedName is the name element of this definition's graph node ID
 	// (`pkg.Name`); absent for a default-package definition, whose graph name
 	// is the bare Name. Join graph nodes to definitions on it (issue #184).
@@ -393,12 +432,10 @@ type ActivityDefJSON struct {
 	Body           []RawStatement    `json:"body"`
 }
 
-func (a *ActivityDef) MarshalJSON() ([]byte, error) {
+func (m marshaller) activityDef(a *ActivityDef) (json.RawMessage, error) {
 	aj := ActivityDefJSON{
 		Type:           "activityDef",
-		Line:           a.Line,
-		Column:         a.Column,
-		SourceFile:     a.SourceFile,
+		Site:           m.site(a),
 		Name:           a.Name,
 		QualifiedName:  qualifiedNameJSON(PackageIDOf(a, nil), a.Name),
 		PackageID:      PackageIDOf(a, nil),
@@ -407,7 +444,7 @@ func (a *ActivityDef) MarshalJSON() ([]byte, error) {
 		DefaultOptions: marshalOptionsBlock(a.DefaultOptions),
 	}
 	var err error
-	if aj.Body, err = marshalStatements(a.Body); err != nil {
+	if aj.Body, err = m.statements(a.Body); err != nil {
 		return nil, err
 	}
 	return json.Marshal(aj)
@@ -417,8 +454,7 @@ func (a *ActivityDef) MarshalJSON() ([]byte, error) {
 type WorkerRefJSON struct {
 	Package  string           `json:"package,omitempty"`
 	Name     string           `json:"name"`
-	Line     int              `json:"line"`
-	Column   int              `json:"column"`
+	Site     Site             `json:"site"`
 	Resolved *ResolvedRefJSON `json:"resolved,omitempty"`
 }
 
@@ -429,22 +465,17 @@ type WorkerRefJSON struct {
 func marshalWorkerRefs[T interface {
 	comparable
 	Node
-}](refs []Ref[T]) []WorkerRefJSON {
+}](m marshaller, refs []Ref[T]) []WorkerRefJSON {
 	out := make([]WorkerRefJSON, 0, len(refs))
 	for _, ref := range refs {
 		rj := WorkerRefJSON{
 			Package: ref.Package,
 			Name:    ref.Name,
-			Line:    ref.Line,
-			Column:  ref.Column,
+			Site:    m.site(ref),
 		}
 		var zero T
 		if ref.Resolved != zero {
-			rj.Resolved = &ResolvedRefJSON{
-				Name:   ref.Name,
-				Line:   ref.Resolved.NodeLine(),
-				Column: ref.Resolved.NodeColumn(),
-			}
+			rj.Resolved = m.ref(ref.Name, ref.Resolved)
 		}
 		out = append(out, rj)
 	}
@@ -453,11 +484,9 @@ func marshalWorkerRefs[T interface {
 
 // WorkerDefJSON is the JSON representation of WorkerDef.
 type WorkerDefJSON struct {
-	Type       string `json:"type"`
-	Line       int    `json:"line"`
-	Column     int    `json:"column"`
-	SourceFile string `json:"sourceFile,omitempty"`
-	Name       string `json:"name"`
+	Type string `json:"type"`
+	Site Site   `json:"site"`
+	Name string `json:"name"`
 	// PackageID is the owning package's identity, a key into the envelope's
 	// packages table; absent for the default package.
 	PackageID  string          `json:"packageId,omitempty"`
@@ -487,17 +516,15 @@ func MarshalSDKs(sdks []WorkerSDK) []SDKJSON {
 	return out
 }
 
-func (w *WorkerDef) MarshalJSON() ([]byte, error) {
+func (m marshaller) workerDef(w *WorkerDef) (json.RawMessage, error) {
 	wj := WorkerDefJSON{
 		Type:       "workerDef",
-		Line:       w.Line,
-		Column:     w.Column,
-		SourceFile: w.SourceFile,
+		Site:       m.site(w),
 		Name:       w.Name,
 		PackageID:  PackageIDOf(w, nil),
-		Workflows:  marshalWorkerRefs(w.Workflows),
-		Activities: marshalWorkerRefs(w.Activities),
-		Services:   marshalWorkerRefs(w.Services),
+		Workflows:  marshalWorkerRefs(m, w.Workflows),
+		Activities: marshalWorkerRefs(m, w.Activities),
+		Services:   marshalWorkerRefs(m, w.Services),
 		SDKs:       MarshalSDKs(w.SDKs),
 	}
 	return json.Marshal(wj)
@@ -506,8 +533,7 @@ func (w *WorkerDef) MarshalJSON() ([]byte, error) {
 // NamespaceWorkerJSON is the JSON representation of a worker instantiation in a namespace.
 type NamespaceWorkerJSON struct {
 	WorkerName string `json:"workerName"`
-	Line       int    `json:"line"`
-	Column     int    `json:"column"`
+	Site       Site   `json:"site"`
 	// TemplateParams is the distinct instance parameters in the task_queue, in
 	// order of first appearance. Omitted (omitempty) for a static queue so its
 	// output stays byte-identical.
@@ -519,8 +545,7 @@ type NamespaceWorkerJSON struct {
 // NamespaceEndpointJSON is the JSON representation of a nexus endpoint in a namespace.
 type NamespaceEndpointJSON struct {
 	EndpointName string `json:"endpointName"`
-	Line         int    `json:"line"`
-	Column       int    `json:"column"`
+	Site         Site   `json:"site"`
 	TaskQueue    string `json:"taskQueue,omitempty"`
 	// TemplateParams is the distinct {param} parameters in the endpoint name, in order
 	// of first appearance. Omitted (omitempty) for a static endpoint so its
@@ -531,11 +556,9 @@ type NamespaceEndpointJSON struct {
 
 // NamespaceDefJSON is the JSON representation of NamespaceDef.
 type NamespaceDefJSON struct {
-	Type       string `json:"type"`
-	Line       int    `json:"line"`
-	Column     int    `json:"column"`
-	SourceFile string `json:"sourceFile,omitempty"`
-	Name       string `json:"name"`
+	Type string `json:"type"`
+	Site Site   `json:"site"`
+	Name string `json:"name"`
 	// PackageID is the owning package's identity, a key into the envelope's
 	// packages table; absent for the default package.
 	PackageID string `json:"packageId,omitempty"`
@@ -547,12 +570,10 @@ type NamespaceDefJSON struct {
 	Endpoints      []NamespaceEndpointJSON `json:"endpoints"`
 }
 
-func (n *NamespaceDef) MarshalJSON() ([]byte, error) {
+func (m marshaller) namespaceDef(n *NamespaceDef) (json.RawMessage, error) {
 	nj := NamespaceDefJSON{
 		Type:           "namespaceDef",
-		Line:           n.Line,
-		Column:         n.Column,
-		SourceFile:     n.SourceFile,
+		Site:           m.site(n),
 		Name:           n.Name,
 		PackageID:      PackageIDOf(n, nil),
 		TemplateParams: n.TemplateParams,
@@ -562,21 +583,19 @@ func (n *NamespaceDef) MarshalJSON() ([]byte, error) {
 	for _, w := range n.Workers {
 		wj := NamespaceWorkerJSON{
 			WorkerName:     w.Worker.Name,
-			Line:           w.Line,
-			Column:         w.Column,
+			Site:           m.site(w),
 			TemplateParams: w.TemplateParams,
 			Options:        marshalOptionsBlock(w.Options),
 		}
 		if w.Worker.Resolved != nil {
-			wj.ResolvedWorker = &ResolvedRefJSON{Name: w.Worker.Resolved.Name, Line: w.Worker.Resolved.Line, Column: w.Worker.Resolved.Column}
+			wj.ResolvedWorker = m.ref(w.Worker.Resolved.Name, w.Worker.Resolved)
 		}
 		nj.Workers = append(nj.Workers, wj)
 	}
 	for _, ep := range n.Endpoints {
 		nj.Endpoints = append(nj.Endpoints, NamespaceEndpointJSON{
 			EndpointName:   ep.EndpointName,
-			Line:           ep.Line,
-			Column:         ep.Column,
+			Site:           m.site(ep),
 			TaskQueue:      ep.TaskQueue,
 			TemplateParams: ep.TemplateParams,
 			Options:        marshalOptionsBlock(ep.Options),
@@ -588,8 +607,7 @@ func (n *NamespaceDef) MarshalJSON() ([]byte, error) {
 // Declaration JSON types
 type SignalDeclJSON struct {
 	Type    string            `json:"type"`
-	Line    int               `json:"line"`
-	Column  int               `json:"column"`
+	Site    Site              `json:"site"`
 	Name    string            `json:"name"`
 	Params  string            `json:"params"`
 	Options *OptionsBlockJSON `json:"options,omitempty"`
@@ -598,8 +616,7 @@ type SignalDeclJSON struct {
 
 type QueryDeclJSON struct {
 	Type       string            `json:"type"`
-	Line       int               `json:"line"`
-	Column     int               `json:"column"`
+	Site       Site              `json:"site"`
 	Name       string            `json:"name"`
 	Params     string            `json:"params"`
 	ReturnType string            `json:"returnType,omitempty"`
@@ -609,8 +626,7 @@ type QueryDeclJSON struct {
 
 type UpdateDeclJSON struct {
 	Type       string            `json:"type"`
-	Line       int               `json:"line"`
-	Column     int               `json:"column"`
+	Site       Site              `json:"site"`
 	Name       string            `json:"name"`
 	Params     string            `json:"params"`
 	ReturnType string            `json:"returnType,omitempty"`
@@ -618,57 +634,56 @@ type UpdateDeclJSON struct {
 	Body       []RawStatement    `json:"body,omitempty"`
 }
 
-// marshalStatement marshals a Statement with type discrimination.
-func marshalStatement(stmt Statement) (json.RawMessage, error) {
+// statement marshals a Statement with type discrimination.
+func (m marshaller) statement(stmt Statement) (json.RawMessage, error) {
 	switch s := stmt.(type) {
 	case *ActivityCall:
-		return marshalActivityCall(s)
+		return m.activityCall(s)
 	case *WorkflowCall:
-		return marshalWorkflowCall(s)
+		return m.workflowCall(s)
 	case *NexusCall:
-		return marshalNexusCall(s)
+		return m.nexusCall(s)
 	case *AwaitStmt:
-		return marshalAwaitStmt(s)
+		return m.awaitStmt(s)
 	case *AwaitAllBlock:
-		return marshalAwaitAllBlock(s)
+		return m.awaitAllBlock(s)
 	case *AwaitOneBlock:
-		return marshalAwaitOneBlock(s)
+		return m.awaitOneBlock(s)
 	case *SwitchBlock:
-		return marshalSwitchBlock(s)
+		return m.switchBlock(s)
 	case *IfStmt:
-		return marshalIfStmt(s)
+		return m.ifStmt(s)
 	case *ForStmt:
-		return marshalForStmt(s)
+		return m.forStmt(s)
 	case *ReturnStmt:
-		return marshalReturnStmt(s)
+		return m.returnStmt(s)
 	case *CloseStmt:
-		return marshalCloseStmt(s)
+		return m.closeStmt(s)
 	case *BreakStmt:
-		return marshalBreakStmt(s)
+		return m.breakStmt(s)
 	case *ContinueStmt:
-		return marshalContinueStmt(s)
+		return m.continueStmt(s)
 	case *RawStmt:
-		return marshalRawStmt(s)
+		return m.rawStmt(s)
 	case *SignalSendStmt:
-		return marshalSignalSendStmt(s)
+		return m.signalSendStmt(s)
 	case *Comment:
-		return marshalComment(s)
+		return m.comment(s)
 	case *PromiseStmt:
-		return marshalPromiseStmt(s)
+		return m.promiseStmt(s)
 	case *SetStmt:
-		return marshalSetStmt(s)
+		return m.setStmt(s)
 	case *UnsetStmt:
-		return marshalUnsetStmt(s)
+		return m.unsetStmt(s)
 	default:
-		return nil, fmt.Errorf("marshalStatement: unhandled statement type %T", stmt)
+		return nil, fmt.Errorf("marshal: unhandled statement type %T", stmt)
 	}
 }
 
-func marshalActivityCall(s *ActivityCall) (json.RawMessage, error) {
+func (m marshaller) activityCall(s *ActivityCall) (json.RawMessage, error) {
 	aj := ActivityCallJSON{
 		Type:    "activityCall",
-		Line:    s.Line,
-		Column:  s.Column,
+		Site:    m.site(s),
 		Package: s.Activity.Package,
 		Name:    s.Activity.Name,
 		Args:    s.Args,
@@ -676,20 +691,15 @@ func marshalActivityCall(s *ActivityCall) (json.RawMessage, error) {
 		Options: marshalOptionsBlock(s.Options),
 	}
 	if s.Activity.Resolved != nil {
-		aj.Resolved = &ResolvedRefJSON{
-			Name:   s.Activity.Resolved.Name,
-			Line:   s.Activity.Resolved.Line,
-			Column: s.Activity.Resolved.Column,
-		}
+		aj.Resolved = m.ref(s.Activity.Resolved.Name, s.Activity.Resolved)
 	}
 	return json.Marshal(aj)
 }
 
-func marshalWorkflowCall(s *WorkflowCall) (json.RawMessage, error) {
+func (m marshaller) workflowCall(s *WorkflowCall) (json.RawMessage, error) {
 	wj := WorkflowCallJSON{
 		Type:    "workflowCall",
-		Line:    s.Line,
-		Column:  s.Column,
+		Site:    m.site(s),
 		Mode:    workflowCallModeString(s.Mode),
 		Start:   startKindString(s.Start),
 		Package: s.Workflow.Package,
@@ -699,20 +709,15 @@ func marshalWorkflowCall(s *WorkflowCall) (json.RawMessage, error) {
 		Options: marshalOptionsBlock(s.Options),
 	}
 	if s.Workflow.Resolved != nil {
-		wj.Resolved = &ResolvedRefJSON{
-			Name:   s.Workflow.Resolved.Name,
-			Line:   s.Workflow.Resolved.Line,
-			Column: s.Workflow.Resolved.Column,
-		}
+		wj.Resolved = m.ref(s.Workflow.Resolved.Name, s.Workflow.Resolved)
 	}
 	return json.Marshal(wj)
 }
 
-func marshalNexusCall(s *NexusCall) (json.RawMessage, error) {
+func (m marshaller) nexusCall(s *NexusCall) (json.RawMessage, error) {
 	nj := NexusCallJSON{
 		Type:           "nexusCall",
-		Line:           s.Line,
-		Column:         s.Column,
+		Site:           m.site(s),
 		Detach:         s.Detach,
 		Endpoint:       s.Endpoint.Name,
 		ServicePackage: s.Service.Package,
@@ -723,128 +728,120 @@ func marshalNexusCall(s *NexusCall) (json.RawMessage, error) {
 		Options:        marshalOptionsBlock(s.Options),
 	}
 	if s.Endpoint.Resolved != nil {
-		nj.ResolvedEndpoint = &ResolvedRefJSON{Name: s.Endpoint.Resolved.EndpointName, Line: s.Endpoint.Resolved.Line, Column: s.Endpoint.Resolved.Column}
+		nj.ResolvedEndpoint = m.ref(s.Endpoint.Resolved.EndpointName, s.Endpoint.Resolved)
 		nj.ResolvedEndpointNamespace = s.Endpoint.Resolved.Namespace
 	}
 	if s.Service.Resolved != nil {
-		nj.ResolvedService = &ResolvedRefJSON{Name: s.Service.Resolved.Name, Line: s.Service.Resolved.Line, Column: s.Service.Resolved.Column}
+		nj.ResolvedService = m.ref(s.Service.Resolved.Name, s.Service.Resolved)
 	}
 	if s.Operation.Resolved != nil {
-		nj.ResolvedOperation = &ResolvedRefJSON{Name: s.Operation.Resolved.Name, Line: s.Operation.Resolved.Line, Column: s.Operation.Resolved.Column}
+		nj.ResolvedOperation = m.ref(s.Operation.Resolved.Name, s.Operation.Resolved)
 	}
 	return json.Marshal(nj)
 }
 
-func marshalAwaitStmt(s *AwaitStmt) (json.RawMessage, error) {
+func (m marshaller) awaitStmt(s *AwaitStmt) (json.RawMessage, error) {
 	return json.Marshal(AwaitStmtJSON{
 		Type:   "await",
-		Line:   s.Line,
-		Column: s.Column,
-		Target: marshalAsyncTarget(s.Target),
+		Site:   m.site(s),
+		Target: m.asyncTarget(s.Target),
 	})
 }
 
-func marshalAwaitAllBlock(s *AwaitAllBlock) (json.RawMessage, error) {
-	body, err := marshalStatements(s.Body)
+func (m marshaller) awaitAllBlock(s *AwaitAllBlock) (json.RawMessage, error) {
+	body, err := m.statements(s.Body)
 	if err != nil {
 		return nil, err
 	}
 	return json.Marshal(AwaitAllBlockJSON{
-		Type:   "awaitAll",
-		Line:   s.Line,
-		Column: s.Column,
-		Body:   body,
+		Type: "awaitAll",
+		Site: m.site(s),
+		Body: body,
 	})
 }
 
-func marshalAwaitOneBlock(s *AwaitOneBlock) (json.RawMessage, error) {
+func (m marshaller) awaitOneBlock(s *AwaitOneBlock) (json.RawMessage, error) {
 	cases := make([]AwaitOneCaseJSON, 0, len(s.Cases))
 	for _, c := range s.Cases {
-		caseBody, err := marshalStatements(c.Body)
+		caseBody, err := m.statements(c.Body)
 		if err != nil {
 			return nil, err
 		}
 		cj := AwaitOneCaseJSON{
-			Line:   c.Line,
-			Column: c.Column,
-			Body:   caseBody,
+			Site: m.site(c),
+			Body: caseBody,
 		}
 		if c.AwaitAll != nil {
-			data, err := marshalStatement(c.AwaitAll)
+			data, err := m.statement(c.AwaitAll)
 			if err != nil {
 				return nil, err
 			}
 			cj.AwaitAll = data
 		} else if c.Target != nil {
-			t := marshalAsyncTarget(c.Target)
+			t := m.asyncTarget(c.Target)
 			cj.Target = &t
 		}
 		cases = append(cases, cj)
 	}
 	return json.Marshal(AwaitOneBlockJSON{
-		Type:   "awaitOne",
-		Line:   s.Line,
-		Column: s.Column,
-		Cases:  cases,
+		Type:  "awaitOne",
+		Site:  m.site(s),
+		Cases: cases,
 	})
 }
 
-func marshalSwitchBlock(s *SwitchBlock) (json.RawMessage, error) {
+func (m marshaller) switchBlock(s *SwitchBlock) (json.RawMessage, error) {
 	cases := make([]SwitchCaseJSON, 0, len(s.Cases))
 	for _, c := range s.Cases {
-		caseBody, err := marshalStatements(c.Body)
+		caseBody, err := m.statements(c.Body)
 		if err != nil {
 			return nil, err
 		}
 		cases = append(cases, SwitchCaseJSON{
-			Line:   c.Line,
-			Column: c.Column,
-			Value:  c.Value,
-			Body:   caseBody,
+			Site:  m.site(c),
+			Value: c.Value,
+			Body:  caseBody,
 		})
 	}
-	defaultBody, err := marshalStatements(s.Default)
+	defaultBody, err := m.statements(s.Default)
 	if err != nil {
 		return nil, err
 	}
 	return json.Marshal(SwitchBlockJSON{
 		Type:    "switch",
-		Line:    s.Line,
-		Column:  s.Column,
+		Site:    m.site(s),
 		Expr:    s.Expr,
 		Cases:   cases,
 		Default: defaultBody,
 	})
 }
 
-func marshalIfStmt(s *IfStmt) (json.RawMessage, error) {
-	body, err := marshalStatements(s.Body)
+func (m marshaller) ifStmt(s *IfStmt) (json.RawMessage, error) {
+	body, err := m.statements(s.Body)
 	if err != nil {
 		return nil, err
 	}
-	elseBody, err := marshalStatements(s.ElseBody)
+	elseBody, err := m.statements(s.ElseBody)
 	if err != nil {
 		return nil, err
 	}
 	return json.Marshal(IfStmtJSON{
 		Type:      "if",
-		Line:      s.Line,
-		Column:    s.Column,
+		Site:      m.site(s),
 		Condition: s.Condition,
 		Body:      body,
 		ElseBody:  elseBody,
 	})
 }
 
-func marshalForStmt(s *ForStmt) (json.RawMessage, error) {
-	body, err := marshalStatements(s.Body)
+func (m marshaller) forStmt(s *ForStmt) (json.RawMessage, error) {
+	body, err := m.statements(s.Body)
 	if err != nil {
 		return nil, err
 	}
 	return json.Marshal(ForStmtJSON{
 		Type:      "for",
-		Line:      s.Line,
-		Column:    s.Column,
+		Site:      m.site(s),
 		Variant:   forVariantString(s.Variant),
 		Condition: s.Condition,
 		Variable:  s.Variable,
@@ -853,48 +850,45 @@ func marshalForStmt(s *ForStmt) (json.RawMessage, error) {
 	})
 }
 
-func marshalReturnStmt(s *ReturnStmt) (json.RawMessage, error) {
+func (m marshaller) returnStmt(s *ReturnStmt) (json.RawMessage, error) {
 	return json.Marshal(ReturnStmtJSON{
-		Type:   "return",
-		Line:   s.Line,
-		Column: s.Column,
-		Value:  s.Value,
+		Type:  "return",
+		Site:  m.site(s),
+		Value: s.Value,
 	})
 }
 
-func marshalCloseStmt(s *CloseStmt) (json.RawMessage, error) {
+func (m marshaller) closeStmt(s *CloseStmt) (json.RawMessage, error) {
 	return json.Marshal(CloseStmtJSON{
 		Type:   "close",
-		Line:   s.Line,
-		Column: s.Column,
+		Site:   m.site(s),
 		Reason: closeReasonString(s.Reason),
 		Args:   s.Args,
 	})
 }
 
-func marshalBreakStmt(s *BreakStmt) (json.RawMessage, error) {
-	return json.Marshal(BreakStmtJSON{Type: "break", Line: s.Line, Column: s.Column})
+func (m marshaller) breakStmt(s *BreakStmt) (json.RawMessage, error) {
+	return json.Marshal(BreakStmtJSON{Type: "break", Site: m.site(s)})
 }
 
-func marshalContinueStmt(s *ContinueStmt) (json.RawMessage, error) {
-	return json.Marshal(ContinueStmtJSON{Type: "continue", Line: s.Line, Column: s.Column})
+func (m marshaller) continueStmt(s *ContinueStmt) (json.RawMessage, error) {
+	return json.Marshal(ContinueStmtJSON{Type: "continue", Site: m.site(s)})
 }
 
-func marshalRawStmt(s *RawStmt) (json.RawMessage, error) {
-	return json.Marshal(RawStmtJSON{Type: "raw", Line: s.Line, Column: s.Column, Text: s.Text})
+func (m marshaller) rawStmt(s *RawStmt) (json.RawMessage, error) {
+	return json.Marshal(RawStmtJSON{Type: "raw", Site: m.site(s), Text: s.Text})
 }
 
-func marshalComment(s *Comment) (json.RawMessage, error) {
-	return json.Marshal(CommentJSON{Type: "comment", Line: s.Line, Column: s.Column, Text: s.Text})
+func (m marshaller) comment(s *Comment) (json.RawMessage, error) {
+	return json.Marshal(CommentJSON{Type: "comment", Site: m.site(s), Text: s.Text})
 }
 
-func marshalSignalSendStmt(s *SignalSendStmt) (json.RawMessage, error) {
+func (m marshaller) signalSendStmt(s *SignalSendStmt) (json.RawMessage, error) {
 	h := s.Head
 	hj := SendHeadJSON{
 		Kind:     string(h.Kind),
-		Line:     h.Line,
-		Column:   h.Column,
-		Address:  marshalAddress(h.Address),
+		Site:     m.site(h),
+		Address:  m.address(h.Address),
 		External: h.External,
 	}
 	if h.Kind == SendHeadType {
@@ -904,8 +898,7 @@ func marshalSignalSendStmt(s *SignalSendStmt) (json.RawMessage, error) {
 	}
 	sj := SignalSendStmtJSON{
 		Type:   "signalSend",
-		Line:   s.Line,
-		Column: s.Column,
+		Site:   m.site(s),
 		Head:   hj,
 		Signal: s.Signal,
 		Args:   s.Args,
@@ -914,22 +907,17 @@ func marshalSignalSendStmt(s *SignalSendStmt) (json.RawMessage, error) {
 	// the signalSend edge: the type head's own definition, or the workflow a
 	// handle's promise was started against.
 	if target := s.Target(); target != nil {
-		sj.Resolved = &ResolvedRefJSON{
-			Name:   target.Name,
-			Line:   target.Line,
-			Column: target.Column,
-		}
+		sj.Resolved = m.ref(target.Name, target)
 	}
 	return json.Marshal(sj)
 }
 
-func marshalAddress(a *Address) *AddressJSON {
+func (m marshaller) address(a *Address) *AddressJSON {
 	if a == nil {
 		return nil
 	}
 	return &AddressJSON{
-		Line:   a.Line,
-		Column: a.Column,
+		Site: m.site(a),
 		ID: IDValueJSON{
 			Kind:    string(a.ID.Kind),
 			Literal: a.ID.Literal,
@@ -940,22 +928,21 @@ func marshalAddress(a *Address) *AddressJSON {
 	}
 }
 
-func marshalPromiseStmt(s *PromiseStmt) (json.RawMessage, error) {
+func (m marshaller) promiseStmt(s *PromiseStmt) (json.RawMessage, error) {
 	return json.Marshal(PromiseStmtJSON{
 		Type:   "promise",
-		Line:   s.Line,
-		Column: s.Column,
+		Site:   m.site(s),
 		Name:   s.Name,
-		Target: marshalAsyncTarget(s.Target),
+		Target: m.asyncTarget(s.Target),
 	})
 }
 
-func marshalSetStmt(s *SetStmt) (json.RawMessage, error) {
-	return json.Marshal(SetStmtJSON{Type: "set", Line: s.Line, Column: s.Column, Name: s.Condition.Name})
+func (m marshaller) setStmt(s *SetStmt) (json.RawMessage, error) {
+	return json.Marshal(SetStmtJSON{Type: "set", Site: m.site(s), Name: s.Condition.Name})
 }
 
-func marshalUnsetStmt(s *UnsetStmt) (json.RawMessage, error) {
-	return json.Marshal(UnsetStmtJSON{Type: "unset", Line: s.Line, Column: s.Column, Name: s.Condition.Name})
+func (m marshaller) unsetStmt(s *UnsetStmt) (json.RawMessage, error) {
+	return json.Marshal(UnsetStmtJSON{Type: "unset", Site: m.site(s), Name: s.Condition.Name})
 }
 
 func workflowCallModeString(mode WorkflowCallMode) string {
@@ -988,8 +975,7 @@ func forVariantString(v ForVariant) string {
 // Statement JSON types
 type ActivityCallJSON struct {
 	Type     string            `json:"type"`
-	Line     int               `json:"line"`
-	Column   int               `json:"column"`
+	Site     Site              `json:"site"`
 	Package  string            `json:"package,omitempty"`
 	Name     string            `json:"name"`
 	Args     string            `json:"args"`
@@ -1000,8 +986,7 @@ type ActivityCallJSON struct {
 
 type WorkflowCallJSON struct {
 	Type     string            `json:"type"`
-	Line     int               `json:"line"`
-	Column   int               `json:"column"`
+	Site     Site              `json:"site"`
 	Mode     string            `json:"mode"`
 	Start    string            `json:"start"`
 	Package  string            `json:"package,omitempty"`
@@ -1087,7 +1072,7 @@ type IdentTargetJSON struct {
 	Result string `json:"result,omitempty"`
 }
 
-func marshalAsyncTarget(target AsyncTarget) AsyncTargetJSON {
+func (m marshaller) asyncTarget(target AsyncTarget) AsyncTargetJSON {
 	at := AsyncTargetJSON{Kind: AsyncTargetKind(target)}
 	switch t := target.(type) {
 	case *TimerTarget:
@@ -1099,13 +1084,13 @@ func marshalAsyncTarget(target AsyncTarget) AsyncTargetJSON {
 	case *ActivityTarget:
 		aj := &ActivityTargetJSON{Package: t.Activity.Package, Name: t.Activity.Name, Args: t.Args, Result: t.Result}
 		if t.Activity.Resolved != nil {
-			aj.Resolved = &ResolvedRefJSON{Name: t.Activity.Resolved.Name, Line: t.Activity.Resolved.Line, Column: t.Activity.Resolved.Column}
+			aj.Resolved = m.ref(t.Activity.Resolved.Name, t.Activity.Resolved)
 		}
 		at.Activity = aj
 	case *WorkflowTarget:
 		wj := &WorkflowTargetJSON{Package: t.Workflow.Package, Name: t.Workflow.Name, Start: startKindString(t.Start), Args: t.Args, Result: t.Result}
 		if t.Workflow.Resolved != nil {
-			wj.Resolved = &ResolvedRefJSON{Name: t.Workflow.Resolved.Name, Line: t.Workflow.Resolved.Line, Column: t.Workflow.Resolved.Column}
+			wj.Resolved = m.ref(t.Workflow.Resolved.Name, t.Workflow.Resolved)
 		}
 		at.Workflow = wj
 	case *NexusTarget:
@@ -1118,14 +1103,14 @@ func marshalAsyncTarget(target AsyncTarget) AsyncTargetJSON {
 			Result:         t.Result,
 		}
 		if t.Endpoint.Resolved != nil {
-			nj.ResolvedEndpoint = &ResolvedRefJSON{Name: t.Endpoint.Resolved.EndpointName, Line: t.Endpoint.Resolved.Line, Column: t.Endpoint.Resolved.Column}
+			nj.ResolvedEndpoint = m.ref(t.Endpoint.Resolved.EndpointName, t.Endpoint.Resolved)
 			nj.ResolvedEndpointNamespace = t.Endpoint.Resolved.Namespace
 		}
 		if t.Service.Resolved != nil {
-			nj.ResolvedService = &ResolvedRefJSON{Name: t.Service.Resolved.Name, Line: t.Service.Resolved.Line, Column: t.Service.Resolved.Column}
+			nj.ResolvedService = m.ref(t.Service.Resolved.Name, t.Service.Resolved)
 		}
 		if t.Operation.Resolved != nil {
-			nj.ResolvedOperation = &ResolvedRefJSON{Name: t.Operation.Resolved.Name, Line: t.Operation.Resolved.Line, Column: t.Operation.Resolved.Column}
+			nj.ResolvedOperation = m.ref(t.Operation.Resolved.Name, t.Operation.Resolved)
 		}
 		at.Nexus = nj
 	case *IdentTarget:
@@ -1136,44 +1121,38 @@ func marshalAsyncTarget(target AsyncTarget) AsyncTargetJSON {
 
 type AwaitStmtJSON struct {
 	Type   string          `json:"type"`
-	Line   int             `json:"line"`
-	Column int             `json:"column"`
+	Site   Site            `json:"site"`
 	Target AsyncTargetJSON `json:"target"`
 }
 
 type AwaitAllBlockJSON struct {
-	Type   string         `json:"type"`
-	Line   int            `json:"line"`
-	Column int            `json:"column"`
-	Body   []RawStatement `json:"body"`
+	Type string         `json:"type"`
+	Site Site           `json:"site"`
+	Body []RawStatement `json:"body"`
 }
 
 type AwaitOneCaseJSON struct {
-	Line     int              `json:"line"`
-	Column   int              `json:"column"`
+	Site     Site             `json:"site"`
 	Target   *AsyncTargetJSON `json:"target,omitempty"`
 	AwaitAll RawStatement     `json:"awaitAll,omitempty"`
 	Body     []RawStatement   `json:"body"`
 }
 
 type AwaitOneBlockJSON struct {
-	Type   string             `json:"type"`
-	Line   int                `json:"line"`
-	Column int                `json:"column"`
-	Cases  []AwaitOneCaseJSON `json:"cases"`
+	Type  string             `json:"type"`
+	Site  Site               `json:"site"`
+	Cases []AwaitOneCaseJSON `json:"cases"`
 }
 
 type SwitchCaseJSON struct {
-	Line   int            `json:"line"`
-	Column int            `json:"column"`
-	Value  string         `json:"value"`
-	Body   []RawStatement `json:"body"`
+	Site  Site           `json:"site"`
+	Value string         `json:"value"`
+	Body  []RawStatement `json:"body"`
 }
 
 type SwitchBlockJSON struct {
 	Type    string           `json:"type"`
-	Line    int              `json:"line"`
-	Column  int              `json:"column"`
+	Site    Site             `json:"site"`
 	Expr    string           `json:"expr"`
 	Cases   []SwitchCaseJSON `json:"cases"`
 	Default []RawStatement   `json:"default,omitempty"`
@@ -1181,8 +1160,7 @@ type SwitchBlockJSON struct {
 
 type IfStmtJSON struct {
 	Type      string         `json:"type"`
-	Line      int            `json:"line"`
-	Column    int            `json:"column"`
+	Site      Site           `json:"site"`
 	Condition string         `json:"condition"`
 	Body      []RawStatement `json:"body"`
 	ElseBody  []RawStatement `json:"elseBody,omitempty"`
@@ -1190,8 +1168,7 @@ type IfStmtJSON struct {
 
 type ForStmtJSON struct {
 	Type      string         `json:"type"`
-	Line      int            `json:"line"`
-	Column    int            `json:"column"`
+	Site      Site           `json:"site"`
 	Variant   string         `json:"variant"`
 	Condition string         `json:"condition,omitempty"`
 	Variable  string         `json:"variable,omitempty"`
@@ -1200,50 +1177,43 @@ type ForStmtJSON struct {
 }
 
 type ReturnStmtJSON struct {
-	Type   string `json:"type"`
-	Line   int    `json:"line"`
-	Column int    `json:"column"`
-	Value  string `json:"value,omitempty"`
+	Type  string `json:"type"`
+	Site  Site   `json:"site"`
+	Value string `json:"value,omitempty"`
 }
 
 type CloseStmtJSON struct {
 	Type   string `json:"type"`
-	Line   int    `json:"line"`
-	Column int    `json:"column"`
+	Site   Site   `json:"site"`
 	Reason string `json:"reason"`
 	Args   string `json:"args,omitempty"`
 }
 
 type BreakStmtJSON struct {
-	Type   string `json:"type"`
-	Line   int    `json:"line"`
-	Column int    `json:"column"`
+	Type string `json:"type"`
+	Site Site   `json:"site"`
 }
 
 type ContinueStmtJSON struct {
-	Type   string `json:"type"`
-	Line   int    `json:"line"`
-	Column int    `json:"column"`
+	Type string `json:"type"`
+	Site Site   `json:"site"`
 }
 
 type RawStmtJSON struct {
-	Type   string `json:"type"`
-	Line   int    `json:"line"`
-	Column int    `json:"column"`
-	Text   string `json:"text"`
+	Type string `json:"type"`
+	Site Site   `json:"site"`
+	Text string `json:"text"`
 }
 
 type CommentJSON struct {
-	Type   string `json:"type"`
-	Line   int    `json:"line"`
-	Column int    `json:"column"`
-	Text   string `json:"text"`
+	Type string `json:"type"`
+	Site Site   `json:"site"`
+	Text string `json:"text"`
 }
 
 type SignalSendStmtJSON struct {
 	Type     string           `json:"type"`
-	Line     int              `json:"line"`
-	Column   int              `json:"column"`
+	Site     Site             `json:"site"`
 	Head     SendHeadJSON     `json:"head"`
 	Signal   string           `json:"signal"`
 	Args     string           `json:"args,omitempty"`
@@ -1254,8 +1224,7 @@ type SignalSendStmtJSON struct {
 // Address) or a handle (Handle). Kind is "type" or "handle".
 type SendHeadJSON struct {
 	Kind    string       `json:"kind"`
-	Line    int          `json:"line"`
-	Column  int          `json:"column"`
+	Site    Site         `json:"site"`
 	Package string       `json:"package,omitempty"`
 	Type    string       `json:"type,omitempty"`
 	Handle  string       `json:"handle,omitempty"`
@@ -1267,10 +1236,9 @@ type SendHeadJSON struct {
 
 // AddressJSON is the id: / run_id: block under a type-headed send.
 type AddressJSON struct {
-	Line   int         `json:"line"`
-	Column int         `json:"column"`
-	ID     IDValueJSON `json:"id"`
-	RunID  string      `json:"runId,omitempty"`
+	Site  Site        `json:"site"`
+	ID    IDValueJSON `json:"id"`
+	RunID string      `json:"runId,omitempty"`
 }
 
 // IDValueJSON is an address's id: value. Kind is "literal" (Literal, Parts),
@@ -1284,38 +1252,33 @@ type IDValueJSON struct {
 
 // IDSchemeJSON is a workflow type's id_scheme: template and its hole paths.
 type IDSchemeJSON struct {
-	Line     int      `json:"line"`
-	Column   int      `json:"column"`
+	Site     Site     `json:"site"`
 	Template string   `json:"template"`
 	Holes    []string `json:"holes,omitempty"`
 }
 
 type PromiseStmtJSON struct {
 	Type   string          `json:"type"`
-	Line   int             `json:"line"`
-	Column int             `json:"column"`
+	Site   Site            `json:"site"`
 	Name   string          `json:"name"`
 	Target AsyncTargetJSON `json:"target"`
 }
 
 type SetStmtJSON struct {
-	Type   string `json:"type"`
-	Line   int    `json:"line"`
-	Column int    `json:"column"`
-	Name   string `json:"name"`
+	Type string `json:"type"`
+	Site Site   `json:"site"`
+	Name string `json:"name"`
 }
 
 type UnsetStmtJSON struct {
-	Type   string `json:"type"`
-	Line   int    `json:"line"`
-	Column int    `json:"column"`
-	Name   string `json:"name"`
+	Type string `json:"type"`
+	Site Site   `json:"site"`
+	Name string `json:"name"`
 }
 
 type NexusCallJSON struct {
 	Type           string            `json:"type"`
-	Line           int               `json:"line"`
-	Column         int               `json:"column"`
+	Site           Site              `json:"site"`
 	Detach         bool              `json:"detach,omitempty"`
 	Endpoint       string            `json:"endpoint"`
 	ServicePackage string            `json:"servicePackage,omitempty"`
@@ -1334,8 +1297,7 @@ type NexusCallJSON struct {
 // NexusOperationJSON is the JSON representation of a nexus operation.
 type NexusOperationJSON struct {
 	OpType          string         `json:"opType"`
-	Line            int            `json:"line"`
-	Column          int            `json:"column"`
+	Site            Site           `json:"site"`
 	Name            string         `json:"name"`
 	WorkflowPackage string         `json:"workflowPackage,omitempty"`
 	WorkflowName    string         `json:"workflowName,omitempty"`
@@ -1346,11 +1308,9 @@ type NexusOperationJSON struct {
 
 // NexusServiceDefJSON is the JSON representation of NexusServiceDef.
 type NexusServiceDefJSON struct {
-	Type       string `json:"type"`
-	Line       int    `json:"line"`
-	Column     int    `json:"column"`
-	SourceFile string `json:"sourceFile,omitempty"`
-	Name       string `json:"name"`
+	Type string `json:"type"`
+	Site Site   `json:"site"`
+	Name string `json:"name"`
 	// QualifiedName is the name element of this definition's graph node ID
 	// (`pkg.Name`); absent for a default-package definition, whose graph name
 	// is the bare Name. Join graph nodes to definitions on it (issue #184).
@@ -1362,20 +1322,17 @@ type NexusServiceDefJSON struct {
 	Operations []*NexusOperationJSON `json:"operations,omitempty"`
 }
 
-func (n *NexusServiceDef) MarshalJSON() ([]byte, error) {
+func (m marshaller) nexusServiceDef(n *NexusServiceDef) (json.RawMessage, error) {
 	nj := NexusServiceDefJSON{
 		Type:          "nexusServiceDef",
-		Line:          n.Line,
-		Column:        n.Column,
-		SourceFile:    n.SourceFile,
+		Site:          m.site(n),
 		Name:          n.Name,
 		QualifiedName: qualifiedNameJSON(PackageIDOf(n, nil), n.Name),
 		PackageID:     PackageIDOf(n, nil),
 	}
 	for _, op := range n.Operations {
 		opj := &NexusOperationJSON{
-			Line:            op.Line,
-			Column:          op.Column,
+			Site:            m.site(op),
 			Name:            op.Name,
 			WorkflowPackage: op.Workflow.Package,
 			WorkflowName:    op.Workflow.Name,
@@ -1388,7 +1345,7 @@ func (n *NexusServiceDef) MarshalJSON() ([]byte, error) {
 			opj.OpType = "sync"
 		}
 		var err error
-		if opj.Body, err = marshalStatements(op.Body); err != nil {
+		if opj.Body, err = m.statements(op.Body); err != nil {
 			return nil, err
 		}
 		nj.Operations = append(nj.Operations, opj)

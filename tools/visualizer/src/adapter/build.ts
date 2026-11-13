@@ -208,7 +208,7 @@ export function buildGraph(parserGraph: ParserGraph, astLookup: AstLookup): Grap
     const def = astLookup.get(pn.definition)?.def
     nodes.push({
       id: pn.id,
-      values: dimensionsFor(nodeType, def?.sourceFile),
+      values: dimensionsFor(nodeType, def?.site.file),
       name: displayNameFor(nodeType, pn, parserGraph.packages),
       // Per-domain display metadata the library must not interpret. The
       // tooltip reads these back out by name; nothing in the engine does.

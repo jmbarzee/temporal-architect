@@ -8,6 +8,7 @@ import type {
   AwaitOneCase,
   WorkflowDef,
 } from '../../types/ast'
+import { siteKey } from '../../types/ast'
 import { DefinitionContext, HandlerContext } from '../WorkflowCanvas'
 import { useToggle } from './useToggle'
 import { StatementBlock } from './StatementBlock'
@@ -143,7 +144,7 @@ export function AwaitStmtBlock({ stmt }: { stmt: AwaitStmt }) {
             <SyncBodyBlock body={nexusSyncBody} />
           ) : expandableDef && (expandableDef.body || []).length > 0 ? (
             (expandableDef.body || []).map((s) => (
-              <StatementBlock key={`${s.line}:${s.column}`} statement={s} />
+              <StatementBlock key={siteKey(s.site)} statement={s} />
             ))
           ) : (
             <div className="block-empty-body">No implementation defined</div>
@@ -169,7 +170,7 @@ export function AwaitAllBlockComponent({ stmt }: { stmt: AwaitAllBlock }) {
       {expanded && (
         <div className="block-body">
           {(stmt.body || []).map((s) => (
-            <StatementBlock key={`${s.line}:${s.column}`} statement={s} />
+            <StatementBlock key={siteKey(s.site)} statement={s} />
           ))}
         </div>
       )}
@@ -193,7 +194,7 @@ export function AwaitOneBlockComponent({ stmt }: { stmt: AwaitOneBlock }) {
       {expanded && (
         <div className="block-body">
           {stmt.cases.map((c) => (
-            <AwaitOneCaseBlock key={`${c.line}:${c.column}`} awaitCase={c} />
+            <AwaitOneCaseBlock key={siteKey(c.site)} awaitCase={c} />
           ))}
         </div>
       )}
@@ -233,7 +234,7 @@ function AwaitOneCaseBlock({ awaitCase }: { awaitCase: AwaitOneCase }) {
           )}
           {/* Then show the body */}
           {hasBody && awaitCase.body.map((s) => (
-            <StatementBlock key={`${s.line}:${s.column}`} statement={s} />
+            <StatementBlock key={siteKey(s.site)} statement={s} />
           ))}
         </div>
       )}

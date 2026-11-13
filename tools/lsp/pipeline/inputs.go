@@ -13,7 +13,7 @@ import (
 
 // inputFile is one file a ParseSources request expands to.
 type inputFile struct {
-	// spelled is how diagnostics and sourceFile name the file (D9).
+	// spelled is how diagnostics and sites name the file (D9).
 	spelled string
 	// canonical is the file's identity: its physical path in on-disk spelling.
 	canonical string

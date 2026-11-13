@@ -67,10 +67,7 @@ import type {
   CoarsenedEdge as GraphCoarsenedEdgeJSON,
   Diagnostic as GraphDiagnosticJSON,
 } from "./generated/graph";
-import type {
-  Diagnostic as EnvelopeDiagnosticJSON,
-  Position as EnvelopePositionJSON,
-} from "./generated/envelope";
+import type { Diagnostic as EnvelopeDiagnosticJSON } from "./generated/envelope";
 import type {
   ObservedGraph as ObservedGraphJSON,
   Window as ObservedWindowJSON,
@@ -85,9 +82,6 @@ import type {
 } from "./residue";
 
 // ── Envelope: diagnostics + summary ──────────────────────────────────────────
-
-/** 1-based source position (`twf` envelope). */
-export type Position = EnvelopePositionJSON;
 
 /** Unified diagnostic emitted in every `twf` JSON envelope. */
 export type Diagnostic = Omit<EnvelopeDiagnosticJSON, "severity" | "kind"> & {

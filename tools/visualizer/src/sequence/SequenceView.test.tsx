@@ -43,7 +43,7 @@ describe('the Sequence tab', () => {
   const tabs = () => screen.getAllByRole('button').map(b => b.textContent)
 
   it('exists only with an execution, and shows it when the design is empty', () => {
-    render(<WorkflowCanvas ast={{ definitions: [{ type: 'workflowDef', name: 'W', line: 1, column: 1, params: '', body: [] }] } as never} />)
+    render(<WorkflowCanvas ast={{ definitions: [{ type: 'workflowDef', name: 'W', site: { line: 1, column: 1 }, params: '', body: [] }] } as never} />)
     expect(tabs()).not.toContain('Sequence')
     cleanup()
     const { container } = render(<WorkflowCanvas ast={ast} execution={fixtures['agent-sandbox']} />)
@@ -60,7 +60,7 @@ describe('the Sequence tab', () => {
   })
 
   it('carries the Tree\'s selections through unchanged', () => {
-    const withTree = { definitions: [{ type: 'workflowDef', name: 'W', line: 1, column: 1, params: '', body: [] }] } as never
+    const withTree = { definitions: [{ type: 'workflowDef', name: 'W', site: { line: 1, column: 1 }, params: '', body: [] }] } as never
     const { container } = render(<WorkflowCanvas ast={withTree} execution={fixtures['agent-sandbox']} />)
     const active = () => container.querySelectorAll('.view-pane:not(.hidden) .gv-chip.active').length
     expect(active()).toBe(1)
