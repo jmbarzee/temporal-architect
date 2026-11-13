@@ -1,8 +1,10 @@
 # Statements
 
+A body context has one statement set, assigned in [Context Restrictions](./10-context-restrictions.md#handler-body-contexts). A statement outside its context's set is an error.
+
 ## Workflow Statements
 
-Available in workflow context (workflow definitions and signal/update handlers); a sync nexus operation body holds only the client forms among them ([Context Restrictions](./10-context-restrictions.md#handler-body-contexts)). `signal_send_stmt` (cross-workflow signal send, addressed by handle or by workflow type + ID) is a workflow-context statement; it is not available in the activity statement set below. It may be the first body statement.
+Available in workflow definitions and signal and update handlers. `signal_send_stmt` (cross-workflow signal send, addressed by handle or by workflow type + ID) is a workflow-context statement; it is not available in the activity statement set below. It may be the first body statement.
 
 ```
 statement ::= activity_call
@@ -25,9 +27,26 @@ statement ::= activity_call
             | assignment
 ```
 
+## Client Statements
+
+Available in a sync nexus operation body, which runs as a Temporal client with no workflow context. A `workflow_call` is a client start (`detach` included) and `close_stmt` takes `complete` or `fail`, as a client run has no run to continue as new.
+
+```
+statement ::= workflow_call
+            | signal_send_stmt
+            | close_stmt
+            | switch_block
+            | if_stmt
+            | for_stmt
+            | return_stmt
+            | break_stmt
+            | continue_stmt
+            | assignment
+```
+
 ## Activity Statements
 
-Available in activity context (activity definitions and query handlers):
+Available in activity definitions and query handlers:
 
 ```
 statement ::= heartbeat_stmt
