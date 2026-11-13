@@ -293,20 +293,17 @@ func (p *Parser) expectBlock() error {
 
 // parseBodyAs sets the body context, parses the body, then restores the
 // previous context. Use instead of manual save/restore around parseBody().
-func (p *Parser) parseBodyAs(ctx bodyContext) ([]ast.Statement, error) {
-	prev := p.bodyCtx
-	p.bodyCtx = ctx
+func (p *Parser) parseBodyAs(ctx ast.BodyContext) ([]ast.Statement, error) {
+	prev := p.body
+	p.body = ctx
 	body, err := p.parseBody()
-	p.bodyCtx = prev
+	p.body = prev
 	return body, err
 }
 
-// parseHandlerBody parses a handler body as ctx, marking it as a handler's.
-func (p *Parser) parseHandlerBody(ctx bodyContext) ([]ast.Statement, error) {
-	p.inHandler = true
-	body, err := p.parseBodyAs(ctx)
-	p.inHandler = false
-	return body, err
+// isHandler reports whether ctx is a signal, update or query handler's.
+func isHandler(ctx ast.BodyContext) bool {
+	return ctx == ast.BodySignalHandler || ctx == ast.BodyUpdateHandler || ctx == ast.BodyQueryHandler
 }
 
 // parseComment consumes a COMMENT and the NEWLINE ending its line, returning it

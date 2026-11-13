@@ -142,9 +142,7 @@ func parseSyncOperation(p *Parser) (*ast.NexusOperation, error) {
 	}
 
 	// A workflow body restricted to client forms (see syncBodyRejects).
-	p.inSyncNexus = true
-	body, err := p.parseBodyAs(bodyWorkflow)
-	p.inSyncNexus = false
+	body, err := p.parseBodyAs(ast.BodyNexusSync)
 	if err != nil {
 		return nil, err
 	}
@@ -157,6 +155,7 @@ func parseSyncOperation(p *Parser) (*ast.NexusOperation, error) {
 		Params:     params.Literal,
 		ReturnType: retType.Literal,
 		Body:       body,
+		Context:    ast.BodyNexusSync,
 	}, nil
 }
 

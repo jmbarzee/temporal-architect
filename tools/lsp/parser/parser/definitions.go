@@ -128,7 +128,7 @@ declLoop:
 	// Parse workflow body, unless a failed line consumed its end.
 	var body []ast.Statement
 	if !ended {
-		body, err = p.parseBodyAs(bodyWorkflow)
+		body, err = p.parseBodyAs(ast.BodyWorkflow)
 		if err != nil {
 			return nil, err
 		}
@@ -150,6 +150,7 @@ declLoop:
 		Queries:        queries,
 		Updates:        updates,
 		Body:           body,
+		Context:        ast.BodyWorkflow,
 	}, nil
 }
 
@@ -190,7 +191,7 @@ func parseActivityDef(p *Parser) (ast.Definition, error) {
 		return nil, err
 	}
 
-	body, err := p.parseBodyAs(bodyActivity)
+	body, err := p.parseBodyAs(ast.BodyActivity)
 	if err != nil {
 		return nil, err
 	}
@@ -204,6 +205,7 @@ func parseActivityDef(p *Parser) (ast.Definition, error) {
 		ReturnType:     returnType,
 		DefaultOptions: defaultOptions,
 		Body:           body,
+		Context:        ast.BodyActivity,
 	}, nil
 }
 
@@ -289,7 +291,7 @@ func parseSignalDeclRest(p *Parser, pos ast.Pos, name token.Token) (*ast.SignalD
 		return nil, err
 	}
 
-	body, err := p.parseHandlerBody(bodyWorkflow)
+	body, err := p.parseBodyAs(ast.BodySignalHandler)
 	if err != nil {
 		return nil, err
 	}
@@ -302,6 +304,7 @@ func parseSignalDeclRest(p *Parser, pos ast.Pos, name token.Token) (*ast.SignalD
 		Params:  params,
 		Options: options,
 		Body:    body,
+		Context: ast.BodySignalHandler,
 	}, nil
 }
 
@@ -340,7 +343,7 @@ func parseQueryDecl(p *Parser) (*ast.QueryDecl, error) {
 	}
 
 	// Query bodies are restricted like activity bodies (no temporal primitives).
-	body, err := p.parseHandlerBody(bodyQuery)
+	body, err := p.parseBodyAs(ast.BodyQueryHandler)
 	if err != nil {
 		return nil, err
 	}
@@ -354,6 +357,7 @@ func parseQueryDecl(p *Parser) (*ast.QueryDecl, error) {
 		ReturnType: returnType,
 		Options:    options,
 		Body:       body,
+		Context:    ast.BodyQueryHandler,
 	}, nil
 }
 
@@ -394,7 +398,7 @@ func parseUpdateDecl(p *Parser) (*ast.UpdateDecl, error) {
 		return nil, err
 	}
 
-	body, err := p.parseHandlerBody(bodyWorkflow)
+	body, err := p.parseBodyAs(ast.BodyUpdateHandler)
 	if err != nil {
 		return nil, err
 	}
@@ -408,6 +412,7 @@ func parseUpdateDecl(p *Parser) (*ast.UpdateDecl, error) {
 		ReturnType: returnType,
 		Options:    options,
 		Body:       body,
+		Context:    ast.BodyUpdateHandler,
 	}, nil
 }
 

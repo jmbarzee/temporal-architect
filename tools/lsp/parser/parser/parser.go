@@ -52,16 +52,6 @@ func (e *ParseError) Code() string {
 type defParser func(p *Parser) (ast.Definition, error)
 type stmtParser func(p *Parser) (ast.Statement, error)
 
-// bodyContext tracks what kind of body the parser is currently inside.
-type bodyContext int
-
-const (
-	bodyNone     bodyContext = iota
-	bodyWorkflow             // workflow, signal handler, update handler, nexus sync op
-	bodyQuery                // query handler: the activity statement set, in a workflow
-	bodyActivity             // activity: free-form pseudocode
-)
-
 // Parser is a recursive descent parser for .twf files.
 type Parser struct {
 	lex     *lexer.Lexer
@@ -72,10 +62,7 @@ type Parser struct {
 	depth   int             // INDENTs minus DEDENTs before current
 	elseAt  int             // the offset of the last `else` an if consumed
 
-	bodyCtx bodyContext
-
-	inSyncNexus bool // true while parsing a sync nexus operation body
-	inHandler   bool // true while parsing a signal, query or update handler body
+	body ast.BodyContext // what the body being parsed runs in
 
 	collecting bool          // true when collecting errors instead of bailing
 	errors     []*ParseError // accumulated errors in collecting mode
@@ -437,9 +424,9 @@ func (p *Parser) parseStatement() (ast.Statement, error) {
 
 	var parseFn stmtParser
 	var ok bool
-	switch p.bodyCtx {
-	case bodyWorkflow:
-		if p.inSyncNexus {
+	switch p.body {
+	case ast.BodyWorkflow, ast.BodySignalHandler, ast.BodyUpdateHandler, ast.BodyNexusSync:
+		if p.body == ast.BodyNexusSync {
 			if syncBodyRejects[p.current.Type] {
 				return nil, p.errorf("%s is not allowed in a sync nexus operation body", p.current.Literal)
 			}
@@ -448,7 +435,7 @@ func (p *Parser) parseStatement() (ast.Statement, error) {
 			}
 		}
 		parseFn, ok = workflowStmtParsers[p.current.Type]
-	case bodyQuery, bodyActivity:
+	case ast.BodyQueryHandler, ast.BodyActivity:
 		if p.current.Type == token.ID_SCHEME {
 			return nil, p.misplacedIDScheme()
 		}
@@ -463,7 +450,7 @@ func (p *Parser) parseStatement() (ast.Statement, error) {
 		// In a workflow context a keyword leads no raw statement: one with
 		// no parser here is misplaced, not an expression to pass through.
 		// An activity body is free-form pseudocode.
-		if p.bodyCtx != bodyActivity && p.current.Type.IsKeyword() {
+		if p.body != ast.BodyActivity && p.current.Type.IsKeyword() {
 			return nil, p.misplacedKeyword()
 		}
 		return parseRawStmt(p)

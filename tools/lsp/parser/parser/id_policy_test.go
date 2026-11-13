@@ -233,3 +233,44 @@ nexus service Svc:
 		}
 	}
 }
+
+// TestBodyContext pins the context the parser records on each body's owner.
+func TestBodyContext(t *testing.T) {
+	file, errs := ParseFileAll(`workflow W(a: A):
+	signal Go():
+		close complete()
+	query Q() -> (R):
+		return a
+	update Up() -> (R):
+		return a
+	close complete()
+
+activity Act(a: A):
+	do()
+
+nexus service Svc:
+	sync Op(a: A) -> (R):
+		close complete()
+	async Run workflow W
+`)
+	if len(errs) > 0 {
+		t.Fatalf("parse: %v", errs)
+	}
+	wf := file.Definitions[0].(*ast.WorkflowDef)
+	svc := file.Definitions[2].(*ast.NexusServiceDef)
+	got := []ast.BodyContext{
+		wf.Context, wf.Signals[0].Context, wf.Queries[0].Context, wf.Updates[0].Context,
+		file.Definitions[1].(*ast.ActivityDef).Context,
+		svc.Operations[0].Context, svc.Operations[1].Context,
+	}
+	want := []ast.BodyContext{
+		ast.BodyWorkflow, ast.BodySignalHandler, ast.BodyQueryHandler, ast.BodyUpdateHandler,
+		ast.BodyActivity,
+		ast.BodyNexusSync, ast.BodyNone,
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("context %d = %d, want %d", i, got[i], want[i])
+		}
+	}
+}

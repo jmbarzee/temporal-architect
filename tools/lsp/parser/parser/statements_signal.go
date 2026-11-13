@@ -156,7 +156,7 @@ func (p *Parser) parseOptionalAddress() (*ast.Address, error) {
 		if p.peek.Type == token.DOT {
 			return nil, p.codedErrorf(CodeIDValueMalformed, "parent is reserved: id: parent takes no path")
 		}
-		if p.inSyncNexus {
+		if p.body == ast.BodyNexusSync {
 			return nil, p.codedErrorf(CodeAddressMisplaced, "id: parent is not allowed in a sync nexus operation body; it has no parent workflow")
 		}
 		id.Kind = ast.IDParent
