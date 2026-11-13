@@ -1,0 +1,13 @@
+package orders
+
+import "acme/billing"
+
+workflow Process(id):
+	activity Reserve(id) -> held
+	workflow billing.Process(id) -> receipt
+		options:
+			task_queue: "ledger"
+	close complete(receipt)
+
+activity Reserve(id):
+	pass()

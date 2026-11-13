@@ -1,0 +1,18 @@
+import "acme/orders"
+import "acme/billing"
+
+worker shopfloor:
+	workflow orders.Process
+	activity orders.Reserve
+
+worker ledger:
+	workflow billing.Process
+	activity billing.Charge
+
+namespace shop:
+	worker shopfloor
+		options:
+			task_queue: "shopfloor"
+	worker ledger
+		options:
+			task_queue: "ledger"

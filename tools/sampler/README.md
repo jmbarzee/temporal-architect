@@ -67,6 +67,23 @@ Two consequences:
 Edges are `containment` (child → parent) plus dispatch (`activityCall`,
 `workflowCall`, `nexusCall`, `asyncBacking`, `signalSend`).
 
+### Packages and the design input
+
+History names a definition only by its bare runtime type, and a package has no
+runtime meaning, so the sampler cannot tell `orders.Process` from
+`billing.Process` on its own. `--design` takes the `.twf` file or directory the
+system was designed in, loaded as `twf check` loads it, and joins each sampled
+definition to its package: a name one package declares takes that package, and
+a name several declare takes the one a worker hosts on the sampled namespace
+and task queue (a templated queue never matches a sampled one). The package
+qualifies the name element of the ID as `graph.Extract` does, so a packaged
+definition's observed ID equals its design node's (a worker's ID still carries
+its queue, so the worker must be named for it). A name the design lacks, or one
+it cannot tell apart, keeps its bare ID and is listed in `unresolved`. Without
+`--design` every name stays bare and the output is unchanged. The join's index
+(definition → package → hosting namespace and queue), with the design graph, is
+`design.Design`.
+
 ### `templateParams` is always empty on observed nodes
 
 `graph.Node` carries a `templateParams` field for parameterized design families:
@@ -208,6 +225,7 @@ go run ./tools/sampler \
 | `--tls-cert-path` | _(none)_ | Client TLS certificate (mTLS) |
 | `--tls-key-path` | _(none)_ | Client TLS private key (mTLS) |
 | `--out` | `./` | Output path; a directory receives `observed-graph.json` |
+| `--design` | _(none)_ | A `.twf` file or directory to join sampled definitions to (see [Packages and the design input](#packages-and-the-design-input)) |
 | `--sample-percent` | `10` | Percent of each type's executions to sample |
 | `--min-per-type` | `5` | Minimum executions to sample per type |
 | `--buckets` | `1` | Equal-width time buckets to divide `[--since, --until]` into (1 = a single total). `>1` requires `--since` |
@@ -276,7 +294,8 @@ directly in the visualizer / VS Code extension.
 ### Diffing against a design graph
 
 If a `.twf` exists (or can be sketched) for the same system, diff the two
-graphs — the observed graph projects to the same node-ID scheme as `twf graph`:
+graphs — the observed graph projects to the same node-ID scheme as `twf graph`
+(pass `--design` when the design has packages):
 
 ```bash
 go run ./tools/lsp/cmd/twf graph ./design.twf --json > design-graph.json
@@ -298,7 +317,8 @@ or drop `--status` before treating a missing node as drift.
 
 The sampling math and query construction (`sampling/select_test.go`), the
 history→observed-graph fold and bucketing (`history/history_test.go`), the
-per-run event decode and its table above (`history/events_test.go`), and the
+per-run event decode and its table above (`history/events_test.go`), the
+package join (`design/design_test.go`, `history/packages_test.go`), and the
 output-path / time-flag parsing (`main_test.go`) are covered by pure-function
 tests:
 

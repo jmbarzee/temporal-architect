@@ -16,8 +16,10 @@ import (
 	historypb "go.temporal.io/api/history/v1"
 	"go.temporal.io/api/temporalproto"
 
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/graph"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/observe"
+	"github.com/jmbarzee/temporal-architect/tools/sampler/design"
 )
 
 // History is one workflow run's event log. (WorkflowID, RunID) identifies the
@@ -35,10 +37,13 @@ type History struct {
 // Options carries per-Build metadata shared across all histories. Namespace is
 // the fallback used when a History's own Namespace is empty (the
 // WORKFLOW_EXECUTION_STARTED event does not carry it). Window lays out the
-// per-edge occurrence time series; a zero Window means a single bucket.
+// per-edge occurrence time series; a zero Window means a single bucket. Design,
+// when set, joins each sampled definition to its package, so its node ID is the
+// design graph's; without one every name stays bare.
 type Options struct {
 	Namespace string
 	Window    observe.Window
+	Design    *design.Design
 }
 
 // LoadFile reads and parses a single Temporal history JSON file (the format
@@ -86,6 +91,7 @@ func Build(histories []History, opts Options) *observe.ObservedGraph {
 	win := parseWindow(opts.Window)
 	b := &builder{
 		namespace: opts.Namespace,
+		design:    opts.Design,
 		win:       win,
 		og:        observe.New(),
 		nodesSeen: map[string]struct{}{},
@@ -141,6 +147,7 @@ type edgeKey struct {
 
 type builder struct {
 	namespace string
+	design    *design.Design
 	win       pwindow
 	og        *observe.ObservedGraph
 	index     runIndex
@@ -372,18 +379,30 @@ func (b *builder) ensureWorkerAndNamespace(namespace, queue string) {
 	}
 }
 
+// ensureHosted adds the node for a sampled definition. Its name is qualified by
+// the design's package for it. With a design that has none (or several it cannot
+// tell apart) the name stays bare, and the node is reported as unresolved.
 func (b *builder) ensureHosted(kind, name, namespace, queue string) string {
+	pkg, known := "", true
+	if b.design != nil {
+		pkg, known = b.design.Package(kind, name, namespace, queue)
+	}
 	// Worker name = queue name (1-worker-per-queue assumption).
 	workerName := queue
-	nodeID := graph.HostedID(kind, name, workerName, namespace, false)
+	qname := ast.QualifiedName(pkg, name)
+	nodeID := graph.HostedID(kind, qname, workerName, namespace, false)
 	if _, seen := b.nodesSeen[nodeID]; !seen {
 		b.og.Nodes = append(b.og.Nodes, graph.Node{
 			ID:         nodeID,
-			Definition: graph.DefKey(kind, name),
+			Definition: graph.DefKey(kind, qname),
 			Name:       name,
+			PackageID:  pkg,
 		})
 		b.nodesSeen[nodeID] = struct{}{}
 		b.addContainment(nodeID, graph.WorkerID(workerName, namespace))
+		if !known {
+			b.og.Unresolved = append(b.og.Unresolved, graph.Unresolved{From: nodeID, Name: name, Kind: kind})
+		}
 	}
 	return nodeID
 }
