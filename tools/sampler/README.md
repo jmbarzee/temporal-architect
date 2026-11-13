@@ -185,7 +185,7 @@ it has no row.
 | `REQUEST_CANCEL_EXTERNAL_WORKFLOW_EXECUTION_INITIATED` | — | `externalCancel.initiated` |
 | `REQUEST_CANCEL_EXTERNAL_WORKFLOW_EXECUTION_FAILED` | — | `externalCancel.failed` |
 | `EXTERNAL_WORKFLOW_EXECUTION_CANCEL_REQUESTED` | — | `externalCancel.completed` |
-| `MARKER_RECORDED` | `activityCall` for a `LocalActivity` marker to the activity type in its details, hosted on the calling workflow's own task queue (a local activity has none); read from the Go, Core (Python, TypeScript, .NET, Ruby, Rust) and Java SDKs' marker formats; a marker naming no type is `LOCAL_ACTIVITY_TYPE_MISSING`; a retry that backs off on a timer records a marker per attempt, each counted | `marker.recorded` |
+| `MARKER_RECORDED` | `activityCall` for a `LocalActivity` marker to the activity type in its details, hosted on the calling workflow's own task queue (a local activity has none); read from the Go, Core (Python, TypeScript, .NET, Ruby, Rust) and Java SDKs' marker formats (Go's checked against the SDK; Core's and Java's derived from their proto and source, not captured histories); a marker naming no type is `LOCAL_ACTIVITY_TYPE_MISSING`; a retry that backs off on a timer records a marker per attempt, each counted | `marker.recorded` |
 | `WORKFLOW_EXECUTION_SIGNALED` | — | `signal.received` |
 | `WORKFLOW_EXECUTION_TERMINATED` | — | `workflow.terminated` |
 | `WORKFLOW_EXECUTION_CONTINUED_AS_NEW` | next run of the chain; each run is its own history, folded into the aggregate graph; the decode keeps per-run identity `(WorkflowID, RunID)`, not yet on the wire ([#775](https://github.com/jmbarzee/temporal-architect/issues/775)) | `workflow.continuedAsNew`, targeting the next run |

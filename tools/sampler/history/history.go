@@ -366,7 +366,6 @@ func (b *builder) handleMarkerRecorded(e *historypb.HistoryEvent, callerID strin
 		}
 		return
 	}
-	b.ensureWorkerAndNamespace(caller.namespace, caller.taskQueue)
 	calleeID := b.ensureHosted(graph.KindActivity, actType, caller.namespace, caller.taskQueue)
 	b.addDispatch(callerID, calleeID, graph.EdgeActivityCall, eventTime(e))
 }
@@ -375,7 +374,9 @@ func (b *builder) handleMarkerRecorded(e *historypb.HistoryEvent, callerID strin
 // details, "" if it names none. The Go SDK and Core (hence the Python,
 // TypeScript, .NET, Ruby and Rust SDKs) keep it in the JSON object under
 // "data", as ActivityType and activity_type; the Java SDK keeps it as a JSON
-// string under "type".
+// string under "type". Only the Go format is checked against the SDK; the Core
+// and Java formats are derived from their proto and source, not from captured
+// histories.
 func localActivityType(details map[string]*commonpb.Payloads) string {
 	var data struct {
 		Go   string `json:"ActivityType"`
