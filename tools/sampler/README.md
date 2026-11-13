@@ -89,21 +89,80 @@ instance as drift. Reconciling parameterized design nodes with observed
 instances is owned by the observed-vs-designed overlay work
 ([#66](https://github.com/jmbarzee/temporal-architect/issues/66)).
 
-### Event → graph mapping
+### Event mapping
 
-The root workflow type, task queue, and namespace come from
-`WORKFLOW_EXECUTION_STARTED`; every `*_SCHEDULED` / `*_INITIATED` event in that
-history is an edge out of the root.
+Every Temporal event type has one row. The **aggregate graph** column is the
+fold behind `observed-graph.json`: the root workflow type, task queue, and
+namespace come from `WORKFLOW_EXECUTION_STARTED`, and every `*_SCHEDULED` /
+`*_INITIATED` event in that history is an edge out of the root. The **execution
+event** column is what `history.Decode` returns for a run: a `history.Event`
+(`subject.phase`, with its name, target, opening event, attempt, and failure),
+in history order, for a per-run view. Decoding is separate from the fold, so
+neither changes the other's output. A heartbeat is not a history event, so
+it has no row.
 
-| Event type | Yields | Edge | Status |
-|---|---|---|---|
-| `WORKFLOW_EXECUTION_STARTED` | root workflow type, task queue, namespace | (root node) | supported |
-| `ACTIVITY_TASK_SCHEDULED` | activity type, task queue | `activityCall` | supported |
-| `START_CHILD_WORKFLOW_EXECUTION_INITIATED` | child workflow type, queue, namespace | `workflowCall` | supported |
-| `SIGNAL_EXTERNAL_WORKFLOW_EXECUTION_INITIATED` | target workflow ID (no type) | `signalSend` | supported; target resolution [#58](https://github.com/jmbarzee/temporal-architect/issues/58) |
-| `WORKFLOW_EXECUTION_CONTINUED_AS_NEW` | next run of the chain; each run is its own history, folded into the aggregate graph | (none) | supported; the decode keeps per-run identity `(WorkflowID, RunID)`, not yet on the wire ([#775](https://github.com/jmbarzee/temporal-architect/issues/775)) |
-| `MARKER_RECORDED` ("LocalActivity") | activity type | `activityCall` | deferred — [#58](https://github.com/jmbarzee/temporal-architect/issues/58) |
-| `NEXUS_OPERATION_SCHEDULED` | endpoint, service, operation | `nexusCall` | deferred — [#57](https://github.com/jmbarzee/temporal-architect/issues/57) |
+| Event type | Aggregate graph | Execution event |
+|---|---|---|
+| `WORKFLOW_EXECUTION_STARTED` | root workflow type, task queue, namespace (root node) | `workflow.started` |
+| `WORKFLOW_EXECUTION_COMPLETED` | — | `workflow.completed` |
+| `WORKFLOW_EXECUTION_FAILED` | — | `workflow.failed` |
+| `WORKFLOW_EXECUTION_TIMED_OUT` | — | `workflow.timedOut` |
+| `WORKFLOW_TASK_SCHEDULED` | — | ignored, because it only queues a replay step for a worker |
+| `WORKFLOW_TASK_STARTED` | — | ignored, because it only marks a worker picking up a replay step |
+| `WORKFLOW_TASK_COMPLETED` | — | ignored, because the commands the task issued are recorded as their own events |
+| `WORKFLOW_TASK_TIMED_OUT` | — | ignored, because a retried replay step is a worker fault, not a step of the design |
+| `WORKFLOW_TASK_FAILED` | — | ignored, because a failed replay step is a worker fault, not a step of the design |
+| `ACTIVITY_TASK_SCHEDULED` | `activityCall` to the activity type on its task queue | `activity.scheduled` |
+| `ACTIVITY_TASK_STARTED` | — | `activity.started`, with its attempt |
+| `ACTIVITY_TASK_COMPLETED` | — | `activity.completed` |
+| `ACTIVITY_TASK_FAILED` | — | `activity.failed` |
+| `ACTIVITY_TASK_TIMED_OUT` | — | `activity.timedOut` |
+| `ACTIVITY_TASK_CANCEL_REQUESTED` | — | `activity.cancelRequested` |
+| `ACTIVITY_TASK_CANCELED` | — | `activity.canceled` |
+| `TIMER_STARTED` | — | `timer.started` |
+| `TIMER_FIRED` | — | `timer.fired` |
+| `TIMER_CANCELED` | — | `timer.canceled` |
+| `WORKFLOW_EXECUTION_CANCEL_REQUESTED` | — | `workflow.cancelRequested` |
+| `WORKFLOW_EXECUTION_CANCELED` | — | `workflow.canceled` |
+| `REQUEST_CANCEL_EXTERNAL_WORKFLOW_EXECUTION_INITIATED` | — | `externalCancel.initiated` |
+| `REQUEST_CANCEL_EXTERNAL_WORKFLOW_EXECUTION_FAILED` | — | `externalCancel.failed` |
+| `EXTERNAL_WORKFLOW_EXECUTION_CANCEL_REQUESTED` | — | `externalCancel.completed` |
+| `MARKER_RECORDED` | `activityCall` for a `LocalActivity` marker (activity type); deferred, [#58](https://github.com/jmbarzee/temporal-architect/issues/58) | `marker.recorded` |
+| `WORKFLOW_EXECUTION_SIGNALED` | — | `signal.received` |
+| `WORKFLOW_EXECUTION_TERMINATED` | — | `workflow.terminated` |
+| `WORKFLOW_EXECUTION_CONTINUED_AS_NEW` | next run of the chain; each run is its own history, folded into the aggregate graph; the decode keeps per-run identity `(WorkflowID, RunID)`, not yet on the wire ([#775](https://github.com/jmbarzee/temporal-architect/issues/775)) | `workflow.continuedAsNew`, targeting the next run |
+| `START_CHILD_WORKFLOW_EXECUTION_INITIATED` | `workflowCall` to the child workflow type, queue, namespace | `child.initiated` |
+| `START_CHILD_WORKFLOW_EXECUTION_FAILED` | — | `child.failed`, with the cause |
+| `CHILD_WORKFLOW_EXECUTION_STARTED` | — | `child.started` |
+| `CHILD_WORKFLOW_EXECUTION_COMPLETED` | — | `child.completed` |
+| `CHILD_WORKFLOW_EXECUTION_FAILED` | — | `child.failed`, with the failure |
+| `CHILD_WORKFLOW_EXECUTION_CANCELED` | — | `child.canceled` |
+| `CHILD_WORKFLOW_EXECUTION_TIMED_OUT` | — | `child.timedOut` |
+| `CHILD_WORKFLOW_EXECUTION_TERMINATED` | — | `child.terminated` |
+| `SIGNAL_EXTERNAL_WORKFLOW_EXECUTION_INITIATED` | `signalSend` to the target workflow ID (no type); target resolution [#58](https://github.com/jmbarzee/temporal-architect/issues/58) | `externalSignal.initiated` |
+| `SIGNAL_EXTERNAL_WORKFLOW_EXECUTION_FAILED` | — | `externalSignal.failed` |
+| `EXTERNAL_WORKFLOW_EXECUTION_SIGNALED` | — | `externalSignal.completed` |
+| `UPSERT_WORKFLOW_SEARCH_ATTRIBUTES` | — | ignored, because it changes visibility metadata, not a step of the design |
+| `WORKFLOW_EXECUTION_UPDATE_ACCEPTED` | — | `update.accepted` |
+| `WORKFLOW_EXECUTION_UPDATE_REJECTED` | — | `update.rejected` |
+| `WORKFLOW_EXECUTION_UPDATE_COMPLETED` | — | `update.completed`, with the failure of a failed outcome |
+| `WORKFLOW_PROPERTIES_MODIFIED_EXTERNALLY` | — | ignored, because an operator edited the run's metadata |
+| `ACTIVITY_PROPERTIES_MODIFIED_EXTERNALLY` | — | ignored, because an operator edited an activity's options |
+| `WORKFLOW_PROPERTIES_MODIFIED` | — | ignored, because it changes the run's memo, not a step of the design |
+| `WORKFLOW_EXECUTION_UPDATE_ADMITTED` | — | ignored, because the server queues an update before the worker decides on it; acceptance or rejection records the decision |
+| `NEXUS_OPERATION_SCHEDULED` | `nexusCall` to the endpoint, service, operation; deferred, [#57](https://github.com/jmbarzee/temporal-architect/issues/57) | `nexus.scheduled` |
+| `NEXUS_OPERATION_STARTED` | — | `nexus.started` |
+| `NEXUS_OPERATION_COMPLETED` | — | `nexus.completed` |
+| `NEXUS_OPERATION_FAILED` | — | `nexus.failed` |
+| `NEXUS_OPERATION_CANCELED` | — | `nexus.canceled` |
+| `NEXUS_OPERATION_TIMED_OUT` | — | `nexus.timedOut` |
+| `NEXUS_OPERATION_CANCEL_REQUESTED` | — | `nexus.cancelRequested` |
+| `WORKFLOW_EXECUTION_OPTIONS_UPDATED` | — | ignored, because it overrides run options, not a step of the design |
+| `NEXUS_OPERATION_CANCEL_REQUEST_COMPLETED` | — | ignored, because it is the handler's acknowledgement of a cancel request; the operation's own closing event records the outcome |
+| `NEXUS_OPERATION_CANCEL_REQUEST_FAILED` | — | ignored, because it is the handler's refusal of a cancel request; the operation's own closing event records the outcome |
+| `WORKFLOW_EXECUTION_PAUSED` | — | ignored, because an operator paused the run, which is not a step of the design |
+| `WORKFLOW_EXECUTION_UNPAUSED` | — | ignored, because an operator resumed the run, which is not a step of the design |
+| `WORKFLOW_EXECUTION_TIME_SKIPPING_TRANSITIONED` | — | ignored, because it records a test-server clock jump |
 
 ## Limitations
 
@@ -238,7 +297,8 @@ or drop `--status` before treating a missing node as drift.
 ## Unit tests
 
 The sampling math and query construction (`sampling/select_test.go`), the
-history→observed-graph fold and bucketing (`history/history_test.go`), and the
+history→observed-graph fold and bucketing (`history/history_test.go`), the
+per-run event decode and its table above (`history/events_test.go`), and the
 output-path / time-flag parsing (`main_test.go`) are covered by pure-function
 tests:
 

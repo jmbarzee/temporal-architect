@@ -1,0 +1,112 @@
+{
+  "events": [
+    {
+      "eventId": "1",
+      "eventType": "EVENT_TYPE_WORKFLOW_EXECUTION_STARTED",
+      "eventTime": "2026-01-01T00:01:00Z",
+      "workflowExecutionStartedEventAttributes": {
+        "workflowType": {
+          "name": "OrderWorkflow"
+        },
+        "taskQueue": {
+          "name": "orders",
+          "kind": "TASK_QUEUE_KIND_NORMAL"
+        }
+      }
+    },
+    {
+      "eventId": "2",
+      "eventType": "EVENT_TYPE_SIGNAL_EXTERNAL_WORKFLOW_EXECUTION_INITIATED",
+      "eventTime": "2026-01-01T00:02:00Z",
+      "signalExternalWorkflowExecutionInitiatedEventAttributes": {
+        "signalName": "poke",
+        "workflowExecution": {
+          "workflowId": "peer-1"
+        }
+      }
+    },
+    {
+      "eventId": "3",
+      "eventType": "EVENT_TYPE_EXTERNAL_WORKFLOW_EXECUTION_SIGNALED",
+      "eventTime": "2026-01-01T00:03:00Z",
+      "externalWorkflowExecutionSignaledEventAttributes": {
+        "initiatedEventId": "2",
+        "workflowExecution": {
+          "workflowId": "peer-1"
+        }
+      }
+    },
+    {
+      "eventId": "4",
+      "eventType": "EVENT_TYPE_SIGNAL_EXTERNAL_WORKFLOW_EXECUTION_INITIATED",
+      "eventTime": "2026-01-01T00:04:00Z",
+      "signalExternalWorkflowExecutionInitiatedEventAttributes": {
+        "signalName": "poke",
+        "workflowExecution": {
+          "workflowId": "gone-1"
+        }
+      }
+    },
+    {
+      "eventId": "5",
+      "eventType": "EVENT_TYPE_SIGNAL_EXTERNAL_WORKFLOW_EXECUTION_FAILED",
+      "eventTime": "2026-01-01T00:05:00Z",
+      "signalExternalWorkflowExecutionFailedEventAttributes": {
+        "initiatedEventId": "4",
+        "workflowExecution": {
+          "workflowId": "gone-1"
+        },
+        "cause": "SIGNAL_EXTERNAL_WORKFLOW_EXECUTION_FAILED_CAUSE_EXTERNAL_WORKFLOW_EXECUTION_NOT_FOUND"
+      }
+    },
+    {
+      "eventId": "6",
+      "eventType": "EVENT_TYPE_REQUEST_CANCEL_EXTERNAL_WORKFLOW_EXECUTION_INITIATED",
+      "eventTime": "2026-01-01T00:06:00Z",
+      "requestCancelExternalWorkflowExecutionInitiatedEventAttributes": {
+        "workflowExecution": {
+          "workflowId": "peer-1"
+        }
+      }
+    },
+    {
+      "eventId": "7",
+      "eventType": "EVENT_TYPE_EXTERNAL_WORKFLOW_EXECUTION_CANCEL_REQUESTED",
+      "eventTime": "2026-01-01T00:07:00Z",
+      "externalWorkflowExecutionCancelRequestedEventAttributes": {
+        "initiatedEventId": "6",
+        "workflowExecution": {
+          "workflowId": "peer-1"
+        }
+      }
+    },
+    {
+      "eventId": "8",
+      "eventType": "EVENT_TYPE_REQUEST_CANCEL_EXTERNAL_WORKFLOW_EXECUTION_INITIATED",
+      "eventTime": "2026-01-01T00:08:00Z",
+      "requestCancelExternalWorkflowExecutionInitiatedEventAttributes": {
+        "workflowExecution": {
+          "workflowId": "gone-1"
+        }
+      }
+    },
+    {
+      "eventId": "9",
+      "eventType": "EVENT_TYPE_REQUEST_CANCEL_EXTERNAL_WORKFLOW_EXECUTION_FAILED",
+      "eventTime": "2026-01-01T00:09:00Z",
+      "requestCancelExternalWorkflowExecutionFailedEventAttributes": {
+        "initiatedEventId": "8",
+        "workflowExecution": {
+          "workflowId": "gone-1"
+        },
+        "cause": "CANCEL_EXTERNAL_WORKFLOW_EXECUTION_FAILED_CAUSE_EXTERNAL_WORKFLOW_EXECUTION_NOT_FOUND"
+      }
+    },
+    {
+      "eventId": "10",
+      "eventType": "EVENT_TYPE_WORKFLOW_EXECUTION_COMPLETED",
+      "eventTime": "2026-01-01T00:10:00Z",
+      "workflowExecutionCompletedEventAttributes": {}
+    }
+  ]
+}
