@@ -29,7 +29,20 @@ One invocation targets one namespace and runs three phases:
    `max(min-per-type, ceil(sample-percent% × count))` executions (capped at the
    count), preferring **running** workflows and topping up with closed ones,
    and downloads each selected execution's full history, plus that of every run
-   chained to it by continue-as-new.
+   chained to it by continue-as-new. A transitive pass then fetches the runs
+   those histories name, so a child or Nexus handler needs no sampling of its
+   own type: a child from its `CHILD_WORKFLOW_EXECUTION_STARTED` event, a handler
+   from the workflow link on its operation's `NEXUS_OPERATION_STARTED` event (the
+   operation token is opaque and not read). Each run comes whole with its
+   continue-as-new chain, in the namespace the event or link names, and the
+   runs it fetches are scanned in turn, so grandchildren follow. A run is
+   fetched once, which ends a cycle, and there is no depth limit. What bounds the
+   pass is `--transitive-per-type`: a child workflow type, or a Nexus operation,
+   already holding that many executions, sampled or fetched, is not fetched
+   further. The pass is a consequence of the sample, not part of it: it runs after
+   direct selection and leaves it unchanged, and ignores `--since`, `--until` and
+   `--status`. A run it cannot read (past retention, in a namespace the
+   sampler cannot see, or denied) is skipped and reported below.
 3. **Phase C — build.** The histories are folded in memory into an
    observed graph: meaningful dispatch events (`ACTIVITY_TASK_SCHEDULED`,
    `MARKER_RECORDED` of a local activity, `START_CHILD_WORKFLOW_EXECUTION_INITIATED`,
@@ -45,6 +58,9 @@ diagnostic kind — there is no separate `history` kind; the `code` disambiguate
 | `SIGNAL_TARGET_NOT_SAMPLED` | none of a signal's target workflow's runs was in the sample, and its ID fits no `id_scheme:` of the `--design` (or there is none) |
 | `SIGNAL_TARGET_AMBIGUOUS` | a signal's target ID fits the `id_scheme:` of several workflows the design hosts in its namespace; the message names them, and the signal stays unresolved |
 | `LOCAL_ACTIVITY_TYPE_MISSING` | a `LocalActivity` marker records no activity type; the call is not drawn, and the code is reported once per calling workflow |
+| `NEXUS_TARGET_UNREACHABLE` | a started Nexus operation links a handler run the sampler could not read; reported once per calling workflow and operation, `from` is the caller |
+| `NEXUS_TARGET_UNLINKED` (hint) | a started Nexus operation links no workflow run (its handler is not a workflow, or the server attached no link), so its handler is not sampled; reported like the one above. A synchronous operation never starts and is silent |
+| `CHILD_HISTORY_UNAVAILABLE` | a started child workflow's run could not be read; reported once per calling workflow and child type, `from` is the caller |
 | `NEXUS_ENDPOINT_NOT_IN_DESIGN` | the `--design` declares no static endpoint of a scheduled operation's endpoint name; the message names it, `from` is its orphan endpoint node, and it is reported once per name |
 | `FAMILY_AMBIGUOUS` | an observed namespace or task queue fits the template of several of the `--design`'s families; the message names them, and the node stays concrete |
 | `FAMILY_MEMBERS` (hint) | a design family has observed members; the message counts and lists them, `from` is the family's node |
@@ -267,6 +283,10 @@ Inherent to history as an input:
   whose `id_scheme:` the ID fits; otherwise it stays unresolved.
 - **No control flow or ordering.** An edge means "this called that at least
   once" — not sequence, parallelism, or conditionality.
+- **Transitive fetches bypass the filters.** A child or Nexus handler is fetched
+  whatever its start time or status, so a graph sampled with `--since` or
+  `--status` also holds runs outside that window; only `--transitive-per-type`
+  bounds them. A handler that is not a workflow run is not followed.
 - **Continue-as-new chains are fetched whole.** A sampled workflow brings every
   run of its chain, so a long chain costs one history fetch per run.
 
@@ -293,6 +313,7 @@ go run ./tools/sampler \
 | `--design` | _(none)_ | A `.twf` file or directory to join sampled definitions to (see [Packages and the design input](#packages-and-the-design-input)) |
 | `--sample-percent` | `10` | Percent of each type's executions to sample |
 | `--min-per-type` | `5` | Minimum executions to sample per type |
+| `--transitive-per-type` | `5` | Most executions to hold per child workflow type or Nexus operation, sampled or fetched for a caller's sake; `0` skips fetching them |
 | `--buckets` | `1` | Equal-width time buckets to divide `[--since, --until]` into (1 = a single total). `>1` requires `--since` |
 | `--since` | _(none)_ | `StartTime` lower bound / bucket epoch: RFC3339 timestamp or duration like `24h` (relative to now) |
 | `--until` | _(none)_ | `StartTime` upper bound / bucket window end: RFC3339 timestamp or duration like `1h` (defaults to now) |
@@ -391,8 +412,9 @@ or drop `--status` before treating a missing node as drift.
 The sampling math and query construction (`sampling/select_test.go`), the
 history→observed-graph fold and bucketing (`history/history_test.go`), the
 per-run event decode and its table above (`history/events_test.go`), the
-nexus fold and endpoint join (`design/design_test.go`, `history/nexus_test.go`),
-the package join (`design/design_test.go`, `history/packages_test.go`), the
+transitive pass (`sampling/transitive_test.go`) and its diagnostics
+(`history/history_test.go`), the nexus fold and endpoint join (`design/design_test.go`,
+`history/nexus_test.go`), the package join (`design/design_test.go`, `history/packages_test.go`), the
 signal-target join by `id_scheme:` (`history/id_schemes_test.go`), the
 family join (`design/design_test.go`, `history/families_test.go`), and the
 output-path / time-flag parsing (`main_test.go`) are covered by pure-function
@@ -406,7 +428,6 @@ go test ./tools/sampler/...
 
 Open work is tracked as GitHub issues:
 
-- Transitive child-workflow / nexus-target sampling, and `asyncBacking` from handler histories — [#59](https://github.com/jmbarzee/temporal-architect/issues/59)
 - Templated nexus endpoint families — [#816](https://github.com/jmbarzee/temporal-architect/issues/816)
 - Concurrency and rate limiting, plus parallel sharded sampling with post-hoc `observe.Merge` — [#60](https://github.com/jmbarzee/temporal-architect/issues/60)
 - Temporal Cloud env-var auth — [#62](https://github.com/jmbarzee/temporal-architect/issues/62)

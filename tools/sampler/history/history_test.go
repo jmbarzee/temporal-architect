@@ -247,6 +247,44 @@ func TestBuild_LocalActivityMarkerWithoutType(t *testing.T) {
 	}
 }
 
+func TestBuild_Unreached(t *testing.T) {
+	epoch := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	runs := []History{
+		{WorkflowID: "order-1", RunID: "r1", Events: []*historypb.HistoryEvent{startedEvent("OrderWorkflow", "orders", epoch)}},
+		{WorkflowID: "order-2", RunID: "r2", Events: []*historypb.HistoryEvent{startedEvent("OrderWorkflow", "orders", epoch)}},
+	}
+	wf := graph.HostedID(graph.KindWorkflow, "OrderWorkflow", "orders", "default", false)
+	var unreached []Unreached
+	for _, r := range runs { // both runs name the same targets
+		unreached = append(unreached,
+			Unreached{WorkflowID: r.WorkflowID, RunID: r.RunID, Subject: SubjectChild, Name: "Ship"},
+			Unreached{WorkflowID: r.WorkflowID, RunID: r.RunID, Subject: SubjectNexus, Name: "Invoices.Create", Target: "billing"},
+			Unreached{WorkflowID: r.WorkflowID, RunID: r.RunID, Subject: SubjectNexus, Name: "Ledger.Post", Target: "billing", Unlinked: true},
+		)
+	}
+	og := Build(runs, Options{Namespace: "default", Unreached: unreached})
+
+	want := []graph.Diagnostic{{ // Finalize orders them by node, then code
+		Severity: "warning",
+		Code:     diagChildHistoryUnavailable,
+		Message:  `the history of child workflow "Ship" could not be read, so its own calls are not drawn`,
+		From:     wf,
+	}, {
+		Severity: "hint",
+		Code:     diagNexusTargetUnlinked,
+		Message:  `Nexus operation Ledger.Post through endpoint "billing" links no workflow run, so its handler is not sampled`,
+		From:     wf,
+	}, {
+		Severity: "warning",
+		Code:     diagNexusTargetUnreachable,
+		Message:  `the handler run of Nexus operation Invoices.Create through endpoint "billing" could not be read, so its own calls are not drawn`,
+		From:     wf,
+	}}
+	if !slices.Equal(og.Diagnostics, want) { // once per caller node and target, however many runs
+		t.Errorf("diagnostics = %+v, want %+v", og.Diagnostics, want)
+	}
+}
+
 func TestLocalActivityType(t *testing.T) {
 	tests := []struct {
 		name    string

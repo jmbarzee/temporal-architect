@@ -29,6 +29,10 @@ type Options struct {
 	Namespace     string
 	SamplePercent int
 	MinPerType    int
+	// TransitivePerType caps, per child workflow type or Nexus operation, the
+	// executions held directly or fetched transitively; 0 turns the transitive
+	// pass off.
+	TransitivePerType int
 
 	// Status, when non-empty, restricts sampling to a single ExecutionStatus
 	// (e.g. "Running", "Completed", "Failed").
@@ -45,12 +49,17 @@ type Options struct {
 // Phase A enumerates the distinct workflow types and their counts. Phase B,
 // for each type, selects max(MinPerType, ceil(SamplePercent% * count))
 // executions (preferring running ones) and downloads their full histories.
-func Sample(ctx context.Context, c client.Client, opts Options) ([]history.History, error) {
+//
+// A transitive pass then fetches the runs those histories name, as
+// fetchTransitive does, in the namespace each names. It is a consequence of the
+// sample, not part of it: it neither alters the selection nor honors the
+// filters. The references it did not reach are returned beside the histories.
+func Sample(ctx context.Context, c client.Client, opts Options) ([]history.History, []history.Unreached, error) {
 	f := filters{status: opts.Status, since: opts.Since, until: opts.Until}
 
 	counts, candidates, err := enumerate(ctx, c, opts.Namespace, f)
 	if err != nil {
-		return nil, fmt.Errorf("enumerate workflow types: %w", err)
+		return nil, nil, fmt.Errorf("enumerate workflow types: %w", err)
 	}
 
 	// Deterministic type order so repeated runs produce stable output.
@@ -62,6 +71,7 @@ func Sample(ctx context.Context, c client.Client, opts Options) ([]history.Histo
 
 	var out []history.History
 	fetched := map[string]bool{} // run IDs already in out
+	held := map[typeKey]int{}    // executions held, by type
 	for _, wfType := range types {
 		n := sampleCount(counts[wfType], opts.SamplePercent, opts.MinPerType)
 		if n <= 0 {
@@ -76,17 +86,18 @@ func Sample(ctx context.Context, c client.Client, opts Options) ([]history.Histo
 			// GROUP BY path: query just the executions we will keep.
 			cands, err := queryByType(ctx, c, opts.Namespace, wfType, n, f)
 			if err != nil {
-				return nil, fmt.Errorf("query %q executions: %w", wfType, err)
+				return nil, nil, fmt.Errorf("query %q executions: %w", wfType, err)
 			}
 			selected = selectCandidates(cands, n)
 		}
 
+		held[typeKey{name: wfType}] += len(selected)
 		for _, cand := range selected {
-			runs, err := fetchChain(cand, fetched, func(runID string) ([]*historypb.HistoryEvent, error) {
+			runs, err := fetchChain(cand, fetched, false, func(runID string) ([]*historypb.HistoryEvent, error) {
 				return fetchHistory(ctx, c, cand.workflowID, runID)
 			})
 			if err != nil {
-				return nil, fmt.Errorf("fetch history %s/%s: %w", wfType, cand.workflowID, err)
+				return nil, nil, fmt.Errorf("fetch history %s/%s: %w", wfType, cand.workflowID, err)
 			}
 			for _, r := range runs {
 				out = append(out, history.History{
@@ -98,7 +109,34 @@ func Sample(ctx context.Context, c client.Client, opts Options) ([]history.Histo
 			}
 		}
 	}
-	return out, nil
+	if opts.TransitivePerType <= 0 {
+		return out, nil, nil
+	}
+
+	clients := map[string]client.Client{opts.Namespace: c}
+	defer func() {
+		for ns, cl := range clients {
+			if ns != opts.Namespace {
+				cl.Close()
+			}
+		}
+	}()
+	found, unreached, err := fetchTransitive(out, fetched, held, opts.TransitivePerType,
+		func(namespace, workflowID, runID string) ([]*historypb.HistoryEvent, error) {
+			cl, ok := clients[namespace]
+			if !ok {
+				var err error
+				if cl, err = client.NewClientFromExisting(c, client.Options{Namespace: namespace}); err != nil {
+					return nil, err
+				}
+				clients[namespace] = cl
+			}
+			return fetchHistory(ctx, cl, workflowID, runID)
+		})
+	if err != nil {
+		return nil, nil, fmt.Errorf("fetch transitive histories: %w", err)
+	}
+	return append(out, found...), unreached, nil
 }
 
 // enumerate returns the per-type execution counts and, when the fallback scan
