@@ -38,6 +38,8 @@ import { EMPTY_PARSER_GRAPH } from '../types/parser-graph'
 import type { Decomposition } from '../types/decomposition'
 import type { DecompositionParams } from './protocol'
 import { TreeView, type TreeFocus } from './TreeView'
+import { SequenceView } from '../sequence/SequenceView'
+import type { Execution } from '../sequence/execution'
 import { GroupsModal } from './GroupsModal'
 import { ErrorBars } from './ErrorBars'
 import { focusedFiles } from '../adapter/files'
@@ -61,6 +63,9 @@ interface WorkflowCanvasProps {
    * overlay's chunks scheme. Optional and additive: when absent that scheme
    * is inert. The tree view does not consume it. */
   decomposition?: Decomposition
+  /** One execution, drawn by the Sequence view. Optional; without it the view
+   * has no tab. Provisional: the wire contract is #752's. */
+  execution?: Execution
   /** Invoked when the user narrows the file filter to exactly one file —
    * a hint to host applications (e.g. VS Code) to focus that file in their
    * editor. Optional; ignored when not provided. */
@@ -135,8 +140,8 @@ export const NavigationContext = React.createContext<NavigationContextType>({
 })
 
 
-type ActiveView = 'tree' | 'graph'
-const VIEWS: readonly ActiveView[] = ['tree', 'graph']
+type ActiveView = 'tree' | 'graph' | 'sequence'
+const VIEWS: readonly ActiveView[] = ['tree', 'graph', 'sequence']
 
 // A view switch as this host states it: a focus carries the target's qualified
 // name as well as its values, because the tree finds a definition, and the graph
@@ -157,7 +162,7 @@ const DEFAULT_PINS: AxisLocks = new Map([
   [DEF_TYPE_DIMENSION, false],
 ])
 
-export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, onRefocus, onRequestDecomposition, className, style }: WorkflowCanvasProps) {
+export function WorkflowCanvas({ ast, parserGraph, decomposition, execution, onOpenFile, onRefocus, onRequestDecomposition, className, style }: WorkflowCanvasProps) {
   const graphInput = parserGraph ?? EMPTY_PARSER_GRAPH
   // History mode: a graph-only payload (e.g. the sampler's observed graph) has
   // no AST definitions. The Tree view has nothing to render, so we hide its tab
@@ -174,7 +179,7 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
   // away, so its viewport/layout survive a round-trip to the Tree view. We
   // mount it lazily rather than on first render so its one-shot initial fit
   // happens while it's visible (a hidden 0×0 container would fit to nothing).
-  const [graphEverShown, setGraphEverShown] = React.useState(historyMode)
+  const [graphEverShown, setGraphEverShown] = React.useState(historyMode && !execution)
 
   // The Graph view's inputs, read here off the payload: the graph built from
   // the parser's deployment graph, the findings, the chip counts. The
@@ -200,9 +205,10 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
     taxonomy: DEFAULT_TAXONOMY,
     views: VIEWS,
     graph: model.graph,
-    start: historyMode ? 'graph' : 'tree',
+    start: historyMode ? (execution ? 'sequence' : 'graph') : 'tree',
     initialSearch: { query: persisted.searchQuery ?? '', active: false },
     initial: view => {
+      if (view === 'sequence') return undefined
       const saved = view === 'tree'
         ? { filter: persisted.treeFilter, locks: persisted.treePins, axes: persisted.treeChain }
         : { filter: persisted.graphFilter, locks: persisted.graphPins, axes: persisted.graphChain }
@@ -338,6 +344,13 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
     // by construction (Show in [view] is always cross-view).
     if (target === activeView && transition.kind === 'manual') return
 
+    // The Sequence view is reached by its tab alone: nothing in it is a
+    // definition or a node to focus, and without an execution it has none.
+    if (target === 'sequence') {
+      if (execution && transition.kind === 'manual') switchTo('sequence')
+      return
+    }
+
     // A focus into the Graph: the hook switches to it and hands the view a
     // request, which reconciles its own filter, flashes any lock it overrides
     // and centres on the node. A target with no node in the graph is a manual
@@ -366,7 +379,7 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
       switchTo('graph')
       setGraphEverShown(true)
     }
-  }, [activeView, historyMode, model.graph, switchTo, focus])
+  }, [activeView, historyMode, execution, model.graph, switchTo, focus])
 
   // Cross-view focus actions invoked by per-view UI (tree's "Show in
   // Graph" contextual button, graph's right-click menu / toolbar button).
@@ -457,6 +470,14 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
           >
             Graph
           </button>
+          {execution && (
+            <button
+              className={`tab-bar-btn ${activeView === 'sequence' ? 'active' : ''}`}
+              onClick={() => switchView('sequence', { kind: 'manual' })}
+            >
+              Sequence
+            </button>
+          )}
         </div>
 
         {/* Both views stay mounted (keep-alive) so their per-view state
@@ -506,6 +527,11 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, onOpenFile, on
               onLayoutChange={setLayout}
               {...linked.of('graph')}
             />
+          </div>
+        )}
+        {execution && (
+          <div className={`view-pane${activeView === 'sequence' ? '' : ' hidden'}`}>
+            <SequenceView execution={execution} systemTheme={hostTheme} {...linked.of('sequence')} />
           </div>
         )}
       </div>

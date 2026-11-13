@@ -61,6 +61,7 @@ func Sample(ctx context.Context, c client.Client, opts Options) ([]history.Histo
 	sort.Strings(types)
 
 	var out []history.History
+	fetched := map[string]bool{} // run IDs already in out
 	for _, wfType := range types {
 		n := sampleCount(counts[wfType], opts.SamplePercent, opts.MinPerType)
 		if n <= 0 {
@@ -81,15 +82,20 @@ func Sample(ctx context.Context, c client.Client, opts Options) ([]history.Histo
 		}
 
 		for _, cand := range selected {
-			events, err := fetchHistory(ctx, c, cand)
+			runs, err := fetchChain(cand, fetched, func(runID string) ([]*historypb.HistoryEvent, error) {
+				return fetchHistory(ctx, c, cand.workflowID, runID)
+			})
 			if err != nil {
 				return nil, fmt.Errorf("fetch history %s/%s: %w", wfType, cand.workflowID, err)
 			}
-			out = append(out, history.History{
-				WorkflowID: cand.workflowID,
-				Namespace:  opts.Namespace,
-				Events:     events,
-			})
+			for _, r := range runs {
+				out = append(out, history.History{
+					WorkflowID: cand.workflowID,
+					RunID:      r.runID,
+					Namespace:  opts.Namespace,
+					Events:     r.events,
+				})
+			}
 		}
 	}
 	return out, nil
@@ -242,9 +248,9 @@ func pageInto(ctx context.Context, c client.Client, namespace, query string, lim
 	return nil
 }
 
-// fetchHistory drains the full event history for one execution.
-func fetchHistory(ctx context.Context, c client.Client, cand candidate) ([]*historypb.HistoryEvent, error) {
-	iter := c.GetWorkflowHistory(ctx, cand.workflowID, cand.runID, false,
+// fetchHistory drains the full event history for one run.
+func fetchHistory(ctx context.Context, c client.Client, workflowID, runID string) ([]*historypb.HistoryEvent, error) {
+	iter := c.GetWorkflowHistory(ctx, workflowID, runID, false,
 		enumspb.HISTORY_EVENT_FILTER_TYPE_ALL_EVENT)
 	var events []*historypb.HistoryEvent
 	for iter.HasNext() {

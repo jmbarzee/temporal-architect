@@ -20,12 +20,14 @@ import (
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/observe"
 )
 
-// History is one workflow execution's event log. WorkflowID is the execution
-// ID — needed for cross-batch signal-target resolution. Namespace, when
-// non-empty, overrides Options.Namespace for this specific history; used to set
-// the namespace from the sampled execution's origin.
+// History is one workflow run's event log. (WorkflowID, RunID) identifies the
+// run: continue-as-new chains several runs under one WorkflowID, and each is its
+// own History. Namespace, when non-empty, overrides Options.Namespace for this
+// specific history; used to set the namespace from the sampled execution's
+// origin.
 type History struct {
 	WorkflowID string
+	RunID      string
 	Namespace  string
 	Events     []*historypb.HistoryEvent
 }
@@ -40,9 +42,9 @@ type Options struct {
 }
 
 // LoadFile reads and parses a single Temporal history JSON file (the format
-// produced by `temporal workflow show -o json`). workflowID is the execution
-// identity.
-func LoadFile(path, workflowID string) (History, error) {
+// produced by `temporal workflow show -o json`). workflowID and runID are the
+// run's identity.
+func LoadFile(path, workflowID, runID string) (History, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return History{}, err
@@ -52,17 +54,18 @@ func LoadFile(path, workflowID string) (History, error) {
 	if err := opts.Unmarshal(data, &h); err != nil {
 		return History{}, err
 	}
-	return History{WorkflowID: workflowID, Events: h.Events}, nil
+	return History{WorkflowID: workflowID, RunID: runID, Events: h.Events}, nil
 }
 
 // Build folds a set of workflow histories into an observe.ObservedGraph using
 // the same node-ID scheme as graph.Extract, so the output is compatible with
-// the visualizer's Graph tab without any .twf source. Each observed dispatch
+// the visualizer's Graph tab without any .twf source. Every run of a
+// continue-as-new chain is folded into the same graph. Each observed dispatch
 // increments the occurrence bucket its event time falls in.
 //
 // The algorithm is a deterministic multi-pass fold:
 //  1. Pass 1 — index: extract workflow type, task queue, and namespace from each
-//     history's WORKFLOW_EXECUTION_STARTED event; build a workflowID → info map
+//     run's WORKFLOW_EXECUTION_STARTED event; index them by (workflowID, runID)
 //     for cross-history signal-target resolution.
 //  2. Synthesize workers: one worker node per distinct (namespace, taskQueue)
 //     pair, worker name = queue name.
@@ -73,7 +76,12 @@ func LoadFile(path, workflowID string) (History, error) {
 func Build(histories []History, opts Options) *observe.ObservedGraph {
 	sorted := make([]History, len(histories))
 	copy(sorted, histories)
-	sort.Slice(sorted, func(i, j int) bool { return sorted[i].WorkflowID < sorted[j].WorkflowID })
+	sort.Slice(sorted, func(i, j int) bool {
+		if sorted[i].WorkflowID != sorted[j].WorkflowID {
+			return sorted[i].WorkflowID < sorted[j].WorkflowID
+		}
+		return sorted[i].RunID < sorted[j].RunID
+	})
 
 	win := parseWindow(opts.Window)
 	b := &builder{
@@ -102,6 +110,29 @@ type startInfo struct {
 	workflowType string
 	taskQueue    string
 	namespace    string
+	started      time.Time
+}
+
+type runKey struct {
+	workflowID, runID string
+}
+
+// runIndex resolves a signal target. A signal names a workflow ID and, when the
+// sender knew it, a run ID; without one it reaches the workflow's current run,
+// approximated by the latest sampled run to have started.
+type runIndex struct {
+	byRun  map[runKey]startInfo
+	latest map[string]startInfo
+}
+
+func (ix runIndex) resolve(workflowID, runID string) (startInfo, bool) {
+	if runID != "" {
+		if info, ok := ix.byRun[runKey{workflowID, runID}]; ok {
+			return info, true
+		}
+	}
+	info, ok := ix.latest[workflowID]
+	return info, ok
 }
 
 type edgeKey struct {
@@ -112,7 +143,7 @@ type builder struct {
 	namespace string
 	win       pwindow
 	og        *observe.ObservedGraph
-	index     map[string]startInfo // workflowID → startInfo
+	index     runIndex
 	nodesSeen map[string]struct{}
 	edgeIdx   map[edgeKey]int // edgeKey → index into og.Edges
 }
@@ -174,30 +205,48 @@ func (pw pwindow) index(t time.Time) int {
 // Pass 1 — index
 // ---------------------------------------------------------------------------
 
-func buildIndex(histories []History, fallbackNS string) map[string]startInfo {
-	idx := make(map[string]startInfo, len(histories))
+// startOf reads a run's identity from its WORKFLOW_EXECUTION_STARTED event.
+// ok is false for a history without a usable one.
+func startOf(h History, fallbackNS string) (info startInfo, ok bool) {
+	for _, e := range h.Events {
+		if e.EventType != enumspb.EVENT_TYPE_WORKFLOW_EXECUTION_STARTED {
+			continue
+		}
+		attr := e.GetWorkflowExecutionStartedEventAttributes()
+		if attr == nil {
+			return startInfo{}, false
+		}
+		ns := h.Namespace
+		if ns == "" {
+			ns = fallbackNS
+		}
+		info = startInfo{
+			workflowType: attr.GetWorkflowType().GetName(),
+			taskQueue:    attr.GetTaskQueue().GetName(),
+			namespace:    ns,
+			started:      eventTime(e),
+		}
+		return info, info.workflowType != "" && info.taskQueue != ""
+	}
+	return startInfo{}, false
+}
+
+func buildIndex(histories []History, fallbackNS string) runIndex {
+	ix := runIndex{
+		byRun:  make(map[runKey]startInfo, len(histories)),
+		latest: make(map[string]startInfo, len(histories)),
+	}
 	for _, h := range histories {
-		for _, e := range h.Events {
-			if e.EventType != enumspb.EVENT_TYPE_WORKFLOW_EXECUTION_STARTED {
-				continue
-			}
-			attr := e.GetWorkflowExecutionStartedEventAttributes()
-			if attr == nil {
-				break
-			}
-			ns := h.Namespace
-			if ns == "" {
-				ns = fallbackNS
-			}
-			idx[h.WorkflowID] = startInfo{
-				workflowType: attr.GetWorkflowType().GetName(),
-				taskQueue:    attr.GetTaskQueue().GetName(),
-				namespace:    ns,
-			}
-			break
+		info, ok := startOf(h, fallbackNS)
+		if !ok {
+			continue
+		}
+		ix.byRun[runKey{h.WorkflowID, h.RunID}] = info
+		if prev, seen := ix.latest[h.WorkflowID]; !seen || info.started.After(prev.started) {
+			ix.latest[h.WorkflowID] = info
 		}
 	}
-	return idx
+	return ix
 }
 
 // ---------------------------------------------------------------------------
@@ -205,29 +254,8 @@ func buildIndex(histories []History, fallbackNS string) map[string]startInfo {
 // ---------------------------------------------------------------------------
 
 func (b *builder) processHistory(h History) {
-	var root startInfo
-	found := false
-	for _, e := range h.Events {
-		if e.EventType != enumspb.EVENT_TYPE_WORKFLOW_EXECUTION_STARTED {
-			continue
-		}
-		attr := e.GetWorkflowExecutionStartedEventAttributes()
-		if attr == nil {
-			break
-		}
-		ns := h.Namespace
-		if ns == "" {
-			ns = b.namespace
-		}
-		root = startInfo{
-			workflowType: attr.GetWorkflowType().GetName(),
-			taskQueue:    attr.GetTaskQueue().GetName(),
-			namespace:    ns,
-		}
-		found = true
-		break
-	}
-	if !found || root.workflowType == "" || root.taskQueue == "" {
+	root, ok := startOf(h, b.namespace)
+	if !ok {
 		return
 	}
 
@@ -289,11 +317,12 @@ func (b *builder) handleSignalInitiated(e *historypb.HistoryEvent, callerID stri
 	if attr == nil {
 		return
 	}
-	targetWFID := attr.GetWorkflowExecution().GetWorkflowId()
+	target := attr.GetWorkflowExecution()
+	targetWFID := target.GetWorkflowId()
 	if targetWFID == "" {
 		return
 	}
-	info, ok := b.index[targetWFID]
+	info, ok := b.index.resolve(targetWFID, target.GetRunId())
 	if !ok {
 		b.og.Unresolved = append(b.og.Unresolved, graph.Unresolved{
 			From: callerID,
