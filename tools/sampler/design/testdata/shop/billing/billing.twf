@@ -1,0 +1,8 @@
+package billing
+
+workflow Process(id):
+	activity Charge(id) -> receipt
+	close complete(receipt)
+
+activity Charge(id):
+	pass()

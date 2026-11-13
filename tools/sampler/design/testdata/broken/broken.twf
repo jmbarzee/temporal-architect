@@ -1,0 +1,3 @@
+workflow W(id):
+	activity Missing(id) -> r
+	close complete(r)
