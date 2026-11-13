@@ -87,6 +87,7 @@ export function observedToParserGraph(og: ObservedGraph): ParserGraph {
     coarsenedEdges: og.coarsenedEdges,
     unresolved: og.unresolved,
     diagnostics: og.diagnostics,
+    packages: og.packages,
   }
 }
 

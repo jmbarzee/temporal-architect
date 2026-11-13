@@ -140,3 +140,16 @@ func TestBuild_NameTheDesignCannotResolve(t *testing.T) {
 		}
 	}
 }
+
+// A design's packages table rides on the observed graph, and without a design
+// there is none.
+func TestBuild_CarriesDesignPackages(t *testing.T) {
+	d := loadShop(t)
+	og := Build(shopHistories(t), Options{Namespace: "shop", Design: d})
+	if len(og.Packages) == 0 || !reflect.DeepEqual(og.Packages, d.Graph.Packages) {
+		t.Errorf("Packages = %v, want the design's %v", og.Packages, d.Graph.Packages)
+	}
+	if got := Build(shopHistories(t), Options{Namespace: "shop"}).Packages; got != nil {
+		t.Errorf("Packages = %v without a design, want none", got)
+	}
+}
