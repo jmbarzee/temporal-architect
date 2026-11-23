@@ -66,7 +66,8 @@ func (k Kind) String() string {
 	return [...]string{"next", "then", "else", "case", "default", "wins", "branch", "iterate", "done"}[k]
 }
 
-// arm reports whether k picks one way out of several.
+// arm reports whether k is one of several edges out of its source: a choice
+// among them, or, for Branch, one of an await all's runs, which all start.
 func (k Kind) arm() bool { return k >= Then && k <= Branch }
 
 // Edge leads From one node To another.
@@ -89,14 +90,15 @@ type Graph struct {
 	out, in map[Node][]Edge
 	body    map[Node]*Body
 	loop    map[Node]*ast.ForStmt
+	inside  map[Node]map[Node]bool // each for's node, and every node it encloses
 	reached map[Node]bool
 }
 
 // Of returns the graph of a workflow, activity or sync nexus operation, and
 // nil for anything else.
 func Of(def ast.Node) *Graph {
-	g := &Graph{out: map[Node][]Edge{}, in: map[Node][]Edge{}, body: map[Node]*Body{}, loop: map[Node]*ast.ForStmt{}}
-	w := &builder{g: g, inside: map[Node]map[Node]bool{}}
+	g := &Graph{out: map[Node][]Edge{}, in: map[Node][]Edge{}, body: map[Node]*Body{}, loop: map[Node]*ast.ForStmt{}, inside: map[Node]map[Node]bool{}}
+	w := &builder{g: g}
 	switch d := def.(type) {
 	case *ast.WorkflowDef:
 		w.add(d, d.Context, d.Body)
@@ -120,16 +122,19 @@ func Of(def ast.Node) *Graph {
 	default:
 		return nil
 	}
-	g.reach()
-	w.cycles()
+	var entries []Node
+	for _, b := range g.bodies {
+		entries = append(entries, b.Entry)
+	}
+	g.reached = g.reach(entries, func(Edge) bool { return true })
+	g.cycles()
 	return g
 }
 
 type builder struct {
-	g      *Graph
-	body   *Body
-	loops  []loop                 // the fors around what is being placed, innermost last
-	inside map[Node]map[Node]bool // each for's node, and every node it encloses
+	g     *Graph
+	body  *Body
+	loops []loop // the fors around what is being placed, innermost last
 }
 
 type loop struct{ at, after Node }
@@ -146,7 +151,7 @@ func (w *builder) place(n Node) {
 	w.body.nodes = append(w.body.nodes, n)
 	w.g.body[n] = w.body
 	for _, l := range w.loops {
-		w.inside[l.at][n] = true
+		w.g.inside[l.at][n] = true
 	}
 }
 
@@ -201,7 +206,7 @@ func (w *builder) stmt(s ast.Statement, next Node) {
 	case *ast.AwaitAllBlock:
 		w.all(n, s.Body, next)
 	case *ast.ForStmt:
-		w.inside[n] = map[Node]bool{n: true}
+		w.g.inside[n] = map[Node]bool{n: true}
 		w.loops = append(w.loops, loop{n, next})
 		w.g.edge(n, Iterate, w.seq(s.Body, n))
 		w.loops = w.loops[:len(w.loops)-1]
@@ -248,11 +253,10 @@ func (w *builder) innermost() (loop, bool) {
 
 // cycles records, for each node on a reached cycle through a for's own body,
 // the innermost such for.
-func (w *builder) cycles() {
-	g := w.g
+func (g *Graph) cycles() {
 	for _, b := range g.bodies {
 		for _, n := range b.nodes { // outer fors before inner ones
-			inside := w.inside[n]
+			inside := g.inside[n]
 			if inside == nil {
 				continue
 			}
@@ -275,35 +279,34 @@ func (w *builder) cycles() {
 	}
 }
 
-// reach records what a run can arrive at from any body's Entry, opening each
-// Join once every branch arrives there without passing its await all again.
-func (g *Graph) reach() {
-	var entries []Node
-	for _, b := range g.bodies {
-		entries = append(entries, b.Entry)
-	}
+// reach returns what a run can arrive at from from along edges pass allows,
+// opening each Join once every branch arrives there without passing its
+// await all again.
+func (g *Graph) reach(from []Node, pass func(Edge) bool) map[Node]bool {
 	open := map[Node]bool{}
-	pass := func(e Edge) bool { return e.From.Port != Join || open[e.From] }
+	through := func(e Edge) bool { return pass(e) && (e.From.Port != Join || open[e.From]) }
+	var reached map[Node]bool
 	for grew := true; grew; {
 		grew = false
-		g.reached = g.walk(entries, false, pass)
-		for n := range g.reached {
+		reached = g.walk(from, false, through)
+		for n := range reached {
 			if n.Port != Join || open[n] {
 				continue
 			}
 			opener := Node{At: n.At}
-			within := func(e Edge) bool { return pass(e) && e.To != opener }
+			within := func(e Edge) bool { return through(e) && e.To != opener }
 			open[n] = !slices.ContainsFunc(g.out[opener], func(e Edge) bool {
 				return e.Kind == Branch && !g.walk([]Node{e.To}, false, within)[n]
 			})
 			grew = grew || open[n]
 		}
 	}
-	for n := range g.reached {
+	for n := range reached {
 		if n.Port == Join && !open[n] {
-			delete(g.reached, n)
+			delete(reached, n)
 		}
 	}
+	return reached
 }
 
 func (g *Graph) edge(from Node, k Kind, to Node) {

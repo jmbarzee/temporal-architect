@@ -94,9 +94,10 @@ func render(f *ast.File) string {
 				key = id.String()
 			}
 			fmt.Fprintf(&out, "%s\n", key)
+			yields := g.Yields(b)
 			for _, n := range b.nodes {
 				fields := []string{name(g, b, n)}
-				if yields(n) {
+				if slices.Contains(yields, n) {
 					fields = append(fields, "yield")
 				}
 				switch g.Multiplicity(n) {
@@ -112,7 +113,11 @@ func render(f *ast.File) string {
 					fields = append(fields, "loop "+strconv.Itoa(l.Line))
 				}
 				for _, e := range g.Out(n) {
-					fields = append(fields, e.Kind.String()+"→"+name(g, b, e.To))
+					edge := e.Kind.String() + "→" + name(g, b, e.To)
+					if g.Back(e) {
+						edge = "back:" + edge
+					}
+					fields = append(fields, edge)
 				}
 				fmt.Fprintf(&out, "\t%s\n", strings.Join(fields, "  "))
 			}
@@ -197,7 +202,7 @@ func TestWorkedExample(t *testing.T) {
 		t.Errorf("Arms(31) = %v, want %v", got, want)
 	}
 	back := Edge{at(t, g, 102, Stmt), at(t, g, 48, Stmt), Else}
-	if !slices.Contains(g.In(back.To), back) || g.Loop(back.From) != back.To.At {
+	if !slices.Contains(g.In(back.To), back) || !g.Back(back) || g.Loop(back.From) != back.To.At {
 		t.Errorf("102 else→48 is not a back edge of the for at 48")
 	}
 }
@@ -264,6 +269,36 @@ func TestArms(t *testing.T) {
 	for _, tt := range tests {
 		if got := arms(g, g.Arms(at(t, g, tt.line, Stmt))); !reflect.DeepEqual(got, tt.want) {
 			t.Errorf("Arms(%d) = %v, want %v", tt.line, got, tt.want)
+		}
+	}
+	// past a Join only the else of a branch's closing if reaches
+	j := fixture(t, fixtures[3], "Joined")
+	if got, want := arms(j, j.Arms(at(t, j, 53, Stmt))), []string{"50 else→49 join"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("Arms(53) = %v, want %v", got, want)
+	}
+}
+
+func TestBack(t *testing.T) {
+	tests := []struct {
+		def      string
+		from, to int
+		kind     Kind
+		want     bool
+	}{
+		{"Edges", 19, 16, Next, true},     // a continue
+		{"Edges", 40, 36, Next, true},     // unreached
+		{"Joined", 55, 54, Done, true},    // an inner for's Done into an outer for
+		{"Edges", 16, 23, Done, false},    // an inner for's Done onward
+		{"Edges", 15, 16, Iterate, false}, // into a for from outside it
+	}
+	for _, tt := range tests {
+		g := fixture(t, fixtures[3], tt.def)
+		e := Edge{at(t, g, tt.from, Stmt), at(t, g, tt.to, Stmt), tt.kind}
+		if !slices.Contains(g.Out(e.From), e) {
+			t.Fatalf("%d has no %s edge to %d", tt.from, tt.kind, tt.to)
+		}
+		if got := g.Back(e); got != tt.want {
+			t.Errorf("Back(%d %s→%d) = %v, want %v", tt.from, tt.kind, tt.to, got, tt.want)
 		}
 	}
 }

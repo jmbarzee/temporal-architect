@@ -4,7 +4,7 @@ workflow:sandbox.SandboxOrchestrator
 	18  many  loop 18  iterate→19
 	19  yield  many  loop 18  next→20
 	20  many  loop 18  next→21
-	21  many  loop 18  then→22  else→18
+	21  many  loop 18  then→22  back:else→18
 	22  next→exit
 	exit
 workflow:sandbox.SandboxOrchestrator › signal Request
@@ -32,12 +32,12 @@ workflow:sandbox.Sandbox
 	64  many  loop 58  next→65
 	65  many  loop 58  then→67  else→71
 	67  many  loop 58  next→68
-	68  many  loop 58  next→58
-	71  many  loop 58  next→58
+	68  many  loop 58  back:next→58
+	71  many  loop 58  back:next→58
 	73  many  loop 58  next→74
-	74  many  loop 58  next→58
+	74  many  loop 58  back:next→58
 	75  many  loop 58  next→76
-	76  many  loop 58  next→58
+	76  many  loop 58  back:next→58
 	80  yield  next→81
 	81  next→exit
 	exit
@@ -51,10 +51,10 @@ workflow:sandbox.Sandbox › signal LeaseRelease
 	32  unknown  next→exit
 	exit  unknown
 workflow:sandbox.Sandbox › query GetLease
-	entry  yield  unknown  next→35
+	entry  unknown  next→35
 	35  unknown  next→exit
 	exit  unknown
 activity:sandbox.RunTool
-	entry  yield  next→86
+	entry  next→86
 	86  next→exit
 	exit

@@ -44,3 +44,13 @@ workflow Edges(items: Items):
 	activity AfterJoin()
 	close complete
 	activity AfterClose()
+
+workflow Joined(c: bool, items: Items):
+	await all:
+		if (c):
+			close fail
+		activity B()
+	activity X()
+	for (round < 3):
+		for (item in items):
+			activity Y(item)

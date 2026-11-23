@@ -29,8 +29,14 @@ func (g *Graph) In(n Node) []Edge { return g.in[n] }
 func (g *Graph) Reached(n Node) bool { return g.reached[n] }
 
 // Yields returns where a handler may run during b: its Entry, every await,
-// await one and Join, and every attached call.
+// await one and Join, and every attached call; nothing in a body no handler
+// interleaves with, an activity's, a query's or a sync nexus operation's.
 func (g *Graph) Yields(b *Body) []Node {
+	switch b.Context {
+	case ast.BodyWorkflow, ast.BodySignalHandler, ast.BodyUpdateHandler:
+	default:
+		return nil
+	}
 	return slices.DeleteFunc(slices.Clone(b.nodes), func(n Node) bool { return !yields(n) })
 }
 
@@ -53,6 +59,9 @@ func yields(n Node) bool {
 // every run leaves before its back edge holds nothing.
 func (g *Graph) Loop(n Node) *ast.ForStmt { return g.loop[n] }
 
+// Back reports whether e enters a for from its own body.
+func (g *Graph) Back(e Edge) bool { return g.inside[e.To][e.From] }
+
 // Multiplicity returns how often n runs.
 func (g *Graph) Multiplicity(n Node) Multiplicity {
 	switch g.body[n].Context {
@@ -70,7 +79,7 @@ func (g *Graph) Multiplicity(n Node) Multiplicity {
 func (g *Graph) Arms(n Node) []Edge {
 	b := g.body[n]
 	from := []Node{b.Entry}
-	if !g.walk(from, false, func(Edge) bool { return true })[n] {
+	if !g.reach(from, func(Edge) bool { return true })[n] {
 		return nil
 	}
 	var arms []Edge
@@ -80,7 +89,7 @@ func (g *Graph) Arms(n Node) []Edge {
 			if !e.Kind.arm() {
 				continue
 			}
-			if rest := g.walk(from, false, func(x Edge) bool { return x != e }); !rest[n] {
+			if rest := g.reach(from, func(x Edge) bool { return x != e }); !rest[n] {
 				arms = append(arms, e)
 				without[e] = rest
 			}

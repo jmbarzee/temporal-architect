@@ -45,9 +45,9 @@ workflow:agent.Agent
 	86  next→exit
 	89  many  loop 89  iterate→92  done→101
 	92  yield  many  loop 89  next→99
-	99  many  loop 89  next→89
+	99  many  loop 89  back:next→89
 	101  many  loop 48  next→102
-	102  many  loop 48  then→104  else→48
+	102  many  loop 48  then→104  back:else→48
 	104  next→exit
 	106  next→108
 	108  next→exit
@@ -70,6 +70,6 @@ workflow:agent.Agent › signal UserPrompt
 	20  unknown  next→exit
 	exit  unknown
 activity:agent.CallModel
-	entry  yield  next→111
+	entry  next→111
 	111  next→exit
 	exit

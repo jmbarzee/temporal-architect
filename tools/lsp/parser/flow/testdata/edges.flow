@@ -4,17 +4,17 @@ workflow:edges.Edges
 	16  many  loop 16  iterate→17  done→23
 	17  many  loop 16  case→18  case→20  default→22
 	18  many  loop 16  next→19
-	19  many  loop 16  next→16
+	19  many  loop 16  back:next→16
 	20  many  loop 15  next→21
 	21  many  loop 15  next→23
-	22  yield  many  loop 16  next→16
+	22  yield  many  loop 16  back:next→16
 	23  yield  many  loop 15  wins→24  wins→25
 	24  many  loop 15  next→27
 	25  next→26
 	26  next→30
 	27  many  loop 15  then→28  else→29
-	28  many  loop 15  next→15
-	29  many  loop 15  next→15
+	28  many  loop 15  back:next→15
+	29  many  loop 15  back:next→15
 	30  iterate→31
 	31  yield  next→32
 	32  next→33
@@ -26,7 +26,7 @@ workflow:edges.Edges
 	38  yield  next→37 join
 	39  next→41
 	37 join  yield  unreached  next→40
-	40  yield  unreached  next→36
+	40  yield  unreached  back:next→36
 	41  branch→42  branch→43
 	42  yield  next→41 join
 	43  next→exit
@@ -42,7 +42,19 @@ workflow:edges.Edges › signal Stop
 workflow:edges.Edges › update Count
 	entry  yield  unknown  next→10
 	10  unknown  loop 10  iterate→11  done→13
-	11  unknown  loop 10  then→12  else→10
+	11  unknown  loop 10  then→12  back:else→10
 	12  unknown  next→exit
 	13  unknown  next→exit
 	exit  unknown
+workflow:edges.Joined
+	entry  yield  next→49
+	49  branch→50  branch→52
+	50  then→51  else→49 join
+	51  next→exit
+	52  yield  next→49 join
+	49 join  yield  next→53
+	53  yield  next→54
+	54  many  loop 54  iterate→55  done→exit
+	55  many  loop 55  iterate→56  back:done→54
+	56  yield  many  loop 55  back:next→55
+	exit
