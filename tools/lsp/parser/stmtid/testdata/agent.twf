@@ -1,0 +1,111 @@
+# Agent: one unbroken LLM context working one Task inside one Sandbox.
+# Lease handling is the workflow's; the LLM never sees it.
+package agent
+
+import "github.com/jmbarzee/temporal-agent-sandbox/twf/sandbox/v1"
+
+workflow Agent(instructions: Instructions, task: Task, tools: Tools, resume: Resume) -> (Result):
+	signal SandboxAssign(id: SandboxId):
+		assigned = id
+
+	signal SandboxLeaseGrant(granted: Lease):
+		lease = granted
+		pending = false
+
+	signal SandboxLeaseDeny(reason: Reason):
+		denied = reason
+
+	# The user's next prompt, once the model has answered the last one.
+	signal UserPrompt(prompt: Prompt):
+		pass
+
+	# Outlasts the Sandbox's own creation caps, so a slow sandbox answers first.
+	leaseWait = 15m
+
+	if (resume == null):
+		deadline = workflow.now() + leaseWait
+		signal sandbox.SandboxOrchestrator.Request(workflow.id, task.relevantAssets)
+			id: "sandboxes"
+		await one:
+			signal SandboxAssign:
+				signal sandbox.Sandbox.LeaseRequest(workflow.id)
+					id: "sandbox/{assigned}"
+			timer(leaseWait):
+				close fail(LeaseTimeout{"no sandbox assigned"})
+		await one:
+			signal SandboxLeaseGrant:
+				context = [instructions, task]
+			signal SandboxLeaseDeny:
+				close fail(denied)
+			timer(deadline - workflow.now()):
+				close fail(LeaseTimeout{"no answer to the lease request"})
+	else:
+		lease = resume.lease
+		pending = false
+		context = resume.context
+	turns = 0
+
+	for:
+		if (denied != null):
+			close fail(denied)
+		if (pending and workflow.now() >= lease.expiry):
+			close fail(LeaseTimeout{"the lease expired with its renewal unanswered"})
+
+		# Deterministic clock (SDK workflow.Now); ask early, keep working while it answers.
+		if (workflow.now() > lease.expiry - lease.renewBefore and pending == false):
+			pending = true
+			signal sandbox.Sandbox.LeaseRequest(workflow.id)
+				id: "sandbox/{lease.sandboxId}"
+
+		activity CallModel(context, tools) -> reply
+			options:
+				start_to_close_timeout: 10m
+				retry_policy:
+					maximum_attempts: 3
+		context = context + reply
+
+		# The model declaring done ends the run.
+		if (reply.done):
+			break
+
+		# A reply without tool calls answers the prompt: hold no lease while the
+		# user reads it, then lease the same sandbox again for their next one.
+		# A user slower than the sandbox's grace finds it gone; the timer says so.
+		if (reply.toolCalls == null):
+			signal sandbox.Sandbox.LeaseRelease(workflow.id)
+				id: "sandbox/{lease.sandboxId}"
+			await signal UserPrompt -> prompt
+			context = context + prompt
+			signal sandbox.Sandbox.LeaseRequest(workflow.id)
+				id: "sandbox/{lease.sandboxId}"
+			await one:
+				signal SandboxLeaseGrant:
+				signal SandboxLeaseDeny:
+					close fail(denied)
+				timer(leaseWait):
+					close fail(LeaseTimeout{"no answer to the lease request"})
+
+		# Tool calls run one at a time.
+		for (call in reply.toolCalls):
+			# schedule_to_start: no poller means the sandbox is lost.
+			# A retry of a call that finished gets its kept output.
+			activity sandbox.RunTool(call) -> output
+				options:
+					task_queue: "sandbox-{lease.sandboxId}"
+					schedule_to_start_timeout: 1m
+					start_to_close_timeout: 30m
+					retry_policy:
+						maximum_attempts: 3
+			context = context + output
+
+		turns = turns + 1
+		if (turns >= 50):
+			# Continue as new to bound history; the context carries over whole.
+			close continue_as_new(instructions, task, tools, Resume{lease, context})
+
+	signal sandbox.Sandbox.LeaseRelease(workflow.id)
+		id: "sandbox/{lease.sandboxId}"
+	close complete(Result{context})
+
+activity CallModel(context: Context, tools: Tools) -> (Reply):
+	return llm.call(context, tools)

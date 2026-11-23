@@ -1,0 +1,43 @@
+11	workflow:sandbox.SandboxOrchestrator › signal Request
+12	workflow:sandbox.SandboxOrchestrator › signal Request › sandboxId = newId()
+13	workflow:sandbox.SandboxOrchestrator › signal Request › detach workflow Sandbox(sandboxId, assets)
+14	workflow:sandbox.SandboxOrchestrator › signal Request › signal agent.Agent.SandboxAssign(sandboxId)
+17	workflow:sandbox.SandboxOrchestrator › served = 0
+18	workflow:sandbox.SandboxOrchestrator › for
+19	workflow:sandbox.SandboxOrchestrator › for › await signal Request
+20	workflow:sandbox.SandboxOrchestrator › for › served = served + 1
+21	workflow:sandbox.SandboxOrchestrator › for › if (served >= 1000)
+22	workflow:sandbox.SandboxOrchestrator › for › if (served >= 1000) › close continue_as_new
+27	workflow:sandbox.Sandbox › signal LeaseRequest
+28	workflow:sandbox.Sandbox › signal LeaseRequest › pass
+30	workflow:sandbox.Sandbox › signal LeaseRelease
+31	workflow:sandbox.Sandbox › signal LeaseRelease › if (lease != null and lease.owner == requester)
+32	workflow:sandbox.Sandbox › signal LeaseRelease › if (lease != null and lease.owner == requester) › lease = null
+34	workflow:sandbox.Sandbox › query GetLease
+35	workflow:sandbox.Sandbox › query GetLease › return lease
+37	workflow:sandbox.Sandbox › leaseDuration = 15m
+38	workflow:sandbox.Sandbox › renewBefore = 5m
+39	workflow:sandbox.Sandbox › grace = 10m
+40	workflow:sandbox.Sandbox › lease = null
+45	workflow:sandbox.Sandbox › activity helm.RenderChart("sandbox", "sandbox-{sandboxId}", pods.namespace, Values{sandboxId, assets, pods}) -> resources
+46	workflow:sandbox.Sandbox › activity kube.Create(resources) -> ids
+50	workflow:sandbox.Sandbox › activity kube.Ready(ids)
+57	workflow:sandbox.Sandbox › deadline = workflow.now() + grace
+58	workflow:sandbox.Sandbox › for
+59	workflow:sandbox.Sandbox › for › if (lease != null)
+60	workflow:sandbox.Sandbox › for › if (lease != null) › deadline = lease.expiry + grace
+61	workflow:sandbox.Sandbox › for › if (workflow.now() >= deadline)
+62	workflow:sandbox.Sandbox › for › if (workflow.now() >= deadline) › break
+63	workflow:sandbox.Sandbox › for › await one
+64	workflow:sandbox.Sandbox › for › await one › signal LeaseRequest -> requester
+65	workflow:sandbox.Sandbox › for › await one › signal LeaseRequest -> requester › if (lease == null or lease.owner == requester or workflow.now() >= lease.expiry)
+67	workflow:sandbox.Sandbox › for › await one › signal LeaseRequest -> requester › if (lease == null or lease.owner == requester or workflow.now() >= lease.expiry) › lease = Lease{sandboxId, owner: requester, expiry: workflow.now() + leaseDuration, renewBefore}
+68	workflow:sandbox.Sandbox › for › await one › signal LeaseRequest -> requester › if (lease == null or lease.owner == requester or workflow.now() >= lease.expiry) › signal agent.Agent.SandboxLeaseGrant(lease)
+71	workflow:sandbox.Sandbox › for › await one › signal LeaseRequest -> requester › if (lease == null or lease.owner == requester or workflow.now() >= lease.expiry) › else › signal agent.Agent.SandboxLeaseDeny("leased to another holder")
+73	workflow:sandbox.Sandbox › for › await one › signal LeaseRelease
+74	workflow:sandbox.Sandbox › for › await one › signal LeaseRelease › continue
+75	workflow:sandbox.Sandbox › for › await one › timer(deadline - workflow.now())
+76	workflow:sandbox.Sandbox › for › await one › timer(deadline - workflow.now()) › continue
+80	workflow:sandbox.Sandbox › activity kube.Delete(ids)
+81	workflow:sandbox.Sandbox › close complete
+86	activity:sandbox.RunTool › return exec(call)

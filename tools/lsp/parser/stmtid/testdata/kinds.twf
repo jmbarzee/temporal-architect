@@ -1,0 +1,101 @@
+# Every statement kind, case kind, loop and handler, with twins.
+package kinds
+
+import "example.com/billing"
+
+workflow Order(order: Order) -> (Receipt):
+	id_scheme: "order-{order.id}"
+	state:
+		condition paid
+	signal Cancel(reason: string):
+		cancelled = true
+	update Approve(approver: string) -> (bool):
+		set paid
+		return true
+	query Status() -> (string):
+		return status
+
+	status = "new"  # a raw line
+	activity billing.Charge(order.total) -> charge
+		options:
+			start_to_close_timeout: 1m
+	workflow Ship(order) -> shipment
+	detach workflow Notify(order.customer, "a  string")
+	nexus Payments PaymentService.Refund(charge) -> refund
+	detach nexus Payments billing.Ledger.Record(charge)
+	promise child <- workflow Audit(order)
+	promise t <- timer(1h)
+	promise s <- signal Cancel
+	promise u <- update Approve
+	promise a <- activity Reserve(order)
+	promise n <- nexus Payments PaymentService.Hold(order)
+	signal child.Pause()
+	signal Audit.Pause()
+		id: "audit-{order.id}"
+	await timer(5m)
+	await signal Cancel -> reason
+	await update Approve -> (approver, at)
+	await activity Reserve(
+		order,
+		"two  spaces",
+	) -> hold
+	await workflow Audit(order) -> report
+	await nexus Payments PaymentService.Hold(order) -> held
+	await child -> report
+	await paid
+	await all:
+		activity Pack(order)
+		activity Pack(order)
+		workflow Label(order)
+	await one:
+		signal Cancel -> reason:
+			close fail(Cancelled{reason})
+		update Approve:
+		timer(24h):
+			close fail
+		activity Reserve(order) -> hold:
+			unset paid
+		workflow Audit(order) -> report:
+		nexus Payments PaymentService.Hold(order) -> held:
+		t:
+		await all:
+			activity Pack(order)
+			await timer(1m)
+	await one:
+		paid:
+			break
+		t:
+			continue
+	switch (order.kind):
+		case "digital":
+			activity Deliver(order)
+		case "physical":
+			activity Deliver(order)
+		else:
+			close fail
+	if (order.total > 100):
+		activity Review(order)
+	else:
+		activity Review(order)
+	for:
+		break
+	for (attempt < 3):
+		continue
+	for (item in order.items):
+		activity Pick(item)
+	close continue_as_new(order)
+	close complete(Receipt{order})
+
+activity Charge(amount: Money) -> (Charge):
+	if (amount == 0):
+		return null
+	charge = gateway.charge(amount)
+	return charge
+
+nexus service PaymentService:
+	async Hold workflow Order
+	sync Refund(charge: Charge) -> (Refund):
+		workflow RefundCharge(charge) -> refund
+		signal Order.Refunded(refund)
+			id: "order-{charge.orderId}"
+		close complete(refund)
