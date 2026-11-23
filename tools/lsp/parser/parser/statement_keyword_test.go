@@ -195,6 +195,7 @@ func TestSyncBodyRejects(t *testing.T) {
 		{"set Ready", "set"},
 		{"unset Ready", "unset"},
 		{"timer(1m)", "timer"},
+		{"close continue_as_new(x)", "close continue_as_new"},
 	}
 	blocks := []struct{ name, src, indent string }{
 		{"body", "nexus service Svc:\n\tsync Op(x) -> (R):\n\t\tworkflow W(x)\n\t\t%s\n\t\treturn x\n", "\t\t"},

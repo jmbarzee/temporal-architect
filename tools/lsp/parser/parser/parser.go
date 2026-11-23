@@ -433,6 +433,9 @@ func (p *Parser) parseStatement() (ast.Statement, error) {
 			if p.current.Type == token.DETACH && p.peek.Type == token.NEXUS {
 				return nil, p.errorf("detach nexus is not allowed in a sync nexus operation body")
 			}
+			if p.current.Type == token.CLOSE && p.peek.Type == token.CONTINUE_AS_NEW {
+				return nil, p.errorf("close continue_as_new is not allowed in a sync nexus operation body")
+			}
 		}
 		parseFn, ok = workflowStmtParsers[p.current.Type]
 	case ast.BodyQueryHandler, ast.BodyActivity:
