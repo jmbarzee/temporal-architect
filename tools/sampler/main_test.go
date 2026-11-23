@@ -74,3 +74,18 @@ func TestParseTimeFlag(t *testing.T) {
 		}
 	})
 }
+
+func TestParseFlags_TransitivePerType(t *testing.T) {
+	for _, tc := range []struct {
+		args []string
+		want int
+	}{
+		{nil, 5},
+		{[]string{"--transitive-per-type", "0"}, 0},
+		{[]string{"--transitive-per-type", "12"}, 12},
+	} {
+		if got := parseFlags(tc.args).transitivePerType; got != tc.want {
+			t.Errorf("parseFlags(%v).transitivePerType = %d, want %d", tc.args, got, tc.want)
+		}
+	}
+}

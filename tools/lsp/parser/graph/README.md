@@ -55,9 +55,9 @@ This maps to the two views a renderer wants:
    key shape works for parent lookup, persistence, and edge endpoints.
 5. **Edge kinds discriminate semantics.** Coarsened edges live in a separate
    top-level array because their shape differs (`tier` + `weight` instead of
-   `line` + `routing`).
+   `site` + `routing`).
 6. **Multi-graph at the producer.** Two call sites dispatching to the same target
-   produce two edges (distinct `line`). Consumers dedup for display if they want
+   produce two edges (distinct `site`). Consumers dedup for display if they want
    to.
 
 ## Node identity
@@ -81,6 +81,7 @@ an error message or a persisted reference without the surrounding `Node`.
 | NexusOperation (deployed) | `nexusOperation:<service>.<op>/worker:<worker>/namespace:<ns>` |
 | NexusOperation (orphan) | `nexusOperation:<service>.<op>/orphan` |
 | NexusEndpoint | `nexusEndpoint:<name>/namespace:<ns>` |
+| NexusEndpoint (orphan) | `nexusEndpoint:<name>/orphan` |
 
 `/orphan` is a *tag* (no value), distinguishing it from deployment-context
 segments, which use `key:value` form. The `orphan: true` field is redundant with
@@ -93,9 +94,10 @@ produce byte-identical IDs without duplicating the string shapes.
 **Endpoints** have no top-level definition in the AST — they exist only as
 `NamespaceDef.Endpoints[]` entries. The synthetic definition key
 `nexusEndpoint:<name>` is used for consistency; consumers needing endpoint detail
-(queue, source position) look the name up in the namespace's `Endpoints[]`. There
-is no orphan endpoint — an endpoint without a containing namespace can't be
-parsed.
+(queue, source position) look the name up in the namespace's `Endpoints[]`.
+`twf graph` emits no orphan endpoint — an endpoint without a containing namespace
+can't be parsed. The orphan form is the sampler's: a history names an endpoint but
+not where it points (see the [sampler](../../../sampler/README.md#nexus-operations)).
 
 ### Node field semantics
 
@@ -162,9 +164,10 @@ edges.
 
 - `from`, `to` (string, required) — node IDs.
 - `kind` (enum, required) — one of the table above.
-- `line` (int, required) — source line of the syntactic element that produced the
-  edge. For dispatch, the call site. For containment, the child's registration /
-  declaration line. For `nexusRoute`, the endpoint's declaration line.
+- `site` (object, optional) — `file`, `line` and `column` of the syntactic
+  element that produced the edge. For dispatch, the call. For containment, the
+  child's registration / declaration. For `nexusRoute`, the endpoint's
+  declaration. Absent on an edge observed in history, which has no source.
 - `routing` (object, optional) — present **only** on dispatch edges; the
   diagnostic *cause* of the edge:
   - `explicit` (string, optional) — the `task_queue:` literal the user wrote on
@@ -195,16 +198,17 @@ One edge per (child, parent) deployment pair:
 | NexusService deployment | Worker deployment |
 | NexusOperation deployment | NexusService deployment (same worker, same namespace) |
 
-Orphan nodes have no containment edges.
+Orphan nodes have no containment edges. (The sampler's orphan nexus operation
+has one, to its orphan service: a history names that pairing, and no worker.)
 
 A nexus operation's parent is the **service**, not the endpoint. The endpoint's
 role is routing, captured separately (see [Nexus routes](#nexus-routes)).
 
-The `line` is the child's own source line: the `NamespaceWorker` /
-`NamespaceEndpoint` line for the first two rows, the operation's declaration line
-for the last, and — for hosted definitions — the *worker's registration line for
-that definition*, which is more precise than the definition's declaration line
-and reflects where the containment relationship was authored.
+The `site` is the child's own: the `NamespaceWorker` / `NamespaceEndpoint` for
+the first two rows, the operation's declaration for the last, and — for hosted
+definitions — the *worker's registration of that definition*, which is more
+precise than the definition's declaration and reflects where the containment
+relationship was authored.
 
 ## Resolution rules
 
@@ -249,7 +253,7 @@ counts once toward coarsened weight.
 
 When no callee deployment matches, no edge is emitted and a
 `DISPATCH_NO_REACHABLE_DEPLOYMENT` warning is added (deduplicated by
-`(code, from, line)`, so one call site walked once per caller-deployment copy
+`(code, from, site)`, so one call site walked once per caller-deployment copy
 reports once). When the caller deployment has no queue at all, or a malformed
 one (`QUEUE_TEMPLATE_MALFORMED`), the call it would inherit is dropped silently —
 the missing or malformed `task_queue` is already reported, and double-reporting
@@ -300,7 +304,7 @@ For each AST definition:
   deployment), inheriting the service's worker and queue. Orphan when the service
   is orphan.
 - **NexusEndpoint** — one node per `NamespaceDef.Endpoints[i]`. Always
-  namespace-deployed by construction; no orphan case.
+  namespace-deployed by construction; no orphan case in `Extract`.
 
 Nodes are deduplicated by ID. The same definition under two namespace
 instantiations legitimately produces two distinct IDs and is not a duplicate.

@@ -438,7 +438,7 @@ func runCase(t *testing.T, c Case) {
 	for i, sched := range expansionSchedule {
 		var all []history.History
 		for _, ns := range c.Namespaces {
-			hs, err := sampling.Sample(ctx, clients[ns.Name], sampling.Options{
+			hs, _, err := sampling.Sample(ctx, clients[ns.Name], sampling.Options{
 				Namespace:     ns.Name,
 				SamplePercent: sched.percent,
 				MinPerType:    sched.min,

@@ -185,23 +185,3 @@ namespace prod:
 		t.Errorf("expected one overlap (ShipItem/ShipOrder), got %v", overlaps)
 	}
 }
-
-func TestTemplatesOverlap(t *testing.T) {
-	tests := []struct {
-		a, b string
-		want bool
-	}{
-		{"ship-{a}-{b}", "ship-{a}", true},
-		{"ship-{a}", "refund-{a}", false},
-		{"rate-limiter", "rate-{x}", true},
-		{"rate-limiter", "rate-limiter", true},
-		{"a-{x}", "a-", false},
-		{"{x}-done", "start-{y}", true},
-		{"order-{x}", "order", false},
-	}
-	for _, tt := range tests {
-		if got := templatesOverlap(tt.a, tt.b); got != tt.want {
-			t.Errorf("templatesOverlap(%q, %q) = %v, want %v", tt.a, tt.b, got, tt.want)
-		}
-	}
-}

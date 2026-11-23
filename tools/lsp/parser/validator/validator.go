@@ -735,8 +735,15 @@ type placement struct {
 type caller struct {
 	kind string // "workflow" or "nexus service"
 	key  pkgKey
-	file string // SourceFile of the calling definition (#238)
-	def  string // graph definition key of the workflow or sync operation
+	file string          // SourceFile of the calling definition (#238)
+	def  string          // graph definition key of the workflow or sync operation
+	body ast.BodyContext // what the body holding the call runs in
+}
+
+// in returns c as seen from a body that runs in body.
+func (c caller) in(body ast.BodyContext) caller {
+	c.body = body
+	return c
 }
 
 // walkAllBodies walks all workflow and nexus service sync op bodies, in
@@ -768,16 +775,16 @@ func (v *validationCtx) walkAllBodies(defs []ast.Definition) {
 			if v.workflows[key] != d {
 				continue
 			}
-			from := caller{"workflow", key, d.SourceFile, graph.DefKey(graph.KindWorkflow, ast.QualifiedName(key.pkg, key.name))}
-			v.walkStatements(d.Body, from)
+			from := caller{kind: "workflow", key: key, file: d.SourceFile, def: graph.DefKey(graph.KindWorkflow, ast.QualifiedName(key.pkg, key.name))}
+			v.walkStatements(d.Body, from.in(d.Context))
 			for _, s := range ast.FirstDeclared(d.Signals) {
-				v.walkStatements(s.Body, from)
+				v.walkStatements(s.Body, from.in(s.Context))
 			}
 			for _, q := range ast.FirstDeclared(d.Queries) {
-				v.walkStatements(q.Body, from)
+				v.walkStatements(q.Body, from.in(q.Context))
 			}
 			for _, u := range ast.FirstDeclared(d.Updates) {
-				v.walkStatements(u.Body, from)
+				v.walkStatements(u.Body, from.in(u.Context))
 			}
 		case *ast.NexusServiceDef:
 			key := v.key(d, d.Name)
@@ -787,7 +794,7 @@ func (v *validationCtx) walkAllBodies(defs []ast.Definition) {
 			for _, op := range ast.FirstDeclared(d.Operations) {
 				if op.OpType == ast.NexusOpSync {
 					def := graph.DefKey(graph.KindNexusOperation, graph.NexusOpQualifiedName(ast.QualifiedName(key.pkg, key.name), op.Name))
-					v.walkStatements(op.Body, caller{"nexus service", key, d.SourceFile, def})
+					v.walkStatements(op.Body, caller{kind: "nexus service", key: key, file: d.SourceFile, def: def}.in(op.Context))
 				}
 			}
 		}
@@ -923,7 +930,7 @@ func (v *validationCtx) checkCallRouting(kind string, target pkgKey, opts effect
 		return
 	}
 
-	if from.kind != "workflow" {
+	if from.body == ast.BodyNexusSync {
 		return
 	}
 	for _, at := range v.placementsOf(from.kind, from.key) {
@@ -946,10 +953,10 @@ func (v *validationCtx) checkCallRouting(kind string, target pkgKey, opts effect
 	}
 }
 
-// callSite is a call in a body: its caller's graph definition key and its line.
+// callSite is a call in a body: its caller's graph definition key and its site.
 type callSite struct {
 	def  string
-	line int
+	site ast.Site
 }
 
 // sdkSides are the SDKs of a call site's callers and of its callees.
@@ -961,7 +968,7 @@ type sdkSides struct{ from, to []string }
 func sdkCrossings(g *graph.Graph) map[callSite]*sdkSides {
 	sites := map[callSite]*sdkSides{}
 	for _, c := range g.SDKCrossings() {
-		k := callSite{c.Caller, c.Edge.Line}
+		k := callSite{c.Caller, c.Edge.Site}
 		if sites[k] == nil {
 			sites[k] = &sdkSides{}
 		}
@@ -984,7 +991,7 @@ func union(a, b []string) []string {
 // checkCrossSDK hints at a call or signal send between SDKs, once per call site.
 func (v *validationCtx) checkCrossSDK(s ast.Statement, from caller) {
 	kind, name := callee(s)
-	k := callSite{from.def, s.NodeLine()}
+	k := callSite{from.def, ast.SiteOf(from.file, s)}
 	sides := v.crossings[k]
 	if kind == "" || sides == nil {
 		return

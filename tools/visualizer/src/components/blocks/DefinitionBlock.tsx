@@ -1,5 +1,5 @@
 import React from 'react'
-import { qualifiedNameOf } from '../../types/ast'
+import { qualifiedNameOf, siteKey } from '../../types/ast'
 import type { Definition, WorkflowDef, ActivityDef, WorkerDef, WorkerRef, NamespaceDef, NamespaceWorker, NamespaceEndpoint, NexusServiceDef, NexusOperation } from '../../types/ast'
 import { StatementBody } from './StatementBlock'
 import { WorkflowContent, InlineWorkflowBlock, SyncBodyBlock } from './WorkflowContent'
@@ -153,7 +153,7 @@ function WorkerRefSection({ label, refs, refType }: { label: string; refs: Worke
     <div className="worker-ref-section">
       <div className="worker-ref-label">{label}</div>
       {refs.map((ref) => (
-        <WorkerRefItem key={`${ref.line}:${ref.column}`} ref_={ref} refType={refType} />
+        <WorkerRefItem key={siteKey(ref.site)} ref_={ref} refType={refType} />
       ))}
     </div>
   )
@@ -197,7 +197,7 @@ function WorkerRefItem({ ref_, refType }: { ref_: WorkerRef; refType: 'workflow'
             <StatementBody statements={linkedDef.body || []} />
           ) : linkedService ? (
             (linkedService.operations || []).map((op) => (
-              <NexusOperationBlock key={`${op.line}:${op.column}`} operation={op} />
+              <NexusOperationBlock key={siteKey(op.site)} operation={op} />
             ))
           ) : null}
         </div>
@@ -232,7 +232,7 @@ function NamespaceDefBlock({ def, controlledExpanded, onToggle, reveal }: { def:
             <div className="namespace-entry-section">
               <div className="namespace-entry-label">workers</div>
               {def.workers.map((w) => (
-                <NamespaceWorkerEntry key={`${w.line}:${w.column}`} entry={w} />
+                <NamespaceWorkerEntry key={siteKey(w.site)} entry={w} />
               ))}
             </div>
           )}
@@ -240,7 +240,7 @@ function NamespaceDefBlock({ def, controlledExpanded, onToggle, reveal }: { def:
             <div className="namespace-entry-section">
               <div className="namespace-entry-label">nexus endpoints</div>
               {def.endpoints.map((ep) => (
-                <NamespaceEndpointEntry key={`${ep.line}:${ep.column}`} entry={ep} reveal={firstEndpoints.has(ep) ? childReveal(reveal, ep.endpointName) : undefined} />
+                <NamespaceEndpointEntry key={siteKey(ep.site)} entry={ep} reveal={firstEndpoints.has(ep) ? childReveal(reveal, ep.endpointName) : undefined} />
               ))}
             </div>
           )}
@@ -388,7 +388,7 @@ function NexusServiceDefBlock({ def, controlledExpanded, onToggle, reveal }: { d
       {expanded && (
         <div className="block-body">
           {(def.operations || []).map((op) => (
-            <NexusOperationBlock key={`${op.line}:${op.column}`} operation={op} reveal={firstOps.has(op) ? childReveal(reveal, op.name) : undefined} />
+            <NexusOperationBlock key={siteKey(op.site)} operation={op} reveal={firstOps.has(op) ? childReveal(reveal, op.name) : undefined} />
           ))}
         </div>
       )}

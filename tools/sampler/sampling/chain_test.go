@@ -53,7 +53,7 @@ func TestFetchChain(t *testing.T) {
 
 	for _, seed := range []string{"run-1", "run-2", "run-3"} {
 		fetched := map[string]bool{}
-		runs, err := fetchChain(candidate{runID: seed}, fetched, fetch)
+		runs, err := fetchChain(candidate{runID: seed}, fetched, false, fetch)
 		if err != nil {
 			t.Fatalf("seed %s: %v", seed, err)
 		}
@@ -61,13 +61,13 @@ func TestFetchChain(t *testing.T) {
 			t.Errorf("seed %s fetched %v, want all 3 runs", seed, ids(runs))
 		}
 		// A second candidate from the same chain adds nothing.
-		again, err := fetchChain(candidate{runID: "run-2"}, fetched, fetch)
+		again, err := fetchChain(candidate{runID: "run-2"}, fetched, false, fetch)
 		if err != nil || len(again) != 0 {
 			t.Errorf("seed %s: refetch = %v, %v; want none", seed, ids(again), err)
 		}
 	}
 
-	if _, err := fetchChain(candidate{runID: "run-0"}, map[string]bool{}, fetch); err == nil {
+	if _, err := fetchChain(candidate{runID: "run-0"}, map[string]bool{}, false, fetch); err == nil {
 		t.Error("a candidate past retention must fail")
 	}
 }

@@ -16,19 +16,18 @@ import (
 //
 // Orphan nodes don't get containment edges.
 //
-// The child's source line is used (declaration line, not call site).
-// For worker / endpoint deployments that's the NamespaceWorker /
-// NamespaceEndpoint line. For hosted definitions it's the worker's
-// registration line for the definition — which is more precise than
-// the definition's own declaration line and reflects where the
-// containment relationship was authored.
+// The child's declaration site is used, not a call site. For worker /
+// endpoint deployments that's the NamespaceWorker / NamespaceEndpoint site.
+// For hosted definitions it's the worker's registration of the definition —
+// which is more precise than the definition's own declaration and reflects
+// where the containment relationship was authored.
 func (g *Graph) emitContainment(idx *astIndex) {
 	for _, ep := range idx.endpointsByName {
 		g.Edges = append(g.Edges, Edge{
 			From: EndpointID(ep.Name, ep.Namespace),
 			To:   NamespaceID(ep.Namespace),
 			Kind: EdgeContainment,
-			Line: ep.Line,
+			Site: ep.Site,
 		})
 	}
 
@@ -45,14 +44,14 @@ func (g *Graph) emitContainment(idx *astIndex) {
 			From: id,
 			To:   NamespaceID(wd.NamespaceName),
 			Kind: EdgeContainment,
-			Line: wd.Line,
+			Site: wd.Site,
 		})
 		if wd.worker == nil {
 			continue
 		}
-		emitHostedContainment(g, wd, KindWorkflow, refNamesAndLines(wd.worker.Workflows, idx))
-		emitHostedContainment(g, wd, KindActivity, refNamesAndLines(wd.worker.Activities, idx))
-		emitHostedContainment(g, wd, KindNexusService, refNamesAndLines(wd.worker.Services, idx))
+		emitHostedContainment(g, wd, KindWorkflow, refSites(wd.worker.Workflows, wd.worker.SourceFile, idx))
+		emitHostedContainment(g, wd, KindActivity, refSites(wd.worker.Activities, wd.worker.SourceFile, idx))
+		emitHostedContainment(g, wd, KindNexusService, refSites(wd.worker.Services, wd.worker.SourceFile, idx))
 		for _, r := range wd.worker.Services {
 			svcQName, ok := hostedRefQName(r, idx)
 			svc := idx.nexusServices[svcQName]
@@ -65,43 +64,43 @@ func (g *Graph) emitContainment(idx *astIndex) {
 					From: HostedID(KindNexusOperation, opName, wd.WorkerName, wd.NamespaceName, false),
 					To:   HostedID(KindNexusService, svcQName, wd.WorkerName, wd.NamespaceName, false),
 					Kind: EdgeContainment,
-					Line: op.Line,
+					Site: ast.SiteOf(svc.SourceFile, op),
 				})
 			}
 		}
 	}
 }
 
-// refLine is a flat (qualified name, line) pair used by emitHostedContainment
+// refSite is a flat (qualified name, site) pair used by emitHostedContainment
 // so the same emission helper works across Workflows / Activities / Services
-// without generics gymnastics for the per-element line. Name is the ref's
+// without generics gymnastics for the per-element site. Name is the ref's
 // QUALIFIED target name (package-aware) so the containment child ID matches the
 // hosted definition node's ID.
-type refLine struct {
+type refSite struct {
 	Name string
-	Line int
+	Site ast.Site
 }
 
-func refNamesAndLines[T interface {
+func refSites[T interface {
 	comparable
 	ast.Packaged
-}](refs []ast.Ref[T], idx *astIndex) []refLine {
-	out := make([]refLine, 0, len(refs))
+}](refs []ast.Ref[T], file string, idx *astIndex) []refSite {
+	out := make([]refSite, 0, len(refs))
 	for _, r := range refs {
 		if name, ok := hostedRefQName(r, idx); ok {
-			out = append(out, refLine{Name: name, Line: r.Line})
+			out = append(out, refSite{Name: name, Site: ast.SiteOf(file, r)})
 		}
 	}
 	return out
 }
 
-func emitHostedContainment(g *Graph, wd workerDeployment, kind string, refs []refLine) {
+func emitHostedContainment(g *Graph, wd workerDeployment, kind string, refs []refSite) {
 	for _, r := range refs {
 		g.Edges = append(g.Edges, Edge{
 			From: HostedID(kind, r.Name, wd.WorkerName, wd.NamespaceName, false),
 			To:   WorkerID(wd.WorkerName, wd.NamespaceName),
 			Kind: EdgeContainment,
-			Line: r.Line,
+			Site: r.Site,
 		})
 	}
 }

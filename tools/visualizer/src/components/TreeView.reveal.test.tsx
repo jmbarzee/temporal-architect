@@ -12,16 +12,16 @@ import { DEF_TYPE_DIMENSION, SOURCE_FILE_DIMENSION } from '../adapter/dimensions
 import type { TWFFile } from '../types/ast'
 import { TreeView, type TreeFocus } from './TreeView'
 
-const at = (line: number) => ({ line, column: 1 })
+const at = (line: number) => ({ site: { file: 'a.twf', line, column: 1 } })
 const AST = {
   definitions: [
-    { type: 'workerDef', name: 'payments-worker', sourceFile: 'a.twf', ...at(1), workflows: [{ name: 'Charge', ...at(2) }], activities: [], services: [{ name: 'Payments', ...at(3) }] },
-    { type: 'workflowDef', name: 'Charge', sourceFile: 'a.twf', ...at(5), params: '', body: [] },
+    { type: 'workerDef', name: 'payments-worker', ...at(1), workflows: [{ name: 'Charge', ...at(2) }], activities: [], services: [{ name: 'Payments', ...at(3) }] },
+    { type: 'workflowDef', name: 'Charge', ...at(5), params: '', body: [] },
     {
-      type: 'nexusServiceDef', name: 'Payments', sourceFile: 'a.twf', ...at(8),
+      type: 'nexusServiceDef', name: 'Payments', ...at(8),
       operations: [{ name: 'GetStatus', opType: 'sync', ...at(9) }, { name: 'Refund', opType: 'sync', ...at(10) }],
     },
-    { type: 'namespaceDef', name: 'payments', sourceFile: 'a.twf', ...at(12), workers: [{ workerName: 'payments-worker', ...at(13) }], endpoints: [{ endpointName: 'PaymentsEndpoint', ...at(14) }] },
+    { type: 'namespaceDef', name: 'payments', ...at(12), workers: [{ workerName: 'payments-worker', ...at(13) }], endpoints: [{ endpointName: 'PaymentsEndpoint', ...at(14) }] },
   ],
 } as unknown as TWFFile
 
@@ -214,12 +214,12 @@ describe('Tree scroll alignment', () => {
 describe('Tree reveal of a duplicated row', () => {
   const DUPLICATES = {
     definitions: [
-      { type: 'workflowDef', name: 'W', sourceFile: 'a.twf', ...at(1), params: '', body: [] },
+      { type: 'workflowDef', name: 'W', ...at(1), params: '', body: [] },
       {
-        type: 'nexusServiceDef', name: 'S', sourceFile: 'a.twf', ...at(4),
+        type: 'nexusServiceDef', name: 'S', ...at(4),
         operations: [{ name: 'Op', opType: 'sync', ...at(5) }, { name: 'Op', opType: 'async', workflowName: 'W', ...at(7) }],
       },
-      { type: 'namespaceDef', name: 'n', sourceFile: 'a.twf', ...at(9), workers: [], endpoints: [{ endpointName: 'e', ...at(10) }, { endpointName: 'e', ...at(13) }] },
+      { type: 'namespaceDef', name: 'n', ...at(9), workers: [], endpoints: [{ endpointName: 'e', ...at(10) }, { endpointName: 'e', ...at(13) }] },
     ],
   } as unknown as TWFFile
 

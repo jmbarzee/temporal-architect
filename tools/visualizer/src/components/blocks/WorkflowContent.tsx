@@ -1,5 +1,6 @@
 import React from 'react'
 import type { WorkflowDef, HandlerDecl, Statement } from '../../types/ast'
+import { siteKey } from '../../types/ast'
 import { StatementBlock, StatementBody } from './StatementBlock'
 import { THEME, HANDLER_CONFIG, BlockIcon } from '../../theme/temporal-theme'
 import { useToggle } from './useToggle'
@@ -31,7 +32,7 @@ function HandlerDeclBlock({ decl }: { decl: HandlerDecl }) {
         <div className="declaration-body">
           <OptionsSection options={decl.options} />
           {hasBody && decl.body!.map((stmt) => (
-            <StatementBlock key={`${stmt.line}:${stmt.column}`} statement={stmt} />
+            <StatementBlock key={siteKey(stmt.site)} statement={stmt} />
           ))}
         </div>
       )}
@@ -76,7 +77,7 @@ export function WorkflowContent({ def }: { def: WorkflowDef }) {
           {stateExpanded && (
             <div className="block-declarations">
               {(def.state!.conditions || []).map((c) => (
-                <div key={`${c.line}:${c.column}`} className="declaration declaration-condition">
+                <div key={siteKey(c.site)} className="declaration declaration-condition">
                   <div className="declaration-header">
                     <span className="block-toggle-placeholder" />
                     <span className="declaration-icon">{THEME.conditionSet.icon}</span>
@@ -86,7 +87,7 @@ export function WorkflowContent({ def }: { def: WorkflowDef }) {
                 </div>
               ))}
               {(def.state!.rawStmts || []).map((r) => (
-                <div key={`${r.line}:${r.column}`} className="declaration declaration-raw-state">
+                <div key={siteKey(r.site)} className="declaration declaration-raw-state">
                   <div className="declaration-header">
                     <span className="block-toggle-placeholder" />
                     <span className="declaration-icon">{THEME.raw.icon}</span>
@@ -110,7 +111,7 @@ export function WorkflowContent({ def }: { def: WorkflowDef }) {
           {signalsExpanded && (
             <div className="block-declarations">
               {def.signals!.map((s) => (
-                <HandlerDeclBlock key={`${s.line}:${s.column}`} decl={s} />
+                <HandlerDeclBlock key={siteKey(s.site)} decl={s} />
               ))}
             </div>
           )}
@@ -128,7 +129,7 @@ export function WorkflowContent({ def }: { def: WorkflowDef }) {
           {queriesExpanded && (
             <div className="block-declarations">
               {def.queries!.map((q) => (
-                <HandlerDeclBlock key={`${q.line}:${q.column}`} decl={q} />
+                <HandlerDeclBlock key={siteKey(q.site)} decl={q} />
               ))}
             </div>
           )}
@@ -146,7 +147,7 @@ export function WorkflowContent({ def }: { def: WorkflowDef }) {
           {updatesExpanded && (
             <div className="block-declarations">
               {def.updates!.map((u) => (
-                <HandlerDeclBlock key={`${u.line}:${u.column}`} decl={u} />
+                <HandlerDeclBlock key={siteKey(u.site)} decl={u} />
               ))}
             </div>
           )}
@@ -202,7 +203,7 @@ export function SyncBodyBlock({ body }: { body: Statement[] }) {
       {expanded && (
         <div className="block-body">
           {body.map((s) => (
-            <StatementBlock key={`${s.line}:${s.column}`} statement={s} />
+            <StatementBlock key={siteKey(s.site)} statement={s} />
           ))}
         </div>
       )}

@@ -19,7 +19,7 @@ twf - Temporal Workflow Format CLI
 JSON envelope shape (parse / symbols --json / graph --json):
   {
     "summary":     { workflows, activities, errors, warnings, … },
-    "diagnostics": [ { severity, kind, code, file, start, end, message, name } ],
+    "diagnostics": [ { severity, kind, code, site, message, name } ],
     "definitions" | "symbols" | "graph": <command-specific payload>
   }
 

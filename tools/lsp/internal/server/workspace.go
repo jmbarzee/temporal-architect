@@ -176,11 +176,11 @@ func moduleDiagnostics(res pipeline.Result, buf, pkg, dir, modRoot, home string)
 	hasExclusion := map[string]bool{}
 	for _, x := range res.Diagnostics {
 		if exclusionCodes[x.Code] {
-			hasExclusion[x.File] = true
+			hasExclusion[x.Site.File] = true
 		}
 	}
 	exclusion := func(x pipeline.Diagnostic) bool {
-		if hasExclusion[x.File] {
+		if hasExclusion[x.Site.File] {
 			return exclusionCodes[x.Code]
 		}
 		return x.Kind == "parse"
@@ -189,15 +189,15 @@ func moduleDiagnostics(res pipeline.Result, buf, pkg, dir, modRoot, home string)
 	var out []pipeline.Diagnostic
 	for _, x := range res.Diagnostics {
 		switch {
-		case x.File == buf:
+		case x.Site.File == buf:
 			continue
-		case res.Excluded[x.File] && path.Dir(x.File) == filepath.ToSlash(dir) && exclusion(x):
-		case ownMod[x.File]:
-		case rootMods[x.File] && x.Code == codeOf(resolver.ErrModuleFileInvalid):
+		case res.Excluded[x.Site.File] && path.Dir(x.Site.File) == filepath.ToSlash(dir) && exclusion(x):
+		case ownMod[x.Site.File]:
+		case rootMods[x.Site.File] && x.Code == codeOf(resolver.ErrModuleFileInvalid):
 		case excluded:
 			continue
-		case x.Kind == "resolve" && importCodes[x.Code] && lines[fileLine{x.File, x.Start.Line}]:
-		case causes[x.File] && exclusion(x):
+		case x.Kind == "resolve" && importCodes[x.Code] && lines[fileLine{x.Site.File, x.Site.Line}]:
+		case causes[x.Site.File] && exclusion(x):
 		case x.Code == codeOf(resolver.ErrDuplicateModule) && importsUnder(x.Name):
 		default:
 			continue
@@ -227,7 +227,7 @@ func editorHints(res pipeline.Result, folders []string) {
 		}
 	}
 	for i, x := range res.Diagnostics {
-		if h, ok := hints[fileLine{x.File, x.Start.Line}]; ok && x.Code == notFound {
+		if h, ok := hints[fileLine{x.Site.File, x.Site.Line}]; ok && x.Code == notFound {
 			res.Diagnostics[i].Message = strings.Replace(x.Message, cli, h, 1)
 		}
 	}

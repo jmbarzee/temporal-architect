@@ -144,7 +144,7 @@ func TestChunksRoundTrip(t *testing.T) {
 	// full set to be visible, then sample everything.
 	waitForVisibleCount(ctx, t, cl, defaultNamespace, len(starts)+2)
 
-	histories, err := sampling.Sample(ctx, cl, sampling.Options{
+	histories, _, err := sampling.Sample(ctx, cl, sampling.Options{
 		Namespace:     defaultNamespace,
 		SamplePercent: 100,
 		MinPerType:    1 << 30,

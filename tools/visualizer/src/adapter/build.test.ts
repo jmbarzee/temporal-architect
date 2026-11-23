@@ -86,17 +86,17 @@ describe('buildAstLookup', () => {
 describe('buildAstLookup with duplicates', () => {
   const ast = {
     definitions: [
-      { type: 'workflowDef', name: 'W', line: 1 },
-      { type: 'workflowDef', name: 'W', line: 5 },
-      { type: 'activityDef', name: 'A', line: 9 },
-      { type: 'activityDef', name: 'A', line: 12 },
-      { type: 'workerDef', name: 'w', line: 15 },
-      { type: 'workerDef', name: 'w', line: 18 },
-      { type: 'nexusServiceDef', name: 'S', line: 21, operations: [{ name: 'Op' }] },
-      { type: 'nexusServiceDef', name: 'S', line: 24, operations: [{ name: 'Op' }] },
-      { type: 'namespaceDef', name: 'n', line: 27, endpoints: [{ endpointName: 'e' }] },
-      { type: 'namespaceDef', name: 'm', line: 31, endpoints: [{ endpointName: 'e' }] },
-      { type: 'namespaceDef', name: 'n', line: 35, endpoints: [] },
+      { type: 'workflowDef', name: 'W', site: { line: 1, column: 1 } },
+      { type: 'workflowDef', name: 'W', site: { line: 5, column: 1 } },
+      { type: 'activityDef', name: 'A', site: { line: 9, column: 1 } },
+      { type: 'activityDef', name: 'A', site: { line: 12, column: 1 } },
+      { type: 'workerDef', name: 'w', site: { line: 15, column: 1 } },
+      { type: 'workerDef', name: 'w', site: { line: 18, column: 1 } },
+      { type: 'nexusServiceDef', name: 'S', site: { line: 21, column: 1 }, operations: [{ name: 'Op' }] },
+      { type: 'nexusServiceDef', name: 'S', site: { line: 24, column: 1 }, operations: [{ name: 'Op' }] },
+      { type: 'namespaceDef', name: 'n', site: { line: 27, column: 1 }, endpoints: [{ endpointName: 'e' }] },
+      { type: 'namespaceDef', name: 'm', site: { line: 31, column: 1 }, endpoints: [{ endpointName: 'e' }] },
+      { type: 'namespaceDef', name: 'n', site: { line: 35, column: 1 }, endpoints: [] },
     ],
   } as unknown as TWFFile
   const lookup = buildAstLookup(ast)
@@ -109,6 +109,6 @@ describe('buildAstLookup with duplicates', () => {
     ['namespace:n', 27],
     ['nexusEndpoint:e', 27],
   ])('maps %s to the first declaration', (key, line) => {
-    expect((lookup.get(key)?.def as unknown as { line: number }).line).toBe(line)
+    expect(lookup.get(key)?.def.site.line).toBe(line)
   })
 })

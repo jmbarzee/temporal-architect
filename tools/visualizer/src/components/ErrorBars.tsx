@@ -117,8 +117,8 @@ function FileErrorRow({ err }: { err: FileError }) {
 
 function DiagnosticRow({ diagnostic }: { diagnostic: Diagnostic }) {
   const glyph = diagnostic.severity === 'error' ? '\u2717' : '\u26A0'
-  const fileName = diagnostic.file ? diagnostic.file.split('/').pop() : undefined
-  const loc = fileName ? `${fileName}:${diagnostic.start.line}:${diagnostic.start.column}` : undefined
+  const { file, line, column } = diagnostic.site
+  const loc = file ? `${file.split('/').pop()}:${line}:${column}` : undefined
   return (
     <div className={`diagnostic-item severity-${diagnostic.severity}`}>
       <span className="diagnostic-glyph" aria-hidden="true">{glyph}</span>

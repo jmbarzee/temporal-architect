@@ -22,9 +22,9 @@ import { DEF_TYPE_ORDER } from '../theme/temporal-theme'
 
 /** A definition's values on the axes it carries: its type, and its file when it has one. */
 function valuesOf(def: Definition): AxisValues {
-  return def.sourceFile === undefined
+  return def.site.file === undefined
     ? { [DEF_TYPE_DIMENSION]: def.type }
-    : { [DEF_TYPE_DIMENSION]: def.type, [SOURCE_FILE_DIMENSION]: def.sourceFile }
+    : { [DEF_TYPE_DIMENSION]: def.type, [SOURCE_FILE_DIMENSION]: def.site.file }
 }
 
 /**
@@ -122,8 +122,8 @@ export function TreeView({
   const allFiles = React.useMemo(() => {
     const files = new Set<string>()
     for (const def of ast.definitions) {
-      if (def.sourceFile) {
-        files.add(def.sourceFile)
+      if (def.site.file) {
+        files.add(def.site.file)
       }
     }
     return Array.from(files).sort()
@@ -200,7 +200,7 @@ export function TreeView({
       filter, taxonomy, axes,
       visibleIds: new Set(visibleDefinitions.map(defKey)),
       matches: n => n.def.name.toLowerCase().includes(lq),
-      valueOn: (n, dim) => dim === DEF_TYPE_DIMENSION ? n.def.type : dim === SOURCE_FILE_DIMENSION ? n.def.sourceFile : undefined,
+      valueOn: (n, dim) => dim === DEF_TYPE_DIMENSION ? n.def.type : dim === SOURCE_FILE_DIMENSION ? n.def.site.file : undefined,
     })
     return { matchSet: set, matchIndices: indices, hiddenMatches: split.hiddenByAxis }
   }, [searchQuery, visibleDefinitions, ast.definitions, filter, taxonomy, axes])
@@ -239,11 +239,11 @@ export function TreeView({
 
   // Helper: get a stable, unique key for a definition.
   //
-  // sourceFile is included so that two definitions with the same (type, name)
+  // The file is included so that two definitions with the same (type, name)
   // originating in different files render as independent React nodes with
   // independent expand/focus state.
   function defKey(def: Definition) {
-    return `${def.type}:${def.name}:${def.sourceFile ?? ''}`
+    return `${def.type}:${def.name}:${def.site.file ?? ''}`
   }
 
   // Expand state cleanup: remove entries for definitions that no longer exist

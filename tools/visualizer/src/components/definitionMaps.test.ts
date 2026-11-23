@@ -5,7 +5,7 @@ import type { Definition, WorkflowDef } from '../types/ast'
 // A name declared twice (DUPLICATE_*) is its first declaration's, as the
 // resolver keeps it, for every kind.
 describe('definitionMaps', () => {
-  const def = (type: Definition['type'], name: string, line: number) => ({ type, name, line }) as unknown as Definition
+  const def = (type: Definition['type'], name: string, line: number) => ({ type, name, site: { line, column: 1 } }) as unknown as Definition
   const kinds = [
     ['workflowDef', 'workflows'],
     ['activityDef', 'activities'],

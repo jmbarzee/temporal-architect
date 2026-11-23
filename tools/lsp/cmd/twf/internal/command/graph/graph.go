@@ -166,7 +166,7 @@ func printText(g *graph.Graph) int {
 			fmt.Printf("  %s:\n", label(src))
 			for _, e := range bySource[src] {
 				routing := formatRouting(e.Routing)
-				fmt.Printf("    -[%s]-> %s (line %d)%s\n", e.Kind, label(e.To), e.Line, routing)
+				fmt.Printf("    -[%s]-> %s (line %d)%s\n", e.Kind, label(e.To), e.Site.Line, routing)
 			}
 		}
 		fmt.Println()
@@ -198,7 +198,7 @@ func printText(g *graph.Graph) int {
 	if len(g.Unresolved) > 0 {
 		fmt.Println("Unresolved references:")
 		for _, u := range g.Unresolved {
-			fmt.Printf("  %s -> %s (%s, line %d)\n", label(u.From), u.Name, u.Kind, u.Line)
+			fmt.Printf("  %s -> %s (%s, line %d)\n", label(u.From), u.Name, u.Kind, u.Site.Line)
 		}
 		fmt.Println()
 	}

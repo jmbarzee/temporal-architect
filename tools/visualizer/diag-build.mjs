@@ -16,14 +16,14 @@ const topicsDir = path.join(repoRoot, 'skills/temporal-architect-design/topics')
 const twfFiles = readdirSync(topicsDir).filter(f => f.endsWith('.twf')).map(f => path.join(topicsDir, f))
 
 // Build the merged AST exactly the way the extension does: parse each file
-// individually with `twf parse <file>`, stamp sourceFile, concatenate.
+// individually with `twf parse <file>`, stamp each site's file, concatenate.
 const allDefinitions = []
 for (const file of twfFiles) {
   const stdout = execFileSync('twf', ['parse', file], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })
   const parsed = JSON.parse(stdout)
   if (parsed?.definitions) {
     for (const def of parsed.definitions) {
-      def.sourceFile = file
+      def.site.file = file
       allDefinitions.push(def)
     }
   }
@@ -47,7 +47,7 @@ const addNode = (n) => {
 // Step 1: namespaces
 for (const def of ast.definitions) {
   if (def.type === 'namespaceDef') {
-    addNode({ id: nodeId('namespace', def.name), level: 1, nodeType: 'namespace', name: def.name, sourceFile: def.sourceFile })
+    addNode({ id: nodeId('namespace', def.name), level: 1, nodeType: 'namespace', name: def.name, sourceFile: def.site.file })
   }
 }
 
@@ -60,7 +60,7 @@ for (const def of ast.definitions) {
 }
 for (const def of ast.definitions) {
   if (def.type === 'workerDef') {
-    addNode({ id: nodeId('worker', def.name), level: 2, nodeType: 'worker', name: def.name, sourceFile: def.sourceFile, parentId: workerToNamespace.has(def.name) ? nodeId('namespace', workerToNamespace.get(def.name)) : undefined })
+    addNode({ id: nodeId('worker', def.name), level: 2, nodeType: 'worker', name: def.name, sourceFile: def.site.file, parentId: workerToNamespace.has(def.name) ? nodeId('namespace', workerToNamespace.get(def.name)) : undefined })
   }
 }
 
@@ -75,9 +75,9 @@ for (const def of ast.definitions) {
 
 // Orphan L3
 for (const def of ast.definitions) {
-  if (def.type === 'workflowDef' && !registeredL3.has(`workflowDef:${def.name}`)) addNode({ id: nodeId('workflow', def.name), level: 3, nodeType: 'workflow', name: def.name, sourceFile: def.sourceFile, orphan: true })
-  if (def.type === 'activityDef' && !registeredL3.has(`activityDef:${def.name}`)) addNode({ id: nodeId('activity', def.name), level: 3, nodeType: 'activity', name: def.name, sourceFile: def.sourceFile, orphan: true })
-  if (def.type === 'nexusServiceDef' && !registeredL3.has(`nexusServiceDef:${def.name}`)) addNode({ id: nodeId('nexusService', def.name), level: 3, nodeType: 'nexusService', name: def.name, sourceFile: def.sourceFile, orphan: true })
+  if (def.type === 'workflowDef' && !registeredL3.has(`workflowDef:${def.name}`)) addNode({ id: nodeId('workflow', def.name), level: 3, nodeType: 'workflow', name: def.name, sourceFile: def.site.file, orphan: true })
+  if (def.type === 'activityDef' && !registeredL3.has(`activityDef:${def.name}`)) addNode({ id: nodeId('activity', def.name), level: 3, nodeType: 'activity', name: def.name, sourceFile: def.site.file, orphan: true })
+  if (def.type === 'nexusServiceDef' && !registeredL3.has(`nexusServiceDef:${def.name}`)) addNode({ id: nodeId('nexusService', def.name), level: 3, nodeType: 'nexusService', name: def.name, sourceFile: def.site.file, orphan: true })
 }
 
 const counts = {}

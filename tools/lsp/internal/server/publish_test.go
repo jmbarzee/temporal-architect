@@ -426,7 +426,7 @@ func TestUntitledBufferMatchesInlineSource(t *testing.T) {
 			want := func(diags []pipeline.Diagnostic) []string {
 				var out []string
 				for _, d := range diags {
-					out = append(out, render(d.Start.Line, d.Start.Column, d.Severity, d.Code, d.Message))
+					out = append(out, render(d.Site.Line, d.Site.Column, d.Severity, d.Code, d.Message))
 				}
 				slices.Sort(out)
 				return out

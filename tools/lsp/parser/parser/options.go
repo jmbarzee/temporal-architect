@@ -234,7 +234,7 @@ var optionSchemas = map[OptionsContext]map[string]*optionSchema{
 // workflowStartKind is the kind of a workflow start at the current position: a
 // client start inside a sync nexus operation body, a child start anywhere else.
 func (p *Parser) workflowStartKind() ast.StartKind {
-	if p.inSyncNexus {
+	if p.body == ast.BodyNexusSync {
 		return ast.StartClient
 	}
 	return ast.StartChild

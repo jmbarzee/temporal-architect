@@ -383,7 +383,7 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, execution, onO
 
   // Cross-view focus actions invoked by per-view UI (tree's "Show in
   // Graph" contextual button, graph's right-click menu / toolbar button).
-  // Look up the target's sourceFile so the reconciler can expand the
+  // Look up the target's file so the reconciler can expand the
   // file filter if needed. Both directions name the definition by its
   // qualified name, which is also its graph node's `name`, so same-named
   // definitions in two packages stay apart.
@@ -393,7 +393,7 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, execution, onO
       kind: 'focus',
       target: {
         name: qualifiedName,
-        values: { [DEF_TYPE_DIMENSION]: defType, [SOURCE_FILE_DIMENSION]: def?.sourceFile },
+        values: { [DEF_TYPE_DIMENSION]: defType, [SOURCE_FILE_DIMENSION]: def?.site.file },
       },
     })
   }, [ast.definitions, switchView])
@@ -416,7 +416,7 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, execution, onO
         target: {
           name: qualifiedNameOf(def),
           child,
-          values: { [DEF_TYPE_DIMENSION]: def.type, [SOURCE_FILE_DIMENSION]: def.sourceFile },
+          values: { [DEF_TYPE_DIMENSION]: def.type, [SOURCE_FILE_DIMENSION]: def.site.file },
         },
       }),
     }

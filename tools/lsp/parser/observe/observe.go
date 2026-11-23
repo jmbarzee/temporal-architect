@@ -12,8 +12,11 @@
 package observe
 
 import (
+	"maps"
+	"slices"
 	"sort"
 
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/graph"
 )
 
@@ -39,8 +42,8 @@ type Window struct {
 // an all-zero series — they are topology, not an observed dispatch.
 //
 // The embedded graph.Edge is the "wrap": an observed edge IS a graph edge plus
-// a time series. graph.Edge.Line has no meaning here (history has no source
-// line) and is left 0.
+// a time series. History has no source, so graph.Edge.Site is zero and
+// omitted.
 type ObservedEdge struct {
 	graph.Edge
 	Buckets []int `json:"buckets"`
@@ -50,8 +53,9 @@ type ObservedEdge struct {
 // mirrors graph.Graph — reusing graph.Node / graph.CoarsenedEdge /
 // graph.Unresolved / graph.Diagnostic unchanged — but its Edges carry the
 // occurrence time series and it adds the Window. Summary / CoarsenedEdges /
-// Diagnostics are derived (populated by Finalize) so the payload is a lossless
-// superset of a graph.Graph envelope and consumers need no extra computation.
+// Diagnostics are derived (populated by Finalize) and carry what the sampler
+// added before it finalized, so the payload is a lossless superset of a
+// graph.Graph envelope and consumers need no extra computation.
 type ObservedGraph struct {
 	Window         Window                `json:"window"`
 	Summary        graph.Summary         `json:"summary"`
@@ -60,6 +64,10 @@ type ObservedGraph struct {
 	CoarsenedEdges []graph.CoarsenedEdge `json:"coarsenedEdges"`
 	Unresolved     []graph.Unresolved    `json:"unresolved"`
 	Diagnostics    []graph.Diagnostic    `json:"diagnostics"`
+	// Packages maps each package identity a node's PackageID names to its
+	// declared name, as graph.Graph.Packages does; the sampler fills it from the
+	// design it joins to, and it is absent without one.
+	Packages map[string]ast.PackageRef `json:"packages,omitempty"`
 }
 
 // New returns an ObservedGraph with non-nil slices so the wire shape is `[]`
@@ -86,6 +94,7 @@ func ToGraph(o *ObservedGraph) *graph.Graph {
 		CoarsenedEdges: []graph.CoarsenedEdge{},
 		Unresolved:     append([]graph.Unresolved(nil), o.Unresolved...),
 		Diagnostics:    append([]graph.Diagnostic(nil), o.Diagnostics...),
+		Packages:       o.Packages,
 	}
 	for _, e := range o.Edges {
 		g.Edges = append(g.Edges, e.Edge)
@@ -118,13 +127,19 @@ func Finalize(o *ObservedGraph) {
 
 // Merge folds two observed graphs sampled over the same Window into one: nodes
 // and edges are unioned by identity and their occurrence buckets summed
-// element-wise; unresolved entries are unioned. This is the associative fold
+// element-wise; unresolved entries and diagnostics are unioned. This is the associative fold
 // that lets sampling be sharded (per namespace, per worker, in parallel) and
-// the shards combined afterward. The Window is taken from a; callers are
-// responsible for using a consistent Window across shards.
+// the shards combined afterward. Package tables are unioned. The Window is
+// taken from a; callers are responsible for using a consistent Window across
+// shards.
 func Merge(a, b *ObservedGraph) *ObservedGraph {
 	out := New()
 	out.Window = a.Window
+	if len(a.Packages)+len(b.Packages) > 0 {
+		out.Packages = map[string]ast.PackageRef{}
+		maps.Copy(out.Packages, b.Packages)
+		maps.Copy(out.Packages, a.Packages)
+	}
 
 	seenNode := map[string]struct{}{}
 	addNodes := func(ns []graph.Node) {
@@ -169,6 +184,15 @@ func Merge(a, b *ObservedGraph) *ObservedGraph {
 	addUnres(a.Unresolved)
 	addUnres(b.Unresolved)
 
+	seenDiag := map[graph.Diagnostic]struct{}{}
+	for _, d := range slices.Concat(a.Diagnostics, b.Diagnostics) {
+		if _, ok := seenDiag[d]; ok {
+			continue
+		}
+		seenDiag[d] = struct{}{}
+		out.Diagnostics = append(out.Diagnostics, d)
+	}
+
 	Finalize(out)
 	return out
 }
@@ -207,7 +231,7 @@ func lessEdge(a, b graph.Edge) bool {
 	if a.Kind != b.Kind {
 		return a.Kind < b.Kind
 	}
-	return a.Line < b.Line
+	return a.Site.Compare(b.Site) < 0
 }
 
 func lessUnresolved(a, b graph.Unresolved) bool {
@@ -217,5 +241,5 @@ func lessUnresolved(a, b graph.Unresolved) bool {
 	if a.Name != b.Name {
 		return a.Name < b.Name
 	}
-	return a.Line < b.Line
+	return a.Site.Compare(b.Site) < 0
 }

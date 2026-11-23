@@ -34,8 +34,8 @@ type SymbolJSON struct {
 	// PackageID is the symbol's package identity, a key into the envelope's
 	// packages table; absent for the default package.
 	PackageID string `json:"packageId,omitempty"`
-	// SourceFile is the file declaring the symbol, spelled as its input named it.
-	SourceFile string      `json:"sourceFile,omitempty"`
+	// Site is the symbol's declaration, its file spelled as its input named it.
+	Site       ast.Site    `json:"site"`
 	Params     string      `json:"params,omitempty"`
 	ReturnType string      `json:"returnType,omitempty"`
 	Signals    []SubSymbol `json:"signals,omitempty"`
@@ -97,13 +97,14 @@ func Extract(file *ast.File) []SymbolJSON {
 	var symbols []SymbolJSON
 
 	for _, def := range file.Definitions {
+		site := ast.SiteOf(ast.SourceFileOf(def), def)
 		switch d := def.(type) {
 		case *ast.WorkflowDef:
 			sym := SymbolJSON{
 				Kind:       "workflow",
 				Name:       d.Name,
 				PackageID:  ast.PackageIDOf(d, file),
-				SourceFile: d.SourceFile,
+				Site:       site,
 				Params:     d.Params,
 				ReturnType: d.ReturnType,
 			}
@@ -133,16 +134,16 @@ func Extract(file *ast.File) []SymbolJSON {
 				Kind:       "activity",
 				Name:       d.Name,
 				PackageID:  ast.PackageIDOf(d, file),
-				SourceFile: d.SourceFile,
+				Site:       site,
 				Params:     d.Params,
 				ReturnType: d.ReturnType,
 			})
 		case *ast.WorkerDef:
 			sym := SymbolJSON{
-				Kind:       "worker",
-				Name:       d.Name,
-				PackageID:  ast.PackageIDOf(d, file),
-				SourceFile: d.SourceFile,
+				Kind:      "worker",
+				Name:      d.Name,
+				PackageID: ast.PackageIDOf(d, file),
+				Site:      site,
 			}
 			for _, w := range d.Workflows {
 				sym.Workflows = append(sym.Workflows, SubSymbol{Name: w.Name, PackageID: registeredPkg(w, file)})
@@ -156,10 +157,10 @@ func Extract(file *ast.File) []SymbolJSON {
 			symbols = append(symbols, sym)
 		case *ast.NamespaceDef:
 			sym := SymbolJSON{
-				Kind:       "namespace",
-				Name:       d.Name,
-				PackageID:  ast.PackageIDOf(d, file),
-				SourceFile: d.SourceFile,
+				Kind:      "namespace",
+				Name:      d.Name,
+				PackageID: ast.PackageIDOf(d, file),
+				Site:      site,
 			}
 			for _, w := range d.Workers {
 				sym.Workers = append(sym.Workers, SubSymbol{Name: w.Worker.Name})
@@ -170,10 +171,10 @@ func Extract(file *ast.File) []SymbolJSON {
 			symbols = append(symbols, sym)
 		case *ast.NexusServiceDef:
 			sym := SymbolJSON{
-				Kind:       "nexusService",
-				Name:       d.Name,
-				PackageID:  ast.PackageIDOf(d, file),
-				SourceFile: d.SourceFile,
+				Kind:      "nexusService",
+				Name:      d.Name,
+				PackageID: ast.PackageIDOf(d, file),
+				Site:      site,
 			}
 			for _, op := range d.Operations {
 				opKind := "sync"

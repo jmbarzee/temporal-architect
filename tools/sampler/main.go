@@ -23,6 +23,7 @@ import (
 	"go.temporal.io/sdk/client"
 
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/observe"
+	"github.com/jmbarzee/temporal-architect/tools/sampler/design"
 	"github.com/jmbarzee/temporal-architect/tools/sampler/history"
 	"github.com/jmbarzee/temporal-architect/tools/sampler/sampling"
 )
@@ -33,10 +34,12 @@ type options struct {
 	tlsCertPath string
 	tlsKeyPath  string
 	out         string
+	design      string
 
-	samplePercent int
-	minPerType    int
-	buckets       int
+	samplePercent     int
+	minPerType        int
+	transitivePerType int
+	buckets           int
 
 	// since / until are the raw --since / --until flag values (RFC3339 or a
 	// duration like "24h"), parsed into a StartTime window in run. They both
@@ -68,8 +71,10 @@ func parseFlags(args []string) options {
 	fs.StringVar(&opts.tlsCertPath, "tls-cert-path", "", "Client TLS certificate (mTLS)")
 	fs.StringVar(&opts.tlsKeyPath, "tls-key-path", "", "Client TLS private key (mTLS)")
 	fs.StringVar(&opts.out, "out", "./", "Output path for the observed-graph JSON (a directory receives observed-graph.json)")
+	fs.StringVar(&opts.design, "design", "", "A .twf file or directory to join sampled definitions to; without one every name stays bare")
 	fs.IntVar(&opts.samplePercent, "sample-percent", 10, "Percent of each type's executions to sample")
 	fs.IntVar(&opts.minPerType, "min-per-type", 5, "Minimum executions to sample per type")
+	fs.IntVar(&opts.transitivePerType, "transitive-per-type", 5, "Per child workflow type or Nexus operation, the most executions to hold, sampled or fetched for a caller's sake; 0 skips fetching them")
 	fs.IntVar(&opts.buckets, "buckets", 1, "Number of equal-width time buckets to divide [--since, --until] into (1 = a single total). >1 requires --since")
 	fs.StringVar(&opts.since, "since", "", "StartTime lower bound / bucket epoch: RFC3339 timestamp or duration like 24h (relative to now)")
 	fs.StringVar(&opts.until, "until", "", "StartTime upper bound / bucket window end: RFC3339 timestamp or duration like 1h (defaults to now)")
@@ -129,19 +134,27 @@ func run(ctx context.Context, opts options) error {
 		window.Until = until.UTC().Format(time.RFC3339)
 	}
 
+	var d *design.Design
+	if opts.design != "" {
+		if d, err = design.Load(opts.design); err != nil {
+			return fmt.Errorf("--design: %w", err)
+		}
+	}
+
 	c, err := dial(opts)
 	if err != nil {
 		return fmt.Errorf("connect to %s: %w", opts.address, err)
 	}
 	defer c.Close()
 
-	histories, err := sampling.Sample(ctx, c, sampling.Options{
-		Namespace:     opts.namespace,
-		SamplePercent: opts.samplePercent,
-		MinPerType:    opts.minPerType,
-		Status:        opts.status,
-		Since:         since,
-		Until:         until,
+	histories, unreached, err := sampling.Sample(ctx, c, sampling.Options{
+		Namespace:         opts.namespace,
+		SamplePercent:     opts.samplePercent,
+		MinPerType:        opts.minPerType,
+		TransitivePerType: opts.transitivePerType,
+		Status:            opts.status,
+		Since:             since,
+		Until:             until,
 	})
 	if err != nil {
 		return err
@@ -151,7 +164,7 @@ func run(ctx context.Context, opts options) error {
 		return nil
 	}
 
-	og := history.Build(histories, history.Options{Namespace: opts.namespace, Window: window})
+	og := history.Build(histories, history.Options{Namespace: opts.namespace, Window: window, Design: d, Unreached: unreached})
 
 	path := resolveOutPath(opts.out)
 	if err := writeObservedGraph(path, og); err != nil {

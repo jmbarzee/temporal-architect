@@ -13,9 +13,9 @@ import (
 // It is CLI-only text rendering: it lives on the cmd/twf side (not in the
 // public pipeline package) so the wire contract carries no presentation logic.
 func FormatDiagnostic(d pipeline.Diagnostic) string {
-	loc := fmt.Sprintf("%d:%d", d.Start.Line, d.Start.Column)
-	if d.File != "" {
-		loc = d.File + ":" + loc
+	loc := fmt.Sprintf("%d:%d", d.Site.Line, d.Site.Column)
+	if d.Site.File != "" {
+		loc = d.Site.File + ":" + loc
 	}
 	sev := d.Severity
 	if sev == "" {

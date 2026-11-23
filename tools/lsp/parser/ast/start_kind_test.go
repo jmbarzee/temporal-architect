@@ -18,7 +18,7 @@ func TestWorkflowStartWire(t *testing.T) {
 		{CallAttached, StartClient, "attached", "client"},
 	}
 	for _, tt := range tests {
-		raw, err := marshalWorkflowCall(&WorkflowCall{Mode: tt.mode, Start: tt.start, Workflow: Ref[*WorkflowDef]{Name: "Q"}})
+		raw, err := marshaller{}.workflowCall(&WorkflowCall{Mode: tt.mode, Start: tt.start, Workflow: Ref[*WorkflowDef]{Name: "Q"}})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -29,7 +29,7 @@ func TestWorkflowStartWire(t *testing.T) {
 		if got.Mode != tt.wantMode || got.Start != tt.wantStart {
 			t.Errorf("mode/start = %s/%s, want %s/%s", got.Mode, got.Start, tt.wantMode, tt.wantStart)
 		}
-		target := marshalAsyncTarget(&WorkflowTarget{Start: tt.start, Workflow: Ref[*WorkflowDef]{Name: "Q"}})
+		target := marshaller{}.asyncTarget(&WorkflowTarget{Start: tt.start, Workflow: Ref[*WorkflowDef]{Name: "Q"}})
 		if target.Workflow.Start != tt.wantStart {
 			t.Errorf("target start = %s, want %s", target.Workflow.Start, tt.wantStart)
 		}

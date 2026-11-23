@@ -55,7 +55,7 @@ func checkArgs(t *testing.T, args ...string) ([]string, []string) {
 	var out []string
 	for _, d := range diags {
 		if d.Kind == "resolve" || d.Kind == "parse" {
-			out = append(out, strings.Join([]string{d.File, strconv.Itoa(d.Start.Line), strconv.Itoa(d.Start.Column)}, ":")+" "+d.Code+": "+d.Message)
+			out = append(out, strings.Join([]string{d.Site.File, strconv.Itoa(d.Site.Line), strconv.Itoa(d.Site.Column)}, ":")+" "+d.Code+": "+d.Message)
 		}
 	}
 	var names []string

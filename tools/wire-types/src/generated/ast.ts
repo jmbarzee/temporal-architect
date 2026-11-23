@@ -7,13 +7,21 @@ import type { RawStatement, RawDefinition } from "../residue";
 // source: json.go
 
 /**
+ * Site is where a node sits in source: its file and its 1-based line and
+ * column. It is the one position type on the wire.
+ */
+export interface Site {
+  file?: string; // absent only for a single unnamed source
+  line: number /* int */;
+  column: number /* int */;
+}
+/**
  * ResolvedRefJSON is a lightweight JSON reference to a resolved AST definition.
- * Instead of embedding the entire target node, we emit its name and source position.
+ * Instead of embedding the entire target node, we emit its name and site.
  */
 export interface ResolvedRefJSON {
   name: string;
-  line: number /* int */;
-  column: number /* int */;
+  site: Site;
 }
 /**
  * FileSummary provides a count of each definition type in the file plus
@@ -49,8 +57,7 @@ export interface FileJSON {
  * ImportDeclJSON is the JSON representation of an import declaration.
  */
 export interface ImportDeclJSON {
-  line: number /* int */;
-  column: number /* int */;
+  site: Site;
   path: string;
   alias?: string;
 }
@@ -87,9 +94,7 @@ export interface PackageRef {
  */
 export interface WorkflowDefJSON {
   type: string;
-  line: number /* int */;
-  column: number /* int */;
-  sourceFile?: string;
+  site: Site;
   name: string;
   /**
    * QualifiedName is the name element of this definition's graph node ID
@@ -123,8 +128,7 @@ export interface StateBlockJSON {
  * ConditionDeclJSON is the JSON representation of a condition declaration.
  */
 export interface ConditionDeclJSON {
-  line: number /* int */;
-  column: number /* int */;
+  site: Site;
   name: string;
 }
 /**
@@ -132,9 +136,7 @@ export interface ConditionDeclJSON {
  */
 export interface ActivityDefJSON {
   type: string;
-  line: number /* int */;
-  column: number /* int */;
-  sourceFile?: string;
+  site: Site;
   name: string;
   /**
    * QualifiedName is the name element of this definition's graph node ID
@@ -158,8 +160,7 @@ export interface ActivityDefJSON {
 export interface WorkerRefJSON {
   package?: string;
   name: string;
-  line: number /* int */;
-  column: number /* int */;
+  site: Site;
   resolved?: ResolvedRefJSON;
 }
 /**
@@ -167,9 +168,7 @@ export interface WorkerRefJSON {
  */
 export interface WorkerDefJSON {
   type: string;
-  line: number /* int */;
-  column: number /* int */;
-  sourceFile?: string;
+  site: Site;
   name: string;
   /**
    * PackageID is the owning package's identity, a key into the envelope's
@@ -199,8 +198,7 @@ export interface SDKJSON {
  */
 export interface NamespaceWorkerJSON {
   workerName: string;
-  line: number /* int */;
-  column: number /* int */;
+  site: Site;
   /**
    * TemplateParams is the distinct instance parameters in the task_queue, in
    * order of first appearance. Omitted (omitempty) for a static queue so its
@@ -215,8 +213,7 @@ export interface NamespaceWorkerJSON {
  */
 export interface NamespaceEndpointJSON {
   endpointName: string;
-  line: number /* int */;
-  column: number /* int */;
+  site: Site;
   taskQueue?: string;
   /**
    * TemplateParams is the distinct {param} parameters in the endpoint name, in order
@@ -231,9 +228,7 @@ export interface NamespaceEndpointJSON {
  */
 export interface NamespaceDefJSON {
   type: string;
-  line: number /* int */;
-  column: number /* int */;
-  sourceFile?: string;
+  site: Site;
   name: string;
   /**
    * PackageID is the owning package's identity, a key into the envelope's
@@ -254,8 +249,7 @@ export interface NamespaceDefJSON {
  */
 export interface SignalDeclJSON {
   type: string;
-  line: number /* int */;
-  column: number /* int */;
+  site: Site;
   name: string;
   params: string;
   options?: OptionsBlockJSON;
@@ -263,8 +257,7 @@ export interface SignalDeclJSON {
 }
 export interface QueryDeclJSON {
   type: string;
-  line: number /* int */;
-  column: number /* int */;
+  site: Site;
   name: string;
   params: string;
   returnType?: string;
@@ -273,8 +266,7 @@ export interface QueryDeclJSON {
 }
 export interface UpdateDeclJSON {
   type: string;
-  line: number /* int */;
-  column: number /* int */;
+  site: Site;
   name: string;
   params: string;
   returnType?: string;
@@ -286,8 +278,7 @@ export interface UpdateDeclJSON {
  */
 export interface ActivityCallJSON {
   type: string;
-  line: number /* int */;
-  column: number /* int */;
+  site: Site;
   package?: string;
   name: string;
   args: string;
@@ -297,8 +288,7 @@ export interface ActivityCallJSON {
 }
 export interface WorkflowCallJSON {
   type: string;
-  line: number /* int */;
-  column: number /* int */;
+  site: Site;
   mode: string;
   start: string;
   package?: string;
@@ -366,55 +356,47 @@ export interface IdentTargetJSON {
 }
 export interface AwaitStmtJSON {
   type: string;
-  line: number /* int */;
-  column: number /* int */;
+  site: Site;
   target: AsyncTargetJSON;
 }
 export interface AwaitAllBlockJSON {
   type: string;
-  line: number /* int */;
-  column: number /* int */;
+  site: Site;
   body: RawStatement[];
 }
 export interface AwaitOneCaseJSON {
-  line: number /* int */;
-  column: number /* int */;
+  site: Site;
   target?: AsyncTargetJSON;
   awaitAll?: RawStatement;
   body: RawStatement[];
 }
 export interface AwaitOneBlockJSON {
   type: string;
-  line: number /* int */;
-  column: number /* int */;
+  site: Site;
   cases: AwaitOneCaseJSON[];
 }
 export interface SwitchCaseJSON {
-  line: number /* int */;
-  column: number /* int */;
+  site: Site;
   value: string;
   body: RawStatement[];
 }
 export interface SwitchBlockJSON {
   type: string;
-  line: number /* int */;
-  column: number /* int */;
+  site: Site;
   expr: string;
   cases: SwitchCaseJSON[];
   default?: RawStatement[];
 }
 export interface IfStmtJSON {
   type: string;
-  line: number /* int */;
-  column: number /* int */;
+  site: Site;
   condition: string;
   body: RawStatement[];
   elseBody?: RawStatement[];
 }
 export interface ForStmtJSON {
   type: string;
-  line: number /* int */;
-  column: number /* int */;
+  site: Site;
   variant: string;
   condition?: string;
   variable?: string;
@@ -423,43 +405,36 @@ export interface ForStmtJSON {
 }
 export interface ReturnStmtJSON {
   type: string;
-  line: number /* int */;
-  column: number /* int */;
+  site: Site;
   value?: string;
 }
 export interface CloseStmtJSON {
   type: string;
-  line: number /* int */;
-  column: number /* int */;
+  site: Site;
   reason: string;
   args?: string;
 }
 export interface BreakStmtJSON {
   type: string;
-  line: number /* int */;
-  column: number /* int */;
+  site: Site;
 }
 export interface ContinueStmtJSON {
   type: string;
-  line: number /* int */;
-  column: number /* int */;
+  site: Site;
 }
 export interface RawStmtJSON {
   type: string;
-  line: number /* int */;
-  column: number /* int */;
+  site: Site;
   text: string;
 }
 export interface CommentJSON {
   type: string;
-  line: number /* int */;
-  column: number /* int */;
+  site: Site;
   text: string;
 }
 export interface SignalSendStmtJSON {
   type: string;
-  line: number /* int */;
-  column: number /* int */;
+  site: Site;
   head: SendHeadJSON;
   signal: string;
   args?: string;
@@ -471,8 +446,7 @@ export interface SignalSendStmtJSON {
  */
 export interface SendHeadJSON {
   kind: string;
-  line: number /* int */;
-  column: number /* int */;
+  site: Site;
   package?: string;
   type?: string;
   handle?: string;
@@ -487,8 +461,7 @@ export interface SendHeadJSON {
  * AddressJSON is the id: / run_id: block under a type-headed send.
  */
 export interface AddressJSON {
-  line: number /* int */;
-  column: number /* int */;
+  site: Site;
   id: IDValueJSON;
   runId?: string;
 }
@@ -506,34 +479,29 @@ export interface IDValueJSON {
  * IDSchemeJSON is a workflow type's id_scheme: template and its hole paths.
  */
 export interface IDSchemeJSON {
-  line: number /* int */;
-  column: number /* int */;
+  site: Site;
   template: string;
   holes?: string[];
 }
 export interface PromiseStmtJSON {
   type: string;
-  line: number /* int */;
-  column: number /* int */;
+  site: Site;
   name: string;
   target: AsyncTargetJSON;
 }
 export interface SetStmtJSON {
   type: string;
-  line: number /* int */;
-  column: number /* int */;
+  site: Site;
   name: string;
 }
 export interface UnsetStmtJSON {
   type: string;
-  line: number /* int */;
-  column: number /* int */;
+  site: Site;
   name: string;
 }
 export interface NexusCallJSON {
   type: string;
-  line: number /* int */;
-  column: number /* int */;
+  site: Site;
   detach?: boolean;
   endpoint: string;
   servicePackage?: string;
@@ -555,8 +523,7 @@ export interface NexusCallJSON {
  */
 export interface NexusOperationJSON {
   opType: string;
-  line: number /* int */;
-  column: number /* int */;
+  site: Site;
   name: string;
   workflowPackage?: string;
   workflowName?: string;
@@ -569,9 +536,7 @@ export interface NexusOperationJSON {
  */
 export interface NexusServiceDefJSON {
   type: string;
-  line: number /* int */;
-  column: number /* int */;
-  sourceFile?: string;
+  site: Site;
   name: string;
   /**
    * QualifiedName is the name element of this definition's graph node ID

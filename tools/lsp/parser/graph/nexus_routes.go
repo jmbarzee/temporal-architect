@@ -37,7 +37,7 @@ func (g *Graph) emitNexusRoutes(idx *astIndex) {
 						From: fromID,
 						To:   EndpointID(ep.Name, ep.Namespace),
 						Kind: EdgeNexusRoute,
-						Line: ep.Line,
+						Site: ep.Site,
 					})
 				}
 			}

@@ -36,6 +36,5 @@ required). Subsequent runs reuse the cache.
 ## Scope
 
 Deliberately minimal: one workflow calling one activity. That covers the whole
-CLI path end to end without a large fixture. Child-workflow / sub-tree and nexus
-coverage lands with transitive sampling —
-[#59](https://github.com/jmbarzee/temporal-architect/issues/59).
+CLI path end to end without a large fixture. Transitive sampling of child and
+Nexus handler histories is not exercised here.

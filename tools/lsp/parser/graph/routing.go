@@ -30,82 +30,80 @@ import (
 // When no callee matches, no edge; a DISPATCH_NO_REACHABLE_DEPLOYMENT
 // diagnostic is added so the consumer knows the call landed nowhere.
 func (g *Graph) emitDispatchEdges(idx *astIndex) {
-	defer func() { g.walkFile = "" }()
 	for _, wf := range idx.workflows {
-		g.walkFile = wf.SourceFile
 		wfQName := idx.defQName(wf, wf.Name)
 		for _, callerDep := range idx.deploymentsHosting(KindWorkflow, wfQName) {
 			callerID := HostedID(KindWorkflow, wfQName, callerDep.WorkerName, callerDep.NamespaceName, false)
-			g.walkRunnable(idx, callerID, callerDep, wf.Body)
+			g.walkRunnable(idx, callerID, callerDep, wf.SourceFile, wf.Body)
 			for _, s := range ast.FirstDeclared(wf.Signals) {
-				g.walkRunnable(idx, callerID, callerDep, s.Body)
+				g.walkRunnable(idx, callerID, callerDep, wf.SourceFile, s.Body)
 			}
 			for _, q := range ast.FirstDeclared(wf.Queries) {
-				g.walkRunnable(idx, callerID, callerDep, q.Body)
+				g.walkRunnable(idx, callerID, callerDep, wf.SourceFile, q.Body)
 			}
 			for _, u := range ast.FirstDeclared(wf.Updates) {
-				g.walkRunnable(idx, callerID, callerDep, u.Body)
+				g.walkRunnable(idx, callerID, callerDep, wf.SourceFile, u.Body)
 			}
 		}
 	}
 
 	for _, svc := range idx.nexusServices {
-		g.walkFile = svc.SourceFile
 		svcQName := idx.defQName(svc, svc.Name)
 		serviceDeployments := idx.deploymentsHosting(KindNexusService, svcQName)
 		for _, op := range ast.FirstDeclared(svc.Operations) {
 			opName := NexusOpQualifiedName(svcQName, op.Name)
+			site := ast.SiteOf(svc.SourceFile, op)
 			switch op.OpType {
 			case ast.NexusOpAsync:
 				if op.Workflow.Resolved == nil {
-					g.recordUnresolved(opName, op.Workflow.Name, EdgeAsyncBacking, op.Line, serviceDeployments)
+					g.recordUnresolved(opName, op.Workflow.Name, EdgeAsyncBacking, site, serviceDeployments)
 					continue
 				}
 				targetName := idx.defQName(op.Workflow.Resolved, op.Workflow.Resolved.Name)
 				for _, opDep := range serviceDeployments {
 					fromID := HostedID(KindNexusOperation, opName, opDep.WorkerName, opDep.NamespaceName, false)
-					g.emitAsyncBacking(idx, fromID, opDep, targetName, op.Line)
+					g.emitAsyncBacking(idx, fromID, opDep, targetName, site)
 				}
 			case ast.NexusOpSync:
 				for _, opDep := range serviceDeployments {
 					fromID := HostedID(KindNexusOperation, opName, opDep.WorkerName, opDep.NamespaceName, false)
-					g.walkRunnable(idx, fromID, opDep, op.Body)
+					g.walkRunnable(idx, fromID, opDep, svc.SourceFile, op.Body)
 				}
 			}
 		}
 	}
 }
 
-// walkRunnable visits each statement in a body once, dispatching call
-// edges through the appropriate resolver. Async targets attached to
+// walkRunnable visits each statement of a body in file once, dispatching
+// call edges through the appropriate resolver. Async targets attached to
 // await / promise / await-one-case nodes are handled via the AST
 // walker's WithAsyncTargets option so the resolution logic stays in
 // one place.
-func (g *Graph) walkRunnable(idx *astIndex, callerID string, callerDep workerDeployment, stmts []ast.Statement) {
+func (g *Graph) walkRunnable(idx *astIndex, callerID string, callerDep workerDeployment, file string, stmts []ast.Statement) {
 	ast.WalkStatements(stmts, func(s ast.Statement) bool {
 		switch n := s.(type) {
 		case *ast.ActivityCall:
 			opts, _ := effective.Of(n)
-			g.emitActivityCall(idx, callerID, callerDep, n.Activity, opts, n.Line)
+			g.emitActivityCall(idx, callerID, callerDep, n.Activity, opts, ast.SiteOf(file, n))
 		case *ast.WorkflowCall:
 			opts, _ := effective.Of(n)
-			g.emitWorkflowCall(idx, callerID, callerDep, n.Workflow, opts, n.Line)
+			g.emitWorkflowCall(idx, callerID, callerDep, n.Workflow, opts, ast.SiteOf(file, n))
 		case *ast.NexusCall:
-			g.emitNexusCall(idx, callerID, n.Endpoint, n.Service, n.Operation, n.Line)
+			g.emitNexusCall(idx, callerID, n.Endpoint, n.Service, n.Operation, ast.SiteOf(file, n))
 		case *ast.SignalSendStmt:
-			g.emitSignalSend(idx, callerID, callerDep, n)
+			g.emitSignalSend(idx, callerID, callerDep, ast.SiteOf(file, n), n)
 		}
 		return true
 	}, ast.WithAsyncTargets(func(target ast.AsyncTarget, parent ast.Statement) bool {
-		line := parent.NodeLine()
+		site := ast.SiteOf(file, parent)
 		opts, _ := effective.Of(parent)
 		switch t := target.(type) {
 		case *ast.ActivityTarget:
-			g.emitActivityCall(idx, callerID, callerDep, t.Activity, opts, line)
+			g.emitActivityCall(idx, callerID, callerDep, t.Activity, opts, site)
 		case *ast.WorkflowTarget:
-			g.emitWorkflowCall(idx, callerID, callerDep, t.Workflow, opts, line)
+			g.emitWorkflowCall(idx, callerID, callerDep, t.Workflow, opts, site)
 		case *ast.NexusTarget:
-			g.emitNexusCall(idx, callerID, t.Endpoint, t.Service, t.Operation, line)
+			g.emitNexusCall(idx, callerID, t.Endpoint, t.Service, t.Operation, site)
 		}
 		return true
 	}))
@@ -113,28 +111,28 @@ func (g *Graph) walkRunnable(idx *astIndex, callerID string, callerDep workerDep
 
 func (g *Graph) emitActivityCall(
 	idx *astIndex, callerID string, callerDep workerDeployment,
-	ref ast.Ref[*ast.ActivityDef], opts effective.Options, line int,
+	ref ast.Ref[*ast.ActivityDef], opts effective.Options, site ast.Site,
 ) {
 	if ref.Resolved == nil {
 		g.addUnresolved(Unresolved{
-			From: callerID, Name: ref.Name, Kind: EdgeActivityCall, Line: line,
+			From: callerID, Name: ref.Name, Kind: EdgeActivityCall, Site: site,
 		})
 		return
 	}
-	g.emitQueuedCall(idx, callerID, callerDep, EdgeActivityCall, KindActivity, idx.defQName(ref.Resolved, ref.Resolved.Name), opts, line)
+	g.emitQueuedCall(idx, callerID, callerDep, EdgeActivityCall, KindActivity, idx.defQName(ref.Resolved, ref.Resolved.Name), opts, site)
 }
 
 func (g *Graph) emitWorkflowCall(
 	idx *astIndex, callerID string, callerDep workerDeployment,
-	ref ast.Ref[*ast.WorkflowDef], opts effective.Options, line int,
+	ref ast.Ref[*ast.WorkflowDef], opts effective.Options, site ast.Site,
 ) {
 	if ref.Resolved == nil {
 		g.addUnresolved(Unresolved{
-			From: callerID, Name: ref.Name, Kind: EdgeWorkflowCall, Line: line,
+			From: callerID, Name: ref.Name, Kind: EdgeWorkflowCall, Site: site,
 		})
 		return
 	}
-	g.emitQueuedCall(idx, callerID, callerDep, EdgeWorkflowCall, KindWorkflow, idx.defQName(ref.Resolved, ref.Resolved.Name), opts, line)
+	g.emitQueuedCall(idx, callerID, callerDep, EdgeWorkflowCall, KindWorkflow, idx.defQName(ref.Resolved, ref.Resolved.Name), opts, site)
 }
 
 // emitSignalSend emits the cross-workflow signal-send edge. Unlike a
@@ -149,10 +147,10 @@ func (g *Graph) emitWorkflowCall(
 // When it is unresolved no edge is drawn and an Unresolved entry is recorded
 // instead of silently dropping the send; a type head through an import of a
 // package absent from the tree is recorded with Reason "external".
-func (g *Graph) emitSignalSend(idx *astIndex, callerID string, callerDep workerDeployment, s *ast.SignalSendStmt) {
+func (g *Graph) emitSignalSend(idx *astIndex, callerID string, callerDep workerDeployment, site ast.Site, s *ast.SignalSendStmt) {
 	target := s.Target()
 	if target == nil {
-		u := Unresolved{From: callerID, Name: s.Head.Handle.Name, Kind: EdgeSignalSend, Line: s.Line}
+		u := Unresolved{From: callerID, Name: s.Head.Handle.Name, Kind: EdgeSignalSend, Site: site}
 		if s.Head.Kind == ast.SendHeadType {
 			u.Name = s.Head.Type.Name
 			if s.Head.External {
@@ -172,7 +170,7 @@ func (g *Graph) emitSignalSend(idx *astIndex, callerID string, callerDep workerD
 			From:    callerID,
 			To:      HostedID(KindWorkflow, targetQName, calleeDep.WorkerName, calleeDep.NamespaceName, false),
 			Kind:    EdgeSignalSend,
-			Line:    s.Line,
+			Site:    site,
 			Routing: &Routing{},
 		})
 	}
@@ -193,7 +191,7 @@ func (g *Graph) emitSignalSend(idx *astIndex, callerID string, callerDep workerD
 // diagnosed against the literal the user wrote.
 func (g *Graph) emitQueuedCall(
 	idx *astIndex, callerID string, callerDep workerDeployment,
-	edgeKind, calleeKind, calleeName string, opts effective.Options, line int,
+	edgeKind, calleeKind, calleeName string, opts effective.Options, site ast.Site,
 ) {
 	var explicit string
 	if tq := opts["task_queue"]; tq.Written() {
@@ -223,7 +221,7 @@ func (g *Graph) emitQueuedCall(
 			From: callerID,
 			To:   HostedID(calleeKind, calleeName, calleeDep.WorkerName, calleeDep.NamespaceName, false),
 			Kind: edgeKind,
-			Line: line,
+			Site: site,
 			Routing: &Routing{
 				Explicit: explicit,
 			},
@@ -233,7 +231,7 @@ func (g *Graph) emitQueuedCall(
 	}
 
 	if !matched {
-		g.addDiagnostic(warningDispatchNoReachable(callerID, calleeKind, g.calleeLabel(idx, calleeKind, calleeName), callerDep.NamespaceName, queue, line))
+		g.addDiagnostic(warningDispatchNoReachable(callerID, calleeKind, g.calleeLabel(idx, calleeKind, calleeName), callerDep.NamespaceName, queue, site))
 	}
 }
 
@@ -245,12 +243,12 @@ func (g *Graph) emitQueuedCall(
 func (g *Graph) emitNexusCall(
 	idx *astIndex, callerID string,
 	epRef ast.Ref[*ast.NamespaceEndpoint], svcRef ast.Ref[*ast.NexusServiceDef],
-	opRef ast.Ref[*ast.NexusOperation], line int,
+	opRef ast.Ref[*ast.NexusOperation], site ast.Site,
 ) {
 	if epRef.Resolved == nil || svcRef.Resolved == nil || opRef.Resolved == nil {
 		name := nexusOpCallName(svcRef, opRef)
 		g.addUnresolved(Unresolved{
-			From: callerID, Name: name, Kind: EdgeNexusCall, Line: line,
+			From: callerID, Name: name, Kind: EdgeNexusCall, Site: site,
 		})
 		return
 	}
@@ -259,7 +257,7 @@ func (g *Graph) emitNexusCall(
 	if ep == nil {
 		// Resolved at the AST level but lost from our index — defensive.
 		g.addUnresolved(Unresolved{
-			From: callerID, Name: nexusOpCallName(svcRef, opRef), Kind: EdgeNexusCall, Line: line,
+			From: callerID, Name: nexusOpCallName(svcRef, opRef), Kind: EdgeNexusCall, Site: site,
 		})
 		return
 	}
@@ -281,7 +279,7 @@ func (g *Graph) emitNexusCall(
 			From: callerID,
 			To:   HostedID(KindNexusOperation, opName, opDep.WorkerName, opDep.NamespaceName, false),
 			Kind: EdgeNexusCall,
-			Line: line,
+			Site: site,
 			Routing: &Routing{
 				NexusEndpoint: EndpointID(ep.Name, ep.Namespace),
 			},
@@ -291,7 +289,7 @@ func (g *Graph) emitNexusCall(
 	}
 
 	if !matched && ep.Queue != "" {
-		g.addDiagnostic(warningDispatchNoReachable(callerID, KindNexusOperation, g.calleeLabel(idx, KindNexusOperation, opName), ep.Namespace, ep.Queue, line))
+		g.addDiagnostic(warningDispatchNoReachable(callerID, KindNexusOperation, g.calleeLabel(idx, KindNexusOperation, opName), ep.Namespace, ep.Queue, site))
 	}
 }
 
@@ -302,7 +300,7 @@ func (g *Graph) emitNexusCall(
 // task queue, so the workflow deployment must have the same deploy key.
 func (g *Graph) emitAsyncBacking(
 	idx *astIndex, fromID string, opDep workerDeployment,
-	workflowName string, line int,
+	workflowName string, site ast.Site,
 ) {
 	if opDep.queue.Form == ast.QueueMalformed {
 		return // already a resolve error; it hosts nothing
@@ -316,14 +314,14 @@ func (g *Graph) emitAsyncBacking(
 			From:    fromID,
 			To:      HostedID(KindWorkflow, workflowName, calleeDep.WorkerName, calleeDep.NamespaceName, false),
 			Kind:    EdgeAsyncBacking,
-			Line:    line,
+			Site:    site,
 			Routing: &Routing{},
 		})
 		matched = true
 	}
 
 	if !matched && opDep.Queue != "" {
-		g.addDiagnostic(warningDispatchNoReachable(fromID, KindWorkflow, g.calleeLabel(idx, KindWorkflow, workflowName), opDep.NamespaceName, opDep.Queue, line))
+		g.addDiagnostic(warningDispatchNoReachable(fromID, KindWorkflow, g.calleeLabel(idx, KindWorkflow, workflowName), opDep.NamespaceName, opDep.Queue, site))
 	}
 }
 
@@ -347,18 +345,18 @@ func nexusOpCallName(svc ast.Ref[*ast.NexusServiceDef], op ast.Ref[*ast.NexusOpe
 // produced. Without this, an unresolved async-backing workflow would
 // show up once instead of once-per-service-deployment, making it
 // inconsistent with how unresolved call-site refs are recorded.
-func (g *Graph) recordUnresolved(opQualName, calleeName, kind string, line int, serviceDeployments []workerDeployment) {
+func (g *Graph) recordUnresolved(opQualName, calleeName, kind string, site ast.Site, serviceDeployments []workerDeployment) {
 	if len(serviceDeployments) == 0 {
 		g.addUnresolved(Unresolved{
 			From: HostedID(KindNexusOperation, opQualName, "", "", true),
-			Name: calleeName, Kind: kind, Line: line,
+			Name: calleeName, Kind: kind, Site: site,
 		})
 		return
 	}
 	for _, opDep := range serviceDeployments {
 		g.addUnresolved(Unresolved{
 			From: HostedID(KindNexusOperation, opQualName, opDep.WorkerName, opDep.NamespaceName, false),
-			Name: calleeName, Kind: kind, Line: line,
+			Name: calleeName, Kind: kind, Site: site,
 		})
 	}
 }
