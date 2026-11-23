@@ -1,0 +1,76 @@
+10	workflow:kinds.Order › signal Cancel
+11	workflow:kinds.Order › signal Cancel › cancelled = true
+12	workflow:kinds.Order › update Approve
+13	workflow:kinds.Order › update Approve › set paid
+14	workflow:kinds.Order › update Approve › return true
+15	workflow:kinds.Order › query Status
+16	workflow:kinds.Order › query Status › return status
+18	workflow:kinds.Order › status = "new"
+19	workflow:kinds.Order › activity billing.Charge(order.total) -> charge
+22	workflow:kinds.Order › workflow Ship(order) -> shipment
+23	workflow:kinds.Order › detach workflow Notify(order.customer, "a  string")
+24	workflow:kinds.Order › nexus Payments PaymentService.Refund(charge) -> refund
+25	workflow:kinds.Order › detach nexus Payments billing.Ledger.Record(charge)
+26	workflow:kinds.Order › promise child <- workflow Audit(order)
+27	workflow:kinds.Order › promise t <- timer(1h)
+28	workflow:kinds.Order › promise s <- signal Cancel
+29	workflow:kinds.Order › promise u <- update Approve
+30	workflow:kinds.Order › promise a <- activity Reserve(order)
+31	workflow:kinds.Order › promise n <- nexus Payments PaymentService.Hold(order)
+32	workflow:kinds.Order › signal child.Pause()
+33	workflow:kinds.Order › signal Audit.Pause()
+35	workflow:kinds.Order › await timer(5m)
+36	workflow:kinds.Order › await signal Cancel -> reason
+37	workflow:kinds.Order › await update Approve -> (approver, at)
+38	workflow:kinds.Order › await activity Reserve( order, "two  spaces", ) -> hold
+42	workflow:kinds.Order › await workflow Audit(order) -> report
+43	workflow:kinds.Order › await nexus Payments PaymentService.Hold(order) -> held
+44	workflow:kinds.Order › await child -> report
+45	workflow:kinds.Order › await paid
+46	workflow:kinds.Order › await all
+47	workflow:kinds.Order › await all › activity Pack(order) @1
+48	workflow:kinds.Order › await all › activity Pack(order) @2
+49	workflow:kinds.Order › await all › workflow Label(order)
+50	workflow:kinds.Order › await one @1
+51	workflow:kinds.Order › await one @1 › signal Cancel -> reason
+52	workflow:kinds.Order › await one @1 › signal Cancel -> reason › close fail(Cancelled{reason})
+53	workflow:kinds.Order › await one @1 › update Approve
+54	workflow:kinds.Order › await one @1 › timer(24h)
+55	workflow:kinds.Order › await one @1 › timer(24h) › close fail
+56	workflow:kinds.Order › await one @1 › activity Reserve(order) -> hold
+57	workflow:kinds.Order › await one @1 › activity Reserve(order) -> hold › unset paid
+58	workflow:kinds.Order › await one @1 › workflow Audit(order) -> report
+59	workflow:kinds.Order › await one @1 › nexus Payments PaymentService.Hold(order) -> held
+60	workflow:kinds.Order › await one @1 › t
+61	workflow:kinds.Order › await one @1 › await all
+62	workflow:kinds.Order › await one @1 › await all › activity Pack(order)
+63	workflow:kinds.Order › await one @1 › await all › await timer(1m)
+64	workflow:kinds.Order › await one @2
+65	workflow:kinds.Order › await one @2 › paid
+66	workflow:kinds.Order › await one @2 › paid › break
+67	workflow:kinds.Order › await one @2 › t
+68	workflow:kinds.Order › await one @2 › t › continue
+69	workflow:kinds.Order › switch (order.kind)
+70	workflow:kinds.Order › switch (order.kind) › case "digital"
+71	workflow:kinds.Order › switch (order.kind) › case "digital" › activity Deliver(order)
+72	workflow:kinds.Order › switch (order.kind) › case "physical"
+73	workflow:kinds.Order › switch (order.kind) › case "physical" › activity Deliver(order)
+75	workflow:kinds.Order › switch (order.kind) › else › close fail
+76	workflow:kinds.Order › if (order.total > 100)
+77	workflow:kinds.Order › if (order.total > 100) › activity Review(order)
+79	workflow:kinds.Order › if (order.total > 100) › else › activity Review(order)
+80	workflow:kinds.Order › for
+81	workflow:kinds.Order › for › break
+82	workflow:kinds.Order › for (attempt < 3)
+83	workflow:kinds.Order › for (attempt < 3) › continue
+84	workflow:kinds.Order › for (item in order.items)
+85	workflow:kinds.Order › for (item in order.items) › activity Pick(item)
+86	workflow:kinds.Order › close continue_as_new(order)
+87	workflow:kinds.Order › close complete(Receipt{order})
+90	activity:kinds.Charge › if (amount == 0)
+91	activity:kinds.Charge › if (amount == 0) › return null
+92	activity:kinds.Charge › charge = gateway.charge(amount)
+93	activity:kinds.Charge › return charge
+98	nexusOperation:kinds.PaymentService.Refund › workflow RefundCharge(charge) -> refund
+99	nexusOperation:kinds.PaymentService.Refund › signal Order.Refunded(refund)
+101	nexusOperation:kinds.PaymentService.Refund › close complete(refund)

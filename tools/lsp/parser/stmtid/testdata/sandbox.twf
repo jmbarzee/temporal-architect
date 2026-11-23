@@ -1,0 +1,86 @@
+# Sandbox: entity workflow, sole authority over one pod.
+package sandbox
+
+import "github.com/jmbarzee/temporal-agent-sandbox/twf/agent/v1"
+import "github.com/metacensus/library-temporal-kube/twf/helm/v1"
+import "github.com/metacensus/library-temporal-kube/twf/kube/v1"
+
+workflow SandboxOrchestrator():
+	id_scheme: "sandboxes"
+	# An unassigned sandbox expires unleased.
+	signal Request(requester: Identity, assets: Assets):
+		sandboxId = newId()
+		detach workflow Sandbox(sandboxId, assets)
+		signal agent.Agent.SandboxAssign(sandboxId)
+			id: requester.workflowId
+
+	served = 0
+	for:
+		await signal Request
+		served = served + 1
+		if (served >= 1000):
+			close continue_as_new
+
+workflow Sandbox(sandboxId: SandboxId, assets: Assets):
+	id_scheme: "sandbox/{sandboxId}"
+	# Answered in the main loop once the pod is ready; denied after it.
+	signal LeaseRequest(requester: Identity):
+		pass
+
+	signal LeaseRelease(requester: Identity):
+		if (lease != null and lease.owner == requester):
+			lease = null
+
+	query GetLease() -> (Lease):
+		return lease
+
+	leaseDuration = 15m
+	renewBefore = 5m
+	grace = 10m
+	lease = null
+
+	# a failure through Ready skips the main loop.
+	# Chart: sandbox container + sidecar worker polling "sandbox-{sandboxId}".
+	# pods is the worker's configuration: where pods run and how they reach Temporal.
+	activity helm.RenderChart("sandbox", "sandbox-{sandboxId}", pods.namespace, Values{sandboxId, assets, pods}) -> resources
+	activity kube.Create(resources) -> ids
+		options:
+			schedule_to_close_timeout: 5m
+	# Ready fails until every resource is current; the retry policy is the wait.
+	activity kube.Ready(ids)
+		options:
+			schedule_to_close_timeout: 5m
+			retry_policy:
+				initial_interval: 2s
+				maximum_interval: 10s
+
+	deadline = workflow.now() + grace
+	for:
+		if (lease != null):
+			deadline = lease.expiry + grace
+		if (workflow.now() >= deadline):
+			break
+		await one:
+			signal LeaseRequest -> requester:
+				if (lease == null or lease.owner == requester or workflow.now() >= lease.expiry):
+					# a failed send grants nothing.
+					lease = Lease{sandboxId, owner: requester, expiry: workflow.now() + leaseDuration, renewBefore}
+					signal agent.Agent.SandboxLeaseGrant(lease)
+						id: requester.workflowId
+				else:
+					signal agent.Agent.SandboxLeaseDeny("leased to another holder")
+						id: requester.workflowId
+			signal LeaseRelease:
+				continue
+			timer(deadline - workflow.now()):
+				continue
+
+	# Nothing is in flight by now: any lease has been expired for the whole grace period.
+	# The pod's termination grace period covers the sidecar's own shutdown.
+	activity kube.Delete(ids)
+	close complete
+
+# Runs on the pod's sidecar worker, which keeps each finished call's output,
+# keyed by workflow run and activity, so a retry of it runs nothing.
+activity RunTool(call: ToolCall) -> (ToolOutput):
+	return exec(call)

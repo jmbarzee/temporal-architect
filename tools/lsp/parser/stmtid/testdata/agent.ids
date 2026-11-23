@@ -1,0 +1,61 @@
+8	workflow:agent.Agent › signal SandboxAssign
+9	workflow:agent.Agent › signal SandboxAssign › assigned = id
+11	workflow:agent.Agent › signal SandboxLeaseGrant
+12	workflow:agent.Agent › signal SandboxLeaseGrant › lease = granted
+13	workflow:agent.Agent › signal SandboxLeaseGrant › pending = false
+15	workflow:agent.Agent › signal SandboxLeaseDeny
+16	workflow:agent.Agent › signal SandboxLeaseDeny › denied = reason
+19	workflow:agent.Agent › signal UserPrompt
+20	workflow:agent.Agent › signal UserPrompt › pass
+23	workflow:agent.Agent › leaseWait = 15m
+25	workflow:agent.Agent › if (resume == null)
+26	workflow:agent.Agent › if (resume == null) › deadline = workflow.now() + leaseWait
+27	workflow:agent.Agent › if (resume == null) › signal sandbox.SandboxOrchestrator.Request(workflow.id, task.relevantAssets)
+29	workflow:agent.Agent › if (resume == null) › await one @1
+30	workflow:agent.Agent › if (resume == null) › await one @1 › signal SandboxAssign
+31	workflow:agent.Agent › if (resume == null) › await one @1 › signal SandboxAssign › signal sandbox.Sandbox.LeaseRequest(workflow.id)
+33	workflow:agent.Agent › if (resume == null) › await one @1 › timer(leaseWait)
+34	workflow:agent.Agent › if (resume == null) › await one @1 › timer(leaseWait) › close fail(LeaseTimeout{"no sandbox assigned"})
+35	workflow:agent.Agent › if (resume == null) › await one @2
+36	workflow:agent.Agent › if (resume == null) › await one @2 › signal SandboxLeaseGrant
+37	workflow:agent.Agent › if (resume == null) › await one @2 › signal SandboxLeaseGrant › context = [instructions, task]
+38	workflow:agent.Agent › if (resume == null) › await one @2 › signal SandboxLeaseDeny
+39	workflow:agent.Agent › if (resume == null) › await one @2 › signal SandboxLeaseDeny › close fail(denied)
+40	workflow:agent.Agent › if (resume == null) › await one @2 › timer(deadline - workflow.now())
+41	workflow:agent.Agent › if (resume == null) › await one @2 › timer(deadline - workflow.now()) › close fail(LeaseTimeout{"no answer to the lease request"})
+43	workflow:agent.Agent › if (resume == null) › else › lease = resume.lease
+44	workflow:agent.Agent › if (resume == null) › else › pending = false
+45	workflow:agent.Agent › if (resume == null) › else › context = resume.context
+46	workflow:agent.Agent › turns = 0
+48	workflow:agent.Agent › for
+49	workflow:agent.Agent › for › if (denied != null)
+50	workflow:agent.Agent › for › if (denied != null) › close fail(denied)
+51	workflow:agent.Agent › for › if (pending and workflow.now() >= lease.expiry)
+52	workflow:agent.Agent › for › if (pending and workflow.now() >= lease.expiry) › close fail(LeaseTimeout{"the lease expired with its renewal unanswered"})
+55	workflow:agent.Agent › for › if (workflow.now() > lease.expiry - lease.renewBefore and pending == false)
+56	workflow:agent.Agent › for › if (workflow.now() > lease.expiry - lease.renewBefore and pending == false) › pending = true
+57	workflow:agent.Agent › for › if (workflow.now() > lease.expiry - lease.renewBefore and pending == false) › signal sandbox.Sandbox.LeaseRequest(workflow.id)
+60	workflow:agent.Agent › for › activity CallModel(context, tools) -> reply
+65	workflow:agent.Agent › for › context = context + reply
+68	workflow:agent.Agent › for › if (reply.done)
+69	workflow:agent.Agent › for › if (reply.done) › break
+74	workflow:agent.Agent › for › if (reply.toolCalls == null)
+75	workflow:agent.Agent › for › if (reply.toolCalls == null) › signal sandbox.Sandbox.LeaseRelease(workflow.id)
+77	workflow:agent.Agent › for › if (reply.toolCalls == null) › await signal UserPrompt -> prompt
+78	workflow:agent.Agent › for › if (reply.toolCalls == null) › context = context + prompt
+79	workflow:agent.Agent › for › if (reply.toolCalls == null) › signal sandbox.Sandbox.LeaseRequest(workflow.id)
+81	workflow:agent.Agent › for › if (reply.toolCalls == null) › await one
+82	workflow:agent.Agent › for › if (reply.toolCalls == null) › await one › signal SandboxLeaseGrant
+83	workflow:agent.Agent › for › if (reply.toolCalls == null) › await one › signal SandboxLeaseDeny
+84	workflow:agent.Agent › for › if (reply.toolCalls == null) › await one › signal SandboxLeaseDeny › close fail(denied)
+85	workflow:agent.Agent › for › if (reply.toolCalls == null) › await one › timer(leaseWait)
+86	workflow:agent.Agent › for › if (reply.toolCalls == null) › await one › timer(leaseWait) › close fail(LeaseTimeout{"no answer to the lease request"})
+89	workflow:agent.Agent › for › for (call in reply.toolCalls)
+92	workflow:agent.Agent › for › for (call in reply.toolCalls) › activity sandbox.RunTool(call) -> output
+99	workflow:agent.Agent › for › for (call in reply.toolCalls) › context = context + output
+101	workflow:agent.Agent › for › turns = turns + 1
+102	workflow:agent.Agent › for › if (turns >= 50)
+104	workflow:agent.Agent › for › if (turns >= 50) › close continue_as_new(instructions, task, tools, Resume{lease, context})
+106	workflow:agent.Agent › signal sandbox.Sandbox.LeaseRelease(workflow.id)
+108	workflow:agent.Agent › close complete(Result{context})
+111	activity:agent.CallModel › return llm.call(context, tools)
