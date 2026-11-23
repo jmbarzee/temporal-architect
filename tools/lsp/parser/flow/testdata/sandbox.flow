@@ -1,0 +1,60 @@
+workflow:sandbox.SandboxOrchestrator
+	entry  yield  next→17
+	17  next→18
+	18  many  loop 18  iterate→19
+	19  yield  many  loop 18  next→20
+	20  many  loop 18  next→21
+	21  many  loop 18  then→22  back:else→18
+	22  next→exit
+	exit
+workflow:sandbox.SandboxOrchestrator › signal Request
+	entry  yield  unknown  next→12
+	12  unknown  next→13
+	13  unknown  next→14
+	14  unknown  next→exit
+	exit  unknown
+workflow:sandbox.Sandbox
+	entry  yield  next→37
+	37  next→38
+	38  next→39
+	39  next→40
+	40  next→45
+	45  yield  next→46
+	46  yield  next→50
+	50  yield  next→57
+	57  next→58
+	58  many  loop 58  iterate→59
+	59  many  loop 58  then→60  else→61
+	60  many  loop 58  next→61
+	61  many  loop 58  then→62  else→63
+	62  next→80
+	63  yield  many  loop 58  wins→64  wins→73  wins→75
+	64  many  loop 58  next→65
+	65  many  loop 58  then→67  else→71
+	67  many  loop 58  next→68
+	68  many  loop 58  back:next→58
+	71  many  loop 58  back:next→58
+	73  many  loop 58  next→74
+	74  many  loop 58  back:next→58
+	75  many  loop 58  next→76
+	76  many  loop 58  back:next→58
+	80  yield  next→81
+	81  next→exit
+	exit
+workflow:sandbox.Sandbox › signal LeaseRequest
+	entry  yield  unknown  next→28
+	28  unknown  next→exit
+	exit  unknown
+workflow:sandbox.Sandbox › signal LeaseRelease
+	entry  yield  unknown  next→31
+	31  unknown  then→32  else→exit
+	32  unknown  next→exit
+	exit  unknown
+workflow:sandbox.Sandbox › query GetLease
+	entry  unknown  next→35
+	35  unknown  next→exit
+	exit  unknown
+activity:sandbox.RunTool
+	entry  next→86
+	86  next→exit
+	exit

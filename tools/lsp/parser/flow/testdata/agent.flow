@@ -1,0 +1,75 @@
+workflow:agent.Agent
+	entry  yield  next→23
+	23  next→25
+	25  then→26  else→43
+	26  next→27
+	27  next→29
+	29  yield  wins→30  wins→33
+	30  next→31
+	31  next→35
+	33  next→34
+	34  next→exit
+	35  yield  wins→36  wins→38  wins→40
+	36  next→37
+	37  next→46
+	38  next→39
+	39  next→exit
+	40  next→41
+	41  next→exit
+	43  next→44
+	44  next→45
+	45  next→46
+	46  next→48
+	48  many  loop 48  iterate→49
+	49  many  loop 48  then→50  else→51
+	50  next→exit
+	51  many  loop 48  then→52  else→55
+	52  next→exit
+	55  many  loop 48  then→56  else→60
+	56  many  loop 48  next→57
+	57  many  loop 48  next→60
+	60  yield  many  loop 48  next→65
+	65  many  loop 48  next→68
+	68  many  loop 48  then→69  else→74
+	69  next→106
+	74  many  loop 48  then→75  else→89
+	75  many  loop 48  next→77
+	77  yield  many  loop 48  next→78
+	78  many  loop 48  next→79
+	79  many  loop 48  next→81
+	81  yield  many  loop 48  wins→82  wins→83  wins→85
+	82  many  loop 48  next→89
+	83  next→84
+	84  next→exit
+	85  next→86
+	86  next→exit
+	89  many  loop 89  iterate→92  done→101
+	92  yield  many  loop 89  next→99
+	99  many  loop 89  back:next→89
+	101  many  loop 48  next→102
+	102  many  loop 48  then→104  back:else→48
+	104  next→exit
+	106  next→108
+	108  next→exit
+	exit
+workflow:agent.Agent › signal SandboxAssign
+	entry  yield  unknown  next→9
+	9  unknown  next→exit
+	exit  unknown
+workflow:agent.Agent › signal SandboxLeaseGrant
+	entry  yield  unknown  next→12
+	12  unknown  next→13
+	13  unknown  next→exit
+	exit  unknown
+workflow:agent.Agent › signal SandboxLeaseDeny
+	entry  yield  unknown  next→16
+	16  unknown  next→exit
+	exit  unknown
+workflow:agent.Agent › signal UserPrompt
+	entry  yield  unknown  next→20
+	20  unknown  next→exit
+	exit  unknown
+activity:agent.CallModel
+	entry  next→111
+	111  next→exit
+	exit

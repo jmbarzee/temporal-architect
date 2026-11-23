@@ -1,0 +1,56 @@
+# The edges stmtid's fixtures leave out: nested loops, breaks in cases,
+# empty arms, closing branches and statements after a close.
+package edges
+
+workflow Edges(items: Items):
+	signal Stop():
+		close complete
+
+	update Count() -> (int):
+		for (item in items):
+			if (item.done):
+				return item.count
+		return 0
+
+	for (round < 3):
+		for (item in items):
+			switch (item.kind):
+				case "skip":
+					continue
+				case "stop":
+					break
+			activity Process(item)
+		await one:
+			signal Stop:
+			timer(1m):
+				break
+		if (round == 2):
+			continue
+		round = round + 1
+	for:
+		activity Once()
+		break
+	switch (items.kind):
+		case "a":
+			activity A()
+	for:
+		await all:
+			activity A()
+			break
+		activity AfterBreak()
+	await all:
+		activity A()
+		close fail
+	activity AfterJoin()
+	close complete
+	activity AfterClose()
+
+workflow Joined(c: bool, items: Items):
+	await all:
+		if (c):
+			close fail
+		activity B()
+	activity X()
+	for (round < 3):
+		for (item in items):
+			activity Y(item)
