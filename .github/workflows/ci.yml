@@ -59,7 +59,7 @@ jobs:
 
   corpus:
     name: Corpus (${{ matrix.sdk }})
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.sdk == 'swift' && 'ubuntu-24.04' || 'ubuntu-latest' }}
     strategy:
       fail-fast: false
       matrix:
@@ -210,6 +210,7 @@ jobs:
           extensions: grpc, sockets, curl
           tools: composer:v2
 
+      # setup-swift (beta) rejects the newer ubuntu-latest image, so swift runs on ubuntu-24.04 (see runs-on).
       # setup-swift verifies Swiftly against swift.org's signing keys, which the runner lacks.
       # swift-keys.asc is https://www.swift.org/keys/all-keys.asc; refresh it when swift.org adds a signing key.
       - if: matrix.sdk == 'swift'
