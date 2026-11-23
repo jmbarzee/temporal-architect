@@ -22,7 +22,7 @@
 35	workflow:kinds.Order › await timer(5m)
 36	workflow:kinds.Order › await signal Cancel -> reason
 37	workflow:kinds.Order › await update Approve -> (approver, at)
-38	workflow:kinds.Order › await activity Reserve( order, "two  spaces", ) -> hold
+38	workflow:kinds.Order › await activity Reserve(order, "two  spaces",) -> hold
 42	workflow:kinds.Order › await workflow Audit(order) -> report
 43	workflow:kinds.Order › await nexus Payments PaymentService.Hold(order) -> held
 44	workflow:kinds.Order › await child -> report

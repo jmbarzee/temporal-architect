@@ -140,19 +140,20 @@ func binding(params string) string {
 }
 
 // squeeze trims s and collapses each run of whitespace outside strings to a
-// space, so a multi-line argument list renders on one line.
+// space, or to nothing inside a bracket's edge, so a multi-line argument
+// list renders on one line.
 func squeeze(s string) string {
 	var b strings.Builder
-	space := false
+	space, last := false, rune(0)
 	scan(strings.TrimSpace(s), func(_ int, r rune, quoted bool) {
 		if !quoted && unicode.IsSpace(r) {
 			space = true
 			return
 		}
-		if space {
+		if space && !strings.ContainsRune("([{", last) && !strings.ContainsRune(")]}", r) {
 			b.WriteByte(' ')
-			space = false
 		}
+		space, last = false, r
 		b.WriteRune(r)
 	})
 	return b.String()

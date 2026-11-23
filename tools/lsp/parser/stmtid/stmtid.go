@@ -8,7 +8,7 @@
 //
 // A head is the statement's first line as written, without its trailing ':',
 // comment, options: block or send address. Heads compare up to whitespace
-// outside strings. A head that n siblings in one body share carries "@k",
+// outside strings. A head that siblings in one body share carries "@n",
 // its rank among them; a unique head carries none.
 //
 // Heads nest as the source does. An if's then-body sits under `if (…)` and
@@ -61,7 +61,7 @@ const (
 type Resolution struct {
 	Stmt    ast.Statement // nil unless resolved
 	Nearest ast.Node      // the deepest node the path reaches: Stmt once resolved
-	Failed  int           // the first segment that did not resolve
+	Failed  int           // the first segment that did not resolve; len(Path) when all did
 	Fault   Fault
 }
 
