@@ -615,23 +615,21 @@ func Resolve(file *ast.File) []*ResolveError {
 			queries:    queries,
 			updates:    updates,
 			conditions: conditions,
-			promises:   map[string]*ast.PromiseStmt{},
-			params:     ast.ParamNames(wf.Params),
 		}
 
 		s.checkReservedNames(wf)
 		// The body resolves first, so a handler's send to a body promise
 		// finds that promise's target already resolved.
-		ctx.resolveStatements(wf.Body)
-		handlerCtx := ctx.withPromises(topLevelPromises(wf.Body))
+		bodyCtx := ctx.in(wf.Context, wf.Params, nil)
+		bodyCtx.resolveStatements(wf.Body)
 		for _, sig := range wf.Signals {
-			handlerCtx.withParams(sig.Params).resolveStatements(sig.Body)
+			bodyCtx.in(sig.Context, sig.Params, wf.Body).resolveStatements(sig.Body)
 		}
 		for _, q := range wf.Queries {
-			handlerCtx.withParams(q.Params).resolveStatements(q.Body)
+			bodyCtx.in(q.Context, q.Params, wf.Body).resolveStatements(q.Body)
 		}
 		for _, u := range wf.Updates {
-			handlerCtx.withParams(u.Params).resolveStatements(u.Body)
+			bodyCtx.in(u.Context, u.Params, wf.Body).resolveStatements(u.Body)
 		}
 	}
 
@@ -666,19 +664,8 @@ func Resolve(file *ast.File) []*ResolveError {
 					})
 				}
 			case ast.NexusOpSync:
-				syncCtx := &resolveCtx{
-					s:          s,
-					ownPkg:     svcPkg,
-					file:       svc.SourceFile,
-					signals:    map[string]*ast.SignalDecl{},
-					queries:    map[string]*ast.QueryDecl{},
-					updates:    map[string]*ast.UpdateDecl{},
-					conditions: map[string]*ast.ConditionDecl{},
-					promises:   map[string]*ast.PromiseStmt{},
-					params:     ast.ParamNames(op.Params),
-				}
 				s.checkReservedIn(svc.SourceFile, []paramList{{op.Pos, op.Params}}, nil, [][]ast.Statement{op.Body})
-				syncCtx.resolveStatements(op.Body)
+				(&resolveCtx{s: s, ownPkg: svcPkg, file: svc.SourceFile}).in(op.Context, op.Params, nil).resolveStatements(op.Body)
 			}
 		}
 	}
@@ -1023,14 +1010,28 @@ type resolveCtx struct {
 	params     map[string]bool // the sender's own params: the runnable's, plus a handler's
 }
 
-// withParams returns a copy of c whose params also include a handler's.
-func (c *resolveCtx) withParams(handlerParams string) *resolveCtx {
-	hc := *c
-	hc.params = ast.ParamNames(handlerParams)
-	for name := range c.params {
-		hc.params[name] = true
+// in returns the context of a body that runs in body, declared with params. A
+// workflow's body sees the workflow's symbols and its own params; c holds the
+// workflow's symbols. A handler, entered from the workflow body's context, also
+// sees its params and the workflow body's top-level promises, found in
+// workflowBody. A sync nexus operation sees no workflow symbols.
+func (c *resolveCtx) in(body ast.BodyContext, params string, workflowBody []ast.Statement) *resolveCtx {
+	bc := *c
+	bc.params = ast.ParamNames(params)
+	switch body {
+	case ast.BodySignalHandler, ast.BodyUpdateHandler, ast.BodyQueryHandler:
+		maps.Copy(bc.params, c.params)
+		bc.promises = c.withPromises(topLevelPromises(workflowBody)).promises
+	case ast.BodyNexusSync:
+		bc.signals = map[string]*ast.SignalDecl{}
+		bc.queries = map[string]*ast.QueryDecl{}
+		bc.updates = map[string]*ast.UpdateDecl{}
+		bc.conditions = map[string]*ast.ConditionDecl{}
+		bc.promises = map[string]*ast.PromiseStmt{}
+	default:
+		bc.promises = map[string]*ast.PromiseStmt{}
 	}
-	return &hc
+	return &bc
 }
 
 // withPromises returns a copy of c whose promises also include extra.

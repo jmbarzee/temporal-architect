@@ -146,7 +146,7 @@ func parseRawStmt(p *Parser) (ast.Statement, error) {
 // bareUpdateError is the error for a bare `update Name` line at pos.
 func (p *Parser) bareUpdateError(pos ast.Pos) error {
 	msg := "update arrivals must be awaited: `await update Name`"
-	if p.inSyncNexus {
+	if p.body == ast.BodyNexusSync {
 		msg = "a sync nexus operation receives no updates; only a workflow awaits one"
 	}
 	return &ParseError{Msg: msg, Line: pos.Line, Column: pos.Column}
@@ -158,9 +158,9 @@ func (p *Parser) bareUpdateError(pos ast.Pos) error {
 func (p *Parser) lateHandlerError(kw, name token.Token) error {
 	msg := fmt.Sprintf("%s handler %s is declared after the workflow body's first statement; declare handlers before it", kw.Literal, name.Literal)
 	switch {
-	case p.inSyncNexus:
+	case p.body == ast.BodyNexusSync:
 		msg = fmt.Sprintf("a sync nexus operation declares no %s handlers; declare %s in a workflow", kw.Literal, name.Literal)
-	case p.inHandler:
+	case isHandler(p.body):
 		msg = fmt.Sprintf("%s handler %s is declared inside a handler; declare handlers at the top of the workflow body", kw.Literal, name.Literal)
 	}
 	return &ParseError{Msg: msg, Line: kw.Line, Column: kw.Column}
