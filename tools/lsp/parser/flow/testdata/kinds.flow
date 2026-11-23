@@ -1,0 +1,93 @@
+workflow:kinds.Order
+	entry  yield  next→18
+	18  next→19
+	19  yield  next→22
+	22  yield  next→23
+	23  next→24
+	24  yield  next→25
+	25  next→26
+	26  next→27
+	27  next→28
+	28  next→29
+	29  next→30
+	30  next→31
+	31  next→32
+	32  next→33
+	33  next→35
+	35  yield  next→36
+	36  yield  next→37
+	37  yield  next→38
+	38  yield  next→42
+	42  yield  next→43
+	43  yield  next→44
+	44  yield  next→45
+	45  yield  next→46
+	46  branch→47  branch→48  branch→49
+	47  yield  next→46 join
+	48  yield  next→46 join
+	49  yield  next→46 join
+	46 join  yield  next→50
+	50  yield  wins→51  wins→53  wins→54  wins→56  wins→58  wins→59  wins→60  wins→61
+	51  next→52
+	52  next→exit
+	53  next→64
+	54  next→55
+	55  next→exit
+	56  next→57
+	57  next→64
+	58  next→64
+	59  next→64
+	60  next→64
+	61  branch→62  branch→63
+	62  yield  next→61 join
+	63  yield  next→61 join
+	61 join  yield  next→64
+	64  yield  wins→65  wins→67
+	65  next→66
+	66
+	67  next→68
+	68
+	69  unreached  case→70  case→72  default→75
+	70  unreached  next→71
+	71  yield  unreached  next→76
+	72  unreached  next→73
+	73  yield  unreached  next→76
+	75  unreached  next→exit
+	76  unreached  then→77  else→79
+	77  yield  unreached  next→80
+	79  yield  unreached  next→80
+	80  unreached  iterate→81
+	81  unreached  next→82
+	82  unreached  iterate→83  done→84
+	83  unreached  next→82
+	84  unreached  iterate→85  done→86
+	85  yield  unreached  next→84
+	86  unreached  next→exit
+	87  unreached  next→exit
+	exit
+workflow:kinds.Order › signal Cancel
+	entry  yield  unknown  next→11
+	11  unknown  next→exit
+	exit  unknown
+workflow:kinds.Order › update Approve
+	entry  yield  unknown  next→13
+	13  unknown  next→14
+	14  unknown  next→exit
+	exit  unknown
+workflow:kinds.Order › query Status
+	entry  yield  unknown  next→16
+	16  unknown  next→exit
+	exit  unknown
+activity:kinds.Charge
+	entry  yield  next→90
+	90  then→91  else→92
+	91  next→exit
+	92  next→93
+	93  next→exit
+	exit
+nexusOperation:kinds.PaymentService.Refund
+	entry  yield  next→98
+	98  yield  next→99
+	99  next→101
+	101  next→exit
+	exit
