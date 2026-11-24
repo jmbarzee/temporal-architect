@@ -46,6 +46,7 @@ const (
 	ErrWorkerMultiSDK
 	ErrImplNotFound
 	ErrCrossSDKCall
+	ErrPromiseNeverAwaited
 )
 
 // Error represents a validation error with position info.
@@ -142,6 +143,8 @@ func (k ErrorKind) String() string {
 		return "IMPL_NOT_FOUND"
 	case ErrCrossSDKCall:
 		return "CROSS_SDK_CALL"
+	case ErrPromiseNeverAwaited:
+		return "PROMISE_NEVER_AWAITED"
 	}
 	return "UNKNOWN"
 }
@@ -272,6 +275,9 @@ func Validate(file *ast.File) []*Error {
 	// 5-6. Call routing, endpoint-service linkage, and endpoint caller
 	// allowlists (walks resolved bodies).
 	v.walkAllBodies(file.Definitions)
+
+	// Promises no await, race or signal send takes.
+	v.checkPromises(file.Definitions)
 
 	// 7. id: parent claims, id_scheme overlap and ID policies (definition order).
 	v.checkParentSends(file.Definitions)

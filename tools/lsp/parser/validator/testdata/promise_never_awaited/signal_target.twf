@@ -1,0 +1,12 @@
+workflow Parent(id):
+	promise child <- workflow Child(id)
+	signal child.Pause()
+	close complete()
+
+workflow Child(id):
+	state:
+		condition paused
+	signal Pause():
+		set paused
+	await paused
+	close complete()
