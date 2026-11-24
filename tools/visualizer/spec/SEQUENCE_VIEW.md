@@ -73,9 +73,15 @@ A call is one box, in the lane of whoever made it. An activity run on another qu
 
 *Why:* the diagram counts what a lane did, once.
 
+### One box per arrival (`rule-one-arrival`)
+
+A signal that both runs a handler and resolves an await is one box at its receiving end: the await, unless the handler's body draws something of its own, when the handler is the box and its steps follow it.
+
+*Why:* one message has one receiving end.
+
 
 ## Derived, fitted and authored
 
 - **Derived:** rows, column positions, and the space an offset tag or outside source needs. Columns are spaced so that what is drawn for one clears the next by a fixed gap.
 - **Fitted to the two hand drawings, not derived:** the margin, the offset distance, the top of the first row, and the sizes and pitch in `layout.ts`.
-- **Authored in the payload, not fixed here:** pauses, outside sources, spans, and which cancelled timers appear. [#761](https://github.com/jmbarzee/temporal-architect/issues/761) decides which stay authored.
+- **Authored as knobs beside the execution, not fixed here:** titles, the labels a value says better, pauses, notes, outside sources and spans; and, by what a sample writes, which cancelled timers appear. [#761](https://github.com/jmbarzee/temporal-architect/issues/761) decides which stay authored.

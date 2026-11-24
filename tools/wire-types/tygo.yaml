@@ -67,7 +67,6 @@ packages:
   - path: "github.com/jmbarzee/temporal-architect/tools/lsp/parser/execution"
     output_path: "tools/wire-types/src/generated/execution.ts"
     preserve_comments: "types"
-    # execution.go is the wire family; key.go and check.go are Go-only.
     include_files:
       - "execution.go"
     frontmatter: |

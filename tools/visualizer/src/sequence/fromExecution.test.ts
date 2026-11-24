@@ -6,7 +6,7 @@ const RUN = 'promise r <- activity p.Run(x) -> y'
 const node = (worker: string, queue: string) => ({ id: `worker:${worker}/namespace:n`, definition: `worker:${worker}`, name: worker, queue })
 const graph = { nodes: [node('w', 'q'), node('h', 'hosts')] }
 
-function sample(knobs: Partial<Knobs> = {}) {
+function sample(knobs: (key: (id: string) => string, ids: Record<string, string>) => Partial<Knobs> = () => ({})) {
   const s = script()
   const w = s.lane({ id: 'workflow:p.W', node: 'workflow:p.W/worker:w/namespace:n' })
   const v = s.lane({ id: 'workflow:p.V', node: 'workflow:p.V/worker:w/namespace:n' })
@@ -22,15 +22,14 @@ function sample(knobs: Partial<Knobs> = {}) {
     retried: w.start(RUN, { attempt: 2 }),
     awaited: v.end('await signal Go'),
     called: api.occur('called'),
-    detached: w.reach('detach workflow p.Child()'),
+    detached: w.detach('detach workflow p.Child()', 'workflow:p.Child/worker:w/namespace:n'),
     closed: w.reach('close complete(x)'),
   }
   const event = (id: string) => s.execution.events.find(e => e.id === id)!
   event(ids.handled).from = ids.sent
   event(ids.awaited).from = ids.sent
   Object.assign(event(ids.called), { from: ids.retried, after: [ids.computed, ids.dispatched] })
-  v.lane.startedBy = ids.computed
-  return { ids, model: fromExecution(s.execution, graph, { title: 'T', ...knobs }) }
+  return { ids, model: fromExecution(s.execution, graph, { title: 'T', ...knobs(s.key, ids) }) }
 }
 
 describe('fromExecution', () => {
@@ -38,7 +37,6 @@ describe('fromExecution', () => {
     const { ids, model } = sample()
     expect(model.steps.map(s => [s.id, s.kind, s.label, s.state, s.attempt])).toEqual([
       [ids.sent, 'send', 'V.Go', undefined, undefined],
-      [ids.handled, 'handler', 'Go', undefined, undefined],
       [queuedId(ids.started), 'activity', 'Run', 'queued', undefined],
       [ids.timer, 'timer', 'timer(1h)', 'cancelled', undefined],
       [ids.started, 'activity', 'Run', undefined, undefined],
@@ -64,28 +62,26 @@ describe('fromExecution', () => {
   it('joins an event to its cause, an undrawn event standing for the last step drawn before it in its lane', () => {
     const { ids, model } = sample()
     expect(model.messages).toEqual([
-      { from: ids.sent, to: ids.handled },
       { from: ids.sent, to: ids.awaited },
       { from: ids.retried, to: ids.called },
     ])
     expect(model.steps.find(s => s.id === ids.called)!.after).toEqual([queuedId(ids.started)])
-    expect(model.lanes[1].startedBy).toBeUndefined()
   })
 
   it('takes what an execution does not hold from its knobs', () => {
     const { ids, model } = sample()
-    const knobbed = sample({
+    const knobbed = sample((key, ids) => ({
       lanes: { 'outside:API': { title: 'THE API', tag: { key: 'k', value: 'v' } } },
-      labels: { [ids.started]: 'Run(1) → 2' },
-      pauses: { [ids.timer]: 2 },
-      notes: { [ids.computed]: 'x is set' },
-      spans: [{ lane: 'workflow:p.W', label: 'held', from: ids.sent, to: ids.closed }],
-      outside: { [ids.awaited]: { outside: 'user' } },
-    }).model
+      labels: { [key(ids.started)]: 'Run(1) → 2' },
+      pauses: { [key(ids.timer)]: 2 },
+      notes: { [key(ids.computed)]: 'x is set' },
+      spans: [{ lane: 'workflow:p.W', label: 'held', from: key(ids.sent), to: key(ids.closed) }],
+      outside: { [key(ids.awaited)]: { outside: 'user' } },
+    })).model
     const step = (id: string) => knobbed.steps.find(s => s.id === id)!
     expect(knobbed.lanes[2]).toMatchObject({ title: 'THE API', tag: { key: 'k', value: 'v' } })
     expect([step(ids.started).label, step(ids.timer).pause, step(ids.computed).kind]).toEqual(['Run(1) → 2', 2, 'note'])
-    expect(knobbed.spans).toHaveLength(1)
+    expect(knobbed.spans).toEqual([{ lane: 'workflow:p.W', label: 'held', from: ids.sent, to: ids.closed }])
     expect(knobbed.messages).toContainEqual({ from: { outside: 'user' }, to: ids.awaited })
     expect(model.spans).toEqual([])
   })

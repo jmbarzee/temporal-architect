@@ -26,9 +26,6 @@ import (
 // is BuildDecompose — see it for why decomposition is unified with the graph and
 // for the deferred paths-coupled-vs-graph-keyed decision the history/sampler work
 // will settle.
-//
-// Execution is the optional execution the Sequence view draws; it marshals to
-// the `execution` key, additive in the same way.
 type Payload struct {
 	AST           *ast.File            `json:"ast"`
 	Graph         *graph.Graph         `json:"parserGraph,omitempty"`

@@ -6,7 +6,7 @@
 import type { Execution, ExecutionEvent, ParserGraph } from '@temporal-architect/wire-types'
 import type { Lane, Message, Model, Span, Step, StepKind } from './model'
 
-/** What the view draws that an execution does not hold. A step is keyed by its id: its event's, or queuedId's. */
+/** What the view draws that an execution does not hold. Lanes are keyed by id; steps by eventKey, a queued box by queuedId of its start's. */
 export interface Knobs {
   title: string
   lanes?: Record<string, { title?: string; tag?: Lane['tag'] }>
@@ -21,6 +21,9 @@ export interface Knobs {
 
 const LANE_KIND: Record<string, Lane['kind']> = { workflow: 'workflow', worker: 'host', outside: 'external' }
 const OUTCOME_LABEL = { failed: 'failed', timedOut: 'timed out', cancelled: 'cancelled' }
+
+/** An event's identity across executions, as Event.Key in Go. */
+export const eventKey = (e: ExecutionEvent) => JSON.stringify([e.lane, e.stmt ?? '', (e.visit ?? []).join('.'), e.kind, e.attempt ?? 0])
 
 /** The box drawn waiting for an attempt that does not start when it is dispatched. */
 export const queuedId = (start: string) => `${start} queued`
@@ -66,6 +69,7 @@ export function fromExecution({ lanes, events }: Execution, { nodes }: Pick<Pars
     const worker = node.startsWith('worker:') ? node : node.slice(node.indexOf('/worker:') + 1)
     return nodes.find(n => n.id === worker)?.queue
   }
+  const handle = new Map(events.map(e => [eventKey(e), e.id]))
   const where = (e: ExecutionEvent) => `${e.lane}\n${e.stmt}\n${e.visit ?? []}`
   const dispatch = new Map(events.filter(e => e.edge).map(e => [where(e), e.edge!]))
 
@@ -82,26 +86,38 @@ export function fromExecution({ lanes, events }: Execution, { nodes }: Pick<Pars
     if (from && next.get(from.id) !== e) queued.set(from.id, e)
   }
 
+  // A signal that runs a handler and resolves an await is one box: the handler
+  // when its body draws something, else the await.
+  const folded = new Set<string>()
+  for (const arrival of events.filter(e => e.kind === 'arrive' && e.from)) {
+    const awaited = events.find(e => e.lane === arrival.lane && e.kind === 'end' && e.from === arrival.from)
+    if (!awaited) continue
+    const body = events.some(e => e.lane === arrival.lane && e.stmt?.startsWith(`${arrival.stmt} › `) && e.visit?.[0] === arrival.visit?.[0] && drawn(e))
+    folded.add(body ? awaited.id : arrival.id)
+  }
+
   // Each event stands for the last step drawn at or before it in its lane.
   const stand = new Map<string, string>()
   const drawnLast = new Map<string, string>()
   const steps: Step[] = []
   const messages: Message[] = []
-  const step = (id: string, e: ExecutionEvent, kind: StepKind, label: string, extra: Partial<Step>) => {
+  const step = (id: string, key: string, e: ExecutionEvent, kind: StepKind, label: string, extra: Partial<Step>) => {
     steps.push({
-      id, lane: e.lane, kind, label: knobs.labels?.[id] ?? label, ...extra,
-      ...(knobs.pauses?.[id] !== undefined && { pause: knobs.pauses[id] }),
+      id, lane: e.lane, kind, label: knobs.labels?.[key] ?? label, ...extra,
+      ...(knobs.pauses?.[key] !== undefined && { pause: knobs.pauses[key] }),
     })
     drawnLast.set(e.lane, id)
   }
   const resolve = (ids: string[] = []) => ids.flatMap(id => stand.get(id) ?? [])
   for (const e of events) {
-    const draw = drawn(e) ?? (knobs.notes?.[e.id] !== undefined ? { kind: 'note' as const, label: knobs.notes[e.id] } : undefined)
+    const key = eventKey(e)
+    const note = knobs.notes?.[key]
+    const draw = folded.has(e.id) ? undefined : drawn(e) ?? (note !== undefined ? { kind: 'note' as const, label: note } : undefined)
     const after = resolve(e.after)
     const edge = dispatch.get(where(e))
     const queue = e.kind === 'start' && edge ? queueOf(edge.to) : undefined
     if (draw) {
-      step(e.id, e, draw.kind, draw.label, {
+      step(e.id, key, e, draw.kind, draw.label, {
         ...(e.outcome && { state: e.outcome === 'cancelled' ? 'cancelled' : 'failed' }),
         ...(e.attempt !== undefined && e.attempt > 1 && { attempt: e.attempt }),
         ...(after.length > 0 && { after }),
@@ -111,7 +127,7 @@ export function fromExecution({ lanes, events }: Execution, { nodes }: Pick<Pars
     const waiting = queued.get(e.id)
     if (waiting) {
       const to = dispatch.get(where(waiting))?.to
-      step(queuedId(waiting.id), waiting, 'activity', drawn(waiting)!.label, {
+      step(queuedId(waiting.id), queuedId(eventKey(waiting)), waiting, 'activity', drawn(waiting)!.label, {
         state: 'queued',
         ...(waiting.attempt! > 1 && { attempt: waiting.attempt }),
         ...(!draw && after.length > 0 && { after }),
@@ -121,7 +137,7 @@ export function fromExecution({ lanes, events }: Execution, { nodes }: Pick<Pars
     const at = drawnLast.get(e.lane)
     if (at !== undefined) stand.set(e.id, at)
     if (!draw) continue
-    const outside = knobs.outside?.[e.id]
+    const outside = knobs.outside?.[key]
     if (outside) messages.push({ from: outside, to: e.id })
     if (e.from && stand.has(e.from)) messages.push({ from: stand.get(e.from)!, to: e.id })
   }
@@ -144,6 +160,6 @@ export function fromExecution({ lanes, events }: Execution, { nodes }: Pick<Pars
     }),
     steps,
     messages,
-    spans: knobs.spans ?? [],
+    spans: (knobs.spans ?? []).map(s => ({ ...s, from: handle.get(s.from)!, to: handle.get(s.to)! })),
   }
 }

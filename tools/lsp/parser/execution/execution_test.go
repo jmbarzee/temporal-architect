@@ -28,13 +28,13 @@ func valid() *Execution {
 			{ID: cloud},
 		},
 		Events: []Event{
-			{ID: cloud + "/1", Lane: cloud, Kind: Occur, Label: "launch"},
+			{ID: cloud + "/1", Lane: cloud, Kind: Occur, Visit: []int{1}, Label: "launch"},
 			{ID: a + "/1", Lane: a, Kind: Reach, Stmt: run, Edge: &Edge{a + "/worker:w/namespace:n", "activity:p.Run/worker:h/namespace:n", "activityCall"}},
-			{ID: a + "/2", Lane: a, Kind: Reach, Stmt: a + " › detach workflow B()"},
+			{ID: a + "/2", Lane: a, Kind: Reach, Stmt: a + " › detach workflow B()", Edge: &Edge{a + "/worker:w/namespace:n", b + "/worker:w/namespace:n", "workflowCall"}},
 			{ID: a + "/3", Lane: a, Kind: Start, Stmt: run, Attempt: 1, On: host1, After: []string{cloud + "/1"}},
-			{ID: cloud + "/2", Lane: cloud, Kind: Occur, Label: "lost", Outcome: Failed},
+			{ID: cloud + "/2", Lane: cloud, Kind: Occur, Visit: []int{2}, Label: "lost", Outcome: Failed},
 			{ID: a + "/4", Lane: a, Kind: End, Stmt: run, Attempt: 1, Outcome: TimedOut},
-			{ID: cloud + "/3", Lane: cloud, Kind: Occur, Label: "launch"},
+			{ID: cloud + "/3", Lane: cloud, Kind: Occur, Visit: []int{3}, Label: "launch"},
 			{ID: a + "/5", Lane: a, Kind: Start, Stmt: run, Attempt: 2, On: host2},
 			{ID: a + "/6", Lane: a, Kind: Reach, Stmt: a + " › signal B.Go()", Edge: &Edge{a + "/worker:w/namespace:n", b + "/worker:w/namespace:n", "signalSend"}},
 			{ID: b + "/1", Lane: b, Kind: Arrive, Stmt: b + " › signal Go", Visit: []int{1}, From: a + "/6"},
@@ -49,7 +49,7 @@ func TestJSON_RoundTrips(t *testing.T) {
 		`"events":[` +
 		`{"id":"workflow:p.A @2/1","lane":"workflow:p.A @2","kind":"start","stmt":"workflow:p.A › for › activity Run()","visit":[3],"attempt":2,"after":["outside:u/1"],"on":"worker:h","time":"2026-11-23T00:00:00Z"},` +
 		`{"id":"workflow:p.A @2/2","lane":"workflow:p.A @2","kind":"reach","stmt":"workflow:p.A › signal B.Go()","edge":{"from":"x","to":"y","kind":"signalSend"},"from":"outside:u/2"},` +
-		`{"id":"outside:u/1","lane":"outside:u","kind":"occur","outcome":"failed","label":"lost"}]}`)
+		`{"id":"outside:u/1","lane":"outside:u","kind":"occur","visit":[1],"outcome":"failed","label":"lost"}]}`)
 	var x Execution
 	if err := json.Unmarshal(in, &x); err != nil {
 		t.Fatal(err)
@@ -108,6 +108,10 @@ func TestCheck_Broken(t *testing.T) {
 		{"reach in an outside lane", func(x *Execution) { e := event(x, cloud+"/3"); e.Kind, e.Label, e.Stmt = Reach, "", cloud+" › x" }, "a reach is in a run's lane"},
 		{"occur in a run", func(x *Execution) { e := event(x, a+"/2"); e.Kind, e.Stmt = Occur, "" }, "an occur is in a host or outside lane"},
 		{"occur with a stmt", func(x *Execution) { event(x, cloud+"/3").Stmt = run }, "an occur has no stmt"},
+		{"occur out of place", func(x *Execution) { event(x, cloud+"/3").Visit = []int{1} }, "an occur's visit is its place in its lane, [3]"},
+		{"run started without its edge", func(x *Execution) { event(x, a+"/2").Edge = nil }, "which dispatches no edge to its node"},
+		{"run started along another edge", func(x *Execution) { event(x, a+"/2").Edge.To = a + "/worker:w/namespace:n" }, "which dispatches no edge to its node"},
+		{"start never dispatched", func(x *Execution) { event(x, a+"/1").Edge = nil }, "starts an attempt no earlier reach dispatched"},
 		{"visit from 0", func(x *Execution) { event(x, b+"/1").Visit = []int{0} }, "visit counts passes from 1"},
 		{"start without attempt", func(x *Execution) { event(x, a+"/3").Attempt = 0 }, "a start counts its attempt from 1"},
 		{"attempt on a reach", func(x *Execution) { event(x, a+"/2").Attempt = 1 }, "only a start or end has an attempt"},

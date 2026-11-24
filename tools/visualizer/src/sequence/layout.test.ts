@@ -164,4 +164,10 @@ describe('the fixed rules', () => {
     expect(Math.abs(centre('a-run') - column('A').x)).toBeLessThan(Math.abs(column('HOSTS').x - column('A').x))
     expect(layout.arrows.map(a => a.kind).sort()).toEqual(['call', 'child', 'launch'])
   })
+
+  it('one box per arrival: the await receives a signal whose handler draws nothing, and the handler one whose handler does', () => {
+    const { steps, messages } = rules['rule-one-arrival']
+    expect(steps.filter(s => s.lane === 'workflow:p.B').map(s => [s.id, s.kind])).toEqual([['b-go', 'await'], ['b-stop', 'handler'], ['b-done', 'send']])
+    expect(messages).toEqual([{ from: 'a-go', to: 'b-go' }, { from: 'a-stop', to: 'b-stop' }])
+  })
 })

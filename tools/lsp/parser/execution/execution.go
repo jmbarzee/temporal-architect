@@ -15,10 +15,15 @@
 //   - An event's stmt is a stmtid identity under its lane's definition. Its
 //     visit holds the pass of each enclosing for, outermost first, the for's
 //     own pass included on the for's own reach; under a handler it begins with
-//     which arrival this is.
+//     which arrival this is. An occur has no stmt, and its visit is its place
+//     in its lane.
 //   - Event.Key is an event's identity across executions, what a recorded and
 //     a designed execution, and the knobs authored over either, match on. Keys
-//     are unique, except among one lane's occur events.
+//     are unique.
+//
+// Dispatch: the reach that makes a call, a send or a run's start carries the
+// graph edge it dispatches along. A start follows the reach that dispatched
+// it, and a run is started by a reach whose edge reaches the run's node.
 //
 // Derived, not stored:
 //   - labels and verbs, from the head that ends stmt

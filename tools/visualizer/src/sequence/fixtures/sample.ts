@@ -2,7 +2,7 @@
 // fromExecution reads with it, and the names its hand drawing gives its steps.
 
 import type { EdgeKind, Execution, ExecutionEvent, ExecutionLane, ParserGraph } from '@temporal-architect/wire-types'
-import { fromExecution, type Knobs } from '../fromExecution'
+import { eventKey, fromExecution, type Knobs } from '../fromExecution'
 import type { Model } from '../model'
 
 export interface Sample {
@@ -36,8 +36,9 @@ export function script() {
       start: (stmt: string, fields?: Fields, name?: string) => event('start', stmt, { attempt: 1, ...fields }, name),
       end: (stmt: string, fields?: Fields, name?: string) => event('end', stmt, fields, name),
       arrive: (stmt: string, fields?: Fields, name?: string) => event('arrive', stmt, fields, name),
-      occur: (label: string, fields?: Fields, name?: string) => event('occur', undefined, { label, ...fields }, name),
+      occur: (label: string, fields?: Fields, name?: string) => event('occur', undefined, { label, visit: [n + 1], ...fields }, name),
       send: dispatch('signalSend'),
+      detach: dispatch('workflowCall'),
       /** An activity reached and started at once: its start's id. */
       call: (stmt: string, to: string, fields: Fields = {}, name?: string) => {
         dispatch('activityCall')(stmt, to, fields.visit && { visit: fields.visit })
@@ -45,7 +46,9 @@ export function script() {
       },
     }
   }
-  return { execution, names, lane }
+  /** The key of the event with this id. */
+  const key = (id: string) => eventKey(execution.events.find(e => e.id === id)!)
+  return { execution, names, lane, key }
 }
 
 /** A sample's model, its steps under the names its drawing gives them. */

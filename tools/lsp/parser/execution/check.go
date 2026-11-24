@@ -60,8 +60,14 @@ func (c *checker) checkLanes() {
 				c.fail(l.ID, "%q is not an event", ref)
 			}
 		}
-		if i, ok := c.at[l.StartedBy]; ok && c.x.Events[i].Lane == l.ID {
-			c.fail(l.ID, "is started by its own event %s", l.StartedBy)
+		if i, ok := c.at[l.StartedBy]; ok {
+			by := c.x.Events[i]
+			if by.Lane == l.ID {
+				c.fail(l.ID, "is started by its own event %s", l.StartedBy)
+			}
+			if kind == graph.KindWorkflow && (by.Edge == nil || by.Edge.To != l.Node) {
+				c.fail(l.ID, "is started by %s, which dispatches no edge to its node", l.StartedBy)
+			}
 		}
 		if _, ok := c.lanes[l.Follows]; l.Follows != "" && (!ok || keyOf(l.Follows) != key) {
 			c.fail(l.ID, "follows %q, which is no run of %s", l.Follows, key)
@@ -97,6 +103,7 @@ func (c *checker) start(l Lane) int {
 func (c *checker) checkEvents() {
 	count := map[string]int{}
 	keys := map[Key]string{}
+	dispatched := map[Key]bool{}
 	for i, e := range c.x.Events {
 		l, ok := c.lanes[e.Lane]
 		if !ok {
@@ -109,15 +116,21 @@ func (c *checker) checkEvents() {
 		}
 		c.checkFields(e, l)
 		c.checkOrder(i, e, l)
+		if e.Kind == Occur && !slices.Equal(e.Visit, []int{count[e.Lane]}) {
+			c.fail(e.ID, "an occur's visit is its place in its lane, [%d]", count[e.Lane])
+		}
+		if e.Kind == Start && !dispatched[at(e)] {
+			c.fail(e.ID, "starts an attempt no earlier reach dispatched")
+		}
+		if e.Kind == Reach && e.Edge != nil {
+			dispatched[at(e)] = true
+		}
 		if e.Kind == End && e.Attempt > 0 {
 			started := e.Key()
 			started.Kind = Start
 			if _, ok := keys[started]; !ok {
 				c.fail(e.ID, "ends attempt %d, which never started", e.Attempt)
 			}
-		}
-		if e.Kind == Occur {
-			continue
 		}
 		if prev, dup := keys[e.Key()]; dup {
 			c.fail(e.ID, "has the key of %s", prev)
@@ -144,8 +157,8 @@ func (c *checker) checkFields(e Event, l Lane) {
 		if run {
 			c.fail(e.ID, "an occur is in a host or outside lane")
 		}
-		if e.Stmt != "" || e.Visit != nil {
-			c.fail(e.ID, "an occur has no stmt or visit")
+		if e.Stmt != "" {
+			c.fail(e.ID, "an occur has no stmt")
 		}
 	default:
 		c.fail(e.ID, "kind %q is not reach, start, end, arrive or occur", e.Kind)
@@ -224,4 +237,9 @@ func (c *checker) checkOrder(i int, e Event, l Lane) {
 	if host, ok := c.lanes[e.On]; ok {
 		within("host", host)
 	}
+}
+
+// at is where e sits: its lane, stmt and visit.
+func at(e Event) Key {
+	return Key{Lane: e.Lane, Stmt: e.Stmt, Visit: e.Key().Visit}
 }

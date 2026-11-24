@@ -1,6 +1,7 @@
 // One fixture per rule of spec/SEQUENCE_VIEW.md, each as small as the rule allows.
 
 import type { Model, Lane, Step } from '../model'
+import { draw, script } from './sample'
 
 const flow = (id: string, queue: string, extra: Partial<Lane> = {}): Lane =>
   ({ id, kind: 'workflow', name: id, title: id.toUpperCase(), tag: { key: 'task_queue', value: queue }, ...extra })
@@ -142,6 +143,21 @@ const oneBox: Model = {
   spans: [],
 }
 
+/** One box per arrival: Go's handler draws nothing, so its await is the box; Stop's handler sends, so it is. */
+const oneArrival = (() => {
+  const s = script()
+  const a = s.lane({ id: 'workflow:p.A', node: 'workflow:p.A/worker:w/namespace:n' })
+  const b = s.lane({ id: 'workflow:p.B', node: 'workflow:p.B/worker:w/namespace:n' })
+  const go = a.send('signal p.B.Go()', b.lane.node!, {}, 'a-go')
+  b.arrive('signal Go', { visit: [1], from: go })
+  b.end('await signal Go', { from: go }, 'b-go')
+  const stop = a.send('signal p.B.Stop()', b.lane.node!, {}, 'a-stop')
+  b.arrive('signal Stop', { visit: [1], from: stop }, 'b-stop')
+  b.send('signal Stop › signal p.A.Done()', a.lane.node!, { visit: [1] }, 'b-done')
+  b.end('await signal Stop', { from: stop })
+  return draw({ execution: s.execution, graph: { nodes: [] }, knobs: { title: 'One arrival' }, names: s.names })
+})()
+
 export const rules: Record<string, Model> = {
   'rule-rows': rows,
   'rule-link-ends': linkRows,
@@ -153,4 +169,5 @@ export const rules: Record<string, Model> = {
   'rule-attempts': attempts,
   'rule-winners': winners,
   'rule-one-box': oneBox,
+  'rule-one-arrival': oneArrival,
 }
