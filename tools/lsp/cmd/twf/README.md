@@ -386,13 +386,10 @@ The complete list of `kind` + `code` combinations:
 
 **kind: `validate`**
 - `EMPTY_WORKFLOW`, `EMPTY_ACTIVITY`, `EMPTY_WORKER`, `EMPTY_NAMESPACE`
-<<<<<<< HEAD
 - `UNREACHABLE_STATEMENT` (hint, tagged unnecessary so editors dim it) — a
   statement no path reaches
-=======
 - `PROMISE_NEVER_AWAITED` (warning) — a promise no await, race or signal send
   takes after its binding
->>>>>>> origin/main
 - `CONDITION_UNPAIRED` — a condition awaited and never set (error), or set and
   never awaited (warning)
 - `WORKER_DUPLICATE_TYPE_NAME`
