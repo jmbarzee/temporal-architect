@@ -2,6 +2,7 @@ import type { SwitchBlock, IfStmt, ForStmt, Statement } from '../../types/ast'
 import { siteKey } from '../../types/ast'
 import { useToggle } from './useToggle'
 import { StatementBlock } from './StatementBlock'
+import { Marked } from '../../tree/PathContext'
 
 // Switch - expandable
 export function SwitchBlockComponent({ stmt }: { stmt: SwitchBlock }) {
@@ -40,6 +41,10 @@ export function SwitchBlockComponent({ stmt }: { stmt: SwitchBlock }) {
 }
 
 function SwitchCaseBlock({ switchCase }: { switchCase: SwitchBlock['cases'][0] }) {
+  return <Marked node={switchCase}><SwitchCaseContent switchCase={switchCase} /></Marked>
+}
+
+function SwitchCaseContent({ switchCase }: { switchCase: SwitchBlock['cases'][0] }) {
   const [expanded, toggle] = useToggle(true)
 
   return (

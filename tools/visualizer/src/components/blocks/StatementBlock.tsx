@@ -4,6 +4,7 @@ import { ActivityCallBlock, WorkflowCallBlock, NexusCallBlock } from './CallBloc
 import { AwaitStmtBlock, AwaitAllBlockComponent, AwaitOneBlockComponent } from './AwaitBlocks'
 import { SwitchBlockComponent, IfBlock, ForBlock } from './ControlFlowBlocks'
 import { ReturnBlock, CloseBlock, RawBlock, CommentBlock, SimpleBlock, PromiseBlock, SetBlock, UnsetBlock, SignalSendBlock } from './LeafBlocks'
+import { Marked } from '../../tree/PathContext'
 import './blocks.css'
 
 interface StatementBlockProps {
@@ -25,6 +26,10 @@ export function StatementBody({ statements }: { statements: Statement[] }) {
 }
 
 export function StatementBlock({ statement }: StatementBlockProps) {
+  return <Marked node={statement}><Block statement={statement} /></Marked>
+}
+
+function Block({ statement }: StatementBlockProps) {
   switch (statement.type) {
     case 'activityCall':
       return <ActivityCallBlock stmt={statement} />

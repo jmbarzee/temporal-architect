@@ -145,3 +145,11 @@
   stroke-linecap: round;
   stroke-linejoin: round;
 }
+
+.seq-step {
+  cursor: pointer;
+}
+
+.seq-selected rect {
+  stroke-width: 3;
+}

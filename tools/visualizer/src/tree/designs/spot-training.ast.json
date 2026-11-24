@@ -1,0 +1,337 @@
+{
+ "definitions": [
+  {
+   "type": "workflowDef",
+   "site": {
+    "file": "spot-training/training/v1/training.twf",
+    "line": 5,
+    "column": 1
+   },
+   "name": "Training",
+   "qualifiedName": "github.com/jmbarzee/temporal-spot-training/twf/training/v1.Training",
+   "packageId": "github.com/jmbarzee/temporal-spot-training/twf/training/v1",
+   "params": "job: Job",
+   "returnType": "Result",
+   "signals": [],
+   "queries": [],
+   "updates": [],
+   "body": [
+    {
+     "type": "raw",
+     "site": {
+      "file": "spot-training/training/v1/training.twf",
+      "line": 6,
+      "column": 2
+     },
+     "text": "start = 0"
+    },
+    {
+     "type": "if",
+     "site": {
+      "file": "spot-training/training/v1/training.twf",
+      "line": 7,
+      "column": 2
+     },
+     "condition": "batchJob == null",
+     "body": [
+      {
+       "type": "activityCall",
+       "site": {
+        "file": "spot-training/training/v1/training.twf",
+        "line": 8,
+        "column": 3
+       },
+       "name": "SubmitBatchJob",
+       "args": "job, \"training-{job.id}\"",
+       "result": "batchJob",
+       "resolved": {
+        "name": "SubmitBatchJob",
+        "site": {
+         "file": "spot-training/training/v1/training.twf",
+         "line": 23,
+         "column": 1
+        }
+       }
+      }
+     ]
+    },
+    {
+     "type": "for",
+     "site": {
+      "file": "spot-training/training/v1/training.twf",
+      "line": 9,
+      "column": 2
+     },
+     "variant": "conditional",
+     "condition": "start < job.totalSteps",
+     "body": [
+      {
+       "type": "promise",
+       "site": {
+        "file": "spot-training/training/v1/training.twf",
+        "line": 10,
+        "column": 3
+       },
+       "name": "chunk",
+       "target": {
+        "kind": "activity",
+        "activity": {
+         "name": "RunTrainingChunk",
+         "args": "job, start",
+         "resolved": {
+          "name": "RunTrainingChunk",
+          "site": {
+           "file": "spot-training/training/v1/training.twf",
+           "line": 29,
+           "column": 1
+          }
+         }
+        }
+       }
+      },
+      {
+       "type": "for",
+       "site": {
+        "file": "spot-training/training/v1/training.twf",
+        "line": 11,
+        "column": 3
+       },
+       "variant": "infinite",
+       "body": [
+        {
+         "type": "awaitOne",
+         "site": {
+          "file": "spot-training/training/v1/training.twf",
+          "line": 12,
+          "column": 10
+         },
+         "cases": [
+          {
+           "site": {
+            "file": "spot-training/training/v1/training.twf",
+            "line": 13,
+            "column": 5
+           },
+           "target": {
+            "kind": "ident",
+            "ident": {
+             "name": "chunk"
+            }
+           },
+           "body": [
+            {
+             "type": "break",
+             "site": {
+              "file": "spot-training/training/v1/training.twf",
+              "line": 14,
+              "column": 6
+             }
+            }
+           ]
+          },
+          {
+           "site": {
+            "file": "spot-training/training/v1/training.twf",
+            "line": 15,
+            "column": 5
+           },
+           "target": {
+            "kind": "timer",
+            "timer": {
+             "duration": "checkEvery"
+            }
+           },
+           "body": [
+            {
+             "type": "activityCall",
+             "site": {
+              "file": "spot-training/training/v1/training.twf",
+              "line": 16,
+              "column": 6
+             },
+             "name": "CheckBatchJob",
+             "args": "batchJob",
+             "result": "status",
+             "resolved": {
+              "name": "CheckBatchJob",
+              "site": {
+               "file": "spot-training/training/v1/training.twf",
+               "line": 26,
+               "column": 1
+              }
+             }
+            },
+            {
+             "type": "if",
+             "site": {
+              "file": "spot-training/training/v1/training.twf",
+              "line": 17,
+              "column": 6
+             },
+             "condition": "status.terminal",
+             "body": [
+              {
+               "type": "activityCall",
+               "site": {
+                "file": "spot-training/training/v1/training.twf",
+                "line": 18,
+                "column": 7
+               },
+               "name": "SubmitBatchJob",
+               "args": "job, \"training-{job.id}\"",
+               "result": "batchJob",
+               "resolved": {
+                "name": "SubmitBatchJob",
+                "site": {
+                 "file": "spot-training/training/v1/training.twf",
+                 "line": 23,
+                 "column": 1
+                }
+               }
+              }
+             ]
+            }
+           ]
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "type": "raw",
+       "site": {
+        "file": "spot-training/training/v1/training.twf",
+        "line": 19,
+        "column": 3
+       },
+       "text": "start = start + 1000"
+      }
+     ]
+    },
+    {
+     "type": "activityCall",
+     "site": {
+      "file": "spot-training/training/v1/training.twf",
+      "line": 20,
+      "column": 2
+     },
+     "name": "TerminateBatchJob",
+     "args": "batchJob",
+     "resolved": {
+      "name": "TerminateBatchJob",
+      "site": {
+       "file": "spot-training/training/v1/training.twf",
+       "line": 32,
+       "column": 1
+      }
+     }
+    },
+    {
+     "type": "close",
+     "site": {
+      "file": "spot-training/training/v1/training.twf",
+      "line": 21,
+      "column": 2
+     },
+     "reason": "complete",
+     "args": "Result{start}"
+    }
+   ]
+  },
+  {
+   "type": "activityDef",
+   "site": {
+    "file": "spot-training/training/v1/training.twf",
+    "line": 23,
+    "column": 1
+   },
+   "name": "SubmitBatchJob",
+   "qualifiedName": "github.com/jmbarzee/temporal-spot-training/twf/training/v1.SubmitBatchJob",
+   "packageId": "github.com/jmbarzee/temporal-spot-training/twf/training/v1",
+   "params": "job: Job, name: string",
+   "returnType": "BatchJob",
+   "body": [
+    {
+     "type": "return",
+     "site": {
+      "file": "spot-training/training/v1/training.twf",
+      "line": 24,
+      "column": 2
+     },
+     "value": "batch.submit(job, name)"
+    }
+   ]
+  },
+  {
+   "type": "activityDef",
+   "site": {
+    "file": "spot-training/training/v1/training.twf",
+    "line": 26,
+    "column": 1
+   },
+   "name": "CheckBatchJob",
+   "qualifiedName": "github.com/jmbarzee/temporal-spot-training/twf/training/v1.CheckBatchJob",
+   "packageId": "github.com/jmbarzee/temporal-spot-training/twf/training/v1",
+   "params": "batchJob: BatchJob",
+   "returnType": "Status",
+   "body": [
+    {
+     "type": "return",
+     "site": {
+      "file": "spot-training/training/v1/training.twf",
+      "line": 27,
+      "column": 2
+     },
+     "value": "batch.describe(batchJob)"
+    }
+   ]
+  },
+  {
+   "type": "activityDef",
+   "site": {
+    "file": "spot-training/training/v1/training.twf",
+    "line": 29,
+    "column": 1
+   },
+   "name": "RunTrainingChunk",
+   "qualifiedName": "github.com/jmbarzee/temporal-spot-training/twf/training/v1.RunTrainingChunk",
+   "packageId": "github.com/jmbarzee/temporal-spot-training/twf/training/v1",
+   "params": "job: Job, start: int",
+   "returnType": "int",
+   "body": [
+    {
+     "type": "return",
+     "site": {
+      "file": "spot-training/training/v1/training.twf",
+      "line": 30,
+      "column": 2
+     },
+     "value": "train(job, start)"
+    }
+   ]
+  },
+  {
+   "type": "activityDef",
+   "site": {
+    "file": "spot-training/training/v1/training.twf",
+    "line": 32,
+    "column": 1
+   },
+   "name": "TerminateBatchJob",
+   "qualifiedName": "github.com/jmbarzee/temporal-spot-training/twf/training/v1.TerminateBatchJob",
+   "packageId": "github.com/jmbarzee/temporal-spot-training/twf/training/v1",
+   "params": "batchJob: BatchJob",
+   "body": [
+    {
+     "type": "return",
+     "site": {
+      "file": "spot-training/training/v1/training.twf",
+      "line": 33,
+      "column": 2
+     },
+     "value": "batch.terminate(batchJob)"
+    }
+   ]
+  }
+ ]
+}

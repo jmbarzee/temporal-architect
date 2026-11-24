@@ -1,0 +1,40 @@
+/* An execution drawn on the tree (spec/TREE_VIEW.md § Execution path). */
+.path-off {
+  opacity: 0.35;
+  transition: opacity 0.2s ease;
+}
+
+.path-off:hover {
+  opacity: 0.6;
+}
+
+.path-note {
+  display: block;
+  margin: 2px 0 0 auto;
+  padding: 0 6px;
+  border: 1px solid currentColor;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 11px;
+  opacity: 0.75;
+  cursor: pointer;
+}
+
+.path-note:disabled {
+  cursor: default;
+}
+
+.path-selected > .path-note,
+.path-note[aria-pressed='true'] {
+  opacity: 1;
+  font-weight: 600;
+}
+
+.path-selected > .block,
+.path-selected > .tagged-composite,
+.path-selected > .declaration {
+  outline: 2px solid var(--focus-ring-color, currentColor);
+  outline-offset: 1px;
+}
