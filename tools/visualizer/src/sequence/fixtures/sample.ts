@@ -2,7 +2,8 @@
 // fromExecution reads with it, and the names its hand drawing gives its steps.
 
 import type { EdgeKind, Execution, ExecutionEvent, ExecutionLane, ParserGraph } from '@temporal-architect/wire-types'
-import { eventKey, fromExecution, type Knobs } from '../fromExecution'
+import { eventKey } from '../../execution/step'
+import { fromExecution, type Knobs } from '../fromExecution'
 import type { Model } from '../model'
 
 export interface Sample {

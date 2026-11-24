@@ -40,6 +40,27 @@ describe('SequenceView', () => {
     expect(render(<Host name="rule-winners" />).container.querySelectorAll('.seq-cancelled')).toHaveLength(1)
   })
 
+  it('selects a step by its key, lets it go, and ignores a box with none', () => {
+    const chosen: (string | undefined)[] = []
+    const Selecting = ({ selected }: { selected?: string }) => {
+      const linked = useLinkedViews({ taxonomy: DEFAULT_TAXONOMY, views: ['sequence'] as const, initialSearch: { query: '', active: false } })
+      return (
+        <TaxonomyContext.Provider value={DEFAULT_TAXONOMY}>
+          <SequenceView sequence={fixtures['rule-seq-step']} systemTheme="light" selected={selected} onSelect={s => chosen.push(s)} {...linked.of('sequence')} />
+        </TaxonomyContext.Provider>
+      )
+    }
+    const { container, rerender } = render(<Selecting />)
+    const [keyed, bare] = [...container.querySelectorAll('.seq-step')]
+    fireEvent.click(bare)
+    fireEvent.click(keyed)
+    expect(chosen).toEqual(['k1'])
+    rerender(<Selecting selected="k1" />)
+    expect(container.querySelectorAll('.seq-selected')).toHaveLength(1)
+    fireEvent.click(container.querySelector('.seq-selected')!)
+    expect(chosen).toEqual(['k1', undefined])
+  })
+
   it('dims the steps a search does not match, and none without one', () => {
     expect(render(<Host name="spot-training" />).container.querySelectorAll('.search-dimmed')).toHaveLength(0)
     cleanup()

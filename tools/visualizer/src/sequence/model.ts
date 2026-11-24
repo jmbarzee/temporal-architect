@@ -16,6 +16,8 @@ export type StepState = 'queued' | 'cancelled' | 'failed'
 
 export interface Step {
   id: string
+  /** The event's key, which names the step in every view; absent on a step no event stands behind. A queued box and the start it waits for share one. */
+  key?: string
   lane: string
   kind: StepKind
   label: string

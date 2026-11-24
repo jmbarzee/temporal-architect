@@ -28,10 +28,11 @@ mountNodeTypeStyles()
 // the shell's concern.
 
 // `?execution=agent-sandbox` adds the Sequence view, drawing a hand-written
-// execution; without `?ast=` the design behind it is empty.
+// execution; without `?ast=` the design behind it is empty. `step` and `view`
+// open the canvas on a step (spec/VIEW_FRAMEWORK.md § Steps).
 const name = new URLSearchParams(window.location.search).get('execution') ?? ''
 const sequence = Object.prototype.hasOwnProperty.call(fixtures, name) ? fixtures[name] : undefined
-const SequenceCore = (props: RenderCoreProps) => <WorkflowCanvas {...props} sequence={sequence} />
+const Core = (props: RenderCoreProps) => <WorkflowCanvas {...props} sequence={sequence} link={window.location.search} />
 
 interface StandaloneSource extends PayloadSource {
   /** Push a message from a transport that isn't a passive subscription
@@ -135,7 +136,7 @@ function App() {
   )
 
   // Standalone has no editor, so no HostActions are wired.
-  return <VisualizerHost source={source} emptyState={emptyState} renderCore={sequence ? SequenceCore : undefined} />
+  return <VisualizerHost source={source} emptyState={emptyState} renderCore={Core} />
 }
 
 export default App

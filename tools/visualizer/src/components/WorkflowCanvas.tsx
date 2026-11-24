@@ -53,6 +53,9 @@ import { crossingEdgeIds, sdkCrossings, sdkGroupsOf } from '../adapter/sdk'
 import { crossedEdgeIds, timeAt, visitsOf, withVisits } from '../execution/visits'
 import { Scrubber } from '../execution/Scrubber'
 import { usePlayback } from '../execution/usePlayback'
+import { StepPanel } from '../execution/StepPanel'
+import { linkOf, parseLink, type ViewName } from '../execution/link'
+import { eventKey, eventOf, focusOf } from '../execution/step'
 
 interface WorkflowCanvasProps {
   /** Parsed TWF AST to visualize. Produced by `twf parse` (the `definitions`
@@ -77,6 +80,9 @@ interface WorkflowCanvasProps {
   /** The model of one execution, drawn by the Sequence view. Optional;
    * without it the view has no tab. */
   sequence?: Model
+  /** The query string the page was opened with. A `step` and a `view` in it
+   * open the canvas on that step in that view (VIEW_FRAMEWORK.md § Steps). */
+  link?: string
   /** Invoked when the user narrows the file filter to exactly one file —
    * a hint to host applications (e.g. VS Code) to focus that file in their
    * editor. Optional; ignored when not provided. */
@@ -151,8 +157,7 @@ export const NavigationContext = React.createContext<NavigationContextType>({
 })
 
 
-type ActiveView = 'tree' | 'graph' | 'sequence'
-const VIEWS: readonly ActiveView[] = ['tree', 'graph', 'sequence']
+const VIEWS: readonly ViewName[] = ['tree', 'graph', 'sequence']
 
 // A view switch as this host states it: a focus carries the target's qualified
 // name as well as its values, because the tree finds a definition, and the graph
@@ -176,7 +181,7 @@ const DEFAULT_PINS: AxisLocks = new Map([
   [DEF_TYPE_DIMENSION, false],
 ])
 
-export function WorkflowCanvas({ ast, parserGraph, decomposition, execution, sequence, onOpenFile, onRefocus, onRequestDecomposition, className, style }: WorkflowCanvasProps) {
+export function WorkflowCanvas({ ast, parserGraph, decomposition, execution, sequence, link, onOpenFile, onRefocus, onRequestDecomposition, className, style }: WorkflowCanvasProps) {
   const graphInput = parserGraph ?? EMPTY_PARSER_GRAPH
   // History mode: a graph-only payload (e.g. the sampler's observed graph) has
   // no AST definitions. The Tree view has nothing to render, so we hide its tab
@@ -363,23 +368,40 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, execution, seq
   // Build lookup maps for definitions (shared by both views)
   const context = React.useMemo(() => definitionMaps(ast.definitions), [ast])
 
-  // The execution on the tree, and the step selected in it (a step is an event,
-  // by its id). A selected step no later payload holds is dropped.
-  const [selectedStep, setSelectedStep] = React.useState<string | undefined>(undefined)
-  React.useEffect(() => setSelectedStep(undefined), [execution])
+  // The step selected, by its key, whichever view it was selected in (spec
+  // § Steps): one selection, and the scrubber's position is the step last
+  // played. A key no payload holds selects nothing.
+  const opening = React.useMemo(() => parseLink(link ?? ''), [])
+  const [selected, setSelected] = React.useState<string | undefined>(opening.step)
+  const select = React.useCallback((step?: string) => {
+    setSelected(step)
+    if (!execution) return
+    const at = step === undefined ? execution.events.length : execution.events.findIndex(e => eventKey(e) === step) + 1
+    if (at > 0) setPosition(at)
+  }, [execution, setPosition])
+  // A new execution plays whole; the step still selected is the position again.
+  React.useEffect(() => {
+    if (selected !== undefined) select(selected)
+    // Only when the execution changes.
+  }, [execution])
+  const scrub = React.useCallback((n: number) => {
+    setPosition(n)
+    setSelected(n > 0 && execution ? eventKey(execution.events[n - 1]) : undefined)
+  }, [execution, setPosition])
   const pathState = React.useMemo<PathState>(
-    () => ({ ids: execution ? blockIds(ast.definitions) : new Map(), path: execution && pathOf(execution), selected: selectedStep, onSelect: setSelectedStep }),
-    [ast.definitions, execution, selectedStep],
+    () => ({ ids: execution ? blockIds(ast.definitions) : new Map(), path: execution && pathOf(execution), selected, onSelect: select }),
+    [ast.definitions, execution, selected, select],
   )
-  const stepNode = React.useMemo(() => {
-    const id = execution && selectedStep !== undefined ? nodeOf(execution, selectedStep) : undefined
+  // The graph node a step is at.
+  const nodeFor = React.useCallback((step: string) => {
+    const id = execution && nodeOf(execution, step)
     return model.graph.nodes.find(n => n.id === id)
-  }, [execution, selectedStep, model.graph])
+  }, [execution, model.graph])
 
   // The single entry point for all view switches. Reads the transition
   // intent, runs the reconciler, applies the result, and flips the
   // active view. See spec § View Transitions.
-  const switchView = React.useCallback((target: ActiveView, transition: HostTransition) => {
+  const switchView = React.useCallback((target: ViewName, transition: HostTransition) => {
     // History mode has no Tree view; never switch to it (defensive — the
     // Tree tab button and "Show in Tree" affordances are hidden anyway).
     if (target === 'tree' && historyMode) return
@@ -387,18 +409,22 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, execution, seq
     // by construction (Show in [view] is always cross-view).
     if (target === activeView && transition.kind === 'manual') return
 
+    // A focus on a step selects it, whichever view it shows it in.
+    if (transition.kind === 'focus' && transition.target.step !== undefined) select(transition.target.step)
+
     // A manual switch to the Graph with a step selected is a focus on the
     // step's node.
-    if (target === 'graph' && transition.kind === 'manual' && stepNode) {
+    const stepNode = transition.kind === 'manual' && selected !== undefined ? nodeFor(selected) : undefined
+    if (target === 'graph' && stepNode) {
       focus('graph', stepNode)
       setGraphEverShown(true)
       return
     }
 
-    // The Sequence view is reached by its tab alone: nothing in it is a
-    // definition or a node to focus, and without an execution it has none.
+    // The Sequence view is reached by its tab, or by a step: nothing in it is
+    // a definition or a node to focus, and without an execution it has none.
     if (target === 'sequence') {
-      if (sequence && transition.kind === 'manual') switchTo('sequence')
+      if (sequence) switchTo('sequence')
       return
     }
 
@@ -410,9 +436,9 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, execution, seq
       // By definition key — the node's copyKey, `${kind}:${qualifiedName}` —
       // not by its display name. The Tree's type is the definition's
       // (`workflowDef`); the key's kind is the graph node type's.
-      const { name, values } = transition.target
+      const { name, values, step } = transition.target
       const kind = nodeTypeForDefType(values[DEF_TYPE_DIMENSION])
-      const node = kind ? model.graph.nodes.find(n => n.copyKey === `${kind}:${name}`) : undefined
+      const node = step !== undefined ? nodeFor(step) : kind ? model.graph.nodes.find(n => n.copyKey === `${kind}:${name}`) : undefined
       if (node) focus('graph', node)
       else switchTo('graph')
       setGraphEverShown(true)
@@ -430,7 +456,7 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, execution, seq
       switchTo('graph')
       setGraphEverShown(true)
     }
-  }, [activeView, historyMode, sequence, model.graph, stepNode, switchTo, focus])
+  }, [activeView, historyMode, sequence, model.graph, selected, select, nodeFor, switchTo, focus])
 
   // Cross-view focus actions invoked by per-view UI (tree's "Show in
   // Graph" contextual button, graph's right-click menu / toolbar button).
@@ -472,6 +498,37 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, execution, seq
       }),
     }
   }, [model.ownerOf, switchView])
+
+  // Shows a step in a view: the focus it is (the definition it is in, its lane
+  // and itself), or, where the execution does not hold it, the view alone with
+  // the step selected.
+  const showStep = React.useCallback((view: ViewName, step: string) => {
+    const target = execution && focusOf(execution, ast.definitions, step)
+    if (target) switchView(view, { kind: 'focus', target })
+    else {
+      select(step)
+      switchView(view, { kind: 'manual' })
+    }
+  }, [execution, ast.definitions, switchView, select])
+
+  // A page opened on a link shows its step in its view.
+  React.useEffect(() => {
+    if (opening.step !== undefined) showStep(opening.view ?? activeView, opening.step)
+    else if (opening.view) switchView(opening.view, { kind: 'manual' })
+    // Once, as the canvas opens.
+  }, [])
+
+  // The views a step can be shown in, other than the one shown: where it has a
+  // definition to reveal, a node to focus, a row to mark.
+  const stepViews = (step: string): Partial<Record<ViewName, () => void>> => {
+    const focus = execution && focusOf(execution, ast.definitions, step)
+    const available: Record<ViewName, boolean> = {
+      tree: !historyMode && focus?.values[DEF_TYPE_DIMENSION] !== undefined,
+      graph: nodeFor(step) !== undefined,
+      sequence: sequence?.steps.some(s => s.key === step) ?? false,
+    }
+    return Object.fromEntries(VIEWS.filter(v => v !== activeView && available[v]).map(v => [v, () => showStep(v, step)]))
+  }
 
   const clearPendingFocus = React.useCallback(() => setPendingFocus(null), [])
 
@@ -579,13 +636,23 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, execution, seq
               onLayoutChange={setLayout}
               {...linked.of('graph')}
             />
-            {execution && <Scrubber position={position} length={execution.events.length} time={timeAt(execution, position)} onPosition={setPosition} />}
+            {execution && <Scrubber position={position} length={execution.events.length} time={timeAt(execution, position)} onPosition={scrub} />}
           </div>
         )}
         {sequence && (
           <div className={`view-pane${activeView === 'sequence' ? '' : ' hidden'}`}>
-            <SequenceView sequence={sequence} systemTheme={hostTheme} selected={selectedStep} onSelect={setSelectedStep} {...linked.of('sequence')} />
+            <SequenceView sequence={sequence} systemTheme={hostTheme} selected={selected} onSelect={select} {...linked.of('sequence')} />
           </div>
+        )}
+        {execution && selected !== undefined && eventOf(execution, selected) && (
+          <StepPanel
+            execution={execution}
+            step={selected}
+            nodeName={id => model.graph.nodes.find(n => n.id === id)?.name ?? id}
+            show={stepViews(selected)}
+            href={linkOf(link ?? '', { step: selected, view: activeView })}
+            onClose={() => select(undefined)}
+          />
         )}
       </div>
     </PathContext.Provider>

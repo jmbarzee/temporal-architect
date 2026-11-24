@@ -1,0 +1,27 @@
+/* The selected step's panel (spec/VIEW_FRAMEWORK.md § Steps), docked under the views. */
+.step-panel {
+  flex-shrink: 0;
+  max-height: 30%;
+  overflow: auto;
+  padding: 8px 24px;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 12px;
+}
+.step-panel header { display: flex; align-items: center; gap: 12px; }
+.step-lane { font-weight: 600; }
+.step-stmt { color: var(--color-text-muted); font-family: var(--font-mono); }
+.step-links { display: flex; gap: 6px; margin-left: auto; }
+.step-links button, .step-links a {
+  padding: 0 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+.step-panel ul { margin: 6px 0 0; padding: 0; list-style: none; }
+.step-this { font-weight: 600; }

@@ -158,6 +158,15 @@ const oneArrival = (() => {
   return draw({ execution: s.execution, graph: { nodes: [] }, knobs: { title: 'One arrival' }, names: s.names })
 })()
 
+/** Selecting a step: a box with a key is a step; one without selects nothing. */
+const seqStep: Model = {
+  title: 'Selecting a step',
+  lanes: [flow('a', 'qa')],
+  steps: [step('a', 'a1', { key: 'k1' }), step('a', 'a2')],
+  messages: [],
+  spans: [],
+}
+
 export const rules: Record<string, Model> = {
   'rule-rows': rows,
   'rule-link-ends': linkRows,
@@ -170,4 +179,5 @@ export const rules: Record<string, Model> = {
   'rule-winners': winners,
   'rule-one-box': oneBox,
   'rule-one-arrival': oneArrival,
+  'rule-seq-step': seqStep,
 }

@@ -9,7 +9,7 @@ For the product vision, user goals, UX principles, and visual identity, see [PRO
 
 The views use a **tab switching** model. One view is active at a time. Each view maintains its own scroll/zoom and expand/collapse state independently. Each declared filter axis — the host declares two, File and Kind — is per-view and reconciled on every switch (§ View Transitions); the search query is globally shared (§ Unified Filter Bar).
 
-A third, the **Sequence** view, draws one execution as lanes with time running down (`src/sequence/`). Its tab exists only when the host hands the canvas an execution; its bar shows the shared search and no axes, and a switch through it carries the other views' selections unchanged. Its rules are [SEQUENCE_VIEW.md](./SEQUENCE_VIEW.md). A step selected on the tree's path (TREE_VIEW.md § Execution path) is shared with it, and a manual switch to the Graph with one selected is a focus on its node.
+A third, the **Sequence** view, draws one execution as lanes with time running down (`src/sequence/`). Its tab exists only when the host hands the canvas an execution; its bar shows the shared search and no axes, and a switch through it carries the other views' selections unchanged. Its rules are [SEQUENCE_VIEW.md](./SEQUENCE_VIEW.md). A step selected in any view is shared with the others (§ Steps).
 
 **Default view:** Tree View is the default on first load. It's the more familiar interaction model (collapsible list) and works immediately with any AST. Graph View is a "power view" the user discovers via the tab bar.
 
@@ -32,7 +32,7 @@ This vocabulary unifies what would otherwise be separate features ("Show in Grap
 | Intent | Trigger |
 |---|---|
 | `manual` | User clicks the destination tab in the tab bar. |
-| `focus(target)` | User invokes "Show in [view]" on a definition or node. The target names its values per axis (`FocusTarget`). |
+| `focus(target)` | User invokes "Show in [view]" on a definition, a node or a step. The target names its values per axis (`FocusTarget`) and, for a step, its lane and itself (§ Steps). |
 
 How each intent reconciles the destination's filter is the engine's ([SPEC § Linked views](https://github.com/jmbarzee/force-graph/blob/main/SPEC.md#linked-views)), through `useLinkedViews`. This host's axes widen for a focus by their own policy: a kind is always added; a file only widens an already-active selection, since adding the first file would narrow from everything to one.
 
@@ -71,6 +71,55 @@ This local-first approach means the user lands oriented — they see the thing t
 ### Filter-as-Source-of-Truth
 
 Filters remain authoritative. `focus(target)` never bypasses filters silently — it adjusts them visibly. The user can always see exactly what's filtered and manually change it. The animation of the filter bar in step 3 makes the adjustment (and any pin override) explicit and reversible.
+
+
+## Steps
+
+Handed an execution (the contract of [#752](https://github.com/jmbarzee/temporal-architect/issues/752), the payload's `execution`), the views share one selection, a **step**: an event of it. A rule is fixed when it holds for every execution with no setting. Each gives its reason; `src/execution/step.test.tsx` draws each on the two samples. The code is `src/execution/step.ts`, `link.ts` and `StepPanel.tsx`; the canvas holds the selection.
+
+### Identity (`rule-step-key`)
+
+A step is named by the key of its event, as `Event.Key` in Go has it, and not by the event's `id`. Its string form, which a link depends on, is `JSON.stringify` of `[lane, stmt, visit, kind, attempt]`: `visit` its passes joined by `.`, an absent `stmt` and `visit` as `''`, an absent `attempt` as `0`.
+
+*Why:* an `id` is a handle one payload assigns; the key is what the same step is called in the next run of the design, so a selection and a link survive a re-parse and a new execution. A key no payload holds selects nothing.
+
+### The focus a step is (`rule-step-focus`)
+
+A `focus(target)` on a step names the definition the step is in (`name`, `child`, `values`, as for a definition: found by the first segment of its statement's identity, else its lane's), and adds `lane`, the event's lane, and `step`, its key. A focus carrying a `step` selects it, then each view shows it:
+
+- **Tree:** the definition's reveal, then a scroll to the block that holds the step.
+- **Graph:** a focus on the step's node, what the event dispatches to, else its lane's.
+- **Sequence:** the step's box marked and scrolled to.
+
+A step in a lane no definition stands behind (an outside participant) names no definition, and the Tree has nothing to reveal for it.
+
+*Why:* one target says where a step is in every view's terms, and the existing focus transition is how a view reaches it.
+
+### One selection (`rule-one-selection`)
+
+A step is selected by a note on the tree's path, a box in the Sequence view, the scrubber's position, a focus on it, or a link; selecting the selected step again lets it go. It is outlined on the tree block that holds it, marked in the Sequence view, and carried into the Graph by a manual switch to its tab as a focus on its node. A box the Sequence view draws for a queued attempt and for its start are one step.
+
+*Why:* a second selection per view would be a second thing to keep in step.
+
+### The scrubber names a step (`rule-scrubber-step`)
+
+The Graph's scrubber ([GRAPH_VIEW.md](./GRAPH_VIEW.md) § Execution in the graph) holds one position, the number of events played, and the step it names is the last played. Moving it selects that step; selecting a step plays through it; letting a step go plays to the end. A new execution keeps the step selected, and the position is re-derived from it.
+
+*Why:* the position is a point in the execution and a step is a point in it; two names for a point would drift.
+
+### Info panel (`rule-step-panel`)
+
+A selected step shows a panel under the views, in every view: its lane and statement, then each event of its visit (same lane, statement and visit: its reach, each attempt's start and end) with its kind, attempt, label, outcome, `edge` and `from`, the selected event in bold. Beside them are the places to show it, the views other than the one shown that the step has a place in (a definition in the Tree, a node in the Graph, a box in the Sequence), its link and a button to let it go.
+
+*Why:* a step is several events, and what each of them says about it is read in one place.
+
+### Link (`rule-step-link`)
+
+A link addresses a step on the page's own address, as query parameters beside whatever the page already has (`?ast=…`): `step`, the step's key, and `view`, `tree`, `graph` or `sequence`. A host that holds several executions (the standalone app's samples) names one in `execution`, as it already does. A page opened on a link selects the step and shows it in the view, as a focus does; a `view` alone is a switch to it, and a `view` the canvas has no tab for is ignored. The panel's link is the page's address naming the selected step and the view shown.
+
+*Why:* the key is the one name that holds across runs, so a link outlives the execution it was copied from; carrying the rest of the address leaves the host's own parameters unread.
+
+*Not fixed:* the panel's wording, its placement and the link's text are the host's style, not rules.
 
 
 ## Unified Filter Bar
