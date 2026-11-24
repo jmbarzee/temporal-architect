@@ -3,7 +3,7 @@ import './step-panel.css'
 import type { ViewName } from './link'
 import { eventKey, eventOf, familyOf } from './step'
 
-const OUTCOME = { failed: 'failed', timedOut: 'timed out', cancelled: 'cancelled' }
+const OUTCOME: Record<string, string> = { failed: 'failed', timedOut: 'timed out', cancelled: 'cancelled' }
 
 interface StepPanelProps {
   execution: Execution
@@ -44,7 +44,7 @@ export function StepPanel({ execution, step, nodeName, show, href, onClose }: St
               <b>{e.kind}</b>
               {e.attempt !== undefined && ` attempt ${e.attempt}`}
               {e.label && ` ${e.label}`}
-              {e.outcome && ` ${OUTCOME[e.outcome]}`}
+              {e.outcome && ` ${OUTCOME[e.outcome] ?? e.outcome}`}
               {e.edge && ` ${e.edge.kind} ${nodeName(e.edge.from)} → ${nodeName(e.edge.to)}`}
               {from && ` from ${from.lane} ${from.kind}`}
             </li>
