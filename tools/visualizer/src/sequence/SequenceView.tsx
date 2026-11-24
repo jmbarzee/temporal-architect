@@ -19,12 +19,15 @@ const HEADS: PlacedArrow['kind'][] = ['signal', 'call', 'child', 'launch']
 const ARROW_TONE: Record<PlacedArrow['kind'], string> = { signal: 'signal', call: 'activity', child: 'workflow-call', launch: 'control' }
 
 interface SequenceViewProps extends LinkedViewProps {
-  execution: Model
+  sequence: Model
   systemTheme: Theme
+  /** The selected step, by id: the same selection the tree makes. */
+  selected?: string
+  onSelect?: (step: string | undefined) => void
 }
 
-export function SequenceView({ execution, systemTheme, filter, onFilterChange, search, onSearchChange }: SequenceViewProps) {
-  const layout = React.useMemo(() => layoutExecution(execution), [execution])
+export function SequenceView({ sequence, systemTheme, selected, onSelect, filter, onFilterChange, search, onSearchChange }: SequenceViewProps) {
+  const layout = React.useMemo(() => layoutExecution(sequence), [sequence])
   const query = search.query.toLowerCase()
   const dimmed = (text: string) => query !== '' && !text.toLowerCase().includes(query)
 
@@ -42,8 +45,8 @@ export function SequenceView({ execution, systemTheme, filter, onFilterChange, s
         searchPlaceholder="Filter by label..."
       />
       <div className="sequence-canvas">
-        <h2 className="sequence-title">{execution.title}</h2>
-        <svg className="sequence-svg" width={layout.width} height={layout.height} role="img" aria-label={execution.title}>
+        <h2 className="sequence-title">{sequence.title}</h2>
+        <svg className="sequence-svg" width={layout.width} height={layout.height} role="img" aria-label={sequence.title}>
           <defs>
             {HEADS.map(kind => (
               <marker key={kind} id={`seq-head-${kind}`} className={`seq-tone-${ARROW_TONE[kind]}`} viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
@@ -55,7 +58,7 @@ export function SequenceView({ execution, systemTheme, filter, onFilterChange, s
           {layout.lanes.map(l => <path key={l.lane.id} className="seq-lifeline" d={`M${l.x} ${l.lifeline[0]} V${l.lifeline[1]}`} />)}
           {layout.lanes.map(l => <Lane key={l.lane.id} placed={l} />)}
           {layout.spans.map((s, i) => <rect key={i} className="seq-span" {...s.box} rx={2}><title>{s.label}</title></rect>)}
-          {layout.steps.map(p => <Step key={p.step.id} placed={p} dim={dimmed(`${p.verb} ${p.text}`)} />)}
+          {layout.steps.map(p => <Step key={p.step.id} placed={p} dim={dimmed(`${p.verb} ${p.text}`)} selected={p.step.id === selected} onSelect={onSelect} />)}
           {layout.arrows.map((a, i) => <Arrow key={i} arrow={a} />)}
           {layout.inputs.map((input, i) => (
             <text key={i} className="seq-muted" x={input.x} y={input.y} textAnchor="end">
@@ -110,10 +113,10 @@ function Lane({ placed: { lane, x, box, bar } }: { placed: PlacedLane }) {
   )
 }
 
-function Step({ placed: { step, box, verb, text, queueTag }, dim }: { placed: PlacedStep; dim: boolean }) {
-  const className = ['seq-step', `seq-${step.kind}`, `seq-tone-${TONE[step.kind]}`, step.state && `seq-${step.state}`, AWAITING.has(step.kind) && 'seq-awaiting', dim && 'search-dimmed'].filter(Boolean).join(' ')
+function Step({ placed: { step, box, verb, text, queueTag }, dim, selected, onSelect }: { placed: PlacedStep; dim: boolean; selected: boolean; onSelect?: (step: string | undefined) => void }) {
+  const className = ['seq-step', `seq-${step.kind}`, `seq-tone-${TONE[step.kind]}`, step.state && `seq-${step.state}`, AWAITING.has(step.kind) && 'seq-awaiting', dim && 'search-dimmed', selected && 'seq-selected'].filter(Boolean).join(' ')
   return (
-    <g className={className}>
+    <g className={className} onClick={() => onSelect?.(selected ? undefined : step.id)}>
       {step.kind !== 'note' && <rect {...box} rx={6} />}
       <text x={box.x + box.width / 2} y={box.y + box.height / 2} textAnchor="middle">
         {verb && <tspan fontWeight="700">{verb} </tspan>}{text}

@@ -1,0 +1,32 @@
+# The Training workflow of the spot-training sample, cut to what its execution
+# draws: chunks run on spot hosts, a batch job is checked while one waits.
+package training
+
+workflow Training(job: Job) -> (Result):
+	start = 0
+	if (batchJob == null):
+		activity SubmitBatchJob(job, "training-{job.id}") -> batchJob
+	for (start < job.totalSteps):
+		promise chunk <- activity RunTrainingChunk(job, start)
+		for:
+			await one:
+				chunk:
+				timer(checkEvery):
+					activity CheckBatchJob(batchJob) -> status
+					if (status.terminal):
+						activity SubmitBatchJob(job, "training-{job.id}") -> batchJob
+		start = start + 1000
+	activity TerminateBatchJob(batchJob)
+	close complete(Result{start})
+
+activity SubmitBatchJob(job: Job, name: string) -> (BatchJob):
+	return batch.submit(job, name)
+
+activity CheckBatchJob(batchJob: BatchJob) -> (Status):
+	return batch.describe(batchJob)
+
+activity RunTrainingChunk(job: Job, start: int) -> (int):
+	return train(job, start)
+
+activity TerminateBatchJob(batchJob: BatchJob):
+	return batch.terminate(batchJob)

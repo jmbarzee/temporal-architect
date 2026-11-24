@@ -15,6 +15,7 @@ import { StatementBlock } from './StatementBlock'
 import { InlineWorkflowBlock, SyncBodyBlock } from './WorkflowContent'
 import { THEME, AWAIT_TARGET_THEME } from '../../theme/temporal-theme'
 import { ClientStartBadge } from './ClientStartBadge'
+import { Marked } from '../../tree/PathContext'
 
 // Shared await target display - both getAwaitStmtDisplay and getAwaitOneCaseDisplay delegate here
 function getAwaitTargetDisplay(
@@ -204,6 +205,10 @@ export function AwaitOneBlockComponent({ stmt }: { stmt: AwaitOneBlock }) {
 
 // Render await one cases with unified tag design
 function AwaitOneCaseBlock({ awaitCase }: { awaitCase: AwaitOneCase }) {
+  return <Marked node={awaitCase}><AwaitOneCaseContent awaitCase={awaitCase} /></Marked>
+}
+
+function AwaitOneCaseContent({ awaitCase }: { awaitCase: AwaitOneCase }) {
   const context = React.useContext(DefinitionContext)
   const handlers = React.useContext(HandlerContext)
   const hasBody = awaitCase.body && awaitCase.body.length > 0

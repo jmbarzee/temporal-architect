@@ -6,6 +6,7 @@ import type { HostMessage, DecompositionParams } from './protocol'
 import type { TWFFile } from '../types/ast'
 import type { ParserGraph } from '../types/parser-graph'
 import type { Decomposition } from '../types/decomposition'
+import type { Execution } from '@temporal-architect/wire-types'
 import { normalizePayload } from '../types/payload'
 import { fromExecution } from '../sequence/fromExecution'
 import type { Model } from '../sequence/model'
@@ -59,8 +60,10 @@ export interface RenderCoreProps {
   ast: TWFFile
   parserGraph?: ParserGraph
   decomposition?: Decomposition
-  /** The payload's execution, as the Sequence view draws it, titled by its first run's workflow ID. */
-  execution?: Model
+  /** One execution of the design, which the tree draws as a path. */
+  execution?: Execution
+  /** The execution as the Sequence view draws it, titled by its first run's workflow ID. */
+  sequence?: Model
   onOpenFile?: (file: string) => void
   onRefocus?: () => void
   onRequestDecomposition?: (params: DecompositionParams) => void
@@ -104,7 +107,7 @@ export function VisualizerHost({
   const [ast, setAst] = React.useState<TWFFile | null>(null)
   const [parserGraph, setParserGraph] = React.useState<ParserGraph | undefined>(undefined)
   const [decomposition, setDecomposition] = React.useState<Decomposition | undefined>(undefined)
-  const [execution, setExecution] = React.useState<Model | undefined>(undefined)
+  const [execution, setExecution] = React.useState<Execution | undefined>(undefined)
   const [error, setError] = React.useState<string | null>(null)
   const [showStyleGuide, setShowStyleGuide] = React.useState(false)
   // Skip AST messages that are structurally identical to the previous one so
@@ -135,8 +138,7 @@ export function VisualizerHost({
           setAst(norm.ast)
           setParserGraph(norm.parserGraph)
           setDecomposition(norm.decomposition)
-          const run = norm.execution
-          setExecution(run && norm.parserGraph && fromExecution(run, norm.parserGraph, { title: run.lanes[0]?.workflowId ?? run.lanes[0]?.id ?? '' }))
+          setExecution(norm.execution)
           setError(null)
         } else {
           setError('Unrecognized payload shape')
@@ -153,6 +155,11 @@ export function VisualizerHost({
 
     return source.subscribe(handleMessage)
   }, [source])
+
+  const sequence = React.useMemo(
+    () => execution && parserGraph && fromExecution(execution, parserGraph, { title: execution.lanes[0]?.workflowId ?? execution.lanes[0]?.id ?? '' }),
+    [execution, parserGraph],
+  )
 
   if (error) {
     return (
@@ -177,6 +184,7 @@ export function VisualizerHost({
       parserGraph={parserGraph}
       decomposition={decomposition}
       execution={execution}
+      sequence={sequence}
       onOpenFile={actions?.openFile}
       onRefocus={actions?.refocus}
       onRequestDecomposition={actions?.requestDecomposition}

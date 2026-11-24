@@ -30,8 +30,8 @@ mountNodeTypeStyles()
 // `?execution=agent-sandbox` adds the Sequence view, drawing a hand-written
 // execution; without `?ast=` the design behind it is empty.
 const name = new URLSearchParams(window.location.search).get('execution') ?? ''
-const execution = Object.prototype.hasOwnProperty.call(fixtures, name) ? fixtures[name] : undefined
-const SequenceCore = (props: RenderCoreProps) => <WorkflowCanvas {...props} execution={execution} />
+const sequence = Object.prototype.hasOwnProperty.call(fixtures, name) ? fixtures[name] : undefined
+const SequenceCore = (props: RenderCoreProps) => <WorkflowCanvas {...props} sequence={sequence} />
 
 interface StandaloneSource extends PayloadSource {
   /** Push a message from a transport that isn't a passive subscription
@@ -57,7 +57,7 @@ function createStandaloneSource(setLoading: (loading: boolean) => void): Standal
       // Check for ?ast= query param.
       const params = new URLSearchParams(window.location.search)
       const astPath = params.get('ast')
-      if (!astPath && execution) onMessage({ type: 'ast', data: { definitions: [] } })
+      if (!astPath && sequence) onMessage({ type: 'ast', data: { definitions: [] } })
       if (astPath) {
         setLoading(true)
         fetch(astPath)
@@ -135,7 +135,7 @@ function App() {
   )
 
   // Standalone has no editor, so no HostActions are wired.
-  return <VisualizerHost source={source} emptyState={emptyState} renderCore={execution ? SequenceCore : undefined} />
+  return <VisualizerHost source={source} emptyState={emptyState} renderCore={sequence ? SequenceCore : undefined} />
 }
 
 export default App

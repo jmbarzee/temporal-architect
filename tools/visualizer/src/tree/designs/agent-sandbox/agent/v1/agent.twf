@@ -1,0 +1,63 @@
+# The Agent of the agent-sandbox sample, cut to what its execution draws:
+# two turns with a user prompt between, each a loop of model and tool calls.
+package agent
+
+import "github.com/jmbarzee/temporal-agent-sandbox/twf/sandbox/v1"
+
+workflow Agent(instructions: Instructions, task: Task, tools: Tools, resume: Resume) -> (Result):
+	signal SandboxAssign(id: SandboxId):
+		assigned = id
+
+	signal SandboxLeaseGrant(granted: Lease):
+		lease = granted
+
+	signal SandboxLeaseDeny(reason: Reason):
+		denied = reason
+
+	signal UserPrompt(prompt: Prompt):
+		pass
+
+	if (resume == null):
+		signal sandbox.SandboxOrchestrator.Request(workflow.id, task.relevantAssets)
+			id: "sandboxes"
+		await one:
+			signal SandboxAssign:
+				signal sandbox.Sandbox.LeaseRequest(workflow.id)
+					id: "sandbox/{assigned}"
+			timer(leaseWait):
+				close fail(LeaseTimeout{"no sandbox assigned"})
+		await one:
+			signal SandboxLeaseGrant:
+				context = [instructions, task]
+			signal SandboxLeaseDeny:
+				close fail(denied)
+			timer(deadline - workflow.now()):
+				close fail(LeaseTimeout{"no answer to the lease request"})
+
+	for:
+		activity CallModel(context, tools) -> reply
+		if (reply.toolCalls == null):
+			break
+		for (call in reply.toolCalls):
+			activity sandbox.RunTool(call) -> output
+
+	signal sandbox.Sandbox.LeaseRelease(workflow.id)
+		id: "sandbox/{lease.sandboxId}"
+	await signal UserPrompt
+	signal sandbox.Sandbox.LeaseRequest(workflow.id)
+		id: "sandbox/{lease.sandboxId}"
+	await signal SandboxLeaseGrant
+
+	for:
+		activity CallModel(context, tools) -> reply
+		if (reply.toolCalls == null):
+			break
+		for (call in reply.toolCalls):
+			activity sandbox.RunTool(call) -> output
+
+	signal sandbox.Sandbox.LeaseRelease(workflow.id)
+		id: "sandbox/{lease.sandboxId}"
+	close complete(Result{context})
+
+activity CallModel(context: Context, tools: Tools) -> (Reply):
+	return llm.call(context, tools)
