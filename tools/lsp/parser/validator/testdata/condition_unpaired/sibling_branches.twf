@@ -1,0 +1,7 @@
+workflow Gate(order):
+	state:
+		condition paid
+	await all:
+		await paid
+		set paid
+	close complete(order)

@@ -1,0 +1,8 @@
+workflow Gate(order):
+	state:
+		condition paid
+	signal Wait():
+		await paid
+	set paid
+	await timer(1h)
+	close complete(order)
