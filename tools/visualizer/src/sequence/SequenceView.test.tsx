@@ -14,7 +14,7 @@ function Host({ name, query = '' }: { name: string; query?: string }) {
   const linked = useLinkedViews({ taxonomy: DEFAULT_TAXONOMY, views: ['sequence'] as const, initialSearch: { query, active: true } })
   return (
     <TaxonomyContext.Provider value={DEFAULT_TAXONOMY}>
-      <SequenceView execution={fixtures[name]} systemTheme="light" {...linked.of('sequence')} />
+      <SequenceView sequence={fixtures[name]} systemTheme="light" {...linked.of('sequence')} />
     </TaxonomyContext.Provider>
   )
 }
@@ -57,13 +57,13 @@ describe('the Sequence tab', () => {
     render(<WorkflowCanvas ast={{ definitions: [{ type: 'workflowDef', name: 'W', site: { line: 1, column: 1 }, params: '', body: [] }] } as never} />)
     expect(tabs()).not.toContain('Sequence')
     cleanup()
-    const { container } = render(<WorkflowCanvas ast={ast} execution={fixtures['agent-sandbox']} />)
+    const { container } = render(<WorkflowCanvas ast={ast} sequence={fixtures['agent-sandbox']} />)
     expect(tabs()).toContain('Sequence')
     expect(container.querySelector('.view-pane:not(.hidden) .sequence-view')).not.toBeNull()
   })
 
   it('switches away and back', () => {
-    const { container } = render(<WorkflowCanvas ast={ast} execution={fixtures['agent-sandbox']} />)
+    const { container } = render(<WorkflowCanvas ast={ast} sequence={fixtures['agent-sandbox']} />)
     fireEvent.click(screen.getByText('Graph'))
     expect(container.querySelector('.sequence-view')!.closest('.view-pane')!.classList.contains('hidden')).toBe(true)
     fireEvent.click(screen.getByText('Sequence'))
@@ -72,7 +72,7 @@ describe('the Sequence tab', () => {
 
   it('carries the Tree\'s selections through unchanged', () => {
     const withTree = { definitions: [{ type: 'workflowDef', name: 'W', site: { line: 1, column: 1 }, params: '', body: [] }] } as never
-    const { container } = render(<WorkflowCanvas ast={withTree} execution={fixtures['agent-sandbox']} />)
+    const { container } = render(<WorkflowCanvas ast={withTree} sequence={fixtures['agent-sandbox']} />)
     const active = () => container.querySelectorAll('.view-pane:not(.hidden) .gv-chip.active').length
     expect(active()).toBe(1)
     fireEvent.click(screen.getByText('Workflows'))

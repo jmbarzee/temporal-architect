@@ -120,12 +120,12 @@ export const head = (b: Block) => squeeze(line(b))
 /** What nests directly under b, and what an else branch under it holds. */
 function nested(b: Block): [Block[], Block[]] {
   switch (b.type) {
-    case 'if': return [b.body, b.elseBody ?? []]
-    case 'switch': return [b.cases, b.default ?? []]
-    case 'awaitOne': return [b.cases, []]
-    case 'awaitAll': case 'for': return [b.body, []]
+    case 'if': return [b.body ?? [], b.elseBody ?? []]
+    case 'switch': return [b.cases ?? [], b.default ?? []]
+    case 'awaitOne': return [b.cases ?? [], []]
+    case 'awaitAll': case 'for': return [b.body ?? [], []]
     case 'signalDecl': case 'updateDecl': case 'queryDecl': return [b.body ?? [], []]
-    case undefined: return [[...('awaitAll' in b && b.awaitAll ? b.awaitAll.body : []), ...b.body], []]
+    case undefined: return [[...('awaitAll' in b && b.awaitAll ? b.awaitAll.body ?? [] : []), ...(b.body ?? [])], []]
     default: return [[], []]
   }
 }
@@ -137,7 +137,7 @@ function segment(kids: { head: string }[], i: number) {
   return `${kids[i].head} @${kids.slice(0, i + 1).filter(k => key(k.head) === key(kids[i].head)).length}`
 }
 
-/** The identity of every block in the workflows and activities of defs, by the node that is the block; a definition's is its key. */
+/** The identity of every block in the workflows, activities and sync nexus operations of defs, by the node that is the block; a definition's, or an operation's, is its key. */
 export function blockIds(defs: readonly Definition[]): Map<object, string> {
   const ids = new Map<object, string>()
   const seen = new Set<string>()
@@ -154,7 +154,7 @@ export function blockIds(defs: readonly Definition[]): Map<object, string> {
       grow(...nested(k.block), id)
     })
   }
-  const add = (def: Definition, key: string, body: Block[]) => {
+  const add = (def: object, key: string, body: Block[]) => {
     if (seen.has(key)) return
     seen.add(key)
     ids.set(def, key)
@@ -162,9 +162,13 @@ export function blockIds(defs: readonly Definition[]): Map<object, string> {
   }
   for (const def of defs) {
     if (def.type === 'workflowDef') {
-      add(def, `workflow:${qualifiedNameOf(def)}`, [...(def.signals ?? []), ...(def.queries ?? []), ...(def.updates ?? []), ...def.body] as Block[])
+      add(def, `workflow:${qualifiedNameOf(def)}`, [...(def.signals ?? []), ...(def.queries ?? []), ...(def.updates ?? []), ...(def.body ?? [])] as Block[])
     } else if (def.type === 'activityDef') {
-      add(def, `activity:${qualifiedNameOf(def)}`, def.body)
+      add(def, `activity:${qualifiedNameOf(def)}`, def.body ?? [])
+    } else if (def.type === 'nexusServiceDef') {
+      for (const op of def.operations ?? []) {
+        if (op?.opType === 'sync') add(op, `nexusOperation:${qualifiedNameOf(def)}.${op.name}`, op.body ?? [])
+      }
     }
   }
   return ids

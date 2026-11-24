@@ -59,7 +59,7 @@ export interface RenderCoreProps {
   parserGraph?: ParserGraph
   decomposition?: Decomposition
   /** One execution of the design, which the tree draws as a path. */
-  run?: Execution
+  execution?: Execution
   onOpenFile?: (file: string) => void
   onRefocus?: () => void
   onRequestDecomposition?: (params: DecompositionParams) => void
@@ -103,7 +103,7 @@ export function VisualizerHost({
   const [ast, setAst] = React.useState<TWFFile | null>(null)
   const [parserGraph, setParserGraph] = React.useState<ParserGraph | undefined>(undefined)
   const [decomposition, setDecomposition] = React.useState<Decomposition | undefined>(undefined)
-  const [run, setRun] = React.useState<Execution | undefined>(undefined)
+  const [execution, setExecution] = React.useState<Execution | undefined>(undefined)
   const [error, setError] = React.useState<string | null>(null)
   const [showStyleGuide, setShowStyleGuide] = React.useState(false)
   // Skip AST messages that are structurally identical to the previous one so
@@ -134,7 +134,7 @@ export function VisualizerHost({
           setAst(norm.ast)
           setParserGraph(norm.parserGraph)
           setDecomposition(norm.decomposition)
-          setRun(norm.execution)
+          setExecution(norm.execution)
           setError(null)
         } else {
           setError('Unrecognized payload shape')
@@ -145,7 +145,7 @@ export function VisualizerHost({
         setAst(null)
         setParserGraph(undefined)
         setDecomposition(undefined)
-        setRun(undefined)
+        setExecution(undefined)
       }
     }
 
@@ -174,7 +174,7 @@ export function VisualizerHost({
       ast={ast}
       parserGraph={parserGraph}
       decomposition={decomposition}
-      run={run}
+      execution={execution}
       onOpenFile={actions?.openFile}
       onRefocus={actions?.refocus}
       onRequestDecomposition={actions?.requestDecomposition}

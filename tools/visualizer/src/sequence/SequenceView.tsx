@@ -19,15 +19,15 @@ const HEADS: PlacedArrow['kind'][] = ['signal', 'call', 'child', 'launch']
 const ARROW_TONE: Record<PlacedArrow['kind'], string> = { signal: 'signal', call: 'activity', child: 'workflow-call', launch: 'control' }
 
 interface SequenceViewProps extends LinkedViewProps {
-  execution: Model
+  sequence: Model
   systemTheme: Theme
   /** The selected step, by id: the same selection the tree makes. */
   selected?: string
   onSelect?: (step: string | undefined) => void
 }
 
-export function SequenceView({ execution, systemTheme, selected, onSelect, filter, onFilterChange, search, onSearchChange }: SequenceViewProps) {
-  const layout = React.useMemo(() => layoutExecution(execution), [execution])
+export function SequenceView({ sequence, systemTheme, selected, onSelect, filter, onFilterChange, search, onSearchChange }: SequenceViewProps) {
+  const layout = React.useMemo(() => layoutExecution(sequence), [sequence])
   const query = search.query.toLowerCase()
   const dimmed = (text: string) => query !== '' && !text.toLowerCase().includes(query)
 
@@ -45,8 +45,8 @@ export function SequenceView({ execution, systemTheme, selected, onSelect, filte
         searchPlaceholder="Filter by label..."
       />
       <div className="sequence-canvas">
-        <h2 className="sequence-title">{execution.title}</h2>
-        <svg className="sequence-svg" width={layout.width} height={layout.height} role="img" aria-label={execution.title}>
+        <h2 className="sequence-title">{sequence.title}</h2>
+        <svg className="sequence-svg" width={layout.width} height={layout.height} role="img" aria-label={sequence.title}>
           <defs>
             {HEADS.map(kind => (
               <marker key={kind} id={`seq-head-${kind}`} className={`seq-tone-${ARROW_TONE[kind]}`} viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">

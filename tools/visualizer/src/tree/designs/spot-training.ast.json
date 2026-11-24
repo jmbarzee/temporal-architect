@@ -48,7 +48,7 @@
         "name": "SubmitBatchJob",
         "site": {
          "file": "spot-training/training/v1/training.twf",
-         "line": 23,
+         "line": 22,
          "column": 1
         }
        }
@@ -82,7 +82,7 @@
           "name": "RunTrainingChunk",
           "site": {
            "file": "spot-training/training/v1/training.twf",
-           "line": 29,
+           "line": 28,
            "column": 1
           }
          }
@@ -118,21 +118,12 @@
              "name": "chunk"
             }
            },
-           "body": [
-            {
-             "type": "break",
-             "site": {
-              "file": "spot-training/training/v1/training.twf",
-              "line": 14,
-              "column": 6
-             }
-            }
-           ]
+           "body": null
           },
           {
            "site": {
             "file": "spot-training/training/v1/training.twf",
-            "line": 15,
+            "line": 14,
             "column": 5
            },
            "target": {
@@ -146,7 +137,7 @@
              "type": "activityCall",
              "site": {
               "file": "spot-training/training/v1/training.twf",
-              "line": 16,
+              "line": 15,
               "column": 6
              },
              "name": "CheckBatchJob",
@@ -156,7 +147,7 @@
               "name": "CheckBatchJob",
               "site": {
                "file": "spot-training/training/v1/training.twf",
-               "line": 26,
+               "line": 25,
                "column": 1
               }
              }
@@ -165,7 +156,7 @@
              "type": "if",
              "site": {
               "file": "spot-training/training/v1/training.twf",
-              "line": 17,
+              "line": 16,
               "column": 6
              },
              "condition": "status.terminal",
@@ -174,7 +165,7 @@
                "type": "activityCall",
                "site": {
                 "file": "spot-training/training/v1/training.twf",
-                "line": 18,
+                "line": 17,
                 "column": 7
                },
                "name": "SubmitBatchJob",
@@ -184,7 +175,7 @@
                 "name": "SubmitBatchJob",
                 "site": {
                  "file": "spot-training/training/v1/training.twf",
-                 "line": 23,
+                 "line": 22,
                  "column": 1
                 }
                }
@@ -201,7 +192,7 @@
        "type": "raw",
        "site": {
         "file": "spot-training/training/v1/training.twf",
-        "line": 19,
+        "line": 18,
         "column": 3
        },
        "text": "start = start + 1000"
@@ -212,7 +203,7 @@
      "type": "activityCall",
      "site": {
       "file": "spot-training/training/v1/training.twf",
-      "line": 20,
+      "line": 19,
       "column": 2
      },
      "name": "TerminateBatchJob",
@@ -221,7 +212,7 @@
       "name": "TerminateBatchJob",
       "site": {
        "file": "spot-training/training/v1/training.twf",
-       "line": 32,
+       "line": 31,
        "column": 1
       }
      }
@@ -230,7 +221,7 @@
      "type": "close",
      "site": {
       "file": "spot-training/training/v1/training.twf",
-      "line": 21,
+      "line": 20,
       "column": 2
      },
      "reason": "complete",
@@ -242,7 +233,7 @@
    "type": "activityDef",
    "site": {
     "file": "spot-training/training/v1/training.twf",
-    "line": 23,
+    "line": 22,
     "column": 1
    },
    "name": "SubmitBatchJob",
@@ -255,7 +246,7 @@
      "type": "return",
      "site": {
       "file": "spot-training/training/v1/training.twf",
-      "line": 24,
+      "line": 23,
       "column": 2
      },
      "value": "batch.submit(job, name)"
@@ -266,7 +257,7 @@
    "type": "activityDef",
    "site": {
     "file": "spot-training/training/v1/training.twf",
-    "line": 26,
+    "line": 25,
     "column": 1
    },
    "name": "CheckBatchJob",
@@ -279,7 +270,7 @@
      "type": "return",
      "site": {
       "file": "spot-training/training/v1/training.twf",
-      "line": 27,
+      "line": 26,
       "column": 2
      },
      "value": "batch.describe(batchJob)"
@@ -290,7 +281,7 @@
    "type": "activityDef",
    "site": {
     "file": "spot-training/training/v1/training.twf",
-    "line": 29,
+    "line": 28,
     "column": 1
    },
    "name": "RunTrainingChunk",
@@ -303,7 +294,7 @@
      "type": "return",
      "site": {
       "file": "spot-training/training/v1/training.twf",
-      "line": 30,
+      "line": 29,
       "column": 2
      },
      "value": "train(job, start)"
@@ -314,7 +305,7 @@
    "type": "activityDef",
    "site": {
     "file": "spot-training/training/v1/training.twf",
-    "line": 32,
+    "line": 31,
     "column": 1
    },
    "name": "TerminateBatchJob",
@@ -326,7 +317,7 @@
      "type": "return",
      "site": {
       "file": "spot-training/training/v1/training.twf",
-      "line": 33,
+      "line": 32,
       "column": 2
      },
      "value": "batch.terminate(batchJob)"

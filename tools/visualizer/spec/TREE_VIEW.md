@@ -263,13 +263,13 @@ Handed an execution (the contract of [#752](https://github.com/jmbarzee/temporal
 
 ### Identity (`rule-identity`)
 
-A block is the statement an event's `stmt` names. A `stmt` is the identity of `tools/lsp/parser/stmtid`: the definition's key and the heads down to it, a head shared by siblings ranked `@n`. `src/tree/identity.ts` renders the same head from the wire AST for each statement, handler, `await one` case and `switch` case. A definition's body that is inline-expanded under a call is the same blocks, so it lights wherever the definition ran. A nexus operation's body has no identity yet and is neither lit nor dimmed.
+A block is the statement an event's `stmt` names. A `stmt` is the identity of `tools/lsp/parser/stmtid`: the definition's key and the heads down to it, a head shared by siblings ranked `@n`. `src/tree/identity.ts` renders the same head from the wire AST for each statement, handler, `await one` case and `switch` case, under the key of a workflow, an activity or a sync nexus operation (`nexusOperation:pkg.Service.Op`). A definition's body that is inline-expanded under a call is the same blocks, so it lights wherever the definition ran.
 
 *Why:* the identity is the one name the parser, the execution and the tree share, so no view matches by line or text.
 
 ### On the path and off (`rule-on-path`)
 
-A block is on the path when an event is its own or beneath it; an off block, and a workflow or activity the execution never ran, is dimmed. Without an execution nothing is drawn.
+A block is on the path when an event is its own or beneath it; an off block, and a workflow or activity the execution never ran, is dimmed once, by the outermost off block, its blocks inheriting it. Without an execution nothing is drawn.
 
 *Why:* what did not run recedes, and the rest reads at the tree's full strength.
 
@@ -283,7 +283,7 @@ An on-path block carries a note of what its visits left, in these words:
 - a call, an activity, workflow or nexus, or a promise or await of one: its attempts and how each ended (`2 attempts: timed out, ok`), prefixed `#visit` when only that visit retried.
 - an await that a handler ran at: `ran handler Name`, with `×n`.
 
-A block with none of these and an event of its own is noted `ran`.
+Any other block the execution reached, with an event of its own or only beneath it, is noted `ran`.
 
 *Why:* a visit is the unit the contract records, and each note is what one visit changes about reading the block.
 

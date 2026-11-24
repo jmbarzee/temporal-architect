@@ -54,6 +54,15 @@ describe('a block\'s identity', () => {
     expect(ids).toContain(`${AGENT} › if (resume == null) › await one @2 › signal SandboxLeaseGrant`)
   })
 
+  it('holds a case the wire gives no body, and a sync nexus operation\'s body', () => {
+    const ids = [...blockIds([
+      ...(spotTrainingAst.definitions as unknown as Definition[]),
+      { type: 'nexusServiceDef', name: 'Pay', qualifiedName: 'p.Pay', site: { line: 1, column: 1 }, operations: [{ opType: 'sync', name: 'Get', site: { line: 2, column: 1 }, body: [{ type: 'break', site: { line: 3, column: 1 } }] }] } as Definition,
+    ]).values()]
+    expect(ids).toContain(`${TRAINING} › for (start < job.totalSteps) › for › await one › chunk`)
+    expect(ids).toContain('nexusOperation:p.Pay.Get › break')
+  })
+
   it('splits an identity at separators outside strings', () => {
     expect(segments('workflow:a.B › signal x("a › b") @2 › if (c)')).toEqual(['workflow:a.B', 'signal x("a › b") @2', 'if (c)'])
   })
@@ -130,14 +139,12 @@ describe('the tree', () => {
   })
 
   it('draws no path without an execution', () => {
-    const { sample, ast } = samples['spot-training']
-    const def = ast.definitions[0] as Definition
+    const def = samples['spot-training'].ast.definitions[0] as Definition
     const { container } = render(
       <TaxonomyContext.Provider value={DEFAULT_TAXONOMY}>
         <DefinitionBlock definition={def} expanded />
       </TaxonomyContext.Provider>,
     )
-    expect(sample.execution.events.length).toBeGreaterThan(0)
     expect(container.querySelector('.path-mark')).toBeNull()
   })
 
@@ -160,10 +167,35 @@ describe('a step selected in the tree', () => {
     const { sample, ast } = samples['agent-sandbox']
     const execution: Execution = sample.execution
     const model = fromExecution(execution, sample.graph, sample.knobs)
-    const { container } = render(<WorkflowCanvas ast={ast} run={execution} execution={model} />)
+    const { container } = render(<WorkflowCanvas ast={ast} execution={execution} sequence={model} />)
     fireEvent.click(container.querySelector('.block-header')!)
     fireEvent.click([...container.querySelectorAll('.path-note')].find(n => n.textContent === 'won · ran handler SandboxAssign')!)
     fireEvent.click(container.querySelectorAll('.tab-bar-btn')[2])
     expect(container.querySelectorAll('.seq-selected').length).toBe(1)
+  })
+  it('focuses the step\'s node when the Graph is next shown', () => {
+    const { execution, graph } = { execution: spotTraining.execution, graph: spotTraining.graph }
+    const submit = execution.events.find(e => e.edge?.kind === 'activityCall')!.edge!.to
+    const node = (id: string, name: string) => ({ id, definition: id.split('/')[0], name })
+    const parserGraph = {
+      summary: { nodes: 2, edges: 0, coarsenedEdges: 0, unresolved: 0, diagnostics: 0 },
+      nodes: [node(submit, 'SubmitBatchJob'), node(graph.nodes[0].id, 'controller')],
+      edges: [], coarsenedEdges: [], unresolved: [], diagnostics: [],
+    } as never
+    const activities = (container: HTMLElement) => container.querySelector('.view-pane:not(.hidden) .gv-chip-activityDef')!.classList.contains('active')
+    const toGraph = (container: HTMLElement) => fireEvent.click([...container.querySelectorAll('.tab-bar-btn')].find(b => b.textContent === 'Graph')!)
+
+    // The Tree shows no activities, so a plain switch shows none in the Graph; a step selected at an activity widens it to show one.
+    const plain = render(<WorkflowCanvas ast={spotTrainingAst as never} execution={execution} parserGraph={parserGraph} />)
+    toGraph(plain.container)
+    expect(activities(plain.container)).toBe(false)
+    cleanup()
+
+    const { container } = render(<WorkflowCanvas ast={spotTrainingAst as never} execution={execution} parserGraph={parserGraph} />)
+    fireEvent.click(container.querySelector('.block-header')!)
+    const note = [...container.querySelectorAll('.path-mark')].find(m => m.getAttribute('data-stmt')!.endsWith('activity SubmitBatchJob(job, "training-{job.id}") -> batchJob'))!.querySelector('.path-note')!
+    fireEvent.click(note)
+    toGraph(container)
+    expect(activities(container)).toBe(true)
   })
 })

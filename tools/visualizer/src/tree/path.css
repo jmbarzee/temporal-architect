@@ -8,6 +8,12 @@
   opacity: 0.6;
 }
 
+/* Dimmed once, by the outermost off block. */
+.path-off .path-off,
+.path-off .path-off:hover {
+  opacity: 1;
+}
+
 .path-note {
   display: block;
   margin: 2px 0 0 auto;
