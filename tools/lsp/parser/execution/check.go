@@ -108,6 +108,10 @@ func (c *checker) start(l Lane) int {
 
 func (c *checker) checkEvents() {
 	count := map[string]int{}
+	last := map[string]string{} // each lane's last event
+	for _, e := range c.x.Events {
+		last[e.Lane] = e.ID
+	}
 	keys := map[Key]string{}
 	dispatched := map[Key]bool{}
 	for i, e := range c.x.Events {
@@ -121,6 +125,9 @@ func (c *checker) checkEvents() {
 			c.fail(e.ID, "is event %d of its lane, so its id is %q", count[e.Lane], want)
 		}
 		c.checkFields(e, l)
+		if serverEnd(e) {
+			c.checkServerEnd(e, l, last[e.Lane])
+		}
 		c.checkOrder(i, e, l)
 		if e.Kind == Occur && !slices.Equal(e.Visit, []int{count[e.Lane]}) {
 			c.fail(e.ID, "an occur's visit is its place in its lane, [%d]", count[e.Lane])
@@ -153,6 +160,9 @@ func (c *checker) checkFields(e Event, l Lane) {
 	case Reach, Start, End, Arrive:
 		if !run {
 			c.fail(e.ID, "a %s is in a run's lane", e.Kind)
+		}
+		if serverEnd(e) {
+			break
 		}
 		if id, err := stmtid.Parse(e.Stmt); err != nil {
 			c.fail(e.ID, "stmt: %v", err)
@@ -209,6 +219,31 @@ func (c *checker) checkFields(e Event, l Lane) {
 	}
 	if _, err := time.Parse(time.RFC3339, e.Time); e.Time != "" && err != nil {
 		c.fail(e.ID, "time: %v", err)
+	}
+}
+
+// serverEnd reports whether e is an end with no stmt: the server ended its run.
+func serverEnd(e Event) bool {
+	return e.Kind == End && e.Stmt == ""
+}
+
+// checkServerEnd holds a server's end to its rules: only a run's lane takes
+// one, for an outcome only the server brings, and it closes the lane, as its
+// endedBy and its last event. Edge, on and label are held by checkFields.
+func (c *checker) checkServerEnd(e Event, l Lane, last string) {
+	switch e.Outcome {
+	case TimedOut, Cancelled, Terminated:
+	default:
+		c.fail(e.ID, "an end with no stmt has outcome timedOut, cancelled or terminated")
+	}
+	if e.Attempt != 0 || len(e.Visit) > 0 {
+		c.fail(e.ID, "an end with no stmt has no attempt or visit")
+	}
+	if l.EndedBy != e.ID {
+		c.fail(e.ID, "an end with no stmt is its lane's endedBy")
+	}
+	if last != e.ID {
+		c.fail(e.ID, "an end with no stmt is its lane's last event")
 	}
 }
 

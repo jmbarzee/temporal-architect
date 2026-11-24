@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { script } from './fixtures/sample'
+import { layoutExecution } from './layout'
 import { fromExecution, queuedId, type Knobs } from './fromExecution'
 
 const RUN = 'promise r <- activity p.Run(x) -> y'
@@ -66,6 +67,26 @@ describe('fromExecution', () => {
       { from: ids.retried, to: ids.called },
     ])
     expect(model.steps.find(s => s.id === ids.called)!.after).toEqual([queuedId(ids.started)])
+  })
+
+  it.each([
+    ['terminated', 'terminated'],
+    ['timedOut', 'timed out'],
+    ['cancelled', 'cancelled'],
+  ] as const)('ends a run the server %s at a failed event step, where its box ends', (outcome, label) => {
+    const s = script()
+    const w = s.lane({ id: 'workflow:p.W', node: 'workflow:p.W/worker:w/namespace:n' })
+    const sent = w.reach('close complete(x)')
+    const end = `${w.lane.id}/2`
+    s.execution.events.push({ id: end, lane: w.lane.id, kind: 'end', outcome })
+    w.lane.endedBy = end
+    const model = fromExecution(s.execution, graph, { title: 'T' })
+    expect(model.steps.map(x => [x.id, x.kind, x.label, x.state])).toEqual([[sent, 'close', 'complete', undefined], [end, 'event', label, 'failed']])
+    expect(model.lanes[0].endedAt).toBe(end)
+    const { lanes, steps } = layoutExecution(model)
+    const at = steps.find(x => x.step.id === end)!.box
+    expect(lanes[0].box!.y + lanes[0].box!.height).toBeGreaterThan(at.y + at.height)
+    expect(lanes[0].box!.y + lanes[0].box!.height).toBeLessThan(at.y + at.height + 20)
   })
 
   it('takes what an execution does not hold from its knobs', () => {

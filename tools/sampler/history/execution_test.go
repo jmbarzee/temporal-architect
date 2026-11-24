@@ -237,9 +237,9 @@ func TestBuildExecution_Mapping(t *testing.T) {
 			"reach close complete",
 		}, true},
 		{"exec_failed.json", []string{"reach close fail"}, true},
-		{"exec_terminated.json", nil, false},
-		{"exec_timed_out.json", nil, false},
-		{"exec_canceled.json", nil, false},
+		{"exec_terminated.json", []string{"end  terminated"}, true},
+		{"exec_timed_out.json", []string{"end  timedOut"}, true},
+		{"exec_canceled.json", []string{"end  cancelled"}, true},
 		{"local_activities.json", []string{
 			"reach activity FormatReport()", "start activity FormatReport() 1", "end activity FormatReport() 1",
 			"reach activity AuditReport()", "start activity AuditReport() 1", "end activity AuditReport() 1",
@@ -276,7 +276,45 @@ func TestBuildExecution_Mapping(t *testing.T) {
 			if ended := x.Lanes[0].EndedBy != ""; ended != tc.ended {
 				t.Errorf("endedBy %q, want one: %v", x.Lanes[0].EndedBy, tc.ended)
 			}
+			if last := x.Events[len(x.Events)-1].ID; tc.ended && x.Lanes[0].EndedBy != last {
+				t.Errorf("endedBy %q, want the last event %q", x.Lanes[0].EndedBy, last)
+			}
 		})
+	}
+}
+
+// TestBuildExecution_TerminatedChild holds a parent's end of a terminated
+// child to the server's end of the child's run.
+func TestBuildExecution_TerminatedChild(t *testing.T) {
+	var hs []History
+	for _, f := range []struct{ file, id, run string }{
+		{"exec_child_terminated_parent.json", "wf", "run"},
+		{"exec_child_terminated.json", "cleanup-1", "cleanup-run"},
+	} {
+		h, err := LoadFile(filepath.Join("testdata", f.file), f.id, f.run)
+		if err != nil {
+			t.Fatal(err)
+		}
+		hs = append(hs, h)
+	}
+	_, x, err := BuildExecution(hs, Options{Namespace: "default"}, "wf", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if errs := execution.Check(x); errs != nil {
+		t.Fatalf("Check = %v, want none", errs)
+	}
+	var parent, child execution.Event
+	for _, e := range x.Events {
+		switch {
+		case e.Kind == execution.End && e.Outcome == execution.Terminated && e.Stmt != "":
+			parent = e
+		case e.Kind == execution.End && e.Outcome == execution.Terminated:
+			child = e
+		}
+	}
+	if child.ID == "" || parent.From != child.ID {
+		t.Errorf("the parent's end has from %q, want the child's end %q", parent.From, child.ID)
 	}
 }
 

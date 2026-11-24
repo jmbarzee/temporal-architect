@@ -48,8 +48,9 @@ type Lane struct {
 	Node string `json:"node,omitempty"`
 	// StartedBy is the event that starts the lane; absent, it is there from the top.
 	StartedBy string `json:"startedBy,omitempty"`
-	// EndedBy is the event that ends it: a run's close, a host's release or
-	// loss; absent, it lasts to the end.
+	// EndedBy is the event that ends it: a run's close, or the end with no
+	// stmt where the server closed the run; a host's release or loss; absent,
+	// it lasts to the end.
 	EndedBy string `json:"endedBy,omitempty"`
 	// Follows is the run this one continued as new from; it starts where that
 	// run ends.
@@ -63,9 +64,13 @@ type Lane struct {
 type Kind string
 
 const (
-	Reach  Kind = "reach"  // the run executes a statement
-	Start  Kind = "start"  // a call attempt starts running
-	End    Kind = "end"    // a call attempt, timer or await resolves
+	Reach Kind = "reach" // the run executes a statement
+	Start Kind = "start" // a call attempt starts running
+	// End is a call attempt, timer or await resolving. With no stmt it is the
+	// server ending a run: outcome timedOut, cancelled or terminated, no
+	// attempt or visit, its lane's endedBy and last event. A recording makes
+	// one; twf run never does, closing a designed run through its own close.
+	End    Kind = "end"
 	Arrive Kind = "arrive" // a handler runs
 	Occur  Kind = "occur"  // something happens in a host or outside lane
 )

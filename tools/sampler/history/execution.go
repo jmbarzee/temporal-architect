@@ -253,9 +253,15 @@ func (a *assembly) mapEvents(l *lane, h History) {
 				arrive(d, "update "+d.Name, call{kind: callArriveUpdate, name: d.Name})
 			}
 		case SubjectWorkflow:
+			switch d.Phase {
+			case PhaseTimedOut, PhaseCanceled, PhaseTerminated:
+				// the server ended the run, and no statement did
+				l.endedBy = add(d, &event{Event: execution.Event{Kind: execution.End, Outcome: outcome(d.Phase)}})
+				continue
+			}
 			reason := map[Phase]string{PhaseCompleted: "complete", PhaseFailed: "fail", PhaseContinuedAsNew: "continue_as_new"}[d.Phase]
 			if reason == "" {
-				continue // started, or a close the server made, which no statement did
+				continue // started
 			}
 			l.endedBy = reach(d, "close "+reason, call{kind: callClose, name: reason})
 			if d.Phase == PhaseContinuedAsNew {
@@ -446,9 +452,15 @@ func (a *assembly) assemble() *execution.Execution {
 	return x
 }
 
+// serverEnd reports whether e is the end the server gave its run: it ran no
+// statement, so it has no stmt.
+func (e *event) serverEnd() bool {
+	return e.Kind == execution.End && e.lane.endedBy == e
+}
+
 // flatten gives each statement event the join left without a stmt its head
 // in a flat body, a reach's ranked among the lane's equal heads, and each start
-// and end its opener's stmt and visit.
+// and end its opener's stmt and visit. A server's end has none.
 func (l *lane) flatten() {
 	heads := map[string]int{}
 	for _, e := range l.events {
@@ -459,6 +471,7 @@ func (l *lane) flatten() {
 	rank := map[string]int{}
 	for _, e := range l.events {
 		switch {
+		case e.serverEnd():
 		case e.opener != nil:
 			e.Stmt, e.Visit = e.opener.Stmt, e.opener.Visit
 		case e.Stmt != "":

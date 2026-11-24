@@ -299,7 +299,7 @@ statement head an event takes without a design:
 | `workflow.completed` | `reach` on the close, the lane's `endedBy` | `close complete` |
 | `workflow.failed` | `reach` on the close, the lane's `endedBy` | `close fail` |
 | `workflow.continuedAsNew` | `reach` on the close, the lane's `endedBy`; the next run `follows` the lane | `close continue_as_new` |
-| `workflow.timedOut`, `workflow.canceled`, `workflow.terminated` | nothing, because the server ended the run and no statement did; `endedBy` stays absent | |
+| `workflow.timedOut`, `workflow.canceled`, `workflow.terminated` | `end` with no `stmt`, `timedOut`, `cancelled`, `terminated`, the lane's `endedBy`, because the server ended the run and no statement did | |
 | `workflow.cancelRequested` | nothing, because a request runs no statement; the run's answer is its own events | |
 | `activity.scheduled` | `reach`, with its `activityCall` edge | `activity T()` |
 | `activity.started` | `start`, its attempt | |
@@ -317,7 +317,7 @@ statement head an event takes without a design:
 | `child.initiated` | `reach`, with its `workflowCall` edge; the child's lane is `startedBy` it | `workflow T()`, or `detach workflow T()` under ABANDON |
 | `child.started` | `start` 1 | |
 | `child.completed` | `end` 1, `from` the close of the child's last run | |
-| `child.failed`, `child.timedOut`, `child.canceled`, `child.terminated` | `end` 1, `failed`, `timedOut`, `cancelled`, `terminated`, `from` that close when there is one; a child that never started ends with no attempt | |
+| `child.failed`, `child.timedOut`, `child.canceled`, `child.terminated` | `end` 1, `failed`, `timedOut`, `cancelled`, `terminated`, `from` the child's last run's `endedBy` (its close, or the server's end) when there is one; a child that never started ends with no attempt | |
 | `externalSignal.initiated` | `reach`, with its `signalSend` edge | `signal T.N()`, `T` the receiver's type, or its workflow ID when unresolved |
 | `externalSignal.failed` | `end`, `failed` | |
 | `externalSignal.completed` | nothing, because the receiver's `arrive` records the delivery | |

@@ -24,8 +24,9 @@ export interface Lane {
    */
   startedBy?: string;
   /**
-   * EndedBy is the event that ends it: a run's close, a host's release or
-   * loss; absent, it lasts to the end.
+   * EndedBy is the event that ends it: a run's close, or the end with no
+   * stmt where the server closed the run; a host's release or loss; absent,
+   * it lasts to the end.
    */
   endedBy?: string;
   /**
@@ -45,6 +46,12 @@ export interface Lane {
 export type Kind = string;
 export const Reach: Kind = "reach";
 export const Start: Kind = "start";
+/**
+ * End is a call attempt, timer or await resolving. With no stmt it is the
+ * server ending a run: outcome timedOut, cancelled or terminated, no
+ * attempt or visit, its lane's endedBy and last event. A recording makes
+ * one; twf run never does, closing a designed run through its own close.
+ */
 export const End: Kind = "end";
 export const Arrive: Kind = "arrive";
 export const Occur: Kind = "occur";

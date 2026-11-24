@@ -93,7 +93,9 @@ func (a *assembly) join(l *lane) {
 			}
 			ways = next
 		case execution.End:
-			ways = j.win(ways, e)
+			if !e.serverEnd() {
+				ways = j.win(ways, e)
+			}
 		case execution.Arrive:
 			h := j.handler(e.call)
 			if h != nil {
@@ -130,6 +132,9 @@ func (a *assembly) join(l *lane) {
 		return
 	}
 	for _, e := range l.events {
+		if e.serverEnd() {
+			continue
+		}
 		if unmatched[e] {
 			report(diagStmtUnmatched, e, "fits no statement of "+l.key+" the run could reach")
 			continue
