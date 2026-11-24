@@ -25,7 +25,7 @@ describe('SequenceView', () => {
     expect(screen.getAllByText('AGENT')).toHaveLength(1)
     expect(container.querySelectorAll('.seq-lane')).toHaveLength(3)
     expect([...container.querySelectorAll('.seq-arrow text')].map(t => t.textContent)).toEqual(['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'])
-    expect(screen.getAllByText('sandbox-{id}')).toHaveLength(2)
+    expect(screen.getAllByText('sandbox-{sandboxId}')).toHaveLength(2)
     expect(container.querySelectorAll('.seq-span')).toHaveLength(2)
   })
 

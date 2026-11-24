@@ -1,6 +1,6 @@
 # Sequence View
 
-The sequence view draws one execution: lanes side by side, time running down, messages between them. The tree and the graph show every path of a design; this shows one path, so it reads the execution contract ([#752](https://github.com/jmbarzee/temporal-architect/issues/752)) and nothing of the design. Its code is `src/sequence/`, and its input type there is provisional until #752 settles.
+The sequence view draws one execution: lanes side by side, time running down, messages between them. The tree and the graph show every path of a design; this shows one path, so it reads the execution contract ([#752](https://github.com/jmbarzee/temporal-architect/issues/752)) and nothing of the design. Its code is `src/sequence/`, where `fromExecution` builds its model from an execution, the deployment graph and knobs, which are written by hand per sample until [#762](https://github.com/jmbarzee/temporal-architect/issues/762).
 
 
 ## Fixed rules

@@ -79,6 +79,8 @@ import type {
   GraphDiagnosticSeverity,
   DiagnosticSeverity,
   DiagnosticKind,
+  EventKind,
+  EventOutcome,
 } from "./residue";
 
 // ── Envelope: diagnostics + summary ──────────────────────────────────────────
@@ -175,3 +177,21 @@ export type ObservedGraph = Omit<
   unresolved: ParserUnresolved[];
   diagnostics: ParserGraphDiagnostic[];
 };
+
+// ── Execution payload (`execution`) ──────────────────────────────────────────
+
+import type {
+  Execution as ExecutionJSON,
+  Event as ExecutionEventJSON,
+  Edge as ExecutionEdgeJSON,
+} from "./generated/execution";
+
+/** The `execution` payload: one execution of a design, drawn by the Sequence view. */
+export type Execution = Omit<ExecutionJSON, "events"> & { events: ExecutionEvent[] };
+export type { Lane as ExecutionLane } from "./generated/execution";
+export type ExecutionEvent = Omit<ExecutionEventJSON, "kind" | "outcome" | "edge"> & {
+  kind: EventKind;
+  outcome?: EventOutcome;
+  edge?: ExecutionEdge;
+};
+export type ExecutionEdge = Omit<ExecutionEdgeJSON, "kind"> & { kind: EdgeKind };

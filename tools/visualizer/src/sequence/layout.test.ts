@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import type { Execution } from './execution'
+import type { Model } from './model'
 import { rules, samples } from './fixtures'
 import { layoutExecution } from './layout'
 
@@ -55,7 +55,7 @@ describe('layoutExecution', () => {
   it('refuses an order that is a cycle, and a step it does not know', () => {
     const at = (id: string, after: string[]) => ({ id, lane: 'l', kind: 'event' as const, label: id, after })
     const lane = { id: 'l', kind: 'external' as const, name: 'l', title: 'L' }
-    const base: Execution = { title: '', lanes: [lane], steps: [at('a', ['b']), at('b', ['a'])], messages: [], spans: [] }
+    const base: Model = { title: '', lanes: [lane], steps: [at('a', ['b']), at('b', ['a'])], messages: [], spans: [] }
     expect(() => layoutExecution(base)).toThrow('cycle')
     expect(() => layoutExecution({ ...base, steps: [at('a', ['x'])] })).toThrow('unknown step x')
   })
