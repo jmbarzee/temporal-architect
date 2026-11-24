@@ -50,6 +50,9 @@ import { focusedFiles } from '../adapter/files'
 import { useGraphModel, definitionCounts, sourceFilesOf } from '../adapter/useGraphModel'
 import { initialGroupSelection, nodeGroupsOf, type GroupSelection, type GroupHover } from '../adapter/groups'
 import { crossingEdgeIds, sdkCrossings, sdkGroupsOf } from '../adapter/sdk'
+import { crossedEdgeIds, timeAt, visitsOf, withVisits } from '../execution/visits'
+import { Scrubber } from '../execution/Scrubber'
+import { usePlayback } from '../execution/usePlayback'
 
 interface WorkflowCanvasProps {
   /** Parsed TWF AST to visualize. Produced by `twf parse` (the `definitions`
@@ -165,6 +168,9 @@ const STORAGE: StorageConfig = {
   hostApiGlobal: '__twfVsCodeApi',
 }
 
+/** The glow of the deployments an execution visited. */
+const VISITED_GLOW = '#e8b100'
+
 const DEFAULT_PINS: AxisLocks = new Map([
   [SOURCE_FILE_DIMENSION, false],
   [DEF_TYPE_DIMENSION, false],
@@ -252,6 +258,22 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, execution, seq
     [decomposition, sdkGroups, groupSelection, groupHover, copies],
   )
   const sdkSchemeShown = groupSelection.scheme === 'sdks' && groupSelection.glowEnabled
+
+  // The execution in the Graph: what the scrubber has played of it, as the
+  // deployments and edges it visited (GRAPH_VIEW.md § Execution in the graph).
+  // The position is the number of events played; a new execution plays whole.
+  const [position, setPosition] = usePlayback(execution)
+  const visits = React.useMemo(() => execution && visitsOf(execution, position), [execution, position])
+  const visitedGraph = React.useMemo(() => (visits ? withVisits(model.graph, visits) : model.graph), [model.graph, visits])
+  const visitedEdges = React.useMemo(() => (visits ? crossedEdgeIds(model.graph, visits) : new Set<string>()), [model.graph, visits])
+  const visitedGroups = React.useMemo(
+    () => (visits ? [...nodeGroups, { id: 'execution', nodeIds: new Set(visits.nodes.keys()), color: VISITED_GLOW }] : nodeGroups),
+    [nodeGroups, visits],
+  )
+  const markedEdges = React.useMemo(
+    () => (visits ? new Set([...(sdkSchemeShown ? crossingEdges : []), ...visitedEdges]) : sdkSchemeShown ? crossingEdges : undefined),
+    [visits, sdkSchemeShown, crossingEdges, visitedEdges],
+  )
 
   // The search is one query applied identically to both views (spec § Search
   // Scope), held by the hook — started from the persisted query — and handed
@@ -530,11 +552,11 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, execution, seq
           <div className={`view-pane${activeView === 'graph' ? '' : ' hidden'}`}>
             <GraphView
               keyboard={activeView === 'graph' ? 'global' : 'none'}
-              graph={model.graph}
+              graph={visitedGraph}
               counts={graphCounts}
               findings={<ErrorBars errors={model.errors} diagnostics={model.diagnostics} selectedFiles={selectionFor(graphFilter, SOURCE_FILE_DIMENSION)} sourceFiles={sourceFilesOf(ast)} />}
-              groups={nodeGroups}
-              markedEdges={sdkSchemeShown ? crossingEdges : undefined}
+              groups={visitedGroups}
+              markedEdges={markedEdges}
               groupsControl={(active, control) => (
                 <GroupsModal
                   decomposition={decomposition}
@@ -557,6 +579,7 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, execution, seq
               onLayoutChange={setLayout}
               {...linked.of('graph')}
             />
+            {execution && <Scrubber position={position} length={execution.events.length} time={timeAt(execution, position)} onPosition={setPosition} />}
           </div>
         )}
         {sequence && (
