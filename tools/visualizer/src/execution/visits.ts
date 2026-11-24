@@ -54,13 +54,12 @@ export function visitsOf({ lanes, events }: Execution, upTo = events.length): Vi
   return out
 }
 
-/** The ids of the view edges the execution crossed, and for each the crossings, folded from the keys as `crossingEdgeIds` is. */
-export function crossedEdges(graph: Graph, { edges }: Visits): Map<string, number> {
-  const out = new Map<string, number>()
+/** The ids of the view edges the execution crossed, folded from the keys as `crossingEdgeIds` is. */
+export function crossedEdgeIds(graph: Graph, { edges }: Visits): Set<string> {
+  const out = new Set<string>()
   for (const e of graph.edges) {
     const kind = dispatchOf(e)
-    const crossed = kind === undefined ? undefined : edges.get(edgeKey(e.sourceId, e.targetId, kind))
-    if (crossed) out.set(e.id, crossed.count)
+    if (kind !== undefined && edges.has(edgeKey(e.sourceId, e.targetId, kind))) out.add(e.id)
   }
   return out
 }

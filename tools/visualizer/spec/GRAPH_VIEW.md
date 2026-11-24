@@ -208,6 +208,8 @@ A deployment is visited when a lane runs on it (a lane's `node`) or an event's `
 
 *Why:* the design is every path; one execution is the part of it that ran.
 
+The crossed edges share the dashed mark of the SDK scheme's crossings; the two are not told apart.
+
 ### Crossings (`rule-crossings`)
 
 Each visited edge counts the events that carry it, and the target deployment shows each as `×n from <source>`.
@@ -228,7 +230,7 @@ A `signalSend` to a deployment whose every lane had ended before it, a lane endi
 
 ### Playback (`rule-scrubber`)
 
-A scrubber over the graph holds one position, the number of events played from none to all, and steps through them in the contract's order, which keeps happens-before. The visited subgraph is that of the events played; a new execution is shown whole. The position is shared: whatever else plays over time reads the same one, as the observed graph's edge buckets ([#55](https://github.com/jmbarzee/temporal-architect/issues/55)) will, mapping it to their own window by the time of the last event played (`timeAt`, present on recorded executions). That data stays separate from the execution's.
+A scrubber over the graph holds one position, the number of events played from none to all, and steps through them in the contract's order, which keeps happens-before. The visited subgraph is that of the events played; a new execution is shown whole. The position is shared: whatever else plays over time reads the same one, as the observed graph's edge buckets ([#55](https://github.com/jmbarzee/temporal-architect/issues/55)) will, mapping it to their own window by the time of the last event played (`timeAt`, present on recorded executions). That data stays separate from the execution's. The engine rebuilds its layout on each step today, since a node's chips are read when its simulation is built ([force-graph#169](https://github.com/jmbarzee/force-graph/issues/169)).
 
 *Why:* one time control reads the same everywhere; what is played is not what it is played against.
 

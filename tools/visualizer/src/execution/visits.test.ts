@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { agentSandbox } from '../sequence/fixtures/agent-sandbox'
 import { script } from '../sequence/fixtures/sample'
 import { spotTraining } from '../sequence/fixtures/spot-training'
-import { crossedEdges, timeAt, visitsOf, withVisits } from './visits'
+import { crossedEdgeIds, timeAt, visitsOf, withVisits } from './visits'
 
 const node = (w: string) => `workflow:${w}/worker:w/namespace:n`
 
@@ -32,7 +32,7 @@ describe('the visited subgraph (rule-visited)', () => {
     const { s } = calls()
     const v = visitsOf(s.execution)
     expect([...v.nodes.keys()].sort()).toEqual([node('A'), node('B')])
-    expect([...crossedEdges(graph, v).keys()]).toEqual(['ab'])
+    expect([...crossedEdgeIds(graph, v)]).toEqual(['ab'])
   })
 
   it('grows with the events played, in the order the contract lists them', () => {
@@ -51,7 +51,7 @@ describe('the visited subgraph (rule-visited)', () => {
 
 describe('crossings per edge (rule-crossings)', () => {
   it('counts the events that carry an edge, and no other', () => {
-    expect(crossedEdges(graph, visitsOf(calls().s.execution)).get('ab')).toBe(2)
+    expect([...visitsOf(calls().s.execution).edges.values()].map(e => e.count)).toEqual([2])
   })
 
   it.each([['agent-sandbox', agentSandbox, 4], ['spot-training', spotTraining, 6]] as const)('counts the busiest edge of %s', (_, sample, busiest) => {
@@ -99,6 +99,10 @@ describe('instances of one deployment (rule-instances)', () => {
   two.reach('step', {})
   const execution: Execution = s.execution
 
+  it.each([['agent-sandbox', agentSandbox], ['spot-training', spotTraining]] as const)('shows no chip where %s ran each deployment once', (_, { execution }) => {
+    expect([...visitsOf(execution).nodes.values()].filter(i => i.length > 1)).toEqual([])
+  })
+
   it('names each lane that ran on the deployment by its @n', () => {
     expect(visitsOf(execution).nodes.get(node('B'))).toEqual(['@1', '@2'])
   })
@@ -122,6 +126,15 @@ describe('instances of one deployment (rule-instances)', () => {
 })
 
 describe('playback (rule-scrubber)', () => {
+  it.each([['agent-sandbox', agentSandbox], ['spot-training', spotTraining]] as const)('plays %s from nothing to the whole, only ever growing', (_, { execution }) => {
+    const size = (n: number) => { const v = visitsOf(execution, n); return v.nodes.size + v.edges.size }
+    const sizes = execution.events.map((_, i) => size(i))
+    expect(sizes[0]).toBe(0)
+    expect(sizes).toEqual([...sizes].sort((a, b) => a - b))
+    expect(size(execution.events.length)).toBeGreaterThan(sizes[sizes.length - 1] - 1)
+    expect(visitsOf(execution)).toEqual(visitsOf(execution, execution.events.length))
+  })
+
   it('is the time of the last event played, when it was recorded', () => {
     const e: Execution = { lanes: [], events: [{ id: '1', lane: 'l', kind: 'occur', time: '2026-01-01T00:00:00Z' }, { id: '2', lane: 'l', kind: 'occur' }] }
     expect(timeAt(e, 1)).toBe('2026-01-01T00:00:00Z')

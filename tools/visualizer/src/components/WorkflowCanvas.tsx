@@ -50,8 +50,9 @@ import { focusedFiles } from '../adapter/files'
 import { useGraphModel, definitionCounts, sourceFilesOf } from '../adapter/useGraphModel'
 import { initialGroupSelection, nodeGroupsOf, type GroupSelection, type GroupHover } from '../adapter/groups'
 import { crossingEdgeIds, sdkCrossings, sdkGroupsOf } from '../adapter/sdk'
-import { crossedEdges, timeAt, visitsOf, withVisits } from '../execution/visits'
+import { crossedEdgeIds, timeAt, visitsOf, withVisits } from '../execution/visits'
 import { Scrubber } from '../execution/Scrubber'
+import { usePlayback } from '../execution/usePlayback'
 
 interface WorkflowCanvasProps {
   /** Parsed TWF AST to visualize. Produced by `twf parse` (the `definitions`
@@ -261,17 +262,16 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, execution, seq
   // The execution in the Graph: what the scrubber has played of it, as the
   // deployments and edges it visited (GRAPH_VIEW.md § Execution in the graph).
   // The position is the number of events played; a new execution plays whole.
-  const [position, setPosition] = React.useState(execution?.events.length ?? 0)
-  React.useEffect(() => setPosition(execution?.events.length ?? 0), [execution])
+  const [position, setPosition] = usePlayback(execution)
   const visits = React.useMemo(() => execution && visitsOf(execution, position), [execution, position])
   const visitedGraph = React.useMemo(() => (visits ? withVisits(model.graph, visits) : model.graph), [model.graph, visits])
-  const visitedEdges = React.useMemo(() => (visits ? crossedEdges(model.graph, visits) : new Map<string, number>()), [model.graph, visits])
+  const visitedEdges = React.useMemo(() => (visits ? crossedEdgeIds(model.graph, visits) : new Set<string>()), [model.graph, visits])
   const visitedGroups = React.useMemo(
     () => (visits ? [...nodeGroups, { id: 'execution', nodeIds: new Set(visits.nodes.keys()), color: VISITED_GLOW }] : nodeGroups),
     [nodeGroups, visits],
   )
   const markedEdges = React.useMemo(
-    () => (visits ? new Set([...(sdkSchemeShown ? crossingEdges : []), ...visitedEdges.keys()]) : sdkSchemeShown ? crossingEdges : undefined),
+    () => (visits ? new Set([...(sdkSchemeShown ? crossingEdges : []), ...visitedEdges]) : sdkSchemeShown ? crossingEdges : undefined),
     [visits, sdkSchemeShown, crossingEdges, visitedEdges],
   )
 
