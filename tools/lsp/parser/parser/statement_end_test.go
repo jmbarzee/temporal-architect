@@ -197,13 +197,13 @@ func TestShortStatementKeepsTrailingComment(t *testing.T) {
 
 // break and continue belong to a for in their own body: with none around them
 // they are an error at the statement, in every body, in a block of a for's
-// body they are fine, and a for does not reach into a handler.
+// body they are fine.
 func TestLoopControlNeedsAFor(t *testing.T) {
 	outside := []struct{ name, src string }{
 		{"workflow body", "workflow P(x):\n\t%s\n"},
 		{"if", "workflow P(x):\n\tif (x):\n\t\t%s\n"},
 		{"await one case", "workflow P(x):\n\tawait one:\n\t\ttimer(1m):\n\t\t\t%s\n"},
-		{"handler after a for", "workflow P(x):\n\tsignal S(v):\n\t\t%s\n"},
+		{"signal handler", "workflow P(x):\n\tsignal S(v):\n\t\t%s\n"},
 		{"activity body", "activity A(x):\n\t%s\n"},
 		{"sync nexus operation", "nexus service Svc:\n\tsync Op(x) -> (R):\n\t\t%s\n"},
 		{"after a for", "workflow P(x):\n\tfor (i in x):\n\t\tactivity A(i)\n\t%s\n"},
