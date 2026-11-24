@@ -257,6 +257,51 @@ Statements are rendered by `StatementBlock` which routes to specialized block co
 - **Signal send** shows its head — a handle, or a workflow type (package-qualified when the source qualifies it) — then `.Signal(args)`. A type head's address trails as a muted summary: `id: "<literal>"`, `id: parent`, or `id: <name>`, followed by `run_id: <name>` when pinned. A resolved send offers a jump to the target workflow; an unresolved one gets the `?` badge, except an external head (through an import of a package outside the tree), which is carried unchecked and marked neither way.
 
 
+## Execution path
+
+Handed an execution (the contract of [#752](https://github.com/jmbarzee/temporal-architect/issues/752), the payload's `execution`), the tree draws the one path it took through the design. A rule is fixed when it holds for every execution with no setting. Each gives its reason; `src/tree/path.test.tsx` draws each on the two samples' designs (`src/tree/designs/`).
+
+### Identity (`rule-identity`)
+
+A block is the statement an event's `stmt` names. A `stmt` is the identity of `tools/lsp/parser/stmtid`: the definition's key and the heads down to it, a head shared by siblings ranked `@n`. `src/tree/identity.ts` renders the same head from the wire AST for each statement, handler, `await one` case and `switch` case, under the key of a workflow, an activity or a sync nexus operation (`nexusOperation:pkg.Service.Op`). A definition's body that is inline-expanded under a call is the same blocks, so it lights wherever the definition ran.
+
+*Why:* the identity is the one name the parser, the execution and the tree share, so no view matches by line or text.
+
+### On the path and off (`rule-on-path`)
+
+A block is on the path when an event is its own or beneath it; an off block, and a workflow or activity the execution never ran, is dimmed once, by the outermost off block, its blocks inheriting it. Without an execution nothing is drawn.
+
+*Why:* what did not run recedes, and the rest reads at the tree's full strength.
+
+### Detail of a visit (`rule-visit-detail`)
+
+An on-path block carries a note of what its visits left, in these words:
+
+- a `for`: `N passes`, the greatest pass any event beneath it carries for it.
+- an `if`: `then` and `else`, each with `×n` for the visits that took it.
+- an `await one` case or a `switch` case: `won` or `taken`, with `×n`.
+- a call, an activity, workflow or nexus, or a promise or await of one: its attempts and how each ended (`2 attempts: timed out, ok`), prefixed `#visit` when only that visit retried.
+- an await that a handler ran at: `ran handler Name`, with `×n`.
+
+Any other block the execution reached, with an event of its own or only beneath it, is noted `ran`.
+
+*Why:* a visit is the unit the contract records, and each note is what one visit changes about reading the block.
+
+### A handler at its await (`rule-handler-at-await`)
+
+A handler's arrival sits at the next `end` in its lane that is an await and not beneath the handler: the await it ran at. That await, not the handler's declaration, is where it is noted; the declaration is on the path as well.
+
+*Why:* an arrival's place in lane order says where in the body it interrupted.
+
+### Selecting a step (`rule-select-step`)
+
+A note selects a step: an event, the block's first, else the first beneath it. A selected step is outlined on the block that holds it, marked on the Sequence view's step of that id, and carried into the Graph by the next switch to its tab as a focus on its node: what the step dispatches to, else its lane's. Selecting it again lets it go.
+
+*Why:* one selection is the same step in every view, and the existing focus transition is how a view reaches a node.
+
+*Not fixed:* the notes' wording and the dimming's strength are the tree's style, not rules.
+
+
 ## Cross-reference resolution
 
 The tree view supports **inline expansion** of referenced definitions. When a call block (activity, workflow, nexus) is expanded, it doesn't navigate elsewhere — it renders the target definition's content directly as nested children. This works through the `DefinitionContext`:

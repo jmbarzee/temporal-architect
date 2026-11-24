@@ -1,0 +1,1401 @@
+{
+ "definitions": [
+  {
+   "type": "workflowDef",
+   "site": {
+    "file": "agent-sandbox/agent/v1/agent.twf",
+    "line": 7,
+    "column": 1
+   },
+   "name": "Agent",
+   "qualifiedName": "github.com/jmbarzee/temporal-agent-sandbox/twf/agent/v1.Agent",
+   "packageId": "github.com/jmbarzee/temporal-agent-sandbox/twf/agent/v1",
+   "params": "instructions: Instructions, task: Task, tools: Tools, resume: Resume",
+   "returnType": "Result",
+   "signals": [
+    {
+     "type": "signalDecl",
+     "site": {
+      "file": "agent-sandbox/agent/v1/agent.twf",
+      "line": 8,
+      "column": 2
+     },
+     "name": "SandboxAssign",
+     "params": "id: SandboxId",
+     "body": [
+      {
+       "type": "raw",
+       "site": {
+        "file": "agent-sandbox/agent/v1/agent.twf",
+        "line": 9,
+        "column": 3
+       },
+       "text": "assigned = id"
+      }
+     ]
+    },
+    {
+     "type": "signalDecl",
+     "site": {
+      "file": "agent-sandbox/agent/v1/agent.twf",
+      "line": 11,
+      "column": 2
+     },
+     "name": "SandboxLeaseGrant",
+     "params": "granted: Lease",
+     "body": [
+      {
+       "type": "raw",
+       "site": {
+        "file": "agent-sandbox/agent/v1/agent.twf",
+        "line": 12,
+        "column": 3
+       },
+       "text": "lease = granted"
+      }
+     ]
+    },
+    {
+     "type": "signalDecl",
+     "site": {
+      "file": "agent-sandbox/agent/v1/agent.twf",
+      "line": 14,
+      "column": 2
+     },
+     "name": "SandboxLeaseDeny",
+     "params": "reason: Reason",
+     "body": [
+      {
+       "type": "raw",
+       "site": {
+        "file": "agent-sandbox/agent/v1/agent.twf",
+        "line": 15,
+        "column": 3
+       },
+       "text": "denied = reason"
+      }
+     ]
+    },
+    {
+     "type": "signalDecl",
+     "site": {
+      "file": "agent-sandbox/agent/v1/agent.twf",
+      "line": 17,
+      "column": 2
+     },
+     "name": "UserPrompt",
+     "params": "prompt: Prompt",
+     "body": [
+      {
+       "type": "raw",
+       "site": {
+        "file": "agent-sandbox/agent/v1/agent.twf",
+        "line": 18,
+        "column": 3
+       },
+       "text": "pass"
+      }
+     ]
+    }
+   ],
+   "queries": [],
+   "updates": [],
+   "body": [
+    {
+     "type": "if",
+     "site": {
+      "file": "agent-sandbox/agent/v1/agent.twf",
+      "line": 20,
+      "column": 2
+     },
+     "condition": "resume == null",
+     "body": [
+      {
+       "type": "signalSend",
+       "site": {
+        "file": "agent-sandbox/agent/v1/agent.twf",
+        "line": 21,
+        "column": 3
+       },
+       "head": {
+        "kind": "type",
+        "site": {
+         "file": "agent-sandbox/agent/v1/agent.twf",
+         "line": 21,
+         "column": 10
+        },
+        "package": "sandbox",
+        "type": "SandboxOrchestrator",
+        "address": {
+         "site": {
+          "file": "agent-sandbox/agent/v1/agent.twf",
+          "line": 22,
+          "column": 4
+         },
+         "id": {
+          "kind": "literal",
+          "literal": "sandboxes"
+         }
+        }
+       },
+       "signal": "Request",
+       "args": "workflow.id, task.relevantAssets",
+       "resolved": {
+        "name": "SandboxOrchestrator",
+        "site": {
+         "file": "agent-sandbox/sandbox/v1/sandbox.twf",
+         "line": 8,
+         "column": 1
+        }
+       }
+      },
+      {
+       "type": "awaitOne",
+       "site": {
+        "file": "agent-sandbox/agent/v1/agent.twf",
+        "line": 23,
+        "column": 9
+       },
+       "cases": [
+        {
+         "site": {
+          "file": "agent-sandbox/agent/v1/agent.twf",
+          "line": 24,
+          "column": 4
+         },
+         "target": {
+          "kind": "signal",
+          "signal": {
+           "name": "SandboxAssign"
+          }
+         },
+         "body": [
+          {
+           "type": "signalSend",
+           "site": {
+            "file": "agent-sandbox/agent/v1/agent.twf",
+            "line": 25,
+            "column": 5
+           },
+           "head": {
+            "kind": "type",
+            "site": {
+             "file": "agent-sandbox/agent/v1/agent.twf",
+             "line": 25,
+             "column": 12
+            },
+            "package": "sandbox",
+            "type": "Sandbox",
+            "address": {
+             "site": {
+              "file": "agent-sandbox/agent/v1/agent.twf",
+              "line": 26,
+              "column": 6
+             },
+             "id": {
+              "kind": "literal",
+              "literal": "sandbox/{assigned}",
+              "parts": [
+               "assigned"
+              ]
+             }
+            }
+           },
+           "signal": "LeaseRequest",
+           "args": "workflow.id",
+           "resolved": {
+            "name": "Sandbox",
+            "site": {
+             "file": "agent-sandbox/sandbox/v1/sandbox.twf",
+             "line": 24,
+             "column": 1
+            }
+           }
+          }
+         ]
+        },
+        {
+         "site": {
+          "file": "agent-sandbox/agent/v1/agent.twf",
+          "line": 27,
+          "column": 4
+         },
+         "target": {
+          "kind": "timer",
+          "timer": {
+           "duration": "leaseWait"
+          }
+         },
+         "body": [
+          {
+           "type": "close",
+           "site": {
+            "file": "agent-sandbox/agent/v1/agent.twf",
+            "line": 28,
+            "column": 5
+           },
+           "reason": "fail",
+           "args": "LeaseTimeout{\"no sandbox assigned\"}"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "type": "awaitOne",
+       "site": {
+        "file": "agent-sandbox/agent/v1/agent.twf",
+        "line": 29,
+        "column": 9
+       },
+       "cases": [
+        {
+         "site": {
+          "file": "agent-sandbox/agent/v1/agent.twf",
+          "line": 30,
+          "column": 4
+         },
+         "target": {
+          "kind": "signal",
+          "signal": {
+           "name": "SandboxLeaseGrant"
+          }
+         },
+         "body": [
+          {
+           "type": "raw",
+           "site": {
+            "file": "agent-sandbox/agent/v1/agent.twf",
+            "line": 31,
+            "column": 5
+           },
+           "text": "context = [instructions, task]"
+          }
+         ]
+        },
+        {
+         "site": {
+          "file": "agent-sandbox/agent/v1/agent.twf",
+          "line": 32,
+          "column": 4
+         },
+         "target": {
+          "kind": "signal",
+          "signal": {
+           "name": "SandboxLeaseDeny"
+          }
+         },
+         "body": [
+          {
+           "type": "close",
+           "site": {
+            "file": "agent-sandbox/agent/v1/agent.twf",
+            "line": 33,
+            "column": 5
+           },
+           "reason": "fail",
+           "args": "denied"
+          }
+         ]
+        },
+        {
+         "site": {
+          "file": "agent-sandbox/agent/v1/agent.twf",
+          "line": 34,
+          "column": 4
+         },
+         "target": {
+          "kind": "timer",
+          "timer": {
+           "duration": "deadline - workflow.now()"
+          }
+         },
+         "body": [
+          {
+           "type": "close",
+           "site": {
+            "file": "agent-sandbox/agent/v1/agent.twf",
+            "line": 35,
+            "column": 5
+           },
+           "reason": "fail",
+           "args": "LeaseTimeout{\"no answer to the lease request\"}"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "type": "for",
+     "site": {
+      "file": "agent-sandbox/agent/v1/agent.twf",
+      "line": 37,
+      "column": 2
+     },
+     "variant": "infinite",
+     "body": [
+      {
+       "type": "activityCall",
+       "site": {
+        "file": "agent-sandbox/agent/v1/agent.twf",
+        "line": 38,
+        "column": 3
+       },
+       "name": "CallModel",
+       "args": "context, tools",
+       "result": "reply",
+       "resolved": {
+        "name": "CallModel",
+        "site": {
+         "file": "agent-sandbox/agent/v1/agent.twf",
+         "line": 62,
+         "column": 1
+        }
+       }
+      },
+      {
+       "type": "if",
+       "site": {
+        "file": "agent-sandbox/agent/v1/agent.twf",
+        "line": 39,
+        "column": 3
+       },
+       "condition": "reply.toolCalls == null",
+       "body": [
+        {
+         "type": "break",
+         "site": {
+          "file": "agent-sandbox/agent/v1/agent.twf",
+          "line": 40,
+          "column": 4
+         }
+        }
+       ]
+      },
+      {
+       "type": "for",
+       "site": {
+        "file": "agent-sandbox/agent/v1/agent.twf",
+        "line": 41,
+        "column": 3
+       },
+       "variant": "iteration",
+       "variable": "call",
+       "iterable": "reply.toolCalls",
+       "body": [
+        {
+         "type": "activityCall",
+         "site": {
+          "file": "agent-sandbox/agent/v1/agent.twf",
+          "line": 42,
+          "column": 4
+         },
+         "package": "sandbox",
+         "name": "RunTool",
+         "args": "call",
+         "result": "output",
+         "resolved": {
+          "name": "RunTool",
+          "site": {
+           "file": "agent-sandbox/sandbox/v1/sandbox.twf",
+           "line": 85,
+           "column": 1
+          }
+         }
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "type": "signalSend",
+     "site": {
+      "file": "agent-sandbox/agent/v1/agent.twf",
+      "line": 44,
+      "column": 2
+     },
+     "head": {
+      "kind": "type",
+      "site": {
+       "file": "agent-sandbox/agent/v1/agent.twf",
+       "line": 44,
+       "column": 9
+      },
+      "package": "sandbox",
+      "type": "Sandbox",
+      "address": {
+       "site": {
+        "file": "agent-sandbox/agent/v1/agent.twf",
+        "line": 45,
+        "column": 3
+       },
+       "id": {
+        "kind": "literal",
+        "literal": "sandbox/{lease.sandboxId}",
+        "parts": [
+         "lease.sandboxId"
+        ]
+       }
+      }
+     },
+     "signal": "LeaseRelease",
+     "args": "workflow.id",
+     "resolved": {
+      "name": "Sandbox",
+      "site": {
+       "file": "agent-sandbox/sandbox/v1/sandbox.twf",
+       "line": 24,
+       "column": 1
+      }
+     }
+    },
+    {
+     "type": "await",
+     "site": {
+      "file": "agent-sandbox/agent/v1/agent.twf",
+      "line": 46,
+      "column": 2
+     },
+     "target": {
+      "kind": "signal",
+      "signal": {
+       "name": "UserPrompt"
+      }
+     }
+    },
+    {
+     "type": "signalSend",
+     "site": {
+      "file": "agent-sandbox/agent/v1/agent.twf",
+      "line": 47,
+      "column": 2
+     },
+     "head": {
+      "kind": "type",
+      "site": {
+       "file": "agent-sandbox/agent/v1/agent.twf",
+       "line": 47,
+       "column": 9
+      },
+      "package": "sandbox",
+      "type": "Sandbox",
+      "address": {
+       "site": {
+        "file": "agent-sandbox/agent/v1/agent.twf",
+        "line": 48,
+        "column": 3
+       },
+       "id": {
+        "kind": "literal",
+        "literal": "sandbox/{lease.sandboxId}",
+        "parts": [
+         "lease.sandboxId"
+        ]
+       }
+      }
+     },
+     "signal": "LeaseRequest",
+     "args": "workflow.id",
+     "resolved": {
+      "name": "Sandbox",
+      "site": {
+       "file": "agent-sandbox/sandbox/v1/sandbox.twf",
+       "line": 24,
+       "column": 1
+      }
+     }
+    },
+    {
+     "type": "await",
+     "site": {
+      "file": "agent-sandbox/agent/v1/agent.twf",
+      "line": 49,
+      "column": 2
+     },
+     "target": {
+      "kind": "signal",
+      "signal": {
+       "name": "SandboxLeaseGrant"
+      }
+     }
+    },
+    {
+     "type": "for",
+     "site": {
+      "file": "agent-sandbox/agent/v1/agent.twf",
+      "line": 51,
+      "column": 2
+     },
+     "variant": "infinite",
+     "body": [
+      {
+       "type": "activityCall",
+       "site": {
+        "file": "agent-sandbox/agent/v1/agent.twf",
+        "line": 52,
+        "column": 3
+       },
+       "name": "CallModel",
+       "args": "context, tools",
+       "result": "reply",
+       "resolved": {
+        "name": "CallModel",
+        "site": {
+         "file": "agent-sandbox/agent/v1/agent.twf",
+         "line": 62,
+         "column": 1
+        }
+       }
+      },
+      {
+       "type": "if",
+       "site": {
+        "file": "agent-sandbox/agent/v1/agent.twf",
+        "line": 53,
+        "column": 3
+       },
+       "condition": "reply.toolCalls == null",
+       "body": [
+        {
+         "type": "break",
+         "site": {
+          "file": "agent-sandbox/agent/v1/agent.twf",
+          "line": 54,
+          "column": 4
+         }
+        }
+       ]
+      },
+      {
+       "type": "for",
+       "site": {
+        "file": "agent-sandbox/agent/v1/agent.twf",
+        "line": 55,
+        "column": 3
+       },
+       "variant": "iteration",
+       "variable": "call",
+       "iterable": "reply.toolCalls",
+       "body": [
+        {
+         "type": "activityCall",
+         "site": {
+          "file": "agent-sandbox/agent/v1/agent.twf",
+          "line": 56,
+          "column": 4
+         },
+         "package": "sandbox",
+         "name": "RunTool",
+         "args": "call",
+         "result": "output",
+         "resolved": {
+          "name": "RunTool",
+          "site": {
+           "file": "agent-sandbox/sandbox/v1/sandbox.twf",
+           "line": 85,
+           "column": 1
+          }
+         }
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "type": "signalSend",
+     "site": {
+      "file": "agent-sandbox/agent/v1/agent.twf",
+      "line": 58,
+      "column": 2
+     },
+     "head": {
+      "kind": "type",
+      "site": {
+       "file": "agent-sandbox/agent/v1/agent.twf",
+       "line": 58,
+       "column": 9
+      },
+      "package": "sandbox",
+      "type": "Sandbox",
+      "address": {
+       "site": {
+        "file": "agent-sandbox/agent/v1/agent.twf",
+        "line": 59,
+        "column": 3
+       },
+       "id": {
+        "kind": "literal",
+        "literal": "sandbox/{lease.sandboxId}",
+        "parts": [
+         "lease.sandboxId"
+        ]
+       }
+      }
+     },
+     "signal": "LeaseRelease",
+     "args": "workflow.id",
+     "resolved": {
+      "name": "Sandbox",
+      "site": {
+       "file": "agent-sandbox/sandbox/v1/sandbox.twf",
+       "line": 24,
+       "column": 1
+      }
+     }
+    },
+    {
+     "type": "close",
+     "site": {
+      "file": "agent-sandbox/agent/v1/agent.twf",
+      "line": 60,
+      "column": 2
+     },
+     "reason": "complete",
+     "args": "Result{context}"
+    }
+   ]
+  },
+  {
+   "type": "activityDef",
+   "site": {
+    "file": "agent-sandbox/agent/v1/agent.twf",
+    "line": 62,
+    "column": 1
+   },
+   "name": "CallModel",
+   "qualifiedName": "github.com/jmbarzee/temporal-agent-sandbox/twf/agent/v1.CallModel",
+   "packageId": "github.com/jmbarzee/temporal-agent-sandbox/twf/agent/v1",
+   "params": "context: Context, tools: Tools",
+   "returnType": "Reply",
+   "body": [
+    {
+     "type": "return",
+     "site": {
+      "file": "agent-sandbox/agent/v1/agent.twf",
+      "line": 63,
+      "column": 2
+     },
+     "value": "llm.call(context, tools)"
+    }
+   ]
+  },
+  {
+   "type": "workflowDef",
+   "site": {
+    "file": "agent-sandbox/sandbox/v1/sandbox.twf",
+    "line": 8,
+    "column": 1
+   },
+   "name": "SandboxOrchestrator",
+   "qualifiedName": "github.com/jmbarzee/temporal-agent-sandbox/twf/sandbox/v1.SandboxOrchestrator",
+   "packageId": "github.com/jmbarzee/temporal-agent-sandbox/twf/sandbox/v1",
+   "params": "",
+   "idScheme": {
+    "site": {
+     "file": "agent-sandbox/sandbox/v1/sandbox.twf",
+     "line": 9,
+     "column": 2
+    },
+    "template": "sandboxes"
+   },
+   "signals": [
+    {
+     "type": "signalDecl",
+     "site": {
+      "file": "agent-sandbox/sandbox/v1/sandbox.twf",
+      "line": 11,
+      "column": 2
+     },
+     "name": "Request",
+     "params": "requester: Identity, assets: Assets",
+     "body": [
+      {
+       "type": "raw",
+       "site": {
+        "file": "agent-sandbox/sandbox/v1/sandbox.twf",
+        "line": 12,
+        "column": 3
+       },
+       "text": "sandboxId = newId()"
+      },
+      {
+       "type": "workflowCall",
+       "site": {
+        "file": "agent-sandbox/sandbox/v1/sandbox.twf",
+        "line": 13,
+        "column": 3
+       },
+       "mode": "detach",
+       "start": "child",
+       "name": "Sandbox",
+       "args": "sandboxId, assets",
+       "resolved": {
+        "name": "Sandbox",
+        "site": {
+         "file": "agent-sandbox/sandbox/v1/sandbox.twf",
+         "line": 24,
+         "column": 1
+        }
+       }
+      },
+      {
+       "type": "signalSend",
+       "site": {
+        "file": "agent-sandbox/sandbox/v1/sandbox.twf",
+        "line": 14,
+        "column": 3
+       },
+       "head": {
+        "kind": "type",
+        "site": {
+         "file": "agent-sandbox/sandbox/v1/sandbox.twf",
+         "line": 14,
+         "column": 10
+        },
+        "package": "agent",
+        "type": "Agent",
+        "address": {
+         "site": {
+          "file": "agent-sandbox/sandbox/v1/sandbox.twf",
+          "line": 15,
+          "column": 4
+         },
+         "id": {
+          "kind": "name",
+          "name": "requester.workflowId"
+         }
+        }
+       },
+       "signal": "SandboxAssign",
+       "args": "sandboxId",
+       "resolved": {
+        "name": "Agent",
+        "site": {
+         "file": "agent-sandbox/agent/v1/agent.twf",
+         "line": 7,
+         "column": 1
+        }
+       }
+      }
+     ]
+    }
+   ],
+   "queries": [],
+   "updates": [],
+   "body": [
+    {
+     "type": "raw",
+     "site": {
+      "file": "agent-sandbox/sandbox/v1/sandbox.twf",
+      "line": 17,
+      "column": 2
+     },
+     "text": "served = 0"
+    },
+    {
+     "type": "for",
+     "site": {
+      "file": "agent-sandbox/sandbox/v1/sandbox.twf",
+      "line": 18,
+      "column": 2
+     },
+     "variant": "infinite",
+     "body": [
+      {
+       "type": "await",
+       "site": {
+        "file": "agent-sandbox/sandbox/v1/sandbox.twf",
+        "line": 19,
+        "column": 3
+       },
+       "target": {
+        "kind": "signal",
+        "signal": {
+         "name": "Request"
+        }
+       }
+      },
+      {
+       "type": "raw",
+       "site": {
+        "file": "agent-sandbox/sandbox/v1/sandbox.twf",
+        "line": 20,
+        "column": 3
+       },
+       "text": "served = served + 1"
+      },
+      {
+       "type": "if",
+       "site": {
+        "file": "agent-sandbox/sandbox/v1/sandbox.twf",
+        "line": 21,
+        "column": 3
+       },
+       "condition": "served >= 1000",
+       "body": [
+        {
+         "type": "close",
+         "site": {
+          "file": "agent-sandbox/sandbox/v1/sandbox.twf",
+          "line": 22,
+          "column": 4
+         },
+         "reason": "continue_as_new"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "workflowDef",
+   "site": {
+    "file": "agent-sandbox/sandbox/v1/sandbox.twf",
+    "line": 24,
+    "column": 1
+   },
+   "name": "Sandbox",
+   "qualifiedName": "github.com/jmbarzee/temporal-agent-sandbox/twf/sandbox/v1.Sandbox",
+   "packageId": "github.com/jmbarzee/temporal-agent-sandbox/twf/sandbox/v1",
+   "params": "sandboxId: SandboxId, assets: Assets",
+   "idScheme": {
+    "site": {
+     "file": "agent-sandbox/sandbox/v1/sandbox.twf",
+     "line": 25,
+     "column": 2
+    },
+    "template": "sandbox/{sandboxId}",
+    "holes": [
+     "sandboxId"
+    ]
+   },
+   "signals": [
+    {
+     "type": "signalDecl",
+     "site": {
+      "file": "agent-sandbox/sandbox/v1/sandbox.twf",
+      "line": 27,
+      "column": 2
+     },
+     "name": "LeaseRequest",
+     "params": "requester: Identity",
+     "body": [
+      {
+       "type": "raw",
+       "site": {
+        "file": "agent-sandbox/sandbox/v1/sandbox.twf",
+        "line": 28,
+        "column": 3
+       },
+       "text": "pass"
+      }
+     ]
+    },
+    {
+     "type": "signalDecl",
+     "site": {
+      "file": "agent-sandbox/sandbox/v1/sandbox.twf",
+      "line": 30,
+      "column": 2
+     },
+     "name": "LeaseRelease",
+     "params": "requester: Identity",
+     "body": [
+      {
+       "type": "if",
+       "site": {
+        "file": "agent-sandbox/sandbox/v1/sandbox.twf",
+        "line": 31,
+        "column": 3
+       },
+       "condition": "lease != null and lease.owner == requester",
+       "body": [
+        {
+         "type": "raw",
+         "site": {
+          "file": "agent-sandbox/sandbox/v1/sandbox.twf",
+          "line": 32,
+          "column": 4
+         },
+         "text": "lease = null"
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "queries": [
+    {
+     "type": "queryDecl",
+     "site": {
+      "file": "agent-sandbox/sandbox/v1/sandbox.twf",
+      "line": 34,
+      "column": 2
+     },
+     "name": "GetLease",
+     "params": "",
+     "returnType": "Lease",
+     "body": [
+      {
+       "type": "return",
+       "site": {
+        "file": "agent-sandbox/sandbox/v1/sandbox.twf",
+        "line": 35,
+        "column": 3
+       },
+       "value": "lease"
+      }
+     ]
+    }
+   ],
+   "updates": [],
+   "body": [
+    {
+     "type": "raw",
+     "site": {
+      "file": "agent-sandbox/sandbox/v1/sandbox.twf",
+      "line": 37,
+      "column": 2
+     },
+     "text": "leaseDuration = 15m"
+    },
+    {
+     "type": "raw",
+     "site": {
+      "file": "agent-sandbox/sandbox/v1/sandbox.twf",
+      "line": 38,
+      "column": 2
+     },
+     "text": "renewBefore = 5m"
+    },
+    {
+     "type": "raw",
+     "site": {
+      "file": "agent-sandbox/sandbox/v1/sandbox.twf",
+      "line": 39,
+      "column": 2
+     },
+     "text": "grace = 10m"
+    },
+    {
+     "type": "raw",
+     "site": {
+      "file": "agent-sandbox/sandbox/v1/sandbox.twf",
+      "line": 40,
+      "column": 2
+     },
+     "text": "lease = null"
+    },
+    {
+     "type": "comment",
+     "site": {
+      "file": "agent-sandbox/sandbox/v1/sandbox.twf",
+      "line": 42,
+      "column": 2
+     },
+     "text": " a failure through Ready skips the main loop."
+    },
+    {
+     "type": "comment",
+     "site": {
+      "file": "agent-sandbox/sandbox/v1/sandbox.twf",
+      "line": 43,
+      "column": 2
+     },
+     "text": " Chart: sandbox container + sidecar worker polling \"sandbox-{sandboxId}\"."
+    },
+    {
+     "type": "comment",
+     "site": {
+      "file": "agent-sandbox/sandbox/v1/sandbox.twf",
+      "line": 44,
+      "column": 2
+     },
+     "text": " pods is the worker's configuration: where pods run and how they reach Temporal."
+    },
+    {
+     "type": "activityCall",
+     "site": {
+      "file": "agent-sandbox/sandbox/v1/sandbox.twf",
+      "line": 45,
+      "column": 2
+     },
+     "package": "helm",
+     "name": "RenderChart",
+     "args": "\"sandbox\", \"sandbox-{sandboxId}\", pods.namespace, Values{sandboxId, assets, pods}",
+     "result": "resources"
+    },
+    {
+     "type": "activityCall",
+     "site": {
+      "file": "agent-sandbox/sandbox/v1/sandbox.twf",
+      "line": 46,
+      "column": 2
+     },
+     "package": "kube",
+     "name": "Create",
+     "args": "resources",
+     "result": "ids",
+     "options": {
+      "entries": [
+       {
+        "key": "schedule_to_close_timeout",
+        "value": "5m",
+        "valueType": "duration"
+       }
+      ]
+     }
+    },
+    {
+     "type": "comment",
+     "site": {
+      "file": "agent-sandbox/sandbox/v1/sandbox.twf",
+      "line": 49,
+      "column": 2
+     },
+     "text": " Ready fails until every resource is current; the retry policy is the wait."
+    },
+    {
+     "type": "activityCall",
+     "site": {
+      "file": "agent-sandbox/sandbox/v1/sandbox.twf",
+      "line": 50,
+      "column": 2
+     },
+     "package": "kube",
+     "name": "Ready",
+     "args": "ids",
+     "options": {
+      "entries": [
+       {
+        "key": "schedule_to_close_timeout",
+        "value": "5m",
+        "valueType": "duration"
+       },
+       {
+        "key": "retry_policy",
+        "nested": [
+         {
+          "key": "initial_interval",
+          "value": "2s",
+          "valueType": "duration"
+         },
+         {
+          "key": "maximum_interval",
+          "value": "10s",
+          "valueType": "duration"
+         }
+        ]
+       }
+      ]
+     }
+    },
+    {
+     "type": "raw",
+     "site": {
+      "file": "agent-sandbox/sandbox/v1/sandbox.twf",
+      "line": 57,
+      "column": 2
+     },
+     "text": "deadline = workflow.now() + grace"
+    },
+    {
+     "type": "for",
+     "site": {
+      "file": "agent-sandbox/sandbox/v1/sandbox.twf",
+      "line": 58,
+      "column": 2
+     },
+     "variant": "infinite",
+     "body": [
+      {
+       "type": "if",
+       "site": {
+        "file": "agent-sandbox/sandbox/v1/sandbox.twf",
+        "line": 59,
+        "column": 3
+       },
+       "condition": "lease != null",
+       "body": [
+        {
+         "type": "raw",
+         "site": {
+          "file": "agent-sandbox/sandbox/v1/sandbox.twf",
+          "line": 60,
+          "column": 4
+         },
+         "text": "deadline = lease.expiry + grace"
+        }
+       ]
+      },
+      {
+       "type": "if",
+       "site": {
+        "file": "agent-sandbox/sandbox/v1/sandbox.twf",
+        "line": 61,
+        "column": 3
+       },
+       "condition": "workflow.now() >= deadline",
+       "body": [
+        {
+         "type": "break",
+         "site": {
+          "file": "agent-sandbox/sandbox/v1/sandbox.twf",
+          "line": 62,
+          "column": 4
+         }
+        }
+       ]
+      },
+      {
+       "type": "awaitOne",
+       "site": {
+        "file": "agent-sandbox/sandbox/v1/sandbox.twf",
+        "line": 63,
+        "column": 9
+       },
+       "cases": [
+        {
+         "site": {
+          "file": "agent-sandbox/sandbox/v1/sandbox.twf",
+          "line": 64,
+          "column": 4
+         },
+         "target": {
+          "kind": "signal",
+          "signal": {
+           "name": "LeaseRequest",
+           "params": "requester"
+          }
+         },
+         "body": [
+          {
+           "type": "if",
+           "site": {
+            "file": "agent-sandbox/sandbox/v1/sandbox.twf",
+            "line": 65,
+            "column": 5
+           },
+           "condition": "lease == null or lease.owner == requester or workflow.now() >= lease.expiry",
+           "body": [
+            {
+             "type": "comment",
+             "site": {
+              "file": "agent-sandbox/sandbox/v1/sandbox.twf",
+              "line": 66,
+              "column": 6
+             },
+             "text": " a failed send grants nothing."
+            },
+            {
+             "type": "raw",
+             "site": {
+              "file": "agent-sandbox/sandbox/v1/sandbox.twf",
+              "line": 67,
+              "column": 6
+             },
+             "text": "lease = Lease{sandboxId, owner: requester, expiry: workflow.now() + leaseDuration, renewBefore}"
+            },
+            {
+             "type": "signalSend",
+             "site": {
+              "file": "agent-sandbox/sandbox/v1/sandbox.twf",
+              "line": 68,
+              "column": 6
+             },
+             "head": {
+              "kind": "type",
+              "site": {
+               "file": "agent-sandbox/sandbox/v1/sandbox.twf",
+               "line": 68,
+               "column": 13
+              },
+              "package": "agent",
+              "type": "Agent",
+              "address": {
+               "site": {
+                "file": "agent-sandbox/sandbox/v1/sandbox.twf",
+                "line": 69,
+                "column": 7
+               },
+               "id": {
+                "kind": "name",
+                "name": "requester.workflowId"
+               }
+              }
+             },
+             "signal": "SandboxLeaseGrant",
+             "args": "lease",
+             "resolved": {
+              "name": "Agent",
+              "site": {
+               "file": "agent-sandbox/agent/v1/agent.twf",
+               "line": 7,
+               "column": 1
+              }
+             }
+            }
+           ],
+           "elseBody": [
+            {
+             "type": "signalSend",
+             "site": {
+              "file": "agent-sandbox/sandbox/v1/sandbox.twf",
+              "line": 71,
+              "column": 6
+             },
+             "head": {
+              "kind": "type",
+              "site": {
+               "file": "agent-sandbox/sandbox/v1/sandbox.twf",
+               "line": 71,
+               "column": 13
+              },
+              "package": "agent",
+              "type": "Agent",
+              "address": {
+               "site": {
+                "file": "agent-sandbox/sandbox/v1/sandbox.twf",
+                "line": 72,
+                "column": 7
+               },
+               "id": {
+                "kind": "name",
+                "name": "requester.workflowId"
+               }
+              }
+             },
+             "signal": "SandboxLeaseDeny",
+             "args": "\"leased to another holder\"",
+             "resolved": {
+              "name": "Agent",
+              "site": {
+               "file": "agent-sandbox/agent/v1/agent.twf",
+               "line": 7,
+               "column": 1
+              }
+             }
+            }
+           ]
+          }
+         ]
+        },
+        {
+         "site": {
+          "file": "agent-sandbox/sandbox/v1/sandbox.twf",
+          "line": 73,
+          "column": 4
+         },
+         "target": {
+          "kind": "signal",
+          "signal": {
+           "name": "LeaseRelease"
+          }
+         },
+         "body": [
+          {
+           "type": "continue",
+           "site": {
+            "file": "agent-sandbox/sandbox/v1/sandbox.twf",
+            "line": 74,
+            "column": 5
+           }
+          }
+         ]
+        },
+        {
+         "site": {
+          "file": "agent-sandbox/sandbox/v1/sandbox.twf",
+          "line": 75,
+          "column": 4
+         },
+         "target": {
+          "kind": "timer",
+          "timer": {
+           "duration": "deadline - workflow.now()"
+          }
+         },
+         "body": [
+          {
+           "type": "continue",
+           "site": {
+            "file": "agent-sandbox/sandbox/v1/sandbox.twf",
+            "line": 76,
+            "column": 5
+           }
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "type": "comment",
+     "site": {
+      "file": "agent-sandbox/sandbox/v1/sandbox.twf",
+      "line": 78,
+      "column": 2
+     },
+     "text": " Nothing is in flight by now: any lease has been expired for the whole grace period."
+    },
+    {
+     "type": "comment",
+     "site": {
+      "file": "agent-sandbox/sandbox/v1/sandbox.twf",
+      "line": 79,
+      "column": 2
+     },
+     "text": " The pod's termination grace period covers the sidecar's own shutdown."
+    },
+    {
+     "type": "activityCall",
+     "site": {
+      "file": "agent-sandbox/sandbox/v1/sandbox.twf",
+      "line": 80,
+      "column": 2
+     },
+     "package": "kube",
+     "name": "Delete",
+     "args": "ids"
+    },
+    {
+     "type": "close",
+     "site": {
+      "file": "agent-sandbox/sandbox/v1/sandbox.twf",
+      "line": 81,
+      "column": 2
+     },
+     "reason": "complete"
+    }
+   ]
+  },
+  {
+   "type": "activityDef",
+   "site": {
+    "file": "agent-sandbox/sandbox/v1/sandbox.twf",
+    "line": 85,
+    "column": 1
+   },
+   "name": "RunTool",
+   "qualifiedName": "github.com/jmbarzee/temporal-agent-sandbox/twf/sandbox/v1.RunTool",
+   "packageId": "github.com/jmbarzee/temporal-agent-sandbox/twf/sandbox/v1",
+   "params": "call: ToolCall",
+   "returnType": "ToolOutput",
+   "body": [
+    {
+     "type": "return",
+     "site": {
+      "file": "agent-sandbox/sandbox/v1/sandbox.twf",
+      "line": 86,
+      "column": 2
+     },
+     "value": "exec(call)"
+    }
+   ]
+  }
+ ]
+}

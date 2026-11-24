@@ -7,9 +7,14 @@ import { useToggle } from './useToggle'
 import { HandlerContext } from '../WorkflowCanvas'
 import { handlersOf } from '../definitionMaps'
 import { OptionsSection } from './OptionsSection'
+import { Marked } from '../../tree/PathContext'
 import './blocks.css'
 
 function HandlerDeclBlock({ decl }: { decl: HandlerDecl }) {
+  return <Marked node={decl}><HandlerDeclContent decl={decl} /></Marked>
+}
+
+function HandlerDeclContent({ decl }: { decl: HandlerDecl }) {
   const hasBody = !!(decl.body && decl.body.length > 0)
   const hasOptions = !!decl.options?.entries?.length
   const isExpandable = hasBody || hasOptions

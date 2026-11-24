@@ -33,12 +33,16 @@ import { DEFAULT_TAXONOMY, nodeTypeForDefType } from '../adapter/node-types'
 import './WorkflowCanvas.css'
 import type { TWFFile, WorkflowDef, ActivityDef, WorkerDef, NamespaceDef, NexusServiceDef, SignalDecl, QueryDecl, UpdateDecl } from '../types/ast'
 import { qualifiedNameOf } from '../types/ast'
+import type { Execution } from '@temporal-architect/wire-types'
 import type { ParserGraph } from '../types/parser-graph'
 import { EMPTY_PARSER_GRAPH } from '../types/parser-graph'
 import type { Decomposition } from '../types/decomposition'
 import type { DecompositionParams } from './protocol'
 import { TreeView, type TreeFocus } from './TreeView'
 import { SequenceView } from '../sequence/SequenceView'
+import { blockIds } from '../tree/identity'
+import { nodeOf, pathOf } from '../tree/path'
+import { PathContext, type PathState } from '../tree/PathContext'
 import type { Model } from '../sequence/model'
 import { GroupsModal } from './GroupsModal'
 import { ErrorBars } from './ErrorBars'
@@ -63,9 +67,13 @@ interface WorkflowCanvasProps {
    * overlay's chunks scheme. Optional and additive: when absent that scheme
    * is inert. The tree view does not consume it. */
   decomposition?: Decomposition
+  /** One execution of the design as the parser emits it. The tree draws it as a
+   * path through its blocks; a step of it selected there is the one the
+   * Sequence view marks and the Graph view's tab focuses. */
+  execution?: Execution
   /** The model of one execution, drawn by the Sequence view. Optional;
    * without it the view has no tab. */
-  execution?: Model
+  sequence?: Model
   /** Invoked when the user narrows the file filter to exactly one file —
    * a hint to host applications (e.g. VS Code) to focus that file in their
    * editor. Optional; ignored when not provided. */
@@ -162,7 +170,7 @@ const DEFAULT_PINS: AxisLocks = new Map([
   [DEF_TYPE_DIMENSION, false],
 ])
 
-export function WorkflowCanvas({ ast, parserGraph, decomposition, execution, onOpenFile, onRefocus, onRequestDecomposition, className, style }: WorkflowCanvasProps) {
+export function WorkflowCanvas({ ast, parserGraph, decomposition, execution, sequence, onOpenFile, onRefocus, onRequestDecomposition, className, style }: WorkflowCanvasProps) {
   const graphInput = parserGraph ?? EMPTY_PARSER_GRAPH
   // History mode: a graph-only payload (e.g. the sampler's observed graph) has
   // no AST definitions. The Tree view has nothing to render, so we hide its tab
@@ -179,7 +187,7 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, execution, onO
   // away, so its viewport/layout survive a round-trip to the Tree view. We
   // mount it lazily rather than on first render so its one-shot initial fit
   // happens while it's visible (a hidden 0×0 container would fit to nothing).
-  const [graphEverShown, setGraphEverShown] = React.useState(historyMode && !execution)
+  const [graphEverShown, setGraphEverShown] = React.useState(historyMode && !sequence)
 
   // The Graph view's inputs, read here off the payload: the graph built from
   // the parser's deployment graph, the findings, the chip counts. The
@@ -205,7 +213,7 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, execution, onO
     taxonomy: DEFAULT_TAXONOMY,
     views: VIEWS,
     graph: model.graph,
-    start: historyMode ? (execution ? 'sequence' : 'graph') : 'tree',
+    start: historyMode ? (sequence ? 'sequence' : 'graph') : 'tree',
     initialSearch: { query: persisted.searchQuery ?? '', active: false },
     initial: view => {
       if (view === 'sequence') return undefined
@@ -333,6 +341,19 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, execution, onO
   // Build lookup maps for definitions (shared by both views)
   const context = React.useMemo(() => definitionMaps(ast.definitions), [ast])
 
+  // The execution on the tree, and the step selected in it (a step is an event,
+  // by its id). A selected step no later payload holds is dropped.
+  const [selectedStep, setSelectedStep] = React.useState<string | undefined>(undefined)
+  React.useEffect(() => setSelectedStep(undefined), [execution])
+  const pathState = React.useMemo<PathState>(
+    () => ({ ids: execution ? blockIds(ast.definitions) : new Map(), path: execution && pathOf(execution), selected: selectedStep, onSelect: setSelectedStep }),
+    [ast.definitions, execution, selectedStep],
+  )
+  const stepNode = React.useMemo(() => {
+    const id = execution && selectedStep !== undefined ? nodeOf(execution, selectedStep) : undefined
+    return model.graph.nodes.find(n => n.id === id)
+  }, [execution, selectedStep, model.graph])
+
   // The single entry point for all view switches. Reads the transition
   // intent, runs the reconciler, applies the result, and flips the
   // active view. See spec § View Transitions.
@@ -344,10 +365,18 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, execution, onO
     // by construction (Show in [view] is always cross-view).
     if (target === activeView && transition.kind === 'manual') return
 
+    // A manual switch to the Graph with a step selected is a focus on the
+    // step's node.
+    if (target === 'graph' && transition.kind === 'manual' && stepNode) {
+      focus('graph', stepNode)
+      setGraphEverShown(true)
+      return
+    }
+
     // The Sequence view is reached by its tab alone: nothing in it is a
     // definition or a node to focus, and without an execution it has none.
     if (target === 'sequence') {
-      if (execution && transition.kind === 'manual') switchTo('sequence')
+      if (sequence && transition.kind === 'manual') switchTo('sequence')
       return
     }
 
@@ -379,7 +408,7 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, execution, onO
       switchTo('graph')
       setGraphEverShown(true)
     }
-  }, [activeView, historyMode, execution, model.graph, switchTo, focus])
+  }, [activeView, historyMode, sequence, model.graph, stepNode, switchTo, focus])
 
   // Cross-view focus actions invoked by per-view UI (tree's "Show in
   // Graph" contextual button, graph's right-click menu / toolbar button).
@@ -443,6 +472,7 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, execution, onO
     // imports the entries.
     <TaxonomyContext.Provider value={DEFAULT_TAXONOMY}>
     <DefinitionContext.Provider value={context}>
+    <PathContext.Provider value={pathState}>
       <div className={shellClassName} style={{ ...schemeStyle, ...(style) }} onClick={onRefocus} ref={rootRef} data-theme={hostTheme}>
         <div className="tab-bar">
           {/* In history mode there's no AST to render as a tree, so the Tree
@@ -470,7 +500,7 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, execution, onO
           >
             Graph
           </button>
-          {execution && (
+          {sequence && (
             <button
               className={`tab-bar-btn ${activeView === 'sequence' ? 'active' : ''}`}
               onClick={() => switchView('sequence', { kind: 'manual' })}
@@ -529,12 +559,13 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, execution, onO
             />
           </div>
         )}
-        {execution && (
+        {sequence && (
           <div className={`view-pane${activeView === 'sequence' ? '' : ' hidden'}`}>
-            <SequenceView execution={execution} systemTheme={hostTheme} {...linked.of('sequence')} />
+            <SequenceView sequence={sequence} systemTheme={hostTheme} selected={selectedStep} onSelect={setSelectedStep} {...linked.of('sequence')} />
           </div>
         )}
       </div>
+    </PathContext.Provider>
     </DefinitionContext.Provider>
     </TaxonomyContext.Provider>
   )

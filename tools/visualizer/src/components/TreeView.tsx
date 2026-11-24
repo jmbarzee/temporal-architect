@@ -19,6 +19,7 @@ import { FLASH_MS, NO_REVEAL, measureFilterBar, replayFlash, revealReducer, scro
 import { ErrorBars } from './ErrorBars'
 import { definitionCounts, sourceFilesOf } from '../adapter/useGraphModel'
 import { DEF_TYPE_ORDER } from '../theme/temporal-theme'
+import { PathContext, offPath } from '../tree/PathContext'
 
 /** A definition's values on the axes it carries: its type, and its file when it has one. */
 function valuesOf(def: Definition): AxisValues {
@@ -66,6 +67,7 @@ export function TreeView({
     [onSearchState],
   )
   const taxonomy = useTaxonomy()
+  const pathState = React.useContext(PathContext)
   const searchInputRef = React.useRef<HTMLInputElement>(null)
   const [focusedIndex, setFocusedIndex] = React.useState(-1)
   const treeItemRefs = React.useRef<(HTMLDivElement | null)[]>([])
@@ -461,6 +463,7 @@ export function TreeView({
                 const wrapClass = [
                   revealed && !revealed.child ? 'flash-target' : '',
                   isDimmed ? 'search-dimmed' : '',
+                  offPath(pathState, def) ? 'path-off' : '',
                 ].filter(Boolean).join(' ')
                 return (
                   <div
