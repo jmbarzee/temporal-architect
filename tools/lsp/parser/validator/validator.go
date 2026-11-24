@@ -46,6 +46,7 @@ const (
 	ErrWorkerMultiSDK
 	ErrImplNotFound
 	ErrCrossSDKCall
+	ErrUnboundedLoop
 )
 
 // Error represents a validation error with position info.
@@ -142,6 +143,8 @@ func (k ErrorKind) String() string {
 		return "IMPL_NOT_FOUND"
 	case ErrCrossSDKCall:
 		return "CROSS_SDK_CALL"
+	case ErrUnboundedLoop:
+		return "UNBOUNDED_LOOP"
 	}
 	return "UNKNOWN"
 }
@@ -272,6 +275,9 @@ func Validate(file *ast.File) []*Error {
 	// 5-6. Call routing, endpoint-service linkage, and endpoint caller
 	// allowlists (walks resolved bodies).
 	v.walkAllBodies(file.Definitions)
+
+	// Loops with no way out and no continue-as-new.
+	v.checkUnboundedLoops(file.Definitions)
 
 	// 7. id: parent claims, id_scheme overlap and ID policies (definition order).
 	v.checkParentSends(file.Definitions)

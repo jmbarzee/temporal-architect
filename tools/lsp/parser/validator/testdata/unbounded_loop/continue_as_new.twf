@@ -1,0 +1,11 @@
+workflow Listen(id):
+	signal Event(event):
+		event_seen = true
+	for:
+		await signal Event -> event
+		activity Handle(event)
+		if (event.last):
+			close continue_as_new(id)
+
+activity Handle(event):
+	return event
