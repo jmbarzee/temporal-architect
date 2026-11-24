@@ -1,6 +1,7 @@
 // One fixture per rule of spec/SEQUENCE_VIEW.md, each as small as the rule allows.
 
-import type { Execution, Lane, Step } from '../execution'
+import type { Model, Lane, Step } from '../model'
+import { draw, script } from './sample'
 
 const flow = (id: string, queue: string, extra: Partial<Lane> = {}): Lane =>
   ({ id, kind: 'workflow', name: id, title: id.toUpperCase(), tag: { key: 'task_queue', value: queue }, ...extra })
@@ -10,7 +11,7 @@ const step = (lane: string, id: string, extra: Partial<Step> = {}): Step =>
   ({ id, lane, kind: 'activity', label: id, ...extra })
 
 /** Rows: a step sits below what precedes it, a pause adds rows, `after` orders across lanes. */
-const rows: Execution = {
+const rows: Model = {
   title: 'Rows',
   lanes: [flow('a', 'qa'), flow('b', 'qb')],
   steps: [
@@ -22,7 +23,7 @@ const rows: Execution = {
 }
 
 /** Link ends: a send waits on its lane and the receive's lane waits on the send, so both take the later row. */
-const linkRows: Execution = {
+const linkRows: Model = {
   title: 'Link ends',
   lanes: [flow('a', 'qa'), flow('b', 'qb')],
   steps: [
@@ -35,7 +36,7 @@ const linkRows: Execution = {
 }
 
 /** Lane set: nothing lives on queue `pods` but offset work, so it is a tag and no column. */
-const queueTag: Execution = {
+const queueTag: Model = {
   title: 'Queue tag',
   lanes: [flow('a', 'qa'), host('pods', 'pods')],
   steps: [step('a', 'a-run', { queue: 'pods' })],
@@ -44,7 +45,7 @@ const queueTag: Execution = {
 }
 
 /** Lane set: a host lives on queue `pods` (it starts and ends), so it is a column and the work shifts toward it. */
-const queueLane: Execution = {
+const queueLane: Model = {
   title: 'Queue lane',
   lanes: [flow('a', 'qa'), host('pods', 'pods', { startedBy: 'a-start', endedAt: 'a-stop' })],
   steps: [step('a', 'a-start'), step('a', 'a-run', { queue: 'pods' }), step('a', 'a-stop')],
@@ -53,7 +54,7 @@ const queueLane: Execution = {
 }
 
 /** Lane set: lanes sharing a title share a column, in order of first lane; lifetimes may not overlap. */
-const grouping: Execution = {
+const grouping: Model = {
   title: 'Grouping',
   lanes: [flow('a', 'qa'), host('h1', 'pods', { startedBy: 'a1', endedAt: 'a2' }), host('h2', 'pods', { startedBy: 'a3', endedAt: 'a4' })],
   steps: [step('a', 'a1'), step('a', 'a2'), step('a', 'a3'), step('a', 'a4')],
@@ -62,7 +63,7 @@ const grouping: Execution = {
 }
 
 /** Lifetimes: a child begins at its start, a lost host ends in a mark, a host with no end lasts, a span bars a held state. */
-const lifetimes: Execution = {
+const lifetimes: Model = {
   title: 'Lifetimes',
   lanes: [
     flow('parent', 'qp'),
@@ -83,7 +84,7 @@ const lifetimes: Execution = {
 }
 
 /** Offset: a step shifts toward the column that runs it, left or right of its own, and not when it runs on its own queue. */
-const offset: Execution = {
+const offset: Model = {
   title: 'Offset',
   lanes: [flow('left', 'ql'), flow('mid', 'qm'), flow('right', 'qr')],
   steps: [
@@ -96,7 +97,7 @@ const offset: Execution = {
 }
 
 /** Attempts: each retry is a box of its own, marked in place of its verb; the first keeps the verb. */
-const attempts: Execution = {
+const attempts: Model = {
   title: 'Attempts',
   lanes: [flow('a', 'qa')],
   steps: [
@@ -110,7 +111,7 @@ const attempts: Execution = {
 }
 
 /** Winners: a timer armed and cancelled precedes the signal that won, and no branch that lost without a trace is drawn. */
-const winners: Execution = {
+const winners: Model = {
   title: 'Winners',
   lanes: [flow('a', 'qa'), flow('b', 'qb')],
   steps: [
@@ -123,7 +124,7 @@ const winners: Execution = {
 }
 
 /** One box per call: an activity run elsewhere, a call to another participant and a child start are one box each. */
-const oneBox: Execution = {
+const oneBox: Model = {
   title: 'One box',
   lanes: [
     flow('a', 'qa'),
@@ -142,7 +143,22 @@ const oneBox: Execution = {
   spans: [],
 }
 
-export const rules: Record<string, Execution> = {
+/** One box per arrival: Go's handler draws nothing, so its await is the box; Stop's handler sends, so it is. */
+const oneArrival = (() => {
+  const s = script()
+  const a = s.lane({ id: 'workflow:p.A', node: 'workflow:p.A/worker:w/namespace:n' })
+  const b = s.lane({ id: 'workflow:p.B', node: 'workflow:p.B/worker:w/namespace:n' })
+  const go = a.send('signal p.B.Go()', b.lane.node!, {}, 'a-go')
+  b.arrive('signal Go', { visit: [1], from: go })
+  b.end('await signal Go', { from: go }, 'b-go')
+  const stop = a.send('signal p.B.Stop()', b.lane.node!, {}, 'a-stop')
+  b.arrive('signal Stop', { visit: [1], from: stop }, 'b-stop')
+  b.send('signal Stop › signal p.A.Done()', a.lane.node!, { visit: [1] }, 'b-done')
+  b.end('await signal Stop', { from: stop })
+  return draw({ execution: s.execution, graph: { nodes: [] }, knobs: { title: 'One arrival' }, names: s.names })
+})()
+
+export const rules: Record<string, Model> = {
   'rule-rows': rows,
   'rule-link-ends': linkRows,
   'rule-queue-tag': queueTag,
@@ -153,4 +169,5 @@ export const rules: Record<string, Execution> = {
   'rule-attempts': attempts,
   'rule-winners': winners,
   'rule-one-box': oneBox,
+  'rule-one-arrival': oneArrival,
 }

@@ -1,6 +1,5 @@
-// PROVISIONAL. The sequence view's input as two hand-drawn samples need it;
-// the wire contract is #752's, and this type is what that Task reads from.
-// The rules that read it are spec/SEQUENCE_VIEW.md.
+// The Sequence view's model, what layout.ts places: fromExecution builds it from
+// an execution. The rules that read it are spec/SEQUENCE_VIEW.md.
 
 export type StepKind =
   | 'send'     // signal sent
@@ -58,7 +57,7 @@ export interface Span {
   to: string
 }
 
-export interface Execution {
+export interface Model {
   title: string
   lanes: Lane[]
   steps: Step[]

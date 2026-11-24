@@ -15,6 +15,7 @@
 //     is empty.
 //  4. Bare `TWFFile` — legacy / AST-only fixtures.
 
+import type { Execution } from '@temporal-architect/wire-types'
 import type { TWFFile } from './ast'
 import type { ObservedGraph, ParserGraph } from './parser-graph'
 import type { Decomposition } from './decomposition'
@@ -23,16 +24,17 @@ import type { Decomposition } from './decomposition'
  * Normalized payload: a non-null AST plus an optional deployment graph and an
  * optional decomposition (`twf graph chunks`). The decomposition is additive —
  * absent for hosts that don't supply it; the Graph view's group overlay is
- * simply inert when it's missing.
+ * simply inert when it's missing. An execution rides the same way.
  */
 export interface NormalizedPayload {
   ast: TWFFile
   parserGraph?: ParserGraph
   decomposition?: Decomposition
+  execution?: Execution
 }
 
 /**
- * Wrapped `{ ast, parserGraph, decomposition }` envelope.
+ * Wrapped `{ ast, parserGraph, decomposition, execution }` envelope.
  *
  * Keyed on `ast` being present, so a decomposition-only push is deliberately NOT
  * recognized here — the overlay always rides with the graph it belongs to. This
@@ -44,7 +46,7 @@ export interface NormalizedPayload {
  */
 export function isWrappedPayload(
   d: unknown,
-): d is { ast: TWFFile; parserGraph?: ParserGraph; decomposition?: Decomposition } {
+): d is { ast: TWFFile; parserGraph?: ParserGraph; decomposition?: Decomposition; execution?: Execution } {
   return d != null && typeof d === 'object' && 'ast' in (d as Record<string, unknown>) &&
     (d as { ast: unknown }).ast != null
 }
@@ -99,7 +101,7 @@ export function observedToParserGraph(og: ObservedGraph): ParserGraph {
  */
 export function normalizePayload(d: unknown): NormalizedPayload | null {
   if (isWrappedPayload(d)) {
-    return { ast: d.ast, parserGraph: d.parserGraph, decomposition: d.decomposition }
+    return { ast: d.ast, parserGraph: d.parserGraph, decomposition: d.decomposition, execution: d.execution }
   }
   if (isObservedGraphEnvelope(d)) {
     return { ast: { definitions: [] }, parserGraph: observedToParserGraph(d.observedGraph) }

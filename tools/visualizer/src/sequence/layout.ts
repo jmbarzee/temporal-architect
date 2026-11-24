@@ -1,8 +1,8 @@
-// Execution → positions, by the rules in spec/SEQUENCE_VIEW.md. Rows and the
+// Model → positions, by the rules in spec/SEQUENCE_VIEW.md. Rows and the
 // column spacing derive. PITCH, the sizes, MARGIN, RUN_SHIFT and TOP are fitted to
 // the two hand drawings; the other constants are clearances and measures.
 
-import type { Execution, Lane, Step, StepKind } from './execution'
+import type { Model, Lane, Step, StepKind } from './model'
 
 export const PITCH = 34
 const STEP_H = 26
@@ -51,7 +51,7 @@ const tagWidth = ({ key, value }: Tag) => Math.max(key.length, value.length) * T
 const queueOf = (tag?: Tag) => tag?.key === 'task_queue' ? tag.value : undefined
 
 /** Each step's row: the longest path to it, with a message's two ends one row. */
-function solveRows({ lanes, steps, messages }: Execution): Map<string, number> {
+function solveRows({ lanes, steps, messages }: Model): Map<string, number> {
   const known = new Set(steps.map(s => s.id))
   const check = (id: string) => { if (!known.has(id)) throw new Error(`unknown step ${id}`) }
   const startOf = (laneId: string) => {
@@ -99,7 +99,7 @@ function solveRows({ lanes, steps, messages }: Execution): Map<string, number> {
   }
 }
 
-export function layoutExecution(execution: Execution): Layout {
+export function layoutExecution(execution: Model): Layout {
   const { steps, messages, spans } = execution
   const rows = solveRows(execution)
   const stepById = new Map(steps.map(s => [s.id, s]))

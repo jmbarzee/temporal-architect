@@ -39,7 +39,7 @@ import type { Decomposition } from '../types/decomposition'
 import type { DecompositionParams } from './protocol'
 import { TreeView, type TreeFocus } from './TreeView'
 import { SequenceView } from '../sequence/SequenceView'
-import type { Execution } from '../sequence/execution'
+import type { Model } from '../sequence/model'
 import { GroupsModal } from './GroupsModal'
 import { ErrorBars } from './ErrorBars'
 import { focusedFiles } from '../adapter/files'
@@ -63,9 +63,9 @@ interface WorkflowCanvasProps {
    * overlay's chunks scheme. Optional and additive: when absent that scheme
    * is inert. The tree view does not consume it. */
   decomposition?: Decomposition
-  /** One execution, drawn by the Sequence view. Optional; without it the view
-   * has no tab. Provisional: the wire contract is #752's. */
-  execution?: Execution
+  /** The model of one execution, drawn by the Sequence view. Optional;
+   * without it the view has no tab. */
+  execution?: Model
   /** Invoked when the user narrows the file filter to exactly one file —
    * a hint to host applications (e.g. VS Code) to focus that file in their
    * editor. Optional; ignored when not provided. */

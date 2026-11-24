@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import type { Execution } from './execution'
+import type { Model } from './model'
 import { rules, samples } from './fixtures'
 import { layoutExecution } from './layout'
 
@@ -55,7 +55,7 @@ describe('layoutExecution', () => {
   it('refuses an order that is a cycle, and a step it does not know', () => {
     const at = (id: string, after: string[]) => ({ id, lane: 'l', kind: 'event' as const, label: id, after })
     const lane = { id: 'l', kind: 'external' as const, name: 'l', title: 'L' }
-    const base: Execution = { title: '', lanes: [lane], steps: [at('a', ['b']), at('b', ['a'])], messages: [], spans: [] }
+    const base: Model = { title: '', lanes: [lane], steps: [at('a', ['b']), at('b', ['a'])], messages: [], spans: [] }
     expect(() => layoutExecution(base)).toThrow('cycle')
     expect(() => layoutExecution({ ...base, steps: [at('a', ['x'])] })).toThrow('unknown step x')
   })
@@ -163,5 +163,11 @@ describe('the fixed rules', () => {
     const { layout, column, centre } = draw('rule-one-box')
     expect(Math.abs(centre('a-run') - column('A').x)).toBeLessThan(Math.abs(column('HOSTS').x - column('A').x))
     expect(layout.arrows.map(a => a.kind).sort()).toEqual(['call', 'child', 'launch'])
+  })
+
+  it('one box per arrival: the await receives a signal whose handler draws nothing, and the handler one whose handler does', () => {
+    const { steps, messages } = rules['rule-one-arrival']
+    expect(steps.filter(s => s.lane === 'workflow:p.B').map(s => [s.id, s.kind])).toEqual([['b-go', 'await'], ['b-stop', 'handler'], ['b-done', 'send']])
+    expect(messages).toEqual([{ from: 'a-go', to: 'b-go' }, { from: 'a-stop', to: 'b-stop' }])
   })
 })

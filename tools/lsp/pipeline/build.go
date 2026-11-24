@@ -3,6 +3,7 @@ package pipeline
 import (
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/decompose"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/execution"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/graph"
 )
 
@@ -26,10 +27,11 @@ import (
 // for the deferred paths-coupled-vs-graph-keyed decision the history/sampler work
 // will settle.
 type Payload struct {
-	AST           *ast.File         `json:"ast"`
-	Graph         *graph.Graph      `json:"parserGraph,omitempty"`
-	Diagnostics   []Diagnostic      `json:"diagnostics"`
-	Decomposition *decompose.Result `json:"decomposition,omitempty"`
+	AST           *ast.File            `json:"ast"`
+	Graph         *graph.Graph         `json:"parserGraph,omitempty"`
+	Diagnostics   []Diagnostic         `json:"diagnostics"`
+	Decomposition *decompose.Result    `json:"decomposition,omitempty"`
+	Execution     *execution.Execution `json:"execution,omitempty"`
 }
 
 // Build parses + resolves + validates the given inputs and extracts the

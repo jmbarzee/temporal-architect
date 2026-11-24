@@ -197,6 +197,10 @@ export type LabelKind =
   | "worker"
   | "namespace";
 
+/** execution Kind / Outcome constants in execution/execution.go. */
+export type EventKind = "reach" | "start" | "end" | "arrive" | "occur";
+export type EventOutcome = "failed" | "timedOut" | "cancelled";
+
 // ── Leaf aliases (generated shape already matches the ergonomic shape) ───────
 
 export type ResolvedRef = ResolvedRefJSON;

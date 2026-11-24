@@ -1,6 +1,6 @@
 # Sequence View
 
-The sequence view draws one execution: lanes side by side, time running down, messages between them. The tree and the graph show every path of a design; this shows one path, so it reads the execution contract ([#752](https://github.com/jmbarzee/temporal-architect/issues/752)) and nothing of the design. Its code is `src/sequence/`, and its input type there is provisional until #752 settles.
+The sequence view draws one execution: lanes side by side, time running down, messages between them. The tree and the graph show every path of a design; this shows one path, so it reads the execution contract ([#752](https://github.com/jmbarzee/temporal-architect/issues/752)) and nothing of the design. Its code is `src/sequence/`, where `fromExecution` builds its model from an execution, the deployment graph and knobs, which are written by hand per sample until [#762](https://github.com/jmbarzee/temporal-architect/issues/762).
 
 
 ## Fixed rules
@@ -73,9 +73,15 @@ A call is one box, in the lane of whoever made it. An activity run on another qu
 
 *Why:* the diagram counts what a lane did, once.
 
+### One box per arrival (`rule-one-arrival`)
+
+A signal that both runs a handler and resolves an await is one box at its receiving end: the await, unless the handler's body draws something of its own, when the handler is the box and its steps follow it.
+
+*Why:* one message has one receiving end.
+
 
 ## Derived, fitted and authored
 
 - **Derived:** rows, column positions, and the space an offset tag or outside source needs. Columns are spaced so that what is drawn for one clears the next by a fixed gap.
 - **Fitted to the two hand drawings, not derived:** the margin, the offset distance, the top of the first row, and the sizes and pitch in `layout.ts`.
-- **Authored in the payload, not fixed here:** pauses, outside sources, spans, and which cancelled timers appear. [#761](https://github.com/jmbarzee/temporal-architect/issues/761) decides which stay authored.
+- **Authored as knobs beside the execution, not fixed here:** titles, the labels a value says better, pauses, notes, outside sources and spans; and, by what a sample writes, which cancelled timers appear. [#761](https://github.com/jmbarzee/temporal-architect/issues/761) decides which stay authored.

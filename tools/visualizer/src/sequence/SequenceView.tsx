@@ -2,7 +2,7 @@ import { FilterBar } from '@jmbarzee/force-graph'
 import type { LinkedViewProps, Theme } from '@jmbarzee/force-graph'
 import React from 'react'
 import './SequenceView.css'
-import type { Execution, StepKind } from './execution'
+import type { Model, StepKind } from './model'
 import { layoutExecution, PITCH, type PlacedArrow, type PlacedColumn, type PlacedLane, type PlacedStep, type Rect } from './layout'
 
 // What the bar shows of the other views' axes: none, but it keeps their selections for the switch back.
@@ -19,7 +19,7 @@ const HEADS: PlacedArrow['kind'][] = ['signal', 'call', 'child', 'launch']
 const ARROW_TONE: Record<PlacedArrow['kind'], string> = { signal: 'signal', call: 'activity', child: 'workflow-call', launch: 'control' }
 
 interface SequenceViewProps extends LinkedViewProps {
-  execution: Execution
+  execution: Model
   systemTheme: Theme
 }
 

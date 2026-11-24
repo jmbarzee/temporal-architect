@@ -32,3 +32,10 @@ describe('normalizePayload of an observed graph', () => {
     expect(nodeLabel(parserGraph!, parserGraph!.nodes[0].id)).toBe('acme/orders.Process')
   })
 })
+
+describe('normalizePayload of a wrapped payload', () => {
+  it('passes its execution through', () => {
+    const execution = { lanes: [{ id: 'outside:user' }], events: [{ id: 'outside:user/1', lane: 'outside:user', kind: 'occur' as const }] }
+    expect(normalizePayload({ ast: { definitions: [] }, execution })!.execution).toBe(execution)
+  })
+})
