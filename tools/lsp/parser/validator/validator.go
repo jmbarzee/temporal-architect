@@ -47,6 +47,7 @@ const (
 	ErrImplNotFound
 	ErrCrossSDKCall
 	ErrUnboundedLoop
+	ErrPromiseNeverAwaited
 	ErrConditionUnpaired
 )
 
@@ -146,6 +147,8 @@ func (k ErrorKind) String() string {
 		return "CROSS_SDK_CALL"
 	case ErrUnboundedLoop:
 		return "UNBOUNDED_LOOP"
+	case ErrPromiseNeverAwaited:
+		return "PROMISE_NEVER_AWAITED"
 	case ErrConditionUnpaired:
 		return "CONDITION_UNPAIRED"
 	}
@@ -281,6 +284,9 @@ func Validate(file *ast.File) []*Error {
 
 	// Loops with no way out and no continue-as-new.
 	v.checkUnboundedLoops(file.Definitions)
+
+	// Promises no await, race or signal send takes.
+	v.checkPromises(file.Definitions)
 
 	// Conditions awaited but never set, or set but never awaited.
 	v.checkConditions(file.Definitions)

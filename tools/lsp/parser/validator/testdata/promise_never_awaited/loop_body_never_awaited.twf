@@ -1,0 +1,8 @@
+workflow Fetch(ids):
+	for (id in ids):
+		promise p <- activity Load(id)  # want
+		await timer(1m)
+	close complete()
+
+activity Load(id):
+	return id

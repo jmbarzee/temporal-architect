@@ -1,0 +1,9 @@
+workflow Fetch(id):
+	signal Wait():
+		await p
+	await timer(1h)
+	promise p <- activity Load(id)  # want
+	close complete(id)
+
+activity Load(id):
+	return id

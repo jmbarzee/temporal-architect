@@ -1,0 +1,6 @@
+workflow Fetch(id):
+	close complete(id)
+	promise p <- activity Load(id)
+
+activity Load(id):
+	return id
