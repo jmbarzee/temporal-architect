@@ -3,6 +3,7 @@
 // spec/TREE_VIEW.md § Execution path.
 
 import type { Execution, ExecutionEvent } from '@temporal-architect/wire-types'
+import { eventKey, eventOf } from '../execution/step'
 import { SEPARATOR, segments } from './identity'
 
 const OUTCOME = { failed: 'failed', timedOut: 'timed out', cancelled: 'cancelled' }
@@ -26,10 +27,10 @@ const visitKey = (e: ExecutionEvent, depth: number) => (e.visit ?? []).slice(0, 
 export interface Path {
   /** Whether the execution reached the block, or something beneath it. */
   on(id: string): boolean
-  /** An event to select the block by: its first, else the first beneath it. */
+  /** A step to select the block by: its first event's, else the first beneath it. */
   step(id: string): string | undefined
-  /** Whether the event is on the block itself. */
-  holds(id: string, event: string): boolean
+  /** Whether the step is on the block itself. */
+  holds(id: string, step: string): boolean
   /** What the visits left on the block: passes, the branch or case taken, attempts, a handler that ran at it. */
   detail(id: string): string[]
 }
@@ -99,14 +100,14 @@ export function pathOf({ events }: Execution): Path {
 
   return {
     on: id => own.has(id) || beneath.has(id),
-    step: id => reached(id)[0]?.id,
-    holds: (id, event) => (own.get(id) ?? []).some(e => e.id === event),
+    step: id => { const first = reached(id)[0]; return first && eventKey(first) },
+    holds: (id, step) => (own.get(id) ?? []).some(e => eventKey(e) === step),
     detail,
   }
 }
 
 /** The graph node a step is at: what it dispatches to, else its lane's. */
-export function nodeOf({ events, lanes }: Execution, step: string): string | undefined {
-  const event = events.find(e => e.id === step)
-  return event && (event.edge?.to ?? lanes.find(l => l.id === event.lane)?.node)
+export function nodeOf(execution: Execution, step: string): string | undefined {
+  const event = eventOf(execution, step)
+  return event && (event.edge?.to ?? execution.lanes.find(l => l.id === event.lane)?.node)
 }

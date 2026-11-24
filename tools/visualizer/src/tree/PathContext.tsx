@@ -6,7 +6,7 @@ import './path.css'
 export interface PathState {
   ids: Map<object, string>
   path?: Path
-  /** The selected event's id. */
+  /** The selected step's key. */
   selected?: string
   onSelect?: (step: string | undefined) => void
 }

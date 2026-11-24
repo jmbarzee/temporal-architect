@@ -12,6 +12,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { DEFAULT_TAXONOMY } from '../adapter/node-types'
 import { DefinitionBlock } from '../components/blocks/DefinitionBlock'
 import { WorkflowCanvas } from '../components/WorkflowCanvas'
+import { eventKey } from '../execution/step'
 import { fromExecution } from '../sequence/fromExecution'
 import { agentSandbox } from '../sequence/fixtures/agent-sandbox'
 import { spotTraining } from '../sequence/fixtures/spot-training'
@@ -111,9 +112,9 @@ describe('the path an execution takes', () => {
   it('finds the graph node of a step: what it dispatches to, else its lane\'s', () => {
     const { execution } = agentSandbox
     const dispatch = execution.events.find(e => e.edge)!
-    expect(nodeOf(execution, dispatch.id)).toBe(dispatch.edge!.to)
+    expect(nodeOf(execution, eventKey(dispatch))).toBe(dispatch.edge!.to)
     const arrival = execution.events.find(e => e.kind === 'arrive')!
-    expect(nodeOf(execution, arrival.id)).toBe(execution.lanes.find(l => l.id === arrival.lane)!.node)
+    expect(nodeOf(execution, eventKey(arrival))).toBe(execution.lanes.find(l => l.id === arrival.lane)!.node)
     expect(nodeOf(execution, 'nothing')).toBeUndefined()
   })
 })
@@ -154,7 +155,7 @@ describe('the tree', () => {
     const note = [...container.querySelectorAll('.path-note')].find(n => n.textContent === '6 passes')!
     fireEvent.click(note)
     const step = chosen[0]!
-    expect(samples['spot-training'].sample.execution.events.some(e => e.id === step)).toBe(true)
+    expect(samples['spot-training'].sample.execution.events.some(e => eventKey(e) === step)).toBe(true)
     rerender(<Drawn name="spot-training" selected={step} onSelect={s => chosen.push(s)} />)
     expect(container.querySelectorAll('.path-selected')).toHaveLength(1)
     fireEvent.click(container.querySelector('.path-selected > .path-note')!)

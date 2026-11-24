@@ -4,6 +4,7 @@
 // until #762 gives them a home.
 
 import type { Execution, ExecutionEvent, ParserGraph } from '@temporal-architect/wire-types'
+import { eventKey } from '../execution/step'
 import type { Lane, Message, Model, Span, Step, StepKind } from './model'
 
 /** What the view draws that an execution does not hold. Lanes are keyed by id; steps by eventKey, a queued box by queuedId of its start's. */
@@ -21,9 +22,6 @@ export interface Knobs {
 
 const LANE_KIND: Record<string, Lane['kind']> = { workflow: 'workflow', worker: 'host', outside: 'external' }
 const OUTCOME_LABEL = { failed: 'failed', timedOut: 'timed out', cancelled: 'cancelled' }
-
-/** An event's identity across executions, as Event.Key in Go. */
-export const eventKey = (e: ExecutionEvent) => JSON.stringify([e.lane, e.stmt ?? '', (e.visit ?? []).join('.'), e.kind, e.attempt ?? 0])
 
 /** The box drawn waiting for an attempt that does not start when it is dispatched. */
 export const queuedId = (start: string) => `${start} queued`
@@ -103,7 +101,7 @@ export function fromExecution({ lanes, events }: Execution, { nodes }: Pick<Pars
   const messages: Message[] = []
   const step = (id: string, key: string, e: ExecutionEvent, kind: StepKind, label: string, extra: Partial<Step>) => {
     steps.push({
-      id, lane: e.lane, kind, label: knobs.labels?.[key] ?? label, ...extra,
+      id, key: eventKey(e), lane: e.lane, kind, label: knobs.labels?.[key] ?? label, ...extra,
       ...(knobs.pauses?.[key] !== undefined && { pause: knobs.pauses[key] }),
     })
     drawnLast.set(e.lane, id)

@@ -295,9 +295,9 @@ A handler's arrival sits at the next `end` in its lane that is an await and not 
 
 ### Selecting a step (`rule-select-step`)
 
-A note selects a step: an event, the block's first, else the first beneath it. A selected step is outlined on the block that holds it, marked on the Sequence view's step of that id, and carried into the Graph by the next switch to its tab as a focus on its node: what the step dispatches to, else its lane's. Selecting it again lets it go.
+A note selects a step, the key of the block's first event, else the first beneath it ([VIEW_FRAMEWORK.md](./VIEW_FRAMEWORK.md) § Steps, which fixes how every view shares it). A selected step is outlined on the block that holds it, and a focus into the Tree on a step reveals its definition and scrolls to that block. Selecting it again lets it go.
 
-*Why:* one selection is the same step in every view, and the existing focus transition is how a view reaches a node.
+*Why:* the tree's part of one selection is what it outlines and where it scrolls; the rest is the framework's.
 
 *Not fixed:* the notes' wording and the dimming's strength are the tree's style, not rules.
 

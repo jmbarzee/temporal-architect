@@ -33,9 +33,11 @@ function valuesOf(def: Definition): AxisValues {
  * view finds a definition by — its qualified name (`qualifiedNameOf`), which is
  * also its graph node's `name`. Bare when the definition is unpackaged.
  * `child` names a row nested in it (a nexus operation or endpoint) to reveal
- * instead of the definition itself.
+ * instead of the definition itself. A focus on a step also names it and its
+ * lane (spec/VIEW_FRAMEWORK.md § Steps), which every view reads from the one
+ * target.
  */
-export type TreeFocus = FocusTarget & { name: string; child?: string }
+export type TreeFocus = FocusTarget & { name: string; child?: string; lane?: string; step?: string }
 
 // The filter, locks, axes (and the locks a focus overrode) and the shared
 // search are the shell's `linked.of('tree')`: the bar takes them as they come.
@@ -309,13 +311,20 @@ export function TreeView({
   React.useEffect(() => {
     if (!pendingFocus) return
     // This view locks a qualified name with the kind axis it knows.
-    const { name, child } = pendingFocus
+    const { name, child, step } = pendingFocus
     const defType = pendingFocus.values[DEF_TYPE_DIMENSION] ?? ''
     // Defer to let visibleDefinitions reflect any filter change that
     // arrived in the same tick.
     const timer = setTimeout(() => {
       revealAt(visibleDefinitions.findIndex(d => qualifiedNameOf(d) === name && d.type === defType), child)
       onFocusConsumed()
+      // A step's block, once the definition holding it is open, is the row scrolled to.
+      if (step !== undefined) {
+        setTimeout(() => {
+          const block = canvasRef.current?.querySelector<HTMLElement>('.path-selected')
+          if (block) scrollRowIntoView(block, 'smooth')
+        }, 100)
+      }
     }, 50)
     return () => clearTimeout(timer)
   }, [pendingFocus, visibleDefinitions, revealAt, onFocusConsumed])
