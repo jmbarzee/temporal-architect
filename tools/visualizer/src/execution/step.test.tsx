@@ -2,7 +2,8 @@
 
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import type { Execution } from '@temporal-architect/wire-types'
-import { afterEach, describe, expect, it } from 'vitest'
+import React from 'react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { DEF_TYPE_DIMENSION } from '../adapter/dimensions'
 import { WorkflowCanvas } from '../components/WorkflowCanvas'
 import { agentSandbox } from '../sequence/fixtures/agent-sandbox'
@@ -16,7 +17,17 @@ import type { Definition, TWFFile } from '../types/ast'
 import { linkOf, parseLink } from './link'
 import { eventKey, eventOf, familyOf, focusOf } from './step'
 
-afterEach(cleanup)
+// The focus requests the Graph pane is handed, recorded as they pass through.
+const requested = vi.hoisted(() => [] as (string | undefined)[])
+vi.mock('@jmbarzee/force-graph', async importOriginal => {
+  const lib = await importOriginal<typeof import('@jmbarzee/force-graph')>()
+  return { ...lib, GraphView: (props: React.ComponentProps<typeof lib.GraphView>) => { requested.push(props.focus?.id); return React.createElement(lib.GraphView, props) } }
+})
+
+afterEach(() => {
+  cleanup()
+  requested.length = 0
+})
 
 const samples: Record<string, { sample: Sample; ast: TWFFile }> = {
   'agent-sandbox': { sample: agentSandbox, ast: agentSandboxAst as unknown as TWFFile },
@@ -130,6 +141,29 @@ describe.each(names)('a step selected in %s', name => {
     fireEvent.click(screen.getByLabelText('Clear step'))
     expect(container.querySelector('.step-panel')).toBeNull()
     expect(screen.getByText(`${sample.execution.events.length} / ${sample.execution.events.length}`)).toBeTruthy()
+  })
+})
+
+describe('a focus on a step in the Graph', () => {
+  it.each(names)('lands on its node in %s', name => {
+    const { sample } = samples[name]
+    const event = sample.execution.events.find(e => e.edge?.kind === 'activityCall' || e.kind === 'start')!
+    const key = eventKey(event)
+    canvas(name, { link: `?step=${encodeURIComponent(key)}&view=graph` })
+    const node = event.edge?.to ?? sample.execution.lanes.find(l => l.id === event.lane)!.node!
+    expect(requested).toContain(node)
+  })
+
+  it('keeps the step at the scrubber when a new execution arrives', () => {
+    const { sample, ast } = samples['spot-training']
+    const key = named(sample, SUBMIT)
+    const at = sample.execution.events.findIndex(e => eventKey(e) === key) + 1
+    const n = sample.execution.events.length
+    const props = { ast, link: `?step=${encodeURIComponent(key)}&view=graph` }
+    const { rerender } = render(<WorkflowCanvas {...props} execution={sample.execution as Execution} />)
+    expect(screen.getByText(`${at} / ${n}`)).toBeTruthy()
+    rerender(<WorkflowCanvas {...props} execution={{ ...sample.execution } as Execution} />)
+    expect(screen.getByText(`${at} / ${n}`)).toBeTruthy()
   })
 })
 

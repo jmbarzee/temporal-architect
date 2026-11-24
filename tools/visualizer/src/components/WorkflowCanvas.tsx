@@ -379,6 +379,11 @@ export function WorkflowCanvas({ ast, parserGraph, decomposition, execution, seq
     const at = step === undefined ? execution.events.length : execution.events.findIndex(e => eventKey(e) === step) + 1
     if (at > 0) setPosition(at)
   }, [execution, setPosition])
+  // A new execution plays whole; the step still selected is the position again.
+  React.useEffect(() => {
+    if (selected !== undefined) select(selected)
+    // Only when the execution changes.
+  }, [execution])
   const scrub = React.useCallback((n: number) => {
     setPosition(n)
     setSelected(n > 0 && execution ? eventKey(execution.events[n - 1]) : undefined)

@@ -79,14 +79,15 @@ A signal that both runs a handler and resolves an await is one box at its receiv
 
 *Why:* one message has one receiving end.
 
+### Selecting a step (`rule-seq-step`)
+
+A box is the step of the event it draws, named by that event's key (`Step.key`), and a click selects it, or lets it go when it is selected. The selected box is marked (`seq-selected`) and scrolled to; a queued box and the start it waits for are one step; a box no event stands behind selects nothing. The selection is one with the other views' ([VIEW_FRAMEWORK.md](./VIEW_FRAMEWORK.md) § Steps). `SequenceView.test.tsx` ("selects a step") draws it.
+
+*Why:* the view draws what the events say, so it takes its selection from them, as the tree does.
+
 
 ## Derived, fitted and authored
 
 - **Derived:** rows, column positions, and the space an offset tag or outside source needs. Columns are spaced so that what is drawn for one clears the next by a fixed gap.
 - **Fitted to the two hand drawings, not derived:** the margin, the offset distance, the top of the first row, and the sizes and pitch in `layout.ts`.
 - **Authored as knobs beside the execution, not fixed here:** titles, the labels a value says better, pauses, notes, outside sources and spans; and, by what a sample writes, which cancelled timers appear. [#761](https://github.com/jmbarzee/temporal-architect/issues/761) decides which stay authored.
-
-
-## Selecting a step
-
-A box is the step of the event it draws, named by that event's key (`Step.key`), and a click selects it, or lets it go when it is selected. The selected box is marked and scrolled to; a queued box and the start it waits for are one step; a box no event stands behind selects nothing. The selection is one with the other views' ([VIEW_FRAMEWORK.md](./VIEW_FRAMEWORK.md) § Steps).

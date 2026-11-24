@@ -79,7 +79,7 @@ Handed an execution (the contract of [#752](https://github.com/jmbarzee/temporal
 
 ### Identity (`rule-step-key`)
 
-A step is named by the key of its event, `(lane, stmt, visit, kind, attempt)`, as `Event.Key` in Go has it, and not by the event's `id`.
+A step is named by the key of its event, as `Event.Key` in Go has it, and not by the event's `id`. Its string form, which a link depends on, is `JSON.stringify` of `[lane, stmt, visit, kind, attempt]`: `visit` its passes joined by `.`, an absent `stmt` and `visit` as `''`, an absent `attempt` as `0`.
 
 *Why:* an `id` is a handle one payload assigns; the key is what the same step is called in the next run of the design, so a selection and a link survive a re-parse and a new execution. A key no payload holds selects nothing.
 
@@ -103,7 +103,7 @@ A step is selected by a note on the tree's path, a box in the Sequence view, the
 
 ### The scrubber names a step (`rule-scrubber-step`)
 
-The Graph's scrubber ([GRAPH_VIEW.md](./GRAPH_VIEW.md) § Execution in the graph) holds one position, the number of events played, and the step it names is the last played. Moving it selects that step; selecting a step plays through it; letting a step go plays to the end.
+The Graph's scrubber ([GRAPH_VIEW.md](./GRAPH_VIEW.md) § Execution in the graph) holds one position, the number of events played, and the step it names is the last played. Moving it selects that step; selecting a step plays through it; letting a step go plays to the end. A new execution keeps the step selected, and the position is re-derived from it.
 
 *Why:* the position is a point in the execution and a step is a point in it; two names for a point would drift.
 
