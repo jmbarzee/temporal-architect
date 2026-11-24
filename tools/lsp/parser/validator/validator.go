@@ -49,6 +49,7 @@ const (
 	ErrUnboundedLoop
 	ErrPromiseNeverAwaited
 	ErrConditionUnpaired
+	ErrUnreachableStatement
 )
 
 // Error represents a validation error with position info.
@@ -151,6 +152,8 @@ func (k ErrorKind) String() string {
 		return "PROMISE_NEVER_AWAITED"
 	case ErrConditionUnpaired:
 		return "CONDITION_UNPAIRED"
+	case ErrUnreachableStatement:
+		return "UNREACHABLE_STATEMENT"
 	}
 	return "UNKNOWN"
 }
@@ -290,6 +293,9 @@ func Validate(file *ast.File) []*Error {
 
 	// Conditions awaited but never set, or set but never awaited.
 	v.checkConditions(file.Definitions)
+
+	// Statements no path reaches.
+	v.checkUnreachable(file.Definitions)
 
 	// 7. id: parent claims, id_scheme overlap and ID policies (definition order).
 	v.checkParentSends(file.Definitions)

@@ -8,6 +8,7 @@ import (
 
 	"github.com/jmbarzee/glsp"
 	protocol "github.com/jmbarzee/glsp/protocol_3_16"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/validator"
 )
 
 func didOpenHandler(store *DocumentStore) protocol.TextDocumentDidOpenFunc {
@@ -161,6 +162,9 @@ func diagnostics(doc *Document) []protocol.Diagnostic {
 	}
 	for _, ve := range doc.ValidateErrs {
 		diags = appendDiag(diags, lines, ve.Line, ve.Column, ve.Severity, ve.Code(), ve.Msg)
+		if ve.Kind == validator.ErrUnreachableStatement {
+			diags[len(diags)-1].Tags = []protocol.DiagnosticTag{protocol.DiagnosticTagUnnecessary} // the editor dims it
+		}
 	}
 	return diags
 }

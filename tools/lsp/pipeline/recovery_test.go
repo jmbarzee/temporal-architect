@@ -7,7 +7,8 @@ import (
 )
 
 // A bad statement line costs only its own diagnostic: its workflow survives,
-// so references to it resolve and nothing cascades.
+// so references to it resolve and nothing cascades. The bad line is an await,
+// not a close or break, which would make the statements after it unreachable.
 func TestBadStatementDoesNotCascade(t *testing.T) {
 	src := "workflow Parent(x):\n" +
 		"\tworkflow Child(x) -> r\n" +
@@ -16,7 +17,7 @@ func TestBadStatementDoesNotCascade(t *testing.T) {
 		"workflow Child(x):\n" +
 		"\tactivity A(x)\n" +
 		"\tupdate Foo\n" +
-		"\tclose fail Missing\n" +
+		"\tawait timer(1m) Missing\n" +
 		"\tclose complete(x)\n" +
 		"\n" +
 		"activity A(x):\n" +
@@ -32,7 +33,7 @@ func TestBadStatementDoesNotCascade(t *testing.T) {
 	}
 	want := []string{
 		"parse/SYNTAX update arrivals must be awaited: `await update Name`",
-		`parse/SYNTAX expected the end of the line after close, got IDENT ("Missing")`,
+		`parse/SYNTAX expected the end of the line after an await, got IDENT ("Missing")`,
 	}
 	if len(got) != len(want) || got[0] != want[0] || got[1] != want[1] {
 		t.Errorf("diagnostics:\n%q\nwant:\n%q", got, want)

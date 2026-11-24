@@ -1,0 +1,13 @@
+workflow Pay(ids):
+	for (id in ids):
+		if (id.skip):
+			continue
+			activity Notify(id)  # want
+		if (id.last):
+			break
+			activity Notify(id)  # want
+		activity Notify(id)
+	close complete()
+
+activity Notify(id):
+	return id
