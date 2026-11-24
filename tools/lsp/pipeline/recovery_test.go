@@ -7,7 +7,8 @@ import (
 )
 
 // A bad statement line costs only its own diagnostic: its workflow survives,
-// so references to it resolve and nothing cascades.
+// so references to it resolve and nothing cascades. The bad line is an await,
+// not a close or break, which would make the statements after it unreachable.
 func TestBadStatementDoesNotCascade(t *testing.T) {
 	src := "workflow Parent(x):\n" +
 		"\tworkflow Child(x) -> r\n" +

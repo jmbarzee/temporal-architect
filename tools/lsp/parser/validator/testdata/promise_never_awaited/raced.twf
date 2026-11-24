@@ -1,0 +1,11 @@
+workflow Fetch(id):
+	promise p <- activity Load(id)
+	promise t <- timer(1h)
+	await one:
+		p:
+			close complete(id)
+		t:
+			close fail
+
+activity Load(id):
+	return id

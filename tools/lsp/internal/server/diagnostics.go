@@ -162,6 +162,9 @@ func diagnostics(doc *Document) []protocol.Diagnostic {
 	}
 	for _, ve := range doc.ValidateErrs {
 		diags = appendDiag(diags, lines, ve.Line, ve.Column, ve.Severity, ve.Code(), ve.Msg)
+		if ve.Kind == validator.ErrUnreachableStatement {
+			diags[len(diags)-1].Tags = []protocol.DiagnosticTag{protocol.DiagnosticTagUnnecessary} // the editor dims it
+		}
 	}
 	return diags
 }
@@ -185,9 +188,6 @@ func appendDiag(diags []protocol.Diagnostic, lines []string, line, column int, s
 	}
 	if code != "" {
 		d.Code = &protocol.IntegerOrString{Value: code}
-	}
-	if code == validator.ErrUnreachableStatement.String() {
-		d.Tags = []protocol.DiagnosticTag{protocol.DiagnosticTagUnnecessary} // the editor dims it
 	}
 	return append(diags, d)
 }

@@ -46,6 +46,7 @@ const (
 	ErrWorkerMultiSDK
 	ErrImplNotFound
 	ErrCrossSDKCall
+	ErrPromiseNeverAwaited
 	ErrConditionUnpaired
 	ErrUnreachableStatement
 )
@@ -144,6 +145,8 @@ func (k ErrorKind) String() string {
 		return "IMPL_NOT_FOUND"
 	case ErrCrossSDKCall:
 		return "CROSS_SDK_CALL"
+	case ErrPromiseNeverAwaited:
+		return "PROMISE_NEVER_AWAITED"
 	case ErrConditionUnpaired:
 		return "CONDITION_UNPAIRED"
 	case ErrUnreachableStatement:
@@ -278,6 +281,9 @@ func Validate(file *ast.File) []*Error {
 	// 5-6. Call routing, endpoint-service linkage, and endpoint caller
 	// allowlists (walks resolved bodies).
 	v.walkAllBodies(file.Definitions)
+
+	// Promises no await, race or signal send takes.
+	v.checkPromises(file.Definitions)
 
 	// Conditions awaited but never set, or set but never awaited.
 	v.checkConditions(file.Definitions)
