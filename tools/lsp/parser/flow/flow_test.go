@@ -222,7 +222,7 @@ func TestReached(t *testing.T) {
 		{fixtures[3], "Edges", 41, Join, false}, // an await all with a branch that closes
 		{fixtures[3], "Edges", 46, Stmt, false}, // after a close
 		{fixtures[2], "Order", 61, Join, true},  // an await one case's await all
-		{fixtures[2], "Order", 69, Stmt, false}, // after an await one whose cases break and continue outside a loop
+		{fixtures[2], "Order", 70, Stmt, true},  // after a for whose await one breaks and continues
 	}
 	for _, tt := range tests {
 		g := fixture(t, tt.path, tt.def)
@@ -300,5 +300,15 @@ func TestBack(t *testing.T) {
 		if got := g.Back(e); got != tt.want {
 			t.Errorf("Back(%d %s→%d) = %v, want %v", tt.from, tt.kind, tt.to, got, tt.want)
 		}
+	}
+}
+
+// Follows passes a Join on one branch's arrival, so the statement after an
+// await all follows each branch, even where another branch closes.
+func TestFollows(t *testing.T) {
+	g := fixture(t, fixtures[3], "Edges")
+	after := g.Follows(at(t, g, 42, Stmt))
+	if !after[at(t, g, 44, Stmt)] || g.Reached(at(t, g, 44, Stmt)) || after[at(t, g, 43, Stmt)] {
+		t.Errorf("Follows(42) = %v, want the statement at 44, not the sibling close at 43", after)
 	}
 }
