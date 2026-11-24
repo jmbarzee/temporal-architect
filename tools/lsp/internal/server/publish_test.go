@@ -346,6 +346,20 @@ func TestPublishCrossSDKCall(t *testing.T) {
 	}
 }
 
+// TestPublishUnreachableStatement: a statement no path reaches is a hint
+// tagged Unnecessary, which the editor dims.
+func TestPublishUnreachableStatement(t *testing.T) {
+	const src = "workflow W():\n\tclose complete()\n\tactivity A()\n\nactivity A():\n\treturn x\n"
+	const uri = "untitled:Untitled-1"
+	p := published{}
+	p.open(t, NewDocumentStore(), uri, src)
+	wantCodes(t, p, "an activity after a close", uri, "3:UNREACHABLE_STATEMENT")
+	d := p[uri][0]
+	if *d.Severity != protocol.DiagnosticSeverityHint || !slices.Equal(d.Tags, []protocol.DiagnosticTag{protocol.DiagnosticTagUnnecessary}) {
+		t.Errorf("severity %v, tags %v; want a hint tagged Unnecessary", *d.Severity, d.Tags)
+	}
+}
+
 // TestSkippedImportHint: an import stopped at a skipped directory says to
 // open it as the workspace folder only when that makes the import resolve;
 // otherwise it says what would.

@@ -1,0 +1,24 @@
+workflow Pay(ids):
+	signal Cancel():
+		close fail
+	for (id in ids):
+		if (id.last):
+			break
+		if (id.skip):
+			continue
+		activity Notify(id)
+	switch (ids.kind):
+		case "a":
+			close complete(ids)
+	activity Notify(ids)
+	await one:
+		timer(1m):
+			close fail
+		signal Cancel:
+			activity Notify(ids)
+	close complete(ids)
+
+activity Notify(id):
+	if (id):
+		return id
+	return id

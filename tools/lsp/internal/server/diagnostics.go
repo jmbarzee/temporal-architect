@@ -8,6 +8,7 @@ import (
 
 	"github.com/jmbarzee/glsp"
 	protocol "github.com/jmbarzee/glsp/protocol_3_16"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/validator"
 )
 
 func didOpenHandler(store *DocumentStore) protocol.TextDocumentDidOpenFunc {
@@ -184,6 +185,9 @@ func appendDiag(diags []protocol.Diagnostic, lines []string, line, column int, s
 	}
 	if code != "" {
 		d.Code = &protocol.IntegerOrString{Value: code}
+	}
+	if code == validator.ErrUnreachableStatement.String() {
+		d.Tags = []protocol.DiagnosticTag{protocol.DiagnosticTagUnnecessary} // the editor dims it
 	}
 	return append(diags, d)
 }

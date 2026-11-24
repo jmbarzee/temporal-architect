@@ -1,0 +1,6 @@
+workflow Pay(id):
+	close complete(id)
+	activity Notify(id)  # want
+
+activity Notify(id):
+	return id

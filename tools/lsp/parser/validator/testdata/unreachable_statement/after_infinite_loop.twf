@@ -1,0 +1,4 @@
+workflow Pay(id):
+	for:
+		await timer(1m)
+	close complete(id)  # want

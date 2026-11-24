@@ -1,0 +1,8 @@
+workflow Pay(id):
+	await all:
+		activity Notify(id)
+		close complete(id)
+	activity Notify(id)  # want
+
+activity Notify(id):
+	return id

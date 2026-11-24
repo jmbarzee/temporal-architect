@@ -1,0 +1,8 @@
+workflow Pay(id):
+	close complete(id)
+	if (id.late):  # want
+		activity Notify(id)
+		close fail
+
+activity Notify(id):
+	return id
