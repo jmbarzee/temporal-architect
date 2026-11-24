@@ -1,6 +1,7 @@
 package history
 
 import (
+	"cmp"
 	"fmt"
 	"slices"
 	"strings"
@@ -30,6 +31,7 @@ type thread struct {
 	at     flow.Node
 	prefix []int // the arrival a handler runs for; empty in the workflow's own body
 	passes map[*ast.ForStmt]int
+	race   *ast.AwaitOneBlock // the await one it stands in while no case has won
 }
 
 // fit is the statement an event ran, and its visit; a nil stmt is the body's
@@ -60,6 +62,8 @@ type joiner struct {
 	fors  map[ast.Statement][]*ast.ForStmt // the fors around each statement, outermost first
 	alls  map[ast.Statement][]*ast.AwaitAllBlock
 	block map[*ast.AwaitOneCase]*ast.AwaitOneBlock
+	// crowded is the first event at which more ways fit than the join keeps.
+	crowded *event
 }
 
 // join gives each statement event of l the stmt and visit of the statement it
@@ -88,6 +92,8 @@ func (a *assembly) join(l *lane) {
 				continue
 			}
 			ways = next
+		case execution.End:
+			ways = j.win(ways, e)
 		case execution.Arrive:
 			h := j.handler(e.call)
 			if h != nil {
@@ -118,6 +124,10 @@ func (a *assembly) join(l *lane) {
 			Message:  fmt.Sprintf("%s, event %d of run %s/%s, %s", e.head, e.history, l.run.workflowID, l.run.runID, what),
 			From:     l.node,
 		})
+	}
+	if j.crowded != nil { // the ways kept are a biased few, so none is committed
+		report(diagStmtAmbiguous, j.crowded, fmt.Sprintf("takes the run past %d ways through %s, so none of its events joins", most, l.key))
+		return
 	}
 	for _, e := range l.events {
 		if unmatched[e] {
@@ -183,7 +193,34 @@ func (j *joiner) advance(ways []*way, key *event, wanted func(flow.Node) bool, o
 			next = append(next, w)
 		}
 	}
-	return next[:min(len(next), most)]
+	if len(next) > most {
+		j.crowded = cmp.Or(j.crowded, key.arrival, key)
+		next = next[:most]
+	}
+	return next
+}
+
+// win ends the race of each way whose thread stands in the await one whose
+// case e's opener fits: that case won, unless e cancels it.
+func (j *joiner) win(ways []*way, e *event) []*way {
+	if e.opener == nil || e.Outcome == execution.Cancelled {
+		return ways
+	}
+	out := slices.Clone(ways)
+	for k, w := range out {
+		c, ok := w.fits[e.opener].stmt.(*ast.AwaitOneCase)
+		if !ok {
+			continue
+		}
+		for i, t := range w.threads {
+			if t.race != nil && t.race == j.block[c] {
+				n := w.fork()
+				n.threads[i].at, n.threads[i].race = flow.Node{At: c}, nil
+				out[k] = n
+			}
+		}
+	}
+	return out
 }
 
 // wants says which nodes a reach that calls c can be: a site calling it, or
@@ -200,13 +237,20 @@ func (j *joiner) wants(c call) func(flow.Node) bool {
 }
 
 // reach is where t can go next to a node wanted: along the flow, passing no
-// statement history records, counting each for's passes. From an await one's
-// case it may go to the others, and inside an await all to each branch, which
-// run beside it.
+// statement history records, counting each for's passes; inside an await all
+// also to each branch, which runs beside it. An await one opens its cases in
+// order, and only the case that wins, by its opener ending first or its signal
+// arriving, enters its body. While none has, t goes only to a case after its
+// own or one that opens nothing, and failing those, to every case's body.
 func (j *joiner) reach(t thread, wanted func(flow.Node) bool) []thread {
-	todo := j.siblings(t)
-	for _, e := range j.g.Out(t.at) {
-		todo = append(todo, j.enter(e, t))
+	var todo []thread
+	if t.race != nil {
+		todo = j.rivals(t)
+	} else {
+		todo = j.siblings(t)
+		for _, e := range j.g.Out(t.at) {
+			todo = append(todo, j.enter(e, t))
+		}
 	}
 	seen := map[flow.Node]bool{}
 	var out []thread
@@ -216,15 +260,45 @@ func (j *joiner) reach(t thread, wanted func(flow.Node) bool) []thread {
 			continue
 		}
 		seen[s.at] = true
+		c, isCase := s.at.At.(*ast.AwaitOneCase)
+		isCase = isCase && s.at.Port == flow.Stmt
 		if wanted(s.at) {
+			s.race = nil
+			if isCase && opens(s.at) {
+				s.race = j.block[c]
+			}
 			out = append(out, s)
 			continue
 		}
-		if c := callOf(s.at); c.kind != "" && c.kind != callAwaitSignal {
+		if isCase || opens(s.at) {
 			continue
 		}
 		for _, e := range j.g.Out(s.at) {
 			todo = append(todo, j.enter(e, s))
+		}
+	}
+	if len(out) == 0 && t.race != nil {
+		for _, c := range t.race.Cases {
+			out = append(out, j.reach(thread{flow.Node{At: c}, t.prefix, t.passes, nil}, wanted)...)
+		}
+	}
+	return out
+}
+
+// opens reports whether the statement at n starts something history records.
+func opens(n flow.Node) bool {
+	c := callOf(n)
+	return c.kind != "" && c.kind != callAwaitSignal
+}
+
+// rivals is where t may go while its await one has no winner: a later case,
+// or one that opens nothing, which only its signal arriving enters.
+func (j *joiner) rivals(t thread) []thread {
+	own := slices.Index(t.race.Cases, t.at.At.(*ast.AwaitOneCase))
+	var out []thread
+	for i, c := range t.race.Cases {
+		if n := (flow.Node{At: c}); i > own || i != own && !opens(n) {
+			out = append(out, thread{n, t.prefix, t.passes, t.race})
 		}
 	}
 	return out
@@ -248,25 +322,18 @@ func (j *joiner) enter(e flow.Edge, t thread) thread {
 	return t
 }
 
-// siblings is where t may go beside the flow: the other cases of the await one
-// it stands on a case of, and the branches of each await all around it.
+// siblings is where t may go beside the flow: the branches of each await all
+// around it.
 func (j *joiner) siblings(t thread) []thread {
 	s, ok := t.at.At.(ast.Statement)
 	if !ok || t.at.Port != flow.Stmt {
 		return nil
 	}
 	var out []thread
-	if c, ok := s.(*ast.AwaitOneCase); ok && j.block[c] != nil {
-		for _, other := range j.block[c].Cases {
-			if other != c {
-				out = append(out, thread{flow.Node{At: other}, t.prefix, t.passes})
-			}
-		}
-	}
 	for _, all := range j.alls[s] {
 		for _, e := range j.g.Out(flow.Node{At: all}) {
 			if e.Kind == flow.Branch {
-				out = append(out, thread{e.To, t.prefix, t.passes})
+				out = append(out, thread{e.To, t.prefix, t.passes, nil})
 			}
 		}
 	}

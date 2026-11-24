@@ -343,9 +343,13 @@ other statement history records; a completing close may also reach the body's
 end, which keeps its flat head. Crossing a `for`'s back edge counts its next
 pass in `visit`. An arrival runs its handler, which opens a cursor of its own
 under visit `[k]`; a signal's arrival also ends the first `await signal` of its
-name a cursor reaches. A cursor on an `await one` case may reach the others,
-and one inside an `await all` its branches. Where several sites fit, each is
-kept until a later event fits none of its ways. At the run's end an event that
+name a cursor reaches. An `await one` opens its cases in order, and only the
+case that wins, by its opener ending first or its signal arriving, enters its
+body; when nothing says which won, every case's body stays a candidate. A
+cursor inside an `await all` may reach its branches. Where several sites fit,
+each is kept until a later event fits none of its ways; a run that fits more
+than 64 ways at once joins none of its events and is reported
+`EXECUTION_STMT_AMBIGUOUS`. At the run's end an event that
 every way names one statement takes that statement's identity
 ([`stmtid`](../lsp/parser/stmtid)); one that several still fit is
 `EXECUTION_STMT_AMBIGUOUS`, and one that none fit is `EXECUTION_STMT_UNMATCHED`.

@@ -10,6 +10,13 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
+
+	commonpb "go.temporal.io/api/common/v1"
+	enumspb "go.temporal.io/api/enums/v1"
+	historypb "go.temporal.io/api/history/v1"
+	taskqueuepb "go.temporal.io/api/taskqueue/v1"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/execution"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/observe"
@@ -270,5 +277,189 @@ func TestBuildExecution_Mapping(t *testing.T) {
 				t.Errorf("endedBy %q, want one: %v", x.Lanes[0].EndedBy, tc.ended)
 			}
 		})
+	}
+}
+
+// run builds one run's history of Race, Sig or Twin (testdata/race.twf), an
+// event a second.
+type run []*historypb.HistoryEvent
+
+func (r *run) add(t enumspb.EventType, attrs any) int64 {
+	id := int64(len(*r) + 1)
+	e := &historypb.HistoryEvent{EventId: id, EventType: t, EventTime: timestamppb.New(time.Date(2026, 1, 1, 0, 0, int(id), 0, time.UTC))}
+	switch a := attrs.(type) {
+	case *historypb.WorkflowExecutionStartedEventAttributes:
+		e.Attributes = &historypb.HistoryEvent_WorkflowExecutionStartedEventAttributes{WorkflowExecutionStartedEventAttributes: a}
+	case *historypb.ActivityTaskScheduledEventAttributes:
+		e.Attributes = &historypb.HistoryEvent_ActivityTaskScheduledEventAttributes{ActivityTaskScheduledEventAttributes: a}
+	case *historypb.ActivityTaskStartedEventAttributes:
+		e.Attributes = &historypb.HistoryEvent_ActivityTaskStartedEventAttributes{ActivityTaskStartedEventAttributes: a}
+	case *historypb.ActivityTaskCompletedEventAttributes:
+		e.Attributes = &historypb.HistoryEvent_ActivityTaskCompletedEventAttributes{ActivityTaskCompletedEventAttributes: a}
+	case *historypb.TimerStartedEventAttributes:
+		e.Attributes = &historypb.HistoryEvent_TimerStartedEventAttributes{TimerStartedEventAttributes: a}
+	case *historypb.TimerFiredEventAttributes:
+		e.Attributes = &historypb.HistoryEvent_TimerFiredEventAttributes{TimerFiredEventAttributes: a}
+	case *historypb.TimerCanceledEventAttributes:
+		e.Attributes = &historypb.HistoryEvent_TimerCanceledEventAttributes{TimerCanceledEventAttributes: a}
+	case *historypb.WorkflowExecutionSignaledEventAttributes:
+		e.Attributes = &historypb.HistoryEvent_WorkflowExecutionSignaledEventAttributes{WorkflowExecutionSignaledEventAttributes: a}
+	case *historypb.WorkflowExecutionCompletedEventAttributes:
+		e.Attributes = &historypb.HistoryEvent_WorkflowExecutionCompletedEventAttributes{WorkflowExecutionCompletedEventAttributes: a}
+	}
+	*r = append(*r, e)
+	return id
+}
+
+func (r *run) schedule(activity string) int64 {
+	return r.add(enumspb.EVENT_TYPE_ACTIVITY_TASK_SCHEDULED, &historypb.ActivityTaskScheduledEventAttributes{
+		ActivityType: &commonpb.ActivityType{Name: activity}, TaskQueue: &taskqueuepb.TaskQueue{Name: "orders"}})
+}
+
+func (r *run) complete(scheduled int64) {
+	started := r.add(enumspb.EVENT_TYPE_ACTIVITY_TASK_STARTED, &historypb.ActivityTaskStartedEventAttributes{ScheduledEventId: scheduled, Attempt: 1})
+	r.add(enumspb.EVENT_TYPE_ACTIVITY_TASK_COMPLETED, &historypb.ActivityTaskCompletedEventAttributes{ScheduledEventId: scheduled, StartedEventId: started})
+}
+
+func (r *run) timer() int64 {
+	return r.add(enumspb.EVENT_TYPE_TIMER_STARTED, &historypb.TimerStartedEventAttributes{TimerId: "1"})
+}
+
+func (r *run) signal(name string) {
+	r.add(enumspb.EVENT_TYPE_WORKFLOW_EXECUTION_SIGNALED, &historypb.WorkflowExecutionSignaledEventAttributes{SignalName: name})
+}
+
+func raceRun(workflow string, steps func(r *run)) History {
+	r := &run{}
+	r.add(enumspb.EVENT_TYPE_WORKFLOW_EXECUTION_STARTED, &historypb.WorkflowExecutionStartedEventAttributes{
+		WorkflowType: &commonpb.WorkflowType{Name: workflow}, TaskQueue: &taskqueuepb.TaskQueue{Name: "orders"}})
+	steps(r)
+	r.add(enumspb.EVENT_TYPE_WORKFLOW_EXECUTION_COMPLETED, &historypb.WorkflowExecutionCompletedEventAttributes{})
+	return History{WorkflowID: "w", RunID: "r", Namespace: "default", Events: *r}
+}
+
+// TestBuildExecution_AwaitOne holds the join to the case that won an await
+// one: by its opener ending first, or by its signal arriving.
+func TestBuildExecution_AwaitOne(t *testing.T) {
+	d, err := design.Load("testdata/race.twf")
+	if err != nil {
+		t.Fatal(err)
+	}
+	cases := []struct {
+		name string
+		run  History
+		want []string
+	}{
+		{"the first case's opener ends first", raceRun("Race", func(r *run) {
+			charge, timer := r.schedule("Charge"), r.timer()
+			r.complete(charge)
+			r.add(enumspb.EVENT_TYPE_TIMER_CANCELED, &historypb.TimerCanceledEventAttributes{TimerId: "1", StartedEventId: timer})
+			r.complete(r.schedule("Ship"))
+		}), []string{
+			"workflow:Race/1 reach await one › activity Charge(n)",
+			"workflow:Race/2 reach await one › timer(1h)",
+			"workflow:Race/6 reach await one › activity Charge(n) › activity Ship(n)",
+		}},
+		{"the second case's timer fires first", raceRun("Race", func(r *run) {
+			r.schedule("Charge")
+			r.add(enumspb.EVENT_TYPE_TIMER_FIRED, &historypb.TimerFiredEventAttributes{TimerId: "1", StartedEventId: r.timer()})
+			r.complete(r.schedule("Ship"))
+		}), []string{
+			"workflow:Race/4 reach await one › timer(1h) › activity Ship(n)",
+		}},
+		{"the second case's signal arrives", raceRun("Sig", func(r *run) {
+			r.signal("B")
+			r.complete(r.schedule("Ship"))
+		}), []string{
+			"workflow:Sig/2 end await one › signal B",
+			"workflow:Sig/3 reach await one › signal B › activity Ship(n)",
+		}},
+		{"of two equal cases, the first wins", raceRun("Twin", func(r *run) {
+			first, second := r.schedule("Charge"), r.schedule("Charge")
+			r.complete(first)
+			r.complete(r.schedule("Audit"))
+			r.complete(second)
+		}), []string{
+			"workflow:Twin/1 reach await one › activity Charge(n) @1",
+			"workflow:Twin/2 reach await one › activity Charge(n) @2",
+			"workflow:Twin/5 reach await one › activity Charge(n) @1 › activity Audit(n)",
+		}},
+		{"of two equal cases, the second wins", raceRun("Twin", func(r *run) {
+			first, second := r.schedule("Charge"), r.schedule("Charge")
+			r.complete(second)
+			r.complete(r.schedule("Ship"))
+			r.complete(first)
+		}), []string{
+			"workflow:Twin/5 reach await one › activity Charge(n) @2 › activity Ship(n)",
+		}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			og, x, err := BuildExecution([]History{tc.run}, Options{Namespace: "default", Design: d}, "w", "r")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if errs := execution.Check(x); errs != nil {
+				t.Errorf("Check = %v, want none", errs)
+			}
+			got := stmts(x)
+			for _, want := range tc.want {
+				if !slices.Contains(got, want) {
+					t.Errorf("no event %q in\n%s", want, strings.Join(got, "\n"))
+				}
+			}
+			if diags := codes(og); diags != nil {
+				t.Errorf("diagnostics %v, want none", diags)
+			}
+		})
+	}
+}
+
+// TestBuildExecution_AwaitOneUndecided keeps every case's body when nothing
+// says which case won, and reports the event they all fit.
+func TestBuildExecution_AwaitOneUndecided(t *testing.T) {
+	d, err := design.Load("testdata/race.twf")
+	if err != nil {
+		t.Fatal(err)
+	}
+	og, x, err := BuildExecution([]History{raceRun("Race", func(r *run) {
+		r.schedule("Charge")
+		r.timer()
+		r.complete(r.schedule("Ship"))
+	})}, Options{Namespace: "default", Design: d}, "w", "r")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := stmts(x); !slices.Contains(got, "workflow:Race/3 reach activity Ship()") {
+		t.Errorf("Ship took no flat head in\n%s", strings.Join(got, "\n"))
+	}
+	if diags := codes(og); len(diags) != 1 || !strings.HasPrefix(diags[0], diagStmtAmbiguous) {
+		t.Errorf("diagnostics %v, want one %s", diags, diagStmtAmbiguous)
+	}
+}
+
+// TestBuildExecution_Crowded reports the event that takes a run past the ways
+// the join keeps, and joins none of the run's events.
+func TestBuildExecution_Crowded(t *testing.T) {
+	d, err := design.Load("testdata/race.twf")
+	if err != nil {
+		t.Fatal(err)
+	}
+	og, x, err := BuildExecution([]History{raceRun("Many", func(r *run) {
+		for range 7 {
+			r.complete(r.schedule("Ship"))
+		}
+	})}, Options{Namespace: "default", Design: d}, "w", "r")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if errs := execution.Check(x); errs != nil {
+		t.Errorf("Check = %v, want none", errs)
+	}
+	if got := stmts(x); !slices.Contains(got, "workflow:Many/1 reach activity Ship() @1") {
+		t.Errorf("the first Ship took no flat head in\n%s", strings.Join(got, "\n"))
+	}
+	if diags := codes(og); len(diags) != 1 || !strings.Contains(diags[0], "event 20 of run w/r, takes the run past 64 ways") {
+		t.Errorf("diagnostics %v, want one for the seventh Ship", diags)
 	}
 }

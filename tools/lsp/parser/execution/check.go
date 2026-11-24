@@ -98,8 +98,10 @@ func (c *checker) start(l Lane) int {
 	if i, ok := c.at[l.StartedBy]; ok {
 		return i
 	}
-	if i, ok := c.at[c.lanes[l.Follows].EndedBy]; ok && l.Follows != "" {
-		return i
+	if l.Follows != "" {
+		if i, ok := c.at[c.lanes[l.Follows].EndedBy]; ok {
+			return i
+		}
 	}
 	return -1
 }
