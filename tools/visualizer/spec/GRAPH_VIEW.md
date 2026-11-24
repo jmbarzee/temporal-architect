@@ -198,6 +198,43 @@ Both behaviors operate over edges the parser already emits — the endpoint hove
 
 ---
 
+## Execution in the graph
+
+Handed an execution (the contract of [#752](https://github.com/jmbarzee/temporal-architect/issues/752), the payload's `execution`), the graph shows which of the design it visited. A rule is fixed when it holds for every execution with no setting. Each gives its reason; `src/execution/visits.test.ts` draws each on the two samples and on a fixture of its own. The model is `src/execution/visits.ts`; the host hands the view the visited deployments as a glow group, the crossed edges as marked edges and the rest as chips on the nodes, until the engine draws more.
+
+### Visited subgraph (`rule-visited`)
+
+A deployment is visited when a lane runs on it (a lane's `node`) or an event's `edge` dispatches to it; an edge is visited when an event carries it, by its `from`, `to` and `kind`. What the execution never reached is not visited and recedes: it is outside the glow and its edges unmarked.
+
+*Why:* the design is every path; one execution is the part of it that ran.
+
+### Crossings (`rule-crossings`)
+
+Each visited edge counts the events that carry it, and the target deployment shows each as `×n from <source>`.
+
+*Why:* a loop or a retry crosses an edge more than once, and the count says by how much.
+
+### Instances (`rule-instances`)
+
+Lanes that run on one deployment are its instances, named by the `@n` their ids carry. A deployment that ran as several shows a chip for each, `@1`, `@2`; one instance needs none.
+
+*Why:* the graph has one node per deployment, so what ran twice would otherwise read as once.
+
+### Landing on nothing (`rule-unreceived`)
+
+A `signalSend` to a deployment whose every lane had ended before it, a lane ending at its `endedBy` event in the contract's order, lands on nothing: the target shows `unreceived ×n`. A deployment with a lane still running receives it.
+
+*Why:* a send does not fail when its target is gone, so the view has to say it went nowhere.
+
+### Playback (`rule-scrubber`)
+
+A scrubber over the graph holds one position, the number of events played from none to all, and steps through them in the contract's order, which keeps happens-before. The visited subgraph is that of the events played; a new execution is shown whole. The position is shared: whatever else plays over time reads the same one, as the observed graph's edge buckets ([#55](https://github.com/jmbarzee/temporal-architect/issues/55)) will, mapping it to their own window by the time of the last event played (`timeAt`, present on recorded executions). That data stays separate from the execution's.
+
+*Why:* one time control reads the same everywhere; what is played is not what it is played against.
+
+*Not fixed:* the chips' wording, the glow's colour and the play speed are the view's style, not rules.
+
+
 ## Group Overlay
 
 The graph view can overlay a grouping of its nodes as a **non-destructive glow
