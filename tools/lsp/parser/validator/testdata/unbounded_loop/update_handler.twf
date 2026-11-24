@@ -1,0 +1,6 @@
+workflow Listen(id):
+	update Drain() -> (bool):
+		for:  # want
+			await timer(1m)
+	await timer(1h)
+	close complete(id)

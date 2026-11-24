@@ -1,0 +1,9 @@
+workflow Listen(id):
+	signal Event(event):
+		event_seen = true
+	for:  # want
+		await signal Event -> event
+		activity Handle(event)
+
+activity Handle(event):
+	return event

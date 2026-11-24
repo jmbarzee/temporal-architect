@@ -1,0 +1,7 @@
+workflow Listen(id):
+	signal Event(event):
+		event_seen = true
+	for:  # want
+		for:
+			await signal Event -> event
+			break

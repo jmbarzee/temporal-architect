@@ -1,0 +1,7 @@
+workflow Listen(id):
+	signal Event(event):
+		event_seen = true
+	for:
+		await signal Event -> event
+		if (event.last):
+			close complete(id)
