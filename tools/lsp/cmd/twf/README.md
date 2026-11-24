@@ -386,6 +386,8 @@ The complete list of `kind` + `code` combinations:
 
 **kind: `validate`**
 - `EMPTY_WORKFLOW`, `EMPTY_ACTIVITY`, `EMPTY_WORKER`, `EMPTY_NAMESPACE`
+- `CONDITION_UNPAIRED` — a condition awaited and never set (error), or set and
+  never awaited (warning)
 - `WORKER_DUPLICATE_TYPE_NAME`
 - `WORKER_MULTI_SDK`, `IMPL_NOT_FOUND` (warnings), `CROSS_SDK_CALL` (hint) —
   `@sdk` annotations

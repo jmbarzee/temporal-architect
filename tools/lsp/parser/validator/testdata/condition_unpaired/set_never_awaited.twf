@@ -1,0 +1,5 @@
+workflow Gate(order):
+	state:
+		condition paid  # want
+	set paid
+	close complete(order)

@@ -1,0 +1,7 @@
+workflow Gate(order):
+	state:
+		condition paid
+	if (order.prepaid):
+		set paid
+	await paid
+	close complete(order)
