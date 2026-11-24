@@ -61,11 +61,12 @@ workflow Order(order: Order) -> (Receipt):
 		await all:
 			activity Pack(order)
 			await timer(1m)
-	await one:
-		paid:
-			break
-		t:
-			continue
+	for (retry < 3):
+		await one:
+			paid:
+				break
+			t:
+				continue
 	switch (order.kind):
 		case "digital":
 			activity Deliver(order)

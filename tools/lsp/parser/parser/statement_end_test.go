@@ -31,11 +31,15 @@ var activityLineContexts = []struct{ name, src string }{
 	{"query handler", "workflow P(x):\n\tquery Q() -> (R):\n\t\tfor (i in x):\n\t\t\t%s\n\t\treturn x\n\tclose complete(x)\n"},
 }
 
+// loopStatements are the statements that belong only inside a for.
+var loopStatements = []struct{ line, what string }{
+	{"break", "break"},
+	{"continue", "continue"},
+}
+
 // shortStatements are statements of a fixed form, each with the name its error
 // gives it.
 var shortStatements = []struct{ line, what string }{
-	{"break", "break"},
-	{"continue", "continue"},
 	{"set Ready", "set Ready"},
 	{"unset Ready", "unset Ready"},
 	{"close complete(x)", "close"},
@@ -64,7 +68,7 @@ var shortStatements = []struct{ line, what string }{
 }
 
 // activityShortStatements are the fixed-form statements an activity body holds.
-var activityShortStatements = shortStatements[:2]
+var activityShortStatements = loopStatements
 
 // syncShortStatements are the fixed-form statements a sync nexus operation body
 // holds: control flow and the client forms.
@@ -93,6 +97,7 @@ func TestShortStatementEndsItsLine(t *testing.T) {
 		}
 	}
 	run(t, workflowLineContexts, shortStatements)
+	run(t, []ctx{workflowLineContexts[4]}, loopStatements)
 	run(t, activityLineContexts, activityShortStatements)
 	run(t, []ctx{{"sync nexus operation", syncLineContext}}, syncShortStatements)
 }
@@ -187,5 +192,33 @@ func TestShortStatementKeepsTrailingComment(t *testing.T) {
 	}
 	if c, ok := body[1].(*ast.Comment); !ok || c.Text != " done" {
 		t.Errorf("second statement is %#v, want the comment \" done\"", body[1])
+	}
+}
+
+// break and continue belong to a for in their own body: with none around them
+// they are an error at the statement, in every body, in a block of a for's
+// body they are fine, and a for does not reach into a handler.
+func TestLoopControlNeedsAFor(t *testing.T) {
+	outside := []struct{ name, src string }{
+		{"workflow body", "workflow P(x):\n\t%s\n"},
+		{"if", "workflow P(x):\n\tif (x):\n\t\t%s\n"},
+		{"await one case", "workflow P(x):\n\tawait one:\n\t\ttimer(1m):\n\t\t\t%s\n"},
+		{"handler after a for", "workflow P(x):\n\tsignal S(v):\n\t\t%s\n"},
+		{"activity body", "activity A(x):\n\t%s\n"},
+		{"sync nexus operation", "nexus service Svc:\n\tsync Op(x) -> (R):\n\t\t%s\n"},
+		{"after a for", "workflow P(x):\n\tfor (i in x):\n\t\tactivity A(i)\n\t%s\n"},
+	}
+	for _, o := range outside {
+		for _, word := range []string{"break", "continue"} {
+			_, err := ParseFile(fmt.Sprintf(o.src, word))
+			pe, ok := err.(*ParseError)
+			if !ok || pe.Code() != CodeLoopControlMisplaced || pe.Msg != word+" is only allowed inside a for" {
+				t.Errorf("%s: %q gives %v, want %s", o.name, word, err, CodeLoopControlMisplaced)
+			}
+		}
+	}
+	inside := "workflow P(x):\n\tfor:\n\t\tif (x):\n\t\t\tawait one:\n\t\t\t\ttimer(1m):\n\t\t\t\t\tbreak\n\t\tcontinue\n"
+	if _, err := ParseFile(inside); err != nil {
+		t.Errorf("inside a for: %v", err)
 	}
 }

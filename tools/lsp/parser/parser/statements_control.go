@@ -206,7 +206,9 @@ func parseForStmt(p *Parser) (ast.Statement, error) {
 		return nil, err
 	}
 
+	p.loops++
 	body, err := p.parseBody()
+	p.loops--
 	if err != nil {
 		return nil, err
 	}
