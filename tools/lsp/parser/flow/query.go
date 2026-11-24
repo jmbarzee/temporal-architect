@@ -28,6 +28,12 @@ func (g *Graph) In(n Node) []Edge { return g.in[n] }
 // branch of its await all can.
 func (g *Graph) Reached(n Node) bool { return g.reached[n] }
 
+// Follows returns n and what a run can arrive at after it, along every edge:
+// a Join is passed on one branch's arrival, as the others run too.
+func (g *Graph) Follows(n Node) map[Node]bool {
+	return g.walk([]Node{n}, false, func(Edge) bool { return true })
+}
+
 // Yields returns where a handler may run during b: its Entry, every await,
 // await one and Join, and every attached call; nothing in a body no handler
 // interleaves with, an activity's, a query's or a sync nexus operation's.
