@@ -1,0 +1,6 @@
+workflow Poller(order):
+	state:
+		condition ready
+	for:
+		await ready
+		set ready

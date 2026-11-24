@@ -347,7 +347,8 @@ The complete list of `kind` + `code` combinations:
 - `SYNTAX` — any parser failure without a more specific code (categorization is
   future work — [#32](https://github.com/jmbarzee/temporal-architect/issues/32))
 - `LEX` — a structural lexical error (`--lenient` never demotes it)
-- `OPTION_MISPLACED`, `DUPLICATE_OPTION_KEY`, `DETACH_AWAITED`
+- `OPTION_MISPLACED`, `DUPLICATE_OPTION_KEY`, `DETACH_AWAITED`,
+  `LOOP_CONTROL_MISPLACED`
 - `ID_SCHEME_MISPLACED`, `ID_SCHEME_MALFORMED`, `ID_VALUE_MALFORMED`,
   `ID_AT_START`, `ADDRESS_MISPLACED`
 - `UNKNOWN_ANNOTATION`, `ANNOTATION_MISPLACED`, `UNKNOWN_SDK`, `DUPLICATE_SDK`,
@@ -387,6 +388,8 @@ The complete list of `kind` + `code` combinations:
 - `EMPTY_WORKFLOW`, `EMPTY_ACTIVITY`, `EMPTY_WORKER`, `EMPTY_NAMESPACE`
 - `PROMISE_NEVER_AWAITED` (warning) — a promise no await, race or signal send
   takes after its binding
+- `CONDITION_UNPAIRED` — a condition awaited and never set (error), or set and
+  never awaited (warning)
 - `WORKER_DUPLICATE_TYPE_NAME`
 - `WORKER_MULTI_SDK`, `IMPL_NOT_FOUND` (warnings), `CROSS_SDK_CALL` (hint) —
   `@sdk` annotations

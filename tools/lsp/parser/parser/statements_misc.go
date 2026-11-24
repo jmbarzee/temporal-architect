@@ -112,6 +112,9 @@ func parseBreakStmt(p *Parser) (ast.Statement, error) {
 	if err := p.endLine("break"); err != nil {
 		return nil, err
 	}
+	if p.loops == 0 {
+		return nil, loopControlMisplaced("break", pos)
+	}
 
 	return &ast.BreakStmt{Pos: pos}, nil
 }
@@ -123,6 +126,9 @@ func parseContinueStmt(p *Parser) (ast.Statement, error) {
 
 	if err := p.endLine("continue"); err != nil {
 		return nil, err
+	}
+	if p.loops == 0 {
+		return nil, loopControlMisplaced("continue", pos)
 	}
 
 	return &ast.ContinueStmt{Pos: pos}, nil
@@ -187,4 +193,16 @@ func (p *Parser) misplacedKeyword() error {
 		return errAt("a timer must be awaited: `await timer(duration)`")
 	}
 	return errAt("%q cannot start a statement", kw.Literal)
+}
+
+// CodeLoopControlMisplaced marks a break or continue with no for around it.
+const CodeLoopControlMisplaced = "LOOP_CONTROL_MISPLACED"
+
+func loopControlMisplaced(word string, at ast.Pos) error {
+	return &ParseError{
+		Msg:    word + " is only allowed inside a for",
+		Line:   at.Line,
+		Column: at.Column,
+		code:   CodeLoopControlMisplaced,
+	}
 }

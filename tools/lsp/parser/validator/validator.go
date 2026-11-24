@@ -47,6 +47,7 @@ const (
 	ErrImplNotFound
 	ErrCrossSDKCall
 	ErrPromiseNeverAwaited
+	ErrConditionUnpaired
 )
 
 // Error represents a validation error with position info.
@@ -145,6 +146,8 @@ func (k ErrorKind) String() string {
 		return "CROSS_SDK_CALL"
 	case ErrPromiseNeverAwaited:
 		return "PROMISE_NEVER_AWAITED"
+	case ErrConditionUnpaired:
+		return "CONDITION_UNPAIRED"
 	}
 	return "UNKNOWN"
 }
@@ -278,6 +281,9 @@ func Validate(file *ast.File) []*Error {
 
 	// Promises no await, race or signal send takes.
 	v.checkPromises(file.Definitions)
+
+	// Conditions awaited but never set, or set but never awaited.
+	v.checkConditions(file.Definitions)
 
 	// 7. id: parent claims, id_scheme overlap and ID policies (definition order).
 	v.checkParentSends(file.Definitions)

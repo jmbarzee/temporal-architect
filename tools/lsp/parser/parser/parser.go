@@ -62,7 +62,8 @@ type Parser struct {
 	depth   int             // INDENTs minus DEDENTs before current
 	elseAt  int             // the offset of the last `else` an if consumed
 
-	body ast.BodyContext // what the body being parsed runs in
+	body  ast.BodyContext // what the body being parsed runs in
+	loops int             // the fors around the statement being parsed
 
 	collecting bool          // true when collecting errors instead of bailing
 	errors     []*ParseError // accumulated errors in collecting mode

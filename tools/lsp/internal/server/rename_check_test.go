@@ -27,6 +27,7 @@ const pairSource = `workflow Parent(wid: string):
 		unset idle
 	promise done <- activity Do(wid)
 	await done
+	await idle
 	await ready
 	activity Undo(wid)
 	nexus Orders Orders.Place(wid)

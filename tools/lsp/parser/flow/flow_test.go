@@ -222,7 +222,7 @@ func TestReached(t *testing.T) {
 		{fixtures[3], "Edges", 41, Join, false}, // an await all with a branch that closes
 		{fixtures[3], "Edges", 46, Stmt, false}, // after a close
 		{fixtures[2], "Order", 61, Join, true},  // an await one case's await all
-		{fixtures[2], "Order", 69, Stmt, false}, // after an await one whose cases break and continue outside a loop
+		{fixtures[2], "Order", 70, Stmt, true},  // after a for whose await one breaks and continues
 	}
 	for _, tt := range tests {
 		g := fixture(t, tt.path, tt.def)
