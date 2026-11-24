@@ -86,6 +86,51 @@ func TestCheck_Outcomes(t *testing.T) {
 	}
 }
 
+// serverEnded is valid with run B ended by the server.
+func serverEnded(o Outcome) *Execution {
+	x := valid()
+	x.Lanes[1].EndedBy = b + "/2"
+	x.Events = append(x.Events, Event{ID: b + "/2", Lane: b, Kind: End, Outcome: o})
+	return x
+}
+
+func TestCheck_ServerEnd(t *testing.T) {
+	for _, o := range []Outcome{TimedOut, Cancelled, Terminated} {
+		if errs := Check(serverEnded(o)); errs != nil {
+			t.Errorf("%s: Check = %v, want none", o, errs)
+		}
+	}
+	tests := []struct {
+		name   string
+		mutate func(*Execution)
+		want   string
+	}{
+		{"failed", func(x *Execution) { x.Events[11].Outcome = Failed }, "has outcome timedOut, cancelled or terminated"},
+		{"as designed", func(x *Execution) { x.Events[11].Outcome = "" }, "has outcome timedOut, cancelled or terminated"},
+		{"with an attempt", func(x *Execution) { x.Events[11].Attempt = 1 }, "has no attempt or visit"},
+		{"with a visit", func(x *Execution) { x.Events[11].Visit = []int{1} }, "has no attempt or visit"},
+		{"with an edge", func(x *Execution) { x.Events[11].Edge = x.Events[1].Edge }, "only a reach dispatches"},
+		{"with a label", func(x *Execution) { x.Events[11].Label = "gone" }, "only an occur has a label"},
+		{"not the lane's endedBy", func(x *Execution) { x.Lanes[1].EndedBy = "" }, "is its lane's endedBy"},
+		{"not the lane's last", func(x *Execution) {
+			x.Events = append(x.Events, Event{ID: b + "/3", Lane: b, Kind: Arrive, Stmt: b + " › signal Go", Visit: []int{2}})
+		}, "is its lane's last event"},
+		{"in a host lane", func(x *Execution) { x.Events = append(x.Events, Event{ID: cloud + "/4", Lane: cloud, Kind: End, Outcome: Terminated}) }, "a end is in a run's lane"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			x := serverEnded(Terminated)
+			tt.mutate(x)
+			for _, err := range Check(x) {
+				if strings.Contains(err.Error(), tt.want) {
+					return
+				}
+			}
+			t.Errorf("Check = %v, want an error containing %q", Check(x), tt.want)
+		})
+	}
+}
+
 // chain is a run that continues as new, listed after the run it follows.
 func chain() *Execution {
 	node := a + "/worker:w/namespace:n"

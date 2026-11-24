@@ -27,9 +27,9 @@ Lanes are columns in order of first appearance. Lanes sharing a `title` share a 
 
 ### Workflow lifetime (`rule-lifetimes`)
 
-A workflow is a box from its start step's row (the top when it has none) to its last step.
+A workflow is a box from its start step's row (the top when it has none) to its last step. A run the server ended has an end step labelled `terminated`, `timed out` or `cancelled`, struck as failed, and the box ends there.
 
-*Why:* its extent says when it ran.
+*Why:* its extent says when it ran, and the end step says the server, not the design, ended it.
 
 ### Host lifetime (`rule-lifetimes`)
 

@@ -40,6 +40,7 @@ const ACTIVITY = /^(?:promise \w+ <- |await )?activity (.*)$/
 /** What an event draws as, if anything. */
 function drawn(e: ExecutionEvent): { kind: StepKind; label: string } | undefined {
   if (e.kind === 'occur') return { kind: 'event', label: e.label ?? '' }
+  if (!e.stmt) return { kind: 'event', label: OUTCOME_LABEL[e.outcome!] } // the server ended the run
   const h = head(e)
   const call = h.match(ACTIVITY)?.[1]
   switch (e.kind) {
@@ -116,7 +117,7 @@ export function fromExecution({ lanes, events }: Execution, { nodes }: Pick<Pars
     const queue = e.kind === 'start' && edge ? queueOf(edge.to) : undefined
     if (draw) {
       step(e.id, key, e, draw.kind, draw.label, {
-        ...(e.outcome && { state: e.outcome === 'cancelled' ? 'cancelled' : 'failed' }),
+        ...(e.outcome && { state: e.outcome === 'cancelled' && e.stmt ? 'cancelled' : 'failed' }),
         ...(e.attempt !== undefined && e.attempt > 1 && { attempt: e.attempt }),
         ...(after.length > 0 && { after }),
         ...(queue && { queue }),
