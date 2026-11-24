@@ -1,0 +1,4 @@
+workflow Listen(id):
+	close complete(id)
+	for:
+		await timer(1m)

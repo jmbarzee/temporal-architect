@@ -16,15 +16,8 @@ func (v *validationCtx) checkUnboundedLoops(defs []ast.Definition) {
 			continue
 		}
 		g := flow.Of(d)
-		bodies := [][]ast.Statement{d.Body}
-		for _, h := range d.Signals {
-			bodies = append(bodies, h.Body)
-		}
-		for _, h := range d.Updates {
-			bodies = append(bodies, h.Body)
-		}
-		for _, body := range bodies {
-			ast.WalkStatements(body, func(s ast.Statement) bool {
+		for _, b := range g.Bodies() {
+			ast.WalkStatements(bodyStatements(b.Owner), func(s ast.Statement) bool {
 				if f, ok := s.(*ast.ForStmt); ok && f.Variant == ast.ForInfinite && g.Reached(flow.Node{At: f}) && !leaves(g, f.Body, false) {
 					v.errs = append(v.errs, &Error{
 						Msg:      "for without a condition never exits and never continues as new; history grows without bound",
