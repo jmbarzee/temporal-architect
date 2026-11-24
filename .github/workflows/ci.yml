@@ -104,6 +104,11 @@ jobs:
             corpus/pom.xml
             corpus/pom-clojure.xml
 
+      # mvnw fetches Maven with a single wget, which fails intermittently; retry it so the make target finds Maven unpacked.
+      - if: matrix.sdk == 'clojure'
+        working-directory: corpus
+        run: for i in 1 2 3 4 5; do ./mvnw -v && exit 0; sleep 15; done; exit 1
+
       - uses: ruby/setup-ruby@v1.338.0
         if: matrix.sdk == 'ruby'
         with:
