@@ -11,6 +11,9 @@ on-disk history tree.
 <out>/observed-graph.json      # { "observedGraph": { window, summary, nodes, edges, … } }
 ```
 
+With [`--execution`](#executions---execution) it samples one execution in place of
+the namespace, and writes it beside its graph as `{ observedGraph, execution }`.
+
 Each edge carries a `buckets` array (its occurrence time series over the
 `window`); with the default single bucket it is just a total. The graph reuses
 the same node-ID scheme and coarsening as `twf graph`, so the projected graph is
@@ -64,6 +67,8 @@ diagnostic kind — there is no separate `history` kind; the `code` disambiguate
 | `NEXUS_ENDPOINT_NOT_IN_DESIGN` | the `--design` declares no static endpoint of a scheduled operation's endpoint name; the message names it, `from` is its orphan endpoint node, and it is reported once per name |
 | `FAMILY_AMBIGUOUS` | an observed namespace or task queue fits the template of several of the `--design`'s families; the message names them, and the node stays concrete |
 | `FAMILY_MEMBERS` (hint) | a design family has observed members; the message counts and lists them, `from` is the family's node |
+| `EXECUTION_STMT_AMBIGUOUS` | with `--execution` and `--design`, several statements still fit a run's event at the run's end; the message names them, `from` is the run's node, and the event takes its flat head ([the join](#the-stmt-join)) |
+| `EXECUTION_STMT_UNMATCHED` | with `--execution` and `--design`, no statement the run could reach fits its event: the run drifted from the design; `from` is the run's node, and the event takes its flat head |
 
 ## Node identity
 
@@ -218,7 +223,7 @@ it has no row.
 | `ACTIVITY_TASK_TIMED_OUT` | — | `activity.timedOut` |
 | `ACTIVITY_TASK_CANCEL_REQUESTED` | — | `activity.cancelRequested` |
 | `ACTIVITY_TASK_CANCELED` | — | `activity.canceled` |
-| `TIMER_STARTED` | — | `timer.started` |
+| `TIMER_STARTED` | — | `timer.started`, with its duration |
 | `TIMER_FIRED` | — | `timer.fired` |
 | `TIMER_CANCELED` | — | `timer.canceled` |
 | `WORKFLOW_EXECUTION_CANCEL_REQUESTED` | — | `workflow.cancelRequested` |
@@ -227,12 +232,12 @@ it has no row.
 | `REQUEST_CANCEL_EXTERNAL_WORKFLOW_EXECUTION_FAILED` | — | `externalCancel.failed` |
 | `EXTERNAL_WORKFLOW_EXECUTION_CANCEL_REQUESTED` | — | `externalCancel.completed` |
 | `MARKER_RECORDED` | `activityCall` for a `LocalActivity` marker to the activity type in its details, hosted on the calling workflow's own task queue (a local activity has none); read from the Go, Core (Python, TypeScript, .NET, Ruby, Rust) and Java SDKs' marker formats (Go's checked against the SDK; Core's and Java's derived from their proto and source, not captured histories); a marker naming no type is `LOCAL_ACTIVITY_TYPE_MISSING`; a retry that backs off on a timer records a marker per attempt, each counted | `marker.recorded` |
-| `WORKFLOW_EXECUTION_SIGNALED` | — | `signal.received` |
+| `WORKFLOW_EXECUTION_SIGNALED` | — | `signal.received`, with its sender |
 | `WORKFLOW_EXECUTION_TERMINATED` | — | `workflow.terminated` |
-| `WORKFLOW_EXECUTION_CONTINUED_AS_NEW` | next run of the chain; each run is its own history, folded into the aggregate graph; the decode keeps per-run identity `(WorkflowID, RunID)`, not yet on the wire ([#775](https://github.com/jmbarzee/temporal-architect/issues/775)) | `workflow.continuedAsNew`, targeting the next run |
-| `START_CHILD_WORKFLOW_EXECUTION_INITIATED` | `workflowCall` to the child workflow type, queue, namespace | `child.initiated` |
+| `WORKFLOW_EXECUTION_CONTINUED_AS_NEW` | next run of the chain; each run is its own history, folded into the aggregate graph; the decode keeps per-run identity `(WorkflowID, RunID)`, which each [execution](#executions---execution) lane carries | `workflow.continuedAsNew`, targeting the next run |
+| `START_CHILD_WORKFLOW_EXECUTION_INITIATED` | `workflowCall` to the child workflow type, queue, namespace | `child.initiated`, detached under `ParentClosePolicy` ABANDON |
 | `START_CHILD_WORKFLOW_EXECUTION_FAILED` | — | `child.failed`, with the cause |
-| `CHILD_WORKFLOW_EXECUTION_STARTED` | — | `child.started` |
+| `CHILD_WORKFLOW_EXECUTION_STARTED` | — | `child.started`, with the child's run |
 | `CHILD_WORKFLOW_EXECUTION_COMPLETED` | — | `child.completed` |
 | `CHILD_WORKFLOW_EXECUTION_FAILED` | — | `child.failed`, with the failure |
 | `CHILD_WORKFLOW_EXECUTION_CANCELED` | — | `child.canceled` |
@@ -262,6 +267,93 @@ it has no row.
 | `WORKFLOW_EXECUTION_PAUSED` | — | ignored, because an operator paused the run, which is not a step of the design |
 | `WORKFLOW_EXECUTION_UNPAUSED` | — | ignored, because an operator resumed the run, which is not a step of the design |
 | `WORKFLOW_EXECUTION_TIME_SKIPPING_TRANSITIONED` | — | ignored, because it records a test-server clock jump |
+
+## Executions (`--execution`)
+
+`--execution <workflowId>` samples that workflow's continue-as-new chain, from
+its current run, and `--execution <workflowId>/<runId>` that one run (a suffix
+is a run ID when it has a UUID's shape, so a workflow ID may hold `/`); the
+[transitive pass](#how-it-works) adds the children they start. The sampler
+builds one execution in the contract of
+[`tools/lsp/parser/execution`](../lsp/parser/execution), the one `twf run`
+emits, writes it beside the graph of the runs fetched, and refuses to write one
+that fails `execution.Check`. Without the flag the output is unchanged.
+
+Each run is a lane on its workflow's node, ranked `@n` among runs of one
+workflow in start order. A child's lane is `startedBy` the reach that called
+it; a continued run `follows` the run it continued from, and starts where that
+run ends. A signal's arrival takes `from` the send that caused it: the k-th
+receipt of a signal from one run is that run's k-th send of it to the
+receiver's workflow ID. Lanes list in start order, events in one order that
+keeps each lane's, each `from` and each start, earliest first; every event's
+`time` is its history event's. A Nexus handler's run is not a lane, since a
+`nexusCall` reaches an operation, not a run
+([#820](https://github.com/jmbarzee/temporal-architect/issues/820)).
+
+Each decoded event maps to execution events; the **flat head** is the
+statement head an event takes without a design:
+
+| Decoded | Execution event | Flat head |
+|---|---|---|
+| `workflow.started` | nothing, because the run is its lane | |
+| `workflow.completed` | `reach` on the close, the lane's `endedBy` | `close complete` |
+| `workflow.failed` | `reach` on the close, the lane's `endedBy` | `close fail` |
+| `workflow.continuedAsNew` | `reach` on the close, the lane's `endedBy`; the next run `follows` the lane | `close continue_as_new` |
+| `workflow.timedOut`, `workflow.canceled`, `workflow.terminated` | nothing, because the server ended the run and no statement did; `endedBy` stays absent | |
+| `workflow.cancelRequested` | nothing, because a request runs no statement; the run's answer is its own events | |
+| `activity.scheduled` | `reach`, with its `activityCall` edge | `activity T()` |
+| `activity.started` | `start`, its attempt | |
+| `activity.completed` | `end` of that attempt | |
+| `activity.failed`, `activity.timedOut`, `activity.canceled` | `end` of that attempt, `failed`, `timedOut`, `cancelled` | |
+| `activity.cancelRequested` | nothing, because the activity's close records what came of it | |
+| `timer.started` | `reach` | `await timer(d)` |
+| `timer.fired` | `end` | |
+| `timer.canceled` | `end`, `cancelled` | |
+| `marker.recorded` | a local activity's: `reach`, `start` 1 and `end` 1, `failed` with a failure; any other: nothing, because it records a value, not a call | `activity T()` |
+| `signal.received` | `arrive`, visit `[k]` for the k-th of its name, `from` the send; plus the `end` of an `await signal` [the join](#the-stmt-join) reaches | `signal N` |
+| `update.accepted` | `arrive`, visit `[k]` | `update N` |
+| `update.rejected` | nothing, because no handler ran | |
+| `update.completed` | nothing, because the handler's own events record what it did | |
+| `child.initiated` | `reach`, with its `workflowCall` edge; the child's lane is `startedBy` it | `workflow T()`, or `detach workflow T()` under ABANDON |
+| `child.started` | `start` 1 | |
+| `child.completed` | `end` 1, `from` the close of the child's last run | |
+| `child.failed`, `child.timedOut`, `child.canceled`, `child.terminated` | `end` 1, `failed`, `timedOut`, `cancelled`, `terminated`, `from` that close when there is one; a child that never started ends with no attempt | |
+| `externalSignal.initiated` | `reach`, with its `signalSend` edge | `signal T.N()`, `T` the receiver's type, or its workflow ID when unresolved |
+| `externalSignal.failed` | `end`, `failed` | |
+| `externalSignal.completed` | nothing, because the receiver's `arrive` records the delivery | |
+| `externalCancel.initiated`, `externalCancel.failed`, `externalCancel.completed` | nothing, because the target's own events record what came of the request | |
+| `nexus.scheduled` | `reach`, with its `nexusCall` edge | `nexus E S.op()` |
+| `nexus.started` | `start` 1 | |
+| `nexus.completed`, `nexus.failed`, `nexus.timedOut`, `nexus.canceled` | `end`, 1 once started, `failed`, `timedOut`, `cancelled` | |
+| `nexus.cancelRequested` | nothing, because the operation's close records what came of it | |
+
+A start and an end take their opener's `stmt` and `visit`. Flat heads sit in
+one flat body under the workflow, ranked `@n` among equal heads. History
+records only the last attempt's `ACTIVITY_TASK_STARTED`, so an activity that
+retried shows that attempt's start and no earlier one
+([#776](https://github.com/jmbarzee/temporal-architect/issues/776)).
+
+### The `stmt` join
+
+With `--design`, each lane replays its workflow's control flow
+([`flow`](../lsp/parser/flow)) from its body's entry. A reach moves to the next
+call site it can reach that matches its kind and target (activity, child or
+receiver type, signal, endpoint and operation, timer, close reason), passing no
+other statement history records; a completing close may also reach the body's
+end, which keeps its flat head. Crossing a `for`'s back edge counts its next
+pass in `visit`. An arrival runs its handler, which opens a cursor of its own
+under visit `[k]`; a signal's arrival also ends the first `await signal` of its
+name a cursor reaches. An `await one` opens its cases in order, and only the
+case that wins, by its opener ending first or its signal arriving, enters its
+body; when nothing says which won, every case's body stays a candidate. A
+cursor inside an `await all` may reach its branches. Where several sites fit,
+each is kept until a later event fits none of its ways; a run that fits more
+than 64 ways at once joins none of its events and is reported
+`EXECUTION_STMT_AMBIGUOUS`. At the run's end an event that
+every way names one statement takes that statement's identity
+([`stmtid`](../lsp/parser/stmtid)); one that several still fit is
+`EXECUTION_STMT_AMBIGUOUS`, and one that none fit is `EXECUTION_STMT_UNMATCHED`.
+Either takes its flat head.
 
 ## Limitations
 
@@ -311,6 +403,7 @@ go run ./tools/sampler \
 | `--tls-key-path` | _(none)_ | Client TLS private key (mTLS) |
 | `--out` | `./` | Output path; a directory receives `observed-graph.json` |
 | `--design` | _(none)_ | A `.twf` file or directory to join sampled definitions to (see [Packages and the design input](#packages-and-the-design-input)) |
+| `--execution` | _(none)_ | Sample one execution in place of the namespace, a `workflowId` (its chain) or `workflowId/runId` (that run), and write it beside its graph (see [Executions](#executions---execution)) |
 | `--sample-percent` | `10` | Percent of each type's executions to sample |
 | `--min-per-type` | `5` | Minimum executions to sample per type |
 | `--transitive-per-type` | `5` | Most executions to hold per child workflow type or Nexus operation, sampled or fetched for a caller's sake; `0` skips fetching them |
@@ -416,9 +509,10 @@ transitive pass (`sampling/transitive_test.go`) and its diagnostics
 (`history/history_test.go`), the nexus fold and endpoint join (`design/design_test.go`,
 `history/nexus_test.go`), the package join (`design/design_test.go`, `history/packages_test.go`), the
 signal-target join by `id_scheme:` (`history/id_schemes_test.go`), the
-family join (`design/design_test.go`, `history/families_test.go`), and the
-output-path / time-flag parsing (`main_test.go`) are covered by pure-function
-tests:
+family join (`design/design_test.go`, `history/families_test.go`), the execution,
+its mapping and the `stmt` join (`history/execution_test.go`, over a run captured
+from a dev server in `history/testdata/order`), and the output path, time and
+`--execution` flags (`main_test.go`) are covered by pure-function tests:
 
 ```bash
 go test ./tools/sampler/...

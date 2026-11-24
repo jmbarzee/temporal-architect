@@ -21,7 +21,7 @@ export interface Knobs {
 }
 
 const LANE_KIND: Record<string, Lane['kind']> = { workflow: 'workflow', worker: 'host', outside: 'external' }
-const OUTCOME_LABEL = { failed: 'failed', timedOut: 'timed out', cancelled: 'cancelled' }
+const OUTCOME_LABEL = { failed: 'failed', timedOut: 'timed out', cancelled: 'cancelled', terminated: 'terminated' }
 
 /** The box drawn waiting for an attempt that does not start when it is dispatched. */
 export const queuedId = (start: string) => `${start} queued`
@@ -143,6 +143,8 @@ export function fromExecution({ lanes, events }: Execution, { nodes }: Pick<Pars
   return {
     title: knobs.title,
     lanes: lanes.map(l => {
+      // A continued run starts where the run it follows ends.
+      const begin = l.startedBy ?? lanes.find(p => p.id === l.follows)?.endedBy
       const kind = LANE_KIND[l.id.slice(0, l.id.indexOf(':'))]
       const key = l.id.slice(l.id.indexOf(':') + 1)
       const name = kind === 'workflow' ? key.slice(key.lastIndexOf('.') + 1) : key
@@ -152,7 +154,7 @@ export function fromExecution({ lanes, events }: Execution, { nodes }: Pick<Pars
       return {
         id: l.id, kind, name, title: knob?.title ?? name.toUpperCase(),
         ...(tag && { tag }),
-        ...(l.startedBy && { startedBy: stand.get(l.startedBy) }),
+        ...(begin && { startedBy: stand.get(begin) }),
         ...(l.endedBy && { endedAt: stand.get(l.endedBy) }),
       }
     }),

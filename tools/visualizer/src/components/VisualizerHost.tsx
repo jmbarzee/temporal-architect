@@ -8,6 +8,8 @@ import type { ParserGraph } from '../types/parser-graph'
 import type { Decomposition } from '../types/decomposition'
 import type { Execution } from '@temporal-architect/wire-types'
 import { normalizePayload } from '../types/payload'
+import { fromExecution } from '../sequence/fromExecution'
+import type { Model } from '../sequence/model'
 
 // The host-agnostic shell that wraps the visualizer's render core. Every host
 // (the standalone dev app, the VS Code webview, a future SSE serve host) shares
@@ -60,6 +62,8 @@ export interface RenderCoreProps {
   decomposition?: Decomposition
   /** One execution of the design, which the tree draws as a path. */
   execution?: Execution
+  /** The execution as the Sequence view draws it, titled by its first run's workflow ID. */
+  sequence?: Model
   onOpenFile?: (file: string) => void
   onRefocus?: () => void
   onRequestDecomposition?: (params: DecompositionParams) => void
@@ -152,6 +156,11 @@ export function VisualizerHost({
     return source.subscribe(handleMessage)
   }, [source])
 
+  const sequence = React.useMemo(
+    () => execution && parserGraph && fromExecution(execution, parserGraph, { title: execution.lanes[0]?.workflowId ?? execution.lanes[0]?.id ?? '' }),
+    [execution, parserGraph],
+  )
+
   if (error) {
     return (
       <div className="error-container">
@@ -175,6 +184,7 @@ export function VisualizerHost({
       parserGraph={parserGraph}
       decomposition={decomposition}
       execution={execution}
+      sequence={sequence}
       onOpenFile={actions?.openFile}
       onRefocus={actions?.refocus}
       onRequestDecomposition={actions?.requestDecomposition}

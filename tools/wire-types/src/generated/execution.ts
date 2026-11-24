@@ -29,7 +29,8 @@ export interface Lane {
    */
   endedBy?: string;
   /**
-   * Follows is the run this one continued as new from.
+   * Follows is the run this one continued as new from; it starts where that
+   * run ends.
    */
   follows?: string;
   /**
@@ -54,6 +55,7 @@ export type Outcome = string;
 export const Failed: Outcome = "failed";
 export const TimedOut: Outcome = "timedOut";
 export const Cancelled: Outcome = "cancelled";
+export const Terminated: Outcome = "terminated";
 /**
  * Edge is a graph edge by the key observe matches on.
  */

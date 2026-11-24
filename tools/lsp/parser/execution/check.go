@@ -92,10 +92,16 @@ func (c *checker) checkLanes() {
 	}
 }
 
-// start is where lane l starts in the event order: -1 from the top.
+// start is where lane l starts in the event order: at the event that starts
+// it, or where the run it follows ends; -1 from the top.
 func (c *checker) start(l Lane) int {
 	if i, ok := c.at[l.StartedBy]; ok {
 		return i
+	}
+	if l.Follows != "" {
+		if i, ok := c.at[c.lanes[l.Follows].EndedBy]; ok {
+			return i
+		}
 	}
 	return -1
 }
@@ -173,9 +179,9 @@ func (c *checker) checkFields(e Event, l Lane) {
 		c.fail(e.ID, "only a start or end has an attempt")
 	}
 	switch e.Outcome {
-	case "", Failed, TimedOut, Cancelled:
+	case "", Failed, TimedOut, Cancelled, Terminated:
 	default:
-		c.fail(e.ID, "outcome %q is not failed, timedOut or cancelled", e.Outcome)
+		c.fail(e.ID, "outcome %q is not failed, timedOut, cancelled or terminated", e.Outcome)
 	}
 	if e.Outcome != "" && e.Kind != End && e.Kind != Occur {
 		c.fail(e.ID, "only an end or occur has an outcome")
@@ -226,7 +232,7 @@ func (c *checker) checkOrder(i int, e Event, l Lane) {
 		before("after", ref)
 	}
 	within := func(what string, l Lane) {
-		if j, ok := c.at[l.StartedBy]; ok && j > i {
+		if c.start(l) > i {
 			c.fail(e.ID, "%s %s starts after it", what, l.ID)
 		}
 		if j, ok := c.at[l.EndedBy]; ok && j < i {
