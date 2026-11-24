@@ -76,6 +76,43 @@ func TestCheck_Valid(t *testing.T) {
 	}
 }
 
+func TestCheck_Outcomes(t *testing.T) {
+	for _, o := range []Outcome{Failed, TimedOut, Cancelled, Terminated} {
+		x := valid()
+		x.Events[5].Outcome = o // the end of attempt 1
+		if errs := Check(x); errs != nil {
+			t.Errorf("%s: Check = %v, want none", o, errs)
+		}
+	}
+}
+
+// chain is a run that continues as new, listed after the run it follows.
+func chain() *Execution {
+	node := a + "/worker:w/namespace:n"
+	return &Execution{
+		Lanes: []Lane{
+			{ID: a + " @2", Node: node, Follows: a + " @1"},
+			{ID: a + " @1", Node: node, EndedBy: a + " @1/1"},
+		},
+		Events: []Event{
+			{ID: a + " @1/1", Lane: a + " @1", Kind: Reach, Stmt: a + " › close continue_as_new"},
+			{ID: a + " @2/1", Lane: a + " @2", Kind: Reach, Stmt: a + " › close complete"},
+		},
+	}
+}
+
+func TestCheck_Follows(t *testing.T) {
+	if errs := Check(chain()); errs != nil {
+		t.Errorf("Check = %v, want none", errs)
+	}
+	x := chain()
+	x.Events[0], x.Events[1] = x.Events[1], x.Events[0]
+	want := "lane " + a + " @2 starts after it"
+	if errs := Check(x); len(errs) == 0 || !strings.Contains(errs[0].Error(), want) {
+		t.Errorf("Check = %v, want an error containing %q", errs, want)
+	}
+}
+
 func TestCheck_Broken(t *testing.T) {
 	event := func(x *Execution, id string) *Event {
 		for i := range x.Events {

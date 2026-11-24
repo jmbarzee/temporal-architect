@@ -13,15 +13,18 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
 	"go.temporal.io/sdk/client"
 
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/execution"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/observe"
 	"github.com/jmbarzee/temporal-architect/tools/sampler/design"
 	"github.com/jmbarzee/temporal-architect/tools/sampler/history"
@@ -35,6 +38,7 @@ type options struct {
 	tlsKeyPath  string
 	out         string
 	design      string
+	execution   string
 
 	samplePercent     int
 	minPerType        int
@@ -49,10 +53,11 @@ type options struct {
 	status string
 }
 
-// output is the top-level JSON envelope the sampler writes. A single
-// observedGraph key mirrors the `graph` key of `twf graph --json`.
+// output is the top-level JSON envelope the sampler writes. The observedGraph
+// key mirrors the `graph` key of `twf graph --json`; execution is --execution's.
 type output struct {
 	ObservedGraph *observe.ObservedGraph `json:"observedGraph"`
+	Execution     *execution.Execution   `json:"execution,omitempty"`
 }
 
 func main() {
@@ -72,6 +77,7 @@ func parseFlags(args []string) options {
 	fs.StringVar(&opts.tlsKeyPath, "tls-key-path", "", "Client TLS private key (mTLS)")
 	fs.StringVar(&opts.out, "out", "./", "Output path for the observed-graph JSON (a directory receives observed-graph.json)")
 	fs.StringVar(&opts.design, "design", "", "A .twf file or directory to join sampled definitions to; without one every name stays bare")
+	fs.StringVar(&opts.execution, "execution", "", "Sample one execution in place of the namespace, and write it beside its graph: a workflowId (its continue-as-new chain) or workflowId/runId (that run)")
 	fs.IntVar(&opts.samplePercent, "sample-percent", 10, "Percent of each type's executions to sample")
 	fs.IntVar(&opts.minPerType, "min-per-type", 5, "Minimum executions to sample per type")
 	fs.IntVar(&opts.transitivePerType, "transitive-per-type", 5, "Per child workflow type or Nexus operation, the most executions to hold, sampled or fetched for a caller's sake; 0 skips fetching them")
@@ -147,7 +153,7 @@ func run(ctx context.Context, opts options) error {
 	}
 	defer c.Close()
 
-	histories, unreached, err := sampling.Sample(ctx, c, sampling.Options{
+	sopts := sampling.Options{
 		Namespace:         opts.namespace,
 		SamplePercent:     opts.samplePercent,
 		MinPerType:        opts.minPerType,
@@ -155,7 +161,15 @@ func run(ctx context.Context, opts options) error {
 		Status:            opts.status,
 		Since:             since,
 		Until:             until,
-	})
+	}
+	workflowID, runID := splitExecution(opts.execution)
+	var histories []history.History
+	var unreached []history.Unreached
+	if opts.execution != "" {
+		histories, unreached, err = sampling.Run(ctx, c, sopts, workflowID, runID)
+	} else {
+		histories, unreached, err = sampling.Sample(ctx, c, sopts)
+	}
 	if err != nil {
 		return err
 	}
@@ -164,15 +178,38 @@ func run(ctx context.Context, opts options) error {
 		return nil
 	}
 
-	og := history.Build(histories, history.Options{Namespace: opts.namespace, Window: window, Design: d, Unreached: unreached})
+	hopts := history.Options{Namespace: opts.namespace, Window: window, Design: d, Unreached: unreached}
+	var out output
+	if opts.execution != "" {
+		if out.ObservedGraph, out.Execution, err = history.BuildExecution(histories, hopts, workflowID, runID); err != nil {
+			return err
+		}
+		if errs := execution.Check(out.Execution); errs != nil {
+			return fmt.Errorf("the execution of %s breaks its contract, so it is not written:\n%w", opts.execution, errors.Join(errs...))
+		}
+	} else {
+		out.ObservedGraph = history.Build(histories, hopts)
+	}
 
 	path := resolveOutPath(opts.out)
-	if err := writeObservedGraph(path, og); err != nil {
+	if err := write(path, out); err != nil {
 		return fmt.Errorf("write %s: %w", path, err)
 	}
 	fmt.Fprintf(os.Stderr, "sampled %d execution(s) → %d node(s), %d edge(s); wrote %s\n",
-		len(histories), og.Summary.Nodes, og.Summary.Edges, path)
+		len(histories), out.ObservedGraph.Summary.Nodes, out.ObservedGraph.Summary.Edges, path)
 	return nil
+}
+
+// runIDPattern is a run ID's shape, a UUID.
+var runIDPattern = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
+
+// splitExecution reads --execution: a workflow ID, then a run ID after its last
+// '/' when what follows has a run ID's shape, so a workflow ID may hold '/'.
+func splitExecution(s string) (workflowID, runID string) {
+	if i := strings.LastIndex(s, "/"); i >= 0 && runIDPattern.MatchString(s[i+1:]) {
+		return s[:i], s[i+1:]
+	}
+	return s, ""
 }
 
 // resolveOutPath treats an existing directory (or a path with a trailing
@@ -188,10 +225,9 @@ func resolveOutPath(out string) string {
 	return out
 }
 
-// writeObservedGraph serializes the observed graph as the single-key JSON
-// envelope the visualizer consumes.
-func writeObservedGraph(path string, og *observe.ObservedGraph) error {
-	data, err := json.MarshalIndent(output{ObservedGraph: og}, "", "  ")
+// write serializes the envelope the visualizer consumes.
+func write(path string, out output) error {
+	data, err := json.MarshalIndent(out, "", "  ")
 	if err != nil {
 		return fmt.Errorf("marshal observed graph: %w", err)
 	}

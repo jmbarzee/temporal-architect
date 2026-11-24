@@ -199,7 +199,7 @@ export type LabelKind =
 
 /** execution Kind / Outcome constants in execution/execution.go. */
 export type EventKind = "reach" | "start" | "end" | "arrive" | "occur";
-export type EventOutcome = "failed" | "timedOut" | "cancelled";
+export type EventOutcome = "failed" | "timedOut" | "cancelled" | "terminated";
 
 // ── Leaf aliases (generated shape already matches the ergonomic shape) ───────
 

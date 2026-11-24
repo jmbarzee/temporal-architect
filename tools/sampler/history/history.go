@@ -129,6 +129,13 @@ func LoadFile(path, workflowID, runID string) (History, error) {
 //     signalSend, nexusCall, bucketed by event time.
 //  5. Finalize: coarsen + sort for byte-identical output.
 func Build(histories []History, opts Options) *observe.ObservedGraph {
+	b := fold(histories, opts)
+	observe.Finalize(b.og)
+	return b.og
+}
+
+// fold folds the histories into the builder's graph, all but its finalizing.
+func fold(histories []History, opts Options) *builder {
 	sorted := make([]History, len(histories))
 	copy(sorted, histories)
 	sort.Slice(sorted, func(i, j int) bool {
@@ -150,6 +157,9 @@ func Build(histories []History, opts Options) *observe.ObservedGraph {
 		places:    map[[2]string]placement{},
 		families:  map[string]*family{},
 		unreached: map[runKey][]Unreached{},
+		histories: sorted,
+		runs:      map[runKey]string{},
+		dispatch:  map[eventAt]edgeKey{},
 	}
 	b.og.Window = observe.Window{Since: opts.Window.Since, Until: opts.Window.Until, Buckets: win.n}
 	if opts.Design != nil {
@@ -165,9 +175,7 @@ func Build(histories []History, opts Options) *observe.ObservedGraph {
 		b.processHistory(h)
 	}
 	b.reportFamilyMembers()
-
-	observe.Finalize(b.og)
-	return b.og
+	return b
 }
 
 // ---------------------------------------------------------------------------
@@ -221,6 +229,17 @@ type builder struct {
 	families map[string]*family      // design family node ID → its observed members
 
 	unreached map[runKey][]Unreached // calling run → the runs it names that were not read
+
+	histories []History           // in fold order
+	runs      map[runKey]string   // each run → its workflow's node
+	dispatch  map[eventAt]edgeKey // each dispatching event → the edge it counts on
+	at        eventAt             // the event being folded
+}
+
+// eventAt is a history event: its run and its ID.
+type eventAt struct {
+	run runKey
+	id  int64
 }
 
 // family is a design family's label and the observed names that fit it.
@@ -342,8 +361,11 @@ func (b *builder) processHistory(h History) {
 
 	b.ensureWorkerAndNamespace(root.namespace, root.taskQueue)
 	rootNodeID := b.ensureHosted(graph.KindWorkflow, root.workflowType, root.namespace, root.taskQueue)
+	run := runKey{h.WorkflowID, h.RunID}
+	b.runs[run] = rootNodeID
 
 	for _, e := range h.Events {
+		b.at = eventAt{run, e.GetEventId()}
 		switch e.EventType {
 		case enumspb.EVENT_TYPE_ACTIVITY_TASK_SCHEDULED:
 			b.handleActivityScheduled(e, rootNodeID, root)
@@ -836,4 +858,5 @@ func (b *builder) addDispatch(from, to, kind string, routing graph.Routing, t ti
 		})
 	}
 	b.og.Edges[i].Buckets[b.win.index(t)]++
+	b.dispatch[b.at] = k
 }

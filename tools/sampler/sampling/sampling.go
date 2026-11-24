@@ -109,6 +109,44 @@ func Sample(ctx context.Context, c client.Client, opts Options) ([]history.Histo
 			}
 		}
 	}
+	return transitive(ctx, c, opts, out, fetched, held)
+}
+
+// Run fetches one execution's histories: the run of workflowID and runID, or
+// with runID empty the workflow's current run and every run of its
+// continue-as-new chain; then the runs they name, as Sample's transitive pass
+// does, with the references it did not reach.
+func Run(ctx context.Context, c client.Client, opts Options, workflowID, runID string) ([]history.History, []history.Unreached, error) {
+	fetched := map[string]bool{}
+	fetch := func(id string) ([]*historypb.HistoryEvent, error) { return fetchHistory(ctx, c, workflowID, id) }
+	var runs []run
+	if runID != "" {
+		events, err := fetch(runID)
+		if err != nil {
+			return nil, nil, fmt.Errorf("fetch history %s/%s: %w", workflowID, runID, err)
+		}
+		fetched[runID] = true
+		runs = []run{{runID, events}}
+	} else {
+		d, err := c.DescribeWorkflowExecution(ctx, workflowID, "")
+		if err != nil {
+			return nil, nil, fmt.Errorf("describe %s: %w", workflowID, err)
+		}
+		current := d.GetWorkflowExecutionInfo().GetExecution().GetRunId()
+		if runs, err = fetchChain(candidate{workflowID: workflowID, runID: current}, fetched, false, fetch); err != nil {
+			return nil, nil, fmt.Errorf("fetch history %s/%s: %w", workflowID, current, err)
+		}
+	}
+	var out []history.History
+	for _, r := range runs {
+		out = append(out, history.History{WorkflowID: workflowID, RunID: r.runID, Namespace: opts.Namespace, Events: r.events})
+	}
+	return transitive(ctx, c, opts, out, fetched, map[typeKey]int{})
+}
+
+// transitive appends to out the runs fetchTransitive finds from it, in the
+// namespace each names, unless opts turns the pass off.
+func transitive(ctx context.Context, c client.Client, opts Options, out []history.History, fetched map[string]bool, held map[typeKey]int) ([]history.History, []history.Unreached, error) {
 	if opts.TransitivePerType <= 0 {
 		return out, nil, nil
 	}

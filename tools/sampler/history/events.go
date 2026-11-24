@@ -58,14 +58,19 @@ type Event struct {
 	// that resolves an earlier one (an activity's completion) leaves it empty
 	// when the history event does not carry it; resolve it through Opener.
 	Name string
-	// Target is the counterpart: a child or external workflow's ID, a nexus
-	// endpoint, or the next run's ID on continue-as-new.
-	Target string
+	// Target is the counterpart: a child or external workflow's ID, a signal
+	// sender's, a nexus endpoint, or the next run's ID on continue-as-new.
+	// TargetRun is a started child's run ID, or a signal sender's.
+	Target    string
+	TargetRun string
 	// Opener is the ID of the event that opened the thing this step advances
 	// (the scheduled, initiated, or started event), zero for an opener itself.
 	Opener  int64
 	Attempt int32  // the attempt a started step belongs to
 	Failure string // the failure message, cause, or termination reason
+	// Detached marks a child initiated to outlive its parent (ParentClosePolicy ABANDON).
+	Detached bool
+	Duration time.Duration // how long a started timer waits
 }
 
 // Decode lists a run's execution events in history order. History events the
@@ -123,7 +128,8 @@ func decode(e *historypb.HistoryEvent) (Event, bool) {
 		return Event{Subject: SubjectActivity, Phase: PhaseCanceled, Opener: e.GetActivityTaskCanceledEventAttributes().GetScheduledEventId()}, true
 
 	case enumspb.EVENT_TYPE_TIMER_STARTED:
-		return Event{Subject: SubjectTimer, Phase: PhaseStarted, Name: e.GetTimerStartedEventAttributes().GetTimerId()}, true
+		a := e.GetTimerStartedEventAttributes()
+		return Event{Subject: SubjectTimer, Phase: PhaseStarted, Name: a.GetTimerId(), Duration: a.GetStartToFireTimeout().AsDuration()}, true
 	case enumspb.EVENT_TYPE_TIMER_FIRED:
 		a := e.GetTimerFiredEventAttributes()
 		return Event{Subject: SubjectTimer, Phase: PhaseFired, Name: a.GetTimerId(), Opener: a.GetStartedEventId()}, true
@@ -135,7 +141,9 @@ func decode(e *historypb.HistoryEvent) (Event, bool) {
 		return Event{Subject: SubjectMarker, Phase: PhaseRecorded, Name: e.GetMarkerRecordedEventAttributes().GetMarkerName()}, true
 
 	case enumspb.EVENT_TYPE_WORKFLOW_EXECUTION_SIGNALED:
-		return Event{Subject: SubjectSignal, Phase: PhaseReceived, Name: e.GetWorkflowExecutionSignaledEventAttributes().GetSignalName()}, true
+		a := e.GetWorkflowExecutionSignaledEventAttributes()
+		sender := a.GetExternalWorkflowExecution()
+		return Event{Subject: SubjectSignal, Phase: PhaseReceived, Name: a.GetSignalName(), Target: sender.GetWorkflowId(), TargetRun: sender.GetRunId()}, true
 
 	case enumspb.EVENT_TYPE_WORKFLOW_EXECUTION_UPDATE_ACCEPTED:
 		return Event{Subject: SubjectUpdate, Phase: PhaseAccepted, Name: e.GetWorkflowExecutionUpdateAcceptedEventAttributes().GetAcceptedRequest().GetInput().GetName()}, true
@@ -148,13 +156,14 @@ func decode(e *historypb.HistoryEvent) (Event, bool) {
 
 	case enumspb.EVENT_TYPE_START_CHILD_WORKFLOW_EXECUTION_INITIATED:
 		a := e.GetStartChildWorkflowExecutionInitiatedEventAttributes()
-		return Event{Subject: SubjectChild, Phase: PhaseInitiated, Name: a.GetWorkflowType().GetName(), Target: a.GetWorkflowId()}, true
+		return Event{Subject: SubjectChild, Phase: PhaseInitiated, Name: a.GetWorkflowType().GetName(), Target: a.GetWorkflowId(),
+			Detached: a.GetParentClosePolicy() == enumspb.PARENT_CLOSE_POLICY_ABANDON}, true
 	case enumspb.EVENT_TYPE_START_CHILD_WORKFLOW_EXECUTION_FAILED:
 		a := e.GetStartChildWorkflowExecutionFailedEventAttributes()
 		return Event{Subject: SubjectChild, Phase: PhaseFailed, Name: a.GetWorkflowType().GetName(), Target: a.GetWorkflowId(), Opener: a.GetInitiatedEventId(), Failure: a.GetCause().String()}, true
 	case enumspb.EVENT_TYPE_CHILD_WORKFLOW_EXECUTION_STARTED:
 		a := e.GetChildWorkflowExecutionStartedEventAttributes()
-		return Event{Subject: SubjectChild, Phase: PhaseStarted, Name: a.GetWorkflowType().GetName(), Target: a.GetWorkflowExecution().GetWorkflowId(), Opener: a.GetInitiatedEventId()}, true
+		return Event{Subject: SubjectChild, Phase: PhaseStarted, Name: a.GetWorkflowType().GetName(), Target: a.GetWorkflowExecution().GetWorkflowId(), TargetRun: a.GetWorkflowExecution().GetRunId(), Opener: a.GetInitiatedEventId()}, true
 	case enumspb.EVENT_TYPE_CHILD_WORKFLOW_EXECUTION_COMPLETED:
 		a := e.GetChildWorkflowExecutionCompletedEventAttributes()
 		return Event{Subject: SubjectChild, Phase: PhaseCompleted, Name: a.GetWorkflowType().GetName(), Target: a.GetWorkflowExecution().GetWorkflowId(), Opener: a.GetInitiatedEventId()}, true

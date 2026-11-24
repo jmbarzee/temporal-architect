@@ -7,6 +7,8 @@ import type { TWFFile } from '../types/ast'
 import type { ParserGraph } from '../types/parser-graph'
 import type { Decomposition } from '../types/decomposition'
 import { normalizePayload } from '../types/payload'
+import { fromExecution } from '../sequence/fromExecution'
+import type { Model } from '../sequence/model'
 
 // The host-agnostic shell that wraps the visualizer's render core. Every host
 // (the standalone dev app, the VS Code webview, a future SSE serve host) shares
@@ -57,6 +59,8 @@ export interface RenderCoreProps {
   ast: TWFFile
   parserGraph?: ParserGraph
   decomposition?: Decomposition
+  /** The payload's execution, as the Sequence view draws it, titled by its first run's workflow ID. */
+  execution?: Model
   onOpenFile?: (file: string) => void
   onRefocus?: () => void
   onRequestDecomposition?: (params: DecompositionParams) => void
@@ -100,6 +104,7 @@ export function VisualizerHost({
   const [ast, setAst] = React.useState<TWFFile | null>(null)
   const [parserGraph, setParserGraph] = React.useState<ParserGraph | undefined>(undefined)
   const [decomposition, setDecomposition] = React.useState<Decomposition | undefined>(undefined)
+  const [execution, setExecution] = React.useState<Model | undefined>(undefined)
   const [error, setError] = React.useState<string | null>(null)
   const [showStyleGuide, setShowStyleGuide] = React.useState(false)
   // Skip AST messages that are structurally identical to the previous one so
@@ -130,6 +135,8 @@ export function VisualizerHost({
           setAst(norm.ast)
           setParserGraph(norm.parserGraph)
           setDecomposition(norm.decomposition)
+          const run = norm.execution
+          setExecution(run && norm.parserGraph && fromExecution(run, norm.parserGraph, { title: run.lanes[0]?.workflowId ?? run.lanes[0]?.id ?? '' }))
           setError(null)
         } else {
           setError('Unrecognized payload shape')
@@ -140,6 +147,7 @@ export function VisualizerHost({
         setAst(null)
         setParserGraph(undefined)
         setDecomposition(undefined)
+        setExecution(undefined)
       }
     }
 
@@ -168,6 +176,7 @@ export function VisualizerHost({
       ast={ast}
       parserGraph={parserGraph}
       decomposition={decomposition}
+      execution={execution}
       onOpenFile={actions?.openFile}
       onRefocus={actions?.refocus}
       onRequestDecomposition={actions?.requestDecomposition}
