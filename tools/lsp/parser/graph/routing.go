@@ -2,6 +2,7 @@ package graph
 
 import (
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/effective"
 )
 
 // emitDispatchEdges walks every runnable body and emits dispatch edges
@@ -82,9 +83,11 @@ func (g *Graph) walkRunnable(idx *astIndex, callerID string, callerDep workerDep
 	ast.WalkStatements(stmts, func(s ast.Statement) bool {
 		switch n := s.(type) {
 		case *ast.ActivityCall:
-			g.emitActivityCall(idx, callerID, callerDep, n.Activity, n.Options, ast.SiteOf(file, n))
+			opts, _ := effective.Of(n)
+			g.emitActivityCall(idx, callerID, callerDep, n.Activity, opts, ast.SiteOf(file, n))
 		case *ast.WorkflowCall:
-			g.emitWorkflowCall(idx, callerID, callerDep, n.Workflow, n.Options, ast.SiteOf(file, n))
+			opts, _ := effective.Of(n)
+			g.emitWorkflowCall(idx, callerID, callerDep, n.Workflow, opts, ast.SiteOf(file, n))
 		case *ast.NexusCall:
 			g.emitNexusCall(idx, callerID, n.Endpoint, n.Service, n.Operation, ast.SiteOf(file, n))
 		case *ast.SignalSendStmt:
@@ -93,11 +96,12 @@ func (g *Graph) walkRunnable(idx *astIndex, callerID string, callerDep workerDep
 		return true
 	}, ast.WithAsyncTargets(func(target ast.AsyncTarget, parent ast.Statement) bool {
 		site := ast.SiteOf(file, parent)
+		opts, _ := effective.Of(parent)
 		switch t := target.(type) {
 		case *ast.ActivityTarget:
-			g.emitActivityCall(idx, callerID, callerDep, t.Activity, nil, site)
+			g.emitActivityCall(idx, callerID, callerDep, t.Activity, opts, site)
 		case *ast.WorkflowTarget:
-			g.emitWorkflowCall(idx, callerID, callerDep, t.Workflow, nil, site)
+			g.emitWorkflowCall(idx, callerID, callerDep, t.Workflow, opts, site)
 		case *ast.NexusTarget:
 			g.emitNexusCall(idx, callerID, t.Endpoint, t.Service, t.Operation, site)
 		}
@@ -107,7 +111,7 @@ func (g *Graph) walkRunnable(idx *astIndex, callerID string, callerDep workerDep
 
 func (g *Graph) emitActivityCall(
 	idx *astIndex, callerID string, callerDep workerDeployment,
-	ref ast.Ref[*ast.ActivityDef], opts *ast.OptionsBlock, site ast.Site,
+	ref ast.Ref[*ast.ActivityDef], opts effective.Options, site ast.Site,
 ) {
 	if ref.Resolved == nil {
 		g.addUnresolved(Unresolved{
@@ -115,12 +119,12 @@ func (g *Graph) emitActivityCall(
 		})
 		return
 	}
-	g.emitQueuedCall(idx, callerID, callerDep, EdgeActivityCall, KindActivity, idx.defQName(ref.Resolved, ref.Resolved.Name), opts, ref.Resolved.DefaultOptions, site)
+	g.emitQueuedCall(idx, callerID, callerDep, EdgeActivityCall, KindActivity, idx.defQName(ref.Resolved, ref.Resolved.Name), opts, site)
 }
 
 func (g *Graph) emitWorkflowCall(
 	idx *astIndex, callerID string, callerDep workerDeployment,
-	ref ast.Ref[*ast.WorkflowDef], opts *ast.OptionsBlock, site ast.Site,
+	ref ast.Ref[*ast.WorkflowDef], opts effective.Options, site ast.Site,
 ) {
 	if ref.Resolved == nil {
 		g.addUnresolved(Unresolved{
@@ -128,7 +132,7 @@ func (g *Graph) emitWorkflowCall(
 		})
 		return
 	}
-	g.emitQueuedCall(idx, callerID, callerDep, EdgeWorkflowCall, KindWorkflow, idx.defQName(ref.Resolved, ref.Resolved.Name), opts, ref.Resolved.DefaultOptions, site)
+	g.emitQueuedCall(idx, callerID, callerDep, EdgeWorkflowCall, KindWorkflow, idx.defQName(ref.Resolved, ref.Resolved.Name), opts, site)
 }
 
 // emitSignalSend emits the cross-workflow signal-send edge. Unlike a
@@ -175,11 +179,10 @@ func (g *Graph) emitSignalSend(idx *astIndex, callerID string, callerDep workerD
 // emitQueuedCall implements the shared activity/workflow dispatch
 // resolution. A task queue is scoped to its namespace, so a callee
 // deployment matches only within this caller deployment's namespace.
-// Explicit task_queue — on the call site, else in the callee's
-// default_options (defaults), as the validator resolves it: the queue is
-// named, so we match callee deployments whose queue matches it (spec 03
-// § Queue matching). Implicit: the call inherits this caller deployment's
-// queue and matches callee deployments with the same deploy key.
+// Explicit effective task_queue: the queue is named, so we match callee
+// deployments whose queue matches it (spec 03 § Queue matching). Implicit:
+// the call inherits this caller deployment's queue and matches callee
+// deployments with the same deploy key.
 //
 // When no callee deployment matches, no edge is emitted and a
 // DISPATCH_NO_REACHABLE_DEPLOYMENT diagnostic is added so the consumer
@@ -188,11 +191,11 @@ func (g *Graph) emitSignalSend(idx *astIndex, callerID string, callerDep workerD
 // diagnosed against the literal the user wrote.
 func (g *Graph) emitQueuedCall(
 	idx *astIndex, callerID string, callerDep workerDeployment,
-	edgeKind, calleeKind, calleeName string, opts, defaults *ast.OptionsBlock, site ast.Site,
+	edgeKind, calleeKind, calleeName string, opts effective.Options, site ast.Site,
 ) {
-	explicit := taskQueue(opts)
-	if explicit == "" {
-		explicit = taskQueue(defaults)
+	var explicit string
+	if tq := opts["task_queue"]; tq.Written() {
+		explicit = tq.Value
 	}
 	queue, polls := explicit, ast.ParseCallQueue(explicit).Matches
 	if explicit == "" {

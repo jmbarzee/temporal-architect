@@ -406,6 +406,44 @@ namespace ns:
 	}
 }
 
+func TestEmptyTaskQueueRoutesImplicitly(t *testing.T) {
+	tests := []struct{ name, call, defaults string }{
+		{"at the call site", `
+		options:
+			task_queue: ""`, `
+	default_options:
+		task_queue: "other-queue"`},
+		{"in default_options", "", `
+	default_options:
+		task_queue: ""`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := `workflow Caller(x: int) -> (int):
+	activity Target(x) -> y` + tt.call + `
+	return y
+
+activity Target(x: int) -> (int):` + tt.defaults + `
+	return x
+
+worker w:
+	workflow Caller
+	activity Target
+
+namespace ns:
+	worker w
+		options:
+			task_queue: "shared-queue"
+`
+			for _, e := range Validate(mustParseAndResolve(t, input)) {
+				if e.Severity != "warning" {
+					t.Errorf("unexpected error: %v", e)
+				}
+			}
+		})
+	}
+}
+
 func TestImplicitTaskQueueRoutingMismatch(t *testing.T) {
 	input := `workflow Caller(x: int) -> (int):
 	activity Unreachable(x) -> y

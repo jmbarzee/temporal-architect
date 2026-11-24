@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/effective"
 )
 
 const (
@@ -12,11 +13,8 @@ const (
 )
 
 // checkIDPolicies checks workflow ID reuse and conflict policies against the
-// start that carries them. A child start sends the reuse policy only; a client
-// start (a nexus run operation, or a start in a sync nexus operation body)
-// sends both, its own options merged per key over the type's default_options.
-// The checks are body-local, so they run on every declaration, a dropped
-// duplicate's included (see walkAllBodies).
+// start that carries them. The checks are body-local, so they run on every
+// declaration, a dropped duplicate's included (see walkAllBodies).
 func (v *validationCtx) checkIDPolicies(defs []ast.Definition) {
 	for _, def := range defs {
 		switch d := def.(type) {
@@ -24,11 +22,11 @@ func (v *validationCtx) checkIDPolicies(defs []ast.Definition) {
 			v.checkDefaultIDPolicies(d)
 			walkWorkflow(d, false, func(s ast.Statement) {
 				if call, ok := s.(*ast.WorkflowCall); ok {
-					v.checkChildStart(call.Workflow.Resolved, call.Options, call, d.SourceFile)
+					v.checkChildStart(call.Workflow.Resolved, call, d.SourceFile)
 				}
 			}, func(t ast.AsyncTarget, parent ast.Statement) {
 				if wt, ok := t.(*ast.WorkflowTarget); ok {
-					v.checkChildStart(wt.Workflow.Resolved, nil, parent, d.SourceFile)
+					v.checkChildStart(wt.Workflow.Resolved, parent, d.SourceFile)
 				}
 			})
 		case *ast.NexusServiceDef:
@@ -66,14 +64,15 @@ func (v *validationCtx) checkDefaultIDPolicies(wf *ast.WorkflowDef) {
 	v.checkPoliciesNeedScheme(wf, wf.SourceFile, reuse, conflict)
 }
 
-// checkChildStart checks a child start of target with call-site opts, at pos in
-// file. A child start cannot carry a conflict policy, so a type whose starts
-// default to joining or replacing a running instance is not honoured here.
-func (v *validationCtx) checkChildStart(target *ast.WorkflowDef, opts *ast.OptionsBlock, pos ast.Node, file string) {
+// checkChildStart checks s, a child start of target in file. A child start
+// cannot carry a conflict policy, so a type whose starts default to joining or
+// replacing a running instance is not honoured here.
+func (v *validationCtx) checkChildStart(target *ast.WorkflowDef, s ast.Statement, file string) {
 	if target == nil {
 		return
 	}
-	v.checkPoliciesNeedScheme(target, file, optionEntry(opts, reusePolicyKey))
+	opts, _ := effective.Of(s)
+	v.checkPoliciesNeedScheme(target, file, written(opts[reusePolicyKey]))
 	if target.IDScheme == nil {
 		return
 	}
@@ -83,8 +82,8 @@ func (v *validationCtx) checkChildStart(target *ast.WorkflowDef, opts *ast.Optio
 	}
 	v.errs = append(v.errs, &Error{
 		Msg:      fmt.Sprintf("%s's starts default to %s: %s, but this child start cannot carry it and fails on a running %s with the same ID; if that is intended, no change is needed, otherwise signal the running one or start it from a client start", target.Name, conflictPolicyKey, conflict.Value, target.Name),
-		Line:     pos.NodeLine(),
-		Column:   pos.NodeColumn(),
+		Line:     s.NodeLine(),
+		Column:   s.NodeColumn(),
 		Severity: "hint",
 		Kind:     ErrChildStartConflictMismatch,
 		Name:     target.Name,
@@ -92,28 +91,18 @@ func (v *validationCtx) checkChildStart(target *ast.WorkflowDef, opts *ast.Optio
 	})
 }
 
-// checkClientStart checks a start in a sync nexus operation body in file: its
-// own policies merged per key over the target's defaults. A pair made only of
-// defaults is reported once, on the definition.
+// checkClientStart checks a start in a sync nexus operation body in file by
+// its effective policies. A pair made only of defaults is reported once, on
+// the definition.
 func (v *validationCtx) checkClientStart(call *ast.WorkflowCall, file string) {
 	target := call.Workflow.Resolved
 	if target == nil {
 		return
 	}
-	reuse := optionEntry(call.Options, reusePolicyKey)
-	conflict := optionEntry(call.Options, conflictPolicyKey)
+	opts, _ := effective.Of(call)
+	reuse, conflict := written(opts[reusePolicyKey]), written(opts[conflictPolicyKey])
 	v.checkPoliciesNeedScheme(target, file, reuse, conflict)
-	if reuse == nil && conflict == nil {
-		return
-	}
-	effReuse, effConflict := reuse, conflict
-	if effReuse == nil {
-		effReuse = optionEntry(target.DefaultOptions, reusePolicyKey)
-	}
-	if effConflict == nil {
-		effConflict = optionEntry(target.DefaultOptions, conflictPolicyKey)
-	}
-	if !rejectsPair(effReuse, effConflict) {
+	if !rejectsPair(opts[reusePolicyKey].OptionEntry, opts[conflictPolicyKey].OptionEntry) {
 		return
 	}
 	var msg string
@@ -126,9 +115,11 @@ func (v *validationCtx) checkClientStart(call *ast.WorkflowCall, file string) {
 		}
 	case reuse != nil:
 		msg = fmt.Sprintf("this start's %s: REJECT_DUPLICATE meets %s's default %s: TERMINATE_EXISTING", reusePolicyKey, target.Name, conflictPolicyKey)
-	default:
+	case conflict != nil:
 		at = conflict
 		msg = fmt.Sprintf("this start's %s: TERMINATE_EXISTING meets %s's default %s: REJECT_DUPLICATE", conflictPolicyKey, target.Name, reusePolicyKey)
+	default:
+		return
 	}
 	v.errs = append(v.errs, &Error{
 		Msg:    msg + "; Temporal (server 1.27+, default config) rejects the start",
@@ -186,6 +177,14 @@ func (v *validationCtx) checkNexusRunScheme(svc *ast.NexusServiceDef, op *ast.Ne
 // be rejected: Temporal refuses TERMINATE_EXISTING with REJECT_DUPLICATE.
 func rejectsPair(reuse, conflict *ast.OptionEntry) bool {
 	return reuse != nil && conflict != nil && reuse.Value == "REJECT_DUPLICATE" && conflict.Value == "TERMINATE_EXISTING"
+}
+
+// written returns o's entry when the call site wrote it, else nil.
+func written(o effective.Option) *ast.OptionEntry {
+	if o.From != effective.CallSite {
+		return nil
+	}
+	return o.OptionEntry
 }
 
 // optionEntry returns the top-level entry for key in opts, or nil.
