@@ -10,6 +10,7 @@
    (graph viewport/layout, tree scroll/expand) survives tab switches; the
    inactive one is hidden rather than unmounted. */
 .view-pane {
+  position: relative;
   flex: 1;
   min-height: 0;
   display: flex;

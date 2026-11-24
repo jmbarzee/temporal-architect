@@ -15,7 +15,7 @@ function sdkNames(n: ParserNode): string[] {
   return (n.sdks ?? []).map(s => s.sdk)
 }
 
-function edgeKey(from: string, to: string, kind: string): string {
+export function edgeKey(from: string, to: string, kind: string): string {
   return `${from}\u0000${to}\u0000${kind}`
 }
 
