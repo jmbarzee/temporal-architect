@@ -1,0 +1,7 @@
+workflow Listen(id):
+	signal Event(event):
+		event_seen = true
+	for:  # want
+		await signal Event -> event
+		continue
+		close continue_as_new(id)
