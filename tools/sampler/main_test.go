@@ -1,9 +1,14 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/observe"
 )
 
 func TestResolveOutPath(t *testing.T) {
@@ -87,5 +92,39 @@ func TestParseFlags_TransitivePerType(t *testing.T) {
 		if got := parseFlags(tc.args).transitivePerType; got != tc.want {
 			t.Errorf("parseFlags(%v).transitivePerType = %d, want %d", tc.args, got, tc.want)
 		}
+	}
+}
+
+func TestSplitExecution(t *testing.T) {
+	const run = "01a20b0c-db2e-7d81-ba7a-a4125aa2c874"
+	for _, tc := range []struct{ in, workflowID, runID string }{
+		{"order-1", "order-1", ""},
+		{"order-1/" + run, "order-1", run},
+		{"orders/1", "orders/1", ""},
+		{"orders/1/" + run, "orders/1", run},
+	} {
+		if w, r := splitExecution(tc.in); w != tc.workflowID || r != tc.runID {
+			t.Errorf("splitExecution(%q) = %q, %q, want %q, %q", tc.in, w, r, tc.workflowID, tc.runID)
+		}
+	}
+}
+
+// TestWrite_WithoutExecution holds the envelope to its shape before
+// --execution: without one, the file has the observed graph alone.
+func TestWrite_WithoutExecution(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "observed-graph.json")
+	og := observe.New()
+	if err := write(path, output{ObservedGraph: og}); err != nil {
+		t.Fatal(err)
+	}
+	got, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want, _ := json.MarshalIndent(struct {
+		ObservedGraph *observe.ObservedGraph `json:"observedGraph"`
+	}{og}, "", "  ")
+	if !bytes.Equal(got, want) {
+		t.Errorf("wrote\n%s\nwant\n%s", got, want)
 	}
 }

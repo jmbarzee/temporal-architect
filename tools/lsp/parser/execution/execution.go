@@ -51,7 +51,8 @@ type Lane struct {
 	// EndedBy is the event that ends it: a run's close, a host's release or
 	// loss; absent, it lasts to the end.
 	EndedBy string `json:"endedBy,omitempty"`
-	// Follows is the run this one continued as new from.
+	// Follows is the run this one continued as new from; it starts where that
+	// run ends.
 	Follows string `json:"follows,omitempty"`
 	// WorkflowID and RunID are recorded only.
 	WorkflowID string `json:"workflowId,omitempty"`
@@ -73,9 +74,10 @@ const (
 type Outcome string
 
 const (
-	Failed    Outcome = "failed"
-	TimedOut  Outcome = "timedOut"
-	Cancelled Outcome = "cancelled"
+	Failed     Outcome = "failed"
+	TimedOut   Outcome = "timedOut"
+	Cancelled  Outcome = "cancelled"
+	Terminated Outcome = "terminated"
 )
 
 // Edge is a graph edge by the key observe matches on.

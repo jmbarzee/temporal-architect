@@ -1,0 +1,53 @@
+# An order charges until a charge holds, ships through a child it signals, and
+# continues as new once. Which Notify runs, and which Pack, history cannot tell.
+workflow Order(n):
+	for:
+		activity Charge(n) -> charged
+		if (charged):
+			break
+		await timer(1s)
+	if (n == 0):
+		activity Notify(n)
+		activity Audit(n)
+	else:
+		activity Notify(n)
+	promise ship <- workflow Ship(n)
+	signal ship.Go()
+	await ship
+	if (n == 0):
+		close continue_as_new(n + 1)
+	close complete
+
+workflow Ship(n):
+	signal Go():
+		pass()
+	await signal Go
+	if (fragile):
+		activity Pack(n, "bubble")
+	else:
+		activity Pack(n, "box")
+
+activity Charge(n):
+	pass()
+
+activity Notify(n):
+	pass()
+
+activity Audit(n):
+	pass()
+
+activity Pack(n, wrap):
+	pass()
+
+worker orders:
+	workflow Order
+	workflow Ship
+	activity Charge
+	activity Notify
+	activity Audit
+	activity Pack
+
+namespace default:
+	worker orders
+		options:
+			task_queue: "orders"

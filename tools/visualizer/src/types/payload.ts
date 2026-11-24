@@ -5,10 +5,11 @@
 //
 //  1. Wrapped envelope `{ ast, parserGraph }` — the host-preferred shape;
 //     `twf parse` AST plus the resolved deployment graph.
-//  2. Observed-graph envelope `{ observedGraph }` — the sampler's output: the
-//     deployment graph reconstructed from live history plus a per-edge
-//     occurrence time series. Projected to a ParserGraph (buckets dropped for
-//     rendering); there is no AST, so history (Graph-only) mode applies.
+//  2. Observed-graph envelope `{ observedGraph, execution? }` — the sampler's
+//     output: the deployment graph reconstructed from live history plus a
+//     per-edge occurrence time series, and with `--execution` one execution.
+//     Projected to a ParserGraph (buckets dropped for rendering); there is no
+//     AST, so history (Graph-only) mode applies.
 //  3. Graph envelope `{ summary, diagnostics, graph }` — the output of
 //     `twf graph --json`. There is no AST, so we synthesize an empty one;
 //     WorkflowCanvas renders in history (Graph-only) mode when `definitions`
@@ -64,11 +65,11 @@ export function isGraphEnvelope(d: unknown): d is { graph: ParserGraph } {
 }
 
 /**
- * Observed-graph envelope from the sampler: `{ observedGraph }`. The
+ * Observed-graph envelope from the sampler: `{ observedGraph, execution? }`. The
  * observedGraph is a superset of a ParserGraph (extra `window` field and a
  * `buckets` series on each edge); there is no AST.
  */
-export function isObservedGraphEnvelope(d: unknown): d is { observedGraph: ObservedGraph } {
+export function isObservedGraphEnvelope(d: unknown): d is { observedGraph: ObservedGraph; execution?: Execution } {
   if (d == null || typeof d !== 'object') return false
   const obj = d as Record<string, unknown>
   return 'observedGraph' in obj && obj.observedGraph != null && !('ast' in obj)
@@ -104,7 +105,7 @@ export function normalizePayload(d: unknown): NormalizedPayload | null {
     return { ast: d.ast, parserGraph: d.parserGraph, decomposition: d.decomposition, execution: d.execution }
   }
   if (isObservedGraphEnvelope(d)) {
-    return { ast: { definitions: [] }, parserGraph: observedToParserGraph(d.observedGraph) }
+    return { ast: { definitions: [] }, parserGraph: observedToParserGraph(d.observedGraph), execution: d.execution }
   }
   if (isGraphEnvelope(d)) {
     return { ast: { definitions: [] }, parserGraph: d.graph }

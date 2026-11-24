@@ -4,7 +4,8 @@
 // which workflows' id_schemes a workflow ID fits, so a signal's target gets a
 // type, which parameterized namespace or worker family a concrete name fits, and
 // where a Nexus endpoint points. The package index is read from the design's own
-// graph; a package is never guessed from a name.
+// graph; a package is never guessed from a name. For an execution, it names each
+// statement and holds each workflow's control flow, which a run's events join to.
 package design
 
 import (
@@ -13,7 +14,9 @@ import (
 	"strings"
 
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/ast"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/flow"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/graph"
+	"github.com/jmbarzee/temporal-architect/tools/lsp/parser/stmtid"
 	"github.com/jmbarzee/temporal-architect/tools/lsp/pipeline"
 )
 
@@ -21,6 +24,12 @@ import (
 type Design struct {
 	// Graph is the design's resolved deployment graph, as `twf graph` emits it.
 	Graph *graph.Graph
+
+	// Statements names each statement of the design's definitions.
+	Statements *stmtid.Index
+
+	// flows holds each workflow's control flow by its definition key.
+	flows map[string]*flow.Graph
 
 	// defs maps a definition key (kind and bare name) to each package that
 	// declares it, and to the deployments that host it there; an unhosted
@@ -81,10 +90,12 @@ func Load(path string) (*Design, error) {
 // id_schemes of the file it came from.
 func index(g *graph.Graph, file *ast.File) *Design {
 	d := &Design{
-		Graph:     g,
-		defs:      map[string]map[string][]deployment{},
-		endpoints: map[string]deployment{},
-		workers:   map[string][]graph.Node{},
+		Graph:      g,
+		Statements: stmtid.Build(file),
+		flows:      map[string]*flow.Graph{},
+		defs:       map[string]map[string][]deployment{},
+		endpoints:  map[string]deployment{},
+		workers:    map[string][]graph.Node{},
 	}
 	byID := make(map[string]graph.Node, len(g.Nodes))
 	for _, n := range g.Nodes {
@@ -120,16 +131,28 @@ func index(g *graph.Graph, file *ast.File) *Design {
 	seen := map[[2]string]bool{}
 	for _, def := range file.Definitions {
 		wf, ok := def.(*ast.WorkflowDef)
-		if !ok || wf.IDScheme == nil {
+		if !ok {
 			continue
 		}
 		pkg := ast.PackageIDOf(wf, file)
+		if key := graph.DefKey(graph.KindWorkflow, ast.QualifiedName(pkg, wf.Name)); d.flows[key] == nil {
+			d.flows[key] = flow.Of(wf)
+		}
+		if wf.IDScheme == nil {
+			continue
+		}
 		if k := [2]string{pkg, wf.Name}; !seen[k] { // the first declaration is the kept one
 			seen[k] = true
 			d.schemes = append(d.schemes, scheme{pkg, wf.Name, wf.IDScheme.Template})
 		}
 	}
 	return d
+}
+
+// Flow returns the control flow of the design's workflow of that definition
+// key, or nil when the design has none.
+func (d *Design) Flow(key string) *flow.Graph {
+	return d.flows[key]
 }
 
 // Package returns the package ID of the design's definition that a sampled

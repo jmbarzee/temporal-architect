@@ -1,0 +1,796 @@
+{
+  "observedGraph": {
+    "window": {
+      "buckets": 1
+    },
+    "summary": {
+      "nodes": 9,
+      "edges": 15,
+      "coarsenedEdges": 0,
+      "unresolved": 1,
+      "diagnostics": 4
+    },
+    "nodes": [
+      {
+        "id": "activity:Audit/worker:orders/namespace:default",
+        "definition": "activity:Audit",
+        "name": "Audit"
+      },
+      {
+        "id": "activity:Charge/worker:orders/namespace:default",
+        "definition": "activity:Charge",
+        "name": "Charge"
+      },
+      {
+        "id": "activity:Log/worker:orders/namespace:default",
+        "definition": "activity:Log",
+        "name": "Log"
+      },
+      {
+        "id": "activity:Notify/worker:orders/namespace:default",
+        "definition": "activity:Notify",
+        "name": "Notify"
+      },
+      {
+        "id": "activity:Pack/worker:orders/namespace:default",
+        "definition": "activity:Pack",
+        "name": "Pack"
+      },
+      {
+        "id": "namespace:default",
+        "definition": "namespace:default",
+        "name": "default"
+      },
+      {
+        "id": "worker:orders/namespace:default",
+        "definition": "worker:orders",
+        "name": "orders",
+        "queue": "orders"
+      },
+      {
+        "id": "workflow:Order/worker:orders/namespace:default",
+        "definition": "workflow:Order",
+        "name": "Order"
+      },
+      {
+        "id": "workflow:Ship/worker:orders/namespace:default",
+        "definition": "workflow:Ship",
+        "name": "Ship"
+      }
+    ],
+    "edges": [
+      {
+        "from": "activity:Audit/worker:orders/namespace:default",
+        "to": "worker:orders/namespace:default",
+        "kind": "containment",
+        "buckets": [
+          0
+        ]
+      },
+      {
+        "from": "activity:Charge/worker:orders/namespace:default",
+        "to": "worker:orders/namespace:default",
+        "kind": "containment",
+        "buckets": [
+          0
+        ]
+      },
+      {
+        "from": "activity:Log/worker:orders/namespace:default",
+        "to": "worker:orders/namespace:default",
+        "kind": "containment",
+        "buckets": [
+          0
+        ]
+      },
+      {
+        "from": "activity:Notify/worker:orders/namespace:default",
+        "to": "worker:orders/namespace:default",
+        "kind": "containment",
+        "buckets": [
+          0
+        ]
+      },
+      {
+        "from": "activity:Pack/worker:orders/namespace:default",
+        "to": "worker:orders/namespace:default",
+        "kind": "containment",
+        "buckets": [
+          0
+        ]
+      },
+      {
+        "from": "worker:orders/namespace:default",
+        "to": "namespace:default",
+        "kind": "containment",
+        "buckets": [
+          0
+        ]
+      },
+      {
+        "from": "workflow:Order/worker:orders/namespace:default",
+        "to": "activity:Audit/worker:orders/namespace:default",
+        "kind": "activityCall",
+        "routing": {},
+        "buckets": [
+          1
+        ]
+      },
+      {
+        "from": "workflow:Order/worker:orders/namespace:default",
+        "to": "activity:Charge/worker:orders/namespace:default",
+        "kind": "activityCall",
+        "routing": {},
+        "buckets": [
+          4
+        ]
+      },
+      {
+        "from": "workflow:Order/worker:orders/namespace:default",
+        "to": "activity:Notify/worker:orders/namespace:default",
+        "kind": "activityCall",
+        "routing": {},
+        "buckets": [
+          2
+        ]
+      },
+      {
+        "from": "workflow:Order/worker:orders/namespace:default",
+        "to": "worker:orders/namespace:default",
+        "kind": "containment",
+        "buckets": [
+          0
+        ]
+      },
+      {
+        "from": "workflow:Order/worker:orders/namespace:default",
+        "to": "workflow:Ship/worker:orders/namespace:default",
+        "kind": "signalSend",
+        "routing": {},
+        "buckets": [
+          2
+        ]
+      },
+      {
+        "from": "workflow:Order/worker:orders/namespace:default",
+        "to": "workflow:Ship/worker:orders/namespace:default",
+        "kind": "workflowCall",
+        "routing": {},
+        "buckets": [
+          2
+        ]
+      },
+      {
+        "from": "workflow:Ship/worker:orders/namespace:default",
+        "to": "activity:Log/worker:orders/namespace:default",
+        "kind": "activityCall",
+        "routing": {},
+        "buckets": [
+          2
+        ]
+      },
+      {
+        "from": "workflow:Ship/worker:orders/namespace:default",
+        "to": "activity:Pack/worker:orders/namespace:default",
+        "kind": "activityCall",
+        "routing": {},
+        "buckets": [
+          2
+        ]
+      },
+      {
+        "from": "workflow:Ship/worker:orders/namespace:default",
+        "to": "worker:orders/namespace:default",
+        "kind": "containment",
+        "buckets": [
+          0
+        ]
+      }
+    ],
+    "coarsenedEdges": [],
+    "unresolved": [
+      {
+        "from": "activity:Log/worker:orders/namespace:default",
+        "name": "Log",
+        "kind": "activity"
+      }
+    ],
+    "diagnostics": [
+      {
+        "severity": "warning",
+        "code": "EXECUTION_STMT_AMBIGUOUS",
+        "message": "activity Pack(), event 9 of run ship-0/01a20b0c-e333-7a0e-b445-0190d7d4fb18, fits workflow:Ship › if (fragile) › activity Pack(n, \"bubble\") and workflow:Ship › if (fragile) › else › activity Pack(n, \"box\")",
+        "from": "workflow:Ship/worker:orders/namespace:default"
+      },
+      {
+        "severity": "warning",
+        "code": "EXECUTION_STMT_AMBIGUOUS",
+        "message": "activity Pack(), event 9 of run ship-1/01a20b0c-eb30-74a3-b0b1-c1a0417452fd, fits workflow:Ship › if (fragile) › activity Pack(n, \"bubble\") and workflow:Ship › if (fragile) › else › activity Pack(n, \"box\")",
+        "from": "workflow:Ship/worker:orders/namespace:default"
+      },
+      {
+        "severity": "warning",
+        "code": "EXECUTION_STMT_UNMATCHED",
+        "message": "activity Log(), event 15 of run ship-0/01a20b0c-e333-7a0e-b445-0190d7d4fb18, fits no statement of workflow:Ship the run could reach",
+        "from": "workflow:Ship/worker:orders/namespace:default"
+      },
+      {
+        "severity": "warning",
+        "code": "EXECUTION_STMT_UNMATCHED",
+        "message": "activity Log(), event 15 of run ship-1/01a20b0c-eb30-74a3-b0b1-c1a0417452fd, fits no statement of workflow:Ship the run could reach",
+        "from": "workflow:Ship/worker:orders/namespace:default"
+      }
+    ]
+  },
+  "execution": {
+    "lanes": [
+      {
+        "id": "workflow:Order @1",
+        "node": "workflow:Order/worker:orders/namespace:default",
+        "endedBy": "workflow:Order @1/19",
+        "workflowId": "order-1",
+        "runId": "01a20b0c-db2e-7d81-ba7a-a4125aa2c874"
+      },
+      {
+        "id": "workflow:Ship @1",
+        "node": "workflow:Ship/worker:orders/namespace:default",
+        "startedBy": "workflow:Order @1/15",
+        "endedBy": "workflow:Ship @1/9",
+        "workflowId": "ship-0",
+        "runId": "01a20b0c-e333-7a0e-b445-0190d7d4fb18"
+      },
+      {
+        "id": "workflow:Order @2",
+        "node": "workflow:Order/worker:orders/namespace:default",
+        "endedBy": "workflow:Order @2/16",
+        "follows": "workflow:Order @1",
+        "workflowId": "order-1",
+        "runId": "f10d01dd-b5a1-4f08-b5fb-5236e508f494"
+      },
+      {
+        "id": "workflow:Ship @2",
+        "node": "workflow:Ship/worker:orders/namespace:default",
+        "startedBy": "workflow:Order @2/12",
+        "endedBy": "workflow:Ship @2/9",
+        "workflowId": "ship-1",
+        "runId": "01a20b0c-eb30-74a3-b0b1-c1a0417452fd"
+      }
+    ],
+    "events": [
+      {
+        "id": "workflow:Order @1/1",
+        "lane": "workflow:Order @1",
+        "kind": "reach",
+        "stmt": "workflow:Order › for › activity Charge(n) -\u003e charged",
+        "visit": [
+          1
+        ],
+        "edge": {
+          "from": "workflow:Order/worker:orders/namespace:default",
+          "to": "activity:Charge/worker:orders/namespace:default",
+          "kind": "activityCall"
+        },
+        "time": "2026-11-24T00:55:21.657364Z"
+      },
+      {
+        "id": "workflow:Order @1/2",
+        "lane": "workflow:Order @1",
+        "kind": "start",
+        "stmt": "workflow:Order › for › activity Charge(n) -\u003e charged",
+        "visit": [
+          1
+        ],
+        "attempt": 1,
+        "time": "2026-11-24T00:55:21.658985Z"
+      },
+      {
+        "id": "workflow:Order @1/3",
+        "lane": "workflow:Order @1",
+        "kind": "end",
+        "stmt": "workflow:Order › for › activity Charge(n) -\u003e charged",
+        "visit": [
+          1
+        ],
+        "attempt": 1,
+        "outcome": "failed",
+        "time": "2026-11-24T00:55:21.661934Z"
+      },
+      {
+        "id": "workflow:Order @1/4",
+        "lane": "workflow:Order @1",
+        "kind": "reach",
+        "stmt": "workflow:Order › for › await timer(1s)",
+        "visit": [
+          1
+        ],
+        "time": "2026-11-24T00:55:21.667168Z"
+      },
+      {
+        "id": "workflow:Order @1/5",
+        "lane": "workflow:Order @1",
+        "kind": "end",
+        "stmt": "workflow:Order › for › await timer(1s)",
+        "visit": [
+          1
+        ],
+        "time": "2026-11-24T00:55:22.669955Z"
+      },
+      {
+        "id": "workflow:Order @1/6",
+        "lane": "workflow:Order @1",
+        "kind": "reach",
+        "stmt": "workflow:Order › for › activity Charge(n) -\u003e charged",
+        "visit": [
+          2
+        ],
+        "edge": {
+          "from": "workflow:Order/worker:orders/namespace:default",
+          "to": "activity:Charge/worker:orders/namespace:default",
+          "kind": "activityCall"
+        },
+        "time": "2026-11-24T00:55:22.678699Z"
+      },
+      {
+        "id": "workflow:Order @1/7",
+        "lane": "workflow:Order @1",
+        "kind": "start",
+        "stmt": "workflow:Order › for › activity Charge(n) -\u003e charged",
+        "visit": [
+          2
+        ],
+        "attempt": 1,
+        "time": "2026-11-24T00:55:22.678744Z"
+      },
+      {
+        "id": "workflow:Order @1/8",
+        "lane": "workflow:Order @1",
+        "kind": "end",
+        "stmt": "workflow:Order › for › activity Charge(n) -\u003e charged",
+        "visit": [
+          2
+        ],
+        "attempt": 1,
+        "time": "2026-11-24T00:55:22.680981Z"
+      },
+      {
+        "id": "workflow:Order @1/9",
+        "lane": "workflow:Order @1",
+        "kind": "reach",
+        "stmt": "workflow:Order › if (n == 0) @1 › activity Notify(n)",
+        "edge": {
+          "from": "workflow:Order/worker:orders/namespace:default",
+          "to": "activity:Notify/worker:orders/namespace:default",
+          "kind": "activityCall"
+        },
+        "time": "2026-11-24T00:55:22.684722Z"
+      },
+      {
+        "id": "workflow:Order @1/10",
+        "lane": "workflow:Order @1",
+        "kind": "start",
+        "stmt": "workflow:Order › if (n == 0) @1 › activity Notify(n)",
+        "attempt": 2,
+        "time": "2026-11-24T00:55:23.690382Z"
+      },
+      {
+        "id": "workflow:Order @1/11",
+        "lane": "workflow:Order @1",
+        "kind": "end",
+        "stmt": "workflow:Order › if (n == 0) @1 › activity Notify(n)",
+        "attempt": 2,
+        "time": "2026-11-24T00:55:23.693033Z"
+      },
+      {
+        "id": "workflow:Order @1/12",
+        "lane": "workflow:Order @1",
+        "kind": "reach",
+        "stmt": "workflow:Order › if (n == 0) @1 › activity Audit(n)",
+        "edge": {
+          "from": "workflow:Order/worker:orders/namespace:default",
+          "to": "activity:Audit/worker:orders/namespace:default",
+          "kind": "activityCall"
+        },
+        "time": "2026-11-24T00:55:23.697497Z"
+      },
+      {
+        "id": "workflow:Order @1/13",
+        "lane": "workflow:Order @1",
+        "kind": "start",
+        "stmt": "workflow:Order › if (n == 0) @1 › activity Audit(n)",
+        "attempt": 1,
+        "time": "2026-11-24T00:55:23.697497Z"
+      },
+      {
+        "id": "workflow:Order @1/14",
+        "lane": "workflow:Order @1",
+        "kind": "end",
+        "stmt": "workflow:Order › if (n == 0) @1 › activity Audit(n)",
+        "attempt": 1,
+        "time": "2026-11-24T00:55:23.697497Z"
+      },
+      {
+        "id": "workflow:Order @1/15",
+        "lane": "workflow:Order @1",
+        "kind": "reach",
+        "stmt": "workflow:Order › promise ship \u003c- workflow Ship(n)",
+        "edge": {
+          "from": "workflow:Order/worker:orders/namespace:default",
+          "to": "workflow:Ship/worker:orders/namespace:default",
+          "kind": "workflowCall"
+        },
+        "time": "2026-11-24T00:55:23.697925Z"
+      },
+      {
+        "id": "workflow:Order @1/16",
+        "lane": "workflow:Order @1",
+        "kind": "start",
+        "stmt": "workflow:Order › promise ship \u003c- workflow Ship(n)",
+        "attempt": 1,
+        "time": "2026-11-24T00:55:23.700292Z"
+      },
+      {
+        "id": "workflow:Order @1/17",
+        "lane": "workflow:Order @1",
+        "kind": "reach",
+        "stmt": "workflow:Order › signal ship.Go()",
+        "edge": {
+          "from": "workflow:Order/worker:orders/namespace:default",
+          "to": "workflow:Ship/worker:orders/namespace:default",
+          "kind": "signalSend"
+        },
+        "time": "2026-11-24T00:55:23.703264Z"
+      },
+      {
+        "id": "workflow:Ship @1/1",
+        "lane": "workflow:Ship @1",
+        "kind": "arrive",
+        "stmt": "workflow:Ship › signal Go",
+        "visit": [
+          1
+        ],
+        "from": "workflow:Order @1/17",
+        "time": "2026-11-24T00:55:23.704237Z"
+      },
+      {
+        "id": "workflow:Ship @1/2",
+        "lane": "workflow:Ship @1",
+        "kind": "end",
+        "stmt": "workflow:Ship › await signal Go",
+        "from": "workflow:Order @1/17",
+        "time": "2026-11-24T00:55:23.704237Z"
+      },
+      {
+        "id": "workflow:Ship @1/3",
+        "lane": "workflow:Ship @1",
+        "kind": "reach",
+        "stmt": "workflow:Ship › activity Pack()",
+        "edge": {
+          "from": "workflow:Ship/worker:orders/namespace:default",
+          "to": "activity:Pack/worker:orders/namespace:default",
+          "kind": "activityCall"
+        },
+        "time": "2026-11-24T00:55:23.70701Z"
+      },
+      {
+        "id": "workflow:Ship @1/4",
+        "lane": "workflow:Ship @1",
+        "kind": "start",
+        "stmt": "workflow:Ship › activity Pack()",
+        "attempt": 1,
+        "time": "2026-11-24T00:55:23.707024Z"
+      },
+      {
+        "id": "workflow:Ship @1/5",
+        "lane": "workflow:Ship @1",
+        "kind": "end",
+        "stmt": "workflow:Ship › activity Pack()",
+        "attempt": 1,
+        "time": "2026-11-24T00:55:23.708032Z"
+      },
+      {
+        "id": "workflow:Ship @1/6",
+        "lane": "workflow:Ship @1",
+        "kind": "reach",
+        "stmt": "workflow:Ship › activity Log()",
+        "edge": {
+          "from": "workflow:Ship/worker:orders/namespace:default",
+          "to": "activity:Log/worker:orders/namespace:default",
+          "kind": "activityCall"
+        },
+        "time": "2026-11-24T00:55:23.70979Z"
+      },
+      {
+        "id": "workflow:Ship @1/7",
+        "lane": "workflow:Ship @1",
+        "kind": "start",
+        "stmt": "workflow:Ship › activity Log()",
+        "attempt": 1,
+        "time": "2026-11-24T00:55:23.7098Z"
+      },
+      {
+        "id": "workflow:Ship @1/8",
+        "lane": "workflow:Ship @1",
+        "kind": "end",
+        "stmt": "workflow:Ship › activity Log()",
+        "attempt": 1,
+        "time": "2026-11-24T00:55:23.710587Z"
+      },
+      {
+        "id": "workflow:Ship @1/9",
+        "lane": "workflow:Ship @1",
+        "kind": "reach",
+        "stmt": "workflow:Ship › close complete",
+        "time": "2026-11-24T00:55:23.712151Z"
+      },
+      {
+        "id": "workflow:Order @1/18",
+        "lane": "workflow:Order @1",
+        "kind": "end",
+        "stmt": "workflow:Order › promise ship \u003c- workflow Ship(n)",
+        "attempt": 1,
+        "from": "workflow:Ship @1/9",
+        "time": "2026-11-24T00:55:23.71275Z"
+      },
+      {
+        "id": "workflow:Order @1/19",
+        "lane": "workflow:Order @1",
+        "kind": "reach",
+        "stmt": "workflow:Order › if (n == 0) @2 › close continue_as_new(n + 1)",
+        "time": "2026-11-24T00:55:23.715634Z"
+      },
+      {
+        "id": "workflow:Order @2/1",
+        "lane": "workflow:Order @2",
+        "kind": "reach",
+        "stmt": "workflow:Order › for › activity Charge(n) -\u003e charged",
+        "visit": [
+          1
+        ],
+        "edge": {
+          "from": "workflow:Order/worker:orders/namespace:default",
+          "to": "activity:Charge/worker:orders/namespace:default",
+          "kind": "activityCall"
+        },
+        "time": "2026-11-24T00:55:23.719506Z"
+      },
+      {
+        "id": "workflow:Order @2/2",
+        "lane": "workflow:Order @2",
+        "kind": "start",
+        "stmt": "workflow:Order › for › activity Charge(n) -\u003e charged",
+        "visit": [
+          1
+        ],
+        "attempt": 1,
+        "time": "2026-11-24T00:55:23.719523Z"
+      },
+      {
+        "id": "workflow:Order @2/3",
+        "lane": "workflow:Order @2",
+        "kind": "end",
+        "stmt": "workflow:Order › for › activity Charge(n) -\u003e charged",
+        "visit": [
+          1
+        ],
+        "attempt": 1,
+        "outcome": "failed",
+        "time": "2026-11-24T00:55:23.720353Z"
+      },
+      {
+        "id": "workflow:Order @2/4",
+        "lane": "workflow:Order @2",
+        "kind": "reach",
+        "stmt": "workflow:Order › for › await timer(1s)",
+        "visit": [
+          1
+        ],
+        "time": "2026-11-24T00:55:23.722208Z"
+      },
+      {
+        "id": "workflow:Order @2/5",
+        "lane": "workflow:Order @2",
+        "kind": "end",
+        "stmt": "workflow:Order › for › await timer(1s)",
+        "visit": [
+          1
+        ],
+        "time": "2026-11-24T00:55:24.724332Z"
+      },
+      {
+        "id": "workflow:Order @2/6",
+        "lane": "workflow:Order @2",
+        "kind": "reach",
+        "stmt": "workflow:Order › for › activity Charge(n) -\u003e charged",
+        "visit": [
+          2
+        ],
+        "edge": {
+          "from": "workflow:Order/worker:orders/namespace:default",
+          "to": "activity:Charge/worker:orders/namespace:default",
+          "kind": "activityCall"
+        },
+        "time": "2026-11-24T00:55:24.726737Z"
+      },
+      {
+        "id": "workflow:Order @2/7",
+        "lane": "workflow:Order @2",
+        "kind": "start",
+        "stmt": "workflow:Order › for › activity Charge(n) -\u003e charged",
+        "visit": [
+          2
+        ],
+        "attempt": 1,
+        "time": "2026-11-24T00:55:24.726752Z"
+      },
+      {
+        "id": "workflow:Order @2/8",
+        "lane": "workflow:Order @2",
+        "kind": "end",
+        "stmt": "workflow:Order › for › activity Charge(n) -\u003e charged",
+        "visit": [
+          2
+        ],
+        "attempt": 1,
+        "time": "2026-11-24T00:55:24.727497Z"
+      },
+      {
+        "id": "workflow:Order @2/9",
+        "lane": "workflow:Order @2",
+        "kind": "reach",
+        "stmt": "workflow:Order › if (n == 0) @1 › else › activity Notify(n)",
+        "edge": {
+          "from": "workflow:Order/worker:orders/namespace:default",
+          "to": "activity:Notify/worker:orders/namespace:default",
+          "kind": "activityCall"
+        },
+        "time": "2026-11-24T00:55:24.729475Z"
+      },
+      {
+        "id": "workflow:Order @2/10",
+        "lane": "workflow:Order @2",
+        "kind": "start",
+        "stmt": "workflow:Order › if (n == 0) @1 › else › activity Notify(n)",
+        "attempt": 2,
+        "time": "2026-11-24T00:55:25.736518Z"
+      },
+      {
+        "id": "workflow:Order @2/11",
+        "lane": "workflow:Order @2",
+        "kind": "end",
+        "stmt": "workflow:Order › if (n == 0) @1 › else › activity Notify(n)",
+        "attempt": 2,
+        "time": "2026-11-24T00:55:25.739199Z"
+      },
+      {
+        "id": "workflow:Order @2/12",
+        "lane": "workflow:Order @2",
+        "kind": "reach",
+        "stmt": "workflow:Order › promise ship \u003c- workflow Ship(n)",
+        "edge": {
+          "from": "workflow:Order/worker:orders/namespace:default",
+          "to": "workflow:Ship/worker:orders/namespace:default",
+          "kind": "workflowCall"
+        },
+        "time": "2026-11-24T00:55:25.743348Z"
+      },
+      {
+        "id": "workflow:Order @2/13",
+        "lane": "workflow:Order @2",
+        "kind": "start",
+        "stmt": "workflow:Order › promise ship \u003c- workflow Ship(n)",
+        "attempt": 1,
+        "time": "2026-11-24T00:55:25.745025Z"
+      },
+      {
+        "id": "workflow:Order @2/14",
+        "lane": "workflow:Order @2",
+        "kind": "reach",
+        "stmt": "workflow:Order › signal ship.Go()",
+        "edge": {
+          "from": "workflow:Order/worker:orders/namespace:default",
+          "to": "workflow:Ship/worker:orders/namespace:default",
+          "kind": "signalSend"
+        },
+        "time": "2026-11-24T00:55:25.748461Z"
+      },
+      {
+        "id": "workflow:Ship @2/1",
+        "lane": "workflow:Ship @2",
+        "kind": "arrive",
+        "stmt": "workflow:Ship › signal Go",
+        "visit": [
+          1
+        ],
+        "from": "workflow:Order @2/14",
+        "time": "2026-11-24T00:55:25.749189Z"
+      },
+      {
+        "id": "workflow:Ship @2/2",
+        "lane": "workflow:Ship @2",
+        "kind": "end",
+        "stmt": "workflow:Ship › await signal Go",
+        "from": "workflow:Order @2/14",
+        "time": "2026-11-24T00:55:25.749189Z"
+      },
+      {
+        "id": "workflow:Ship @2/3",
+        "lane": "workflow:Ship @2",
+        "kind": "reach",
+        "stmt": "workflow:Ship › activity Pack()",
+        "edge": {
+          "from": "workflow:Ship/worker:orders/namespace:default",
+          "to": "activity:Pack/worker:orders/namespace:default",
+          "kind": "activityCall"
+        },
+        "time": "2026-11-24T00:55:25.752547Z"
+      },
+      {
+        "id": "workflow:Ship @2/4",
+        "lane": "workflow:Ship @2",
+        "kind": "start",
+        "stmt": "workflow:Ship › activity Pack()",
+        "attempt": 1,
+        "time": "2026-11-24T00:55:25.752562Z"
+      },
+      {
+        "id": "workflow:Ship @2/5",
+        "lane": "workflow:Ship @2",
+        "kind": "end",
+        "stmt": "workflow:Ship › activity Pack()",
+        "attempt": 1,
+        "time": "2026-11-24T00:55:25.753615Z"
+      },
+      {
+        "id": "workflow:Ship @2/6",
+        "lane": "workflow:Ship @2",
+        "kind": "reach",
+        "stmt": "workflow:Ship › activity Log()",
+        "edge": {
+          "from": "workflow:Ship/worker:orders/namespace:default",
+          "to": "activity:Log/worker:orders/namespace:default",
+          "kind": "activityCall"
+        },
+        "time": "2026-11-24T00:55:25.75557Z"
+      },
+      {
+        "id": "workflow:Ship @2/7",
+        "lane": "workflow:Ship @2",
+        "kind": "start",
+        "stmt": "workflow:Ship › activity Log()",
+        "attempt": 1,
+        "time": "2026-11-24T00:55:25.755584Z"
+      },
+      {
+        "id": "workflow:Ship @2/8",
+        "lane": "workflow:Ship @2",
+        "kind": "end",
+        "stmt": "workflow:Ship › activity Log()",
+        "attempt": 1,
+        "time": "2026-11-24T00:55:25.756413Z"
+      },
+      {
+        "id": "workflow:Ship @2/9",
+        "lane": "workflow:Ship @2",
+        "kind": "reach",
+        "stmt": "workflow:Ship › close complete",
+        "time": "2026-11-24T00:55:25.758089Z"
+      },
+      {
+        "id": "workflow:Order @2/15",
+        "lane": "workflow:Order @2",
+        "kind": "end",
+        "stmt": "workflow:Order › promise ship \u003c- workflow Ship(n)",
+        "attempt": 1,
+        "from": "workflow:Ship @2/9",
+        "time": "2026-11-24T00:55:25.75862Z"
+      },
+      {
+        "id": "workflow:Order @2/16",
+        "lane": "workflow:Order @2",
+        "kind": "reach",
+        "stmt": "workflow:Order › close complete",
+        "time": "2026-11-24T00:55:25.761076Z"
+      }
+    ]
+  }
+}

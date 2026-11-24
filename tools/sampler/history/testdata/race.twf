@@ -1,0 +1,86 @@
+# Workflows whose statements history cannot tell apart: await ones until a
+# case wins, and Many never, in more ways than the join keeps.
+workflow Race(n):
+	signal A():
+		pass()
+	signal B():
+		pass()
+	await one:
+		activity Charge(n):
+			activity Ship(n)
+		timer(1h):
+			activity Ship(n)
+	close complete
+
+workflow Sig(n):
+	signal A():
+		pass()
+	signal B():
+		pass()
+	await one:
+		signal A:
+			activity Ship(n)
+		signal B:
+			activity Ship(n)
+	close complete
+
+workflow Twin(n):
+	await one:
+		activity Charge(n):
+			activity Audit(n)
+		activity Charge(n):
+			activity Ship(n)
+	close complete
+
+workflow Many(n):
+	if (a0):
+		activity Ship(n)
+	else:
+		activity Ship(n)
+	if (a1):
+		activity Ship(n)
+	else:
+		activity Ship(n)
+	if (a2):
+		activity Ship(n)
+	else:
+		activity Ship(n)
+	if (a3):
+		activity Ship(n)
+	else:
+		activity Ship(n)
+	if (a4):
+		activity Ship(n)
+	else:
+		activity Ship(n)
+	if (a5):
+		activity Ship(n)
+	else:
+		activity Ship(n)
+	if (a6):
+		activity Ship(n)
+	else:
+		activity Ship(n)
+
+activity Charge(n):
+	pass()
+
+activity Ship(n):
+	pass()
+
+activity Audit(n):
+	pass()
+
+worker orders:
+	workflow Race
+	workflow Sig
+	workflow Twin
+	workflow Many
+	activity Charge
+	activity Ship
+	activity Audit
+
+namespace default:
+	worker orders
+		options:
+			task_queue: "orders"
